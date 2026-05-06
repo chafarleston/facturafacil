@@ -1,58 +1,477 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# FacturaFácil - Sistema de Facturación Electrónica SUNAT
 
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
+<a href="https://laravel.com" target="_blank">
+<img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="250" alt="Laravel Logo">
+</a>
+</p>
+
+<p align="center">
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Descripción
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+**FacturaFácil** es un sistema de facturación electrónica desarrollado en Laravel para Perú, que permite emitir comprobantes de pago electrónicos согласно a las disposiciones de SUNAT (Superintendencia Nacional de Aduanas y Administración Tributaria).
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+El sistema está integrado con la librería **Greenter**, la herramienta oficial desarrollada por SUNAT para la generación y envío de comprobantes electrónicos.
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Características
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Comprobantes Electrónicos
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+| Tipo | Código SUNAT | Descripción |
+|------|-------------|--------------|
+| Factura | 01 | Comprobante de pago para clientes con RUC |
+| Boleta | 03 | Comprobante de pago para clientes con DNI o RUC |
+| Nota de Crédito | 07 | Rectificación de facturas/boletas |
+| Nota de Débito | 08 | Cargo adicional a facturas/boletas |
+| Nota de Venta | NV | Venta sin obligación electrónica |
 
-## Agentic Development
+### Funcionalidades Principales
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+- Emisión de **Facturas** (requiere RUC de 11 dígitos)
+- Emisión de **Boletas** (acepta DNI o RUC)
+- Notas de Crédito y Débito
+- Notas de Venta para ventas locales
+- Envío automático a SUNAT
+- Generación de PDF (formato A4 y Ticket 80mm)
+- Código QR para consulta en portal SUNAT
+- Firma digital con certificado (.p12)
+- Descarga de XML firmado
+- Descarga de CDR (Constancia de Recepción)
+- Gestión de inventario y stock
+- Registro de caja (apertura/cierre)
+- Módulo de compras a proveedores
+- Dashboard con estadísticas
+- Soporte multi-empresa
+
+### Reglas de Validación
+
+- **Facturas**: Solo aceptan clientes con RUC de 11 dígitos
+- **Boletas**: Aceptan clientes con DNI (8 dígitos) o RUC (11 dígitos)
+- **Notas de Venta**: Sin restricción de documento
+
+---
+
+## Requisitos del Servidor
+
+### Requisitos Mínimos
+
+- **PHP**: 8.2+
+- **Base de datos**: MySQL 8.0+ o MariaDB 10.4+
+- **Servidor web**: Apache o Nginx
+- **Composer**: Última versión
+
+### Extensiones PHP Requeridas
+
+- `openssl`
+- `xml`
+- `zip`
+- `mbstring`
+- `pdo_mysql`
+- `curl`
+
+### Requisitos Adicionales
+
+- Certificado digital (.p12) emitido por SUNAT
+- Acceso a internet para comunicación con servicios SUNAT
+
+---
+
+## Instalación
+
+### 1. Clonar el Proyecto
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone <repository-url> facturafacil
+cd facturafacil
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### 2. Instalar Dependencias
 
-## Contributing
+```bash
+composer install
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 3. Configurar variables de entorno
 
-## Code of Conduct
+```bash
+cp .env.example .env
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Edita el archivo `.env` con tu configuración de base de datos:
 
-## Security Vulnerabilities
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=facturafacil
+DB_USERNAME=root
+DB_PASSWORD=tu_password
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 4. Generar clave de aplicación
 
-## License
+```bash
+php artisan key:generate
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### 5. Ejecutar migraciones
+
+```bash
+php artisan migrate
+```
+
+### 6. Ejecutar seeders (datos iniciales)
+
+```bash
+php artisan db:seed
+```
+
+Esto creará:
+- Usuario administrador por defecto
+- Series preconfiguradas (F001, B001, NV01, etc.)
+- Empresa de demo
+
+### 7. Crear enlace simbólico para storage
+
+```bash
+php artisan storage:link
+```
+
+### 8. Iniciar servidor de desarrollo
+
+```bash
+php artisan serve
+```
+
+Accede a: `http://localhost:8000`
+
+---
+
+## Configuración del Certificado Digital
+
+### Paso 1: Obtener Certificado
+
+1. Solicita tu certificado digital en SUNAT
+2. Descarga el archivo `.p12` (contiene clave privada)
+3. Anota la contraseña del certificado
+
+### Paso 2: Subir Certificado
+
+1. Crea el directorio: `storage/app/certificates/`
+2. Copia tu archivo `.p12` al directorio
+3. Actualiza la configuración en el panel de empresa
+
+### Paso 3: Configurar en el Sistema
+
+1. Inicia sesión como administrador
+2. Ve a **Empresas** → Editar empresa
+3. Ingresa:
+   - Nombre del archivo certificado
+   - Contraseña del certificado
+   - Fecha de vencimiento (opcional)
+4. Selecciona el entorno:
+   - **Producción**: `https://e-factura.sunat.gob.pe`
+   - **Beta**: `https://e-beta.sunat.gob.pe` (pruebas)
+
+---
+
+## Series Preconfiguradas
+
+El sistema incluye las siguientes series por defecto:
+
+| Serie | Tipo Documento | Descripción | Uso |
+|-------|---------------|-------------|-----|
+| F001 | 01 | Factura | Comprobante electrónico |
+| B001 | 03 | Boleta | Comprobante electrónico |
+| NV01 | NV | Nota de Venta | Venta sin elektroniks |
+| FC01 | 07 | Nota de Crédito Factura | Rectificación |
+| BC01 | 07 | Nota de Crédito Boleta | Rectificación |
+| FD01 | 08 | Nota de Débito Factura | Cargo adicional |
+| BD01 | 08 | Nota de Débito Boleta | Cargo adicional |
+
+### Formato de Número
+
+- **Serie**: 4 caracteres (ej: F001, B001)
+- **Número**: 8 dígitos (ej: 00000001)
+- **Formato completo**: `F001-00000001`
+
+---
+
+## Estructura del Proyecto
+
+```
+facturafacil/
+├── app/
+│   ├── Console/
+│   ├── Exceptions/
+│   ├── Http/
+│   │   ├── Controllers/    # Controladores
+│   │   ├── Middleware/    # Middlewares
+│   │   └── Requests/     # Validaciones
+│   ├── Models/           # Modelos Eloquent
+│   ├── Providers/        # Proveedores de servicios
+│   ├── Services/        # Servicios externos
+│   │   ├── GreenterService.php
+│   │   ├── SunatService.php
+│   │   ├── XmlSignerService.php
+│   │   └── SunatQrService.php
+│   └── CoreFacturalo/    # Nucleo de facturación
+├── database/
+│   ├── migrations/     # Migraciones
+│   ├── seeders/        # Seeders
+│   └── factories/       # Factories
+├── resources/
+│   ├── js/            # JavaScript
+│   ├── css/           # Estilos CSS
+│   └── views/         # Vistas Blade
+├── routes/
+│   ├── web.php       # Rutas web
+│   ├── api.php      # Rutas API
+│   └── auth.php    # Rutas de autenticación
+├── storage/
+│   ├── app/
+│   │   └── certificates/  # Certificados digitales
+│   └── sunat/              # XML y CDR de SUNAT
+├── vendor/
+├── artisan
+├── composer.json
+├── package.json
+├── vite.config.js
+└── README.md
+```
+
+---
+
+## Modelos del Sistema
+
+| Modelo | Tabla | Descripción |
+|--------|------|-------------|
+| Company | companies | Empresas/RUC |
+| User | users | Usuarios del sistema |
+| Customer | customers | Clientes |
+| Product | products | Productos/Servicios |
+| Category | categories | Categorías de productos |
+| Invoice | invoices | Comprobantes emitidos |
+| InvoiceItem | invoice_items | Ítems de comprobantes |
+| Serie | series | Series documentales |
+| Supplier | suppliers | Proveedores |
+| Purchase | purchases | Compras |
+| CashRegister | cash_registers | Registro de caja |
+
+---
+
+## Rutas Principales
+
+| Ruta | Descripción |
+|------|-------------|
+| `/dashboard` | Panel principal |
+| `/invoices` | Lista de comprobantes |
+| `/invoices/create` | Nuevo comprobante |
+| `/products` | Gestión de productos |
+| `/customers` | Gestión de clientes |
+| `/suppliers` | Gestión de proveedores |
+| `/purchases` | Registro de compras |
+| `/cashregisters` | Registro de caja |
+| `/companies` | Gestión de empresas |
+| `/series` | Series documentales |
+| `/categories` | Categorías |
+
+---
+
+## Guía: Emitir Primera Factura
+
+### 1. Configurar Empresa
+
+1. Ve a **Empresas** → **Editar**
+2. Ingresa los datos de tu empresa:
+   - RUC
+   - Razón Social
+   - Nombre Comercial
+   - Dirección
+   - Departamento, Provincia, Distrito
+3. Sube tu certificado digital y configura la contraseña
+
+### 2. Crear Serie (si no existe)
+
+1. Ve a **Series** → **Nueva Serie**
+2. Selecciona tipo: Factura (01)
+3. Ingresa serie: F001
+4. Guarda
+
+### 3. Crear Productos
+
+1. Ve a **Productos** → **Nuevo Producto**
+2. Ingresa:
+   - Código interno
+   - Descripción
+   - Código SUNAT (opcional)
+   - Unidad de medida
+   - Precio
+   - Tipo de afectación (Gravado/Exonerado/Inafecto)
+3. Guarda
+
+### 4. Emitir Factura
+
+1. Ve a **Comprobantes** → **Nuevo Comprobante**
+2. Selecciona tipo: Factura
+3. Selecciona serie: F001
+4. Ingresa datos del cliente:
+   - Tipo: RUC (6)
+   - Número: 11 dígitos
+   - Nombre/Razón Social
+   - Dirección
+5. Agrega productos
+6. Guarda
+
+### 5. Enviar a SUNAT
+
+1. En la vista del comprobante, click en **Enviar a SUNAT**
+2. Espera la respuesta (puede tomar unos segundos)
+3. Descarga el PDF y XMLfirmado
+
+---
+
+## Credenciales por Defecto
+
+Después de ejecutar `php artisan db:seed`:
+
+| Campo | Valor |
+|------|-------|
+| Email | admin@local.com |
+| Contraseña | password |
+
+**Nota**: Cambia esta contraseña después del primer inicio de sesión.
+
+---
+
+## Entornos de SUNAT
+
+### Entorno de Producción
+
+- **URL**: `https://e-factura.sunat.gob.pe`
+- **Uso**: Comprobantes oficiales
+- **Validación**: Requiere certificado válido
+
+### Entorno de Beta (Pruebas)
+
+- **URL**: `https://e-beta.sunat.gob.pe`
+- **Uso**: Pruebas y desarrollo
+- **Certificado**: Puede usar certificado de pruebas
+
+---
+
+## API Externa
+
+### Búsqueda de Clientes
+
+```
+GET /decolecta/search?company_id=1&documento=12345678901
+```
+
+### Búsqueda de Productos SUNAT
+
+```
+GET /sunat-products/search?query=producto
+```
+
+---
+
+## Solución de Problemas
+
+### Error: "No hay certificado configurado"
+
+**Solución**: Verifica que el certificado esté en `storage/app/certificates/` y la configuración en el panel de empresa.
+
+### Error: "Tiempo de conexión agotado"
+
+**Solución**: Verifica tu conexión a internet y que los puertos firewall estén abiertos (443/HTTPS).
+
+### Error: "XML mal formado"
+
+**Solución**: Verifica que los datos del cliente estén completos (RUC, dirección, etc.).
+
+### Error: "Certificado vencido"
+
+**Solución**: Renueva tu certificado digital en SUNAT y actualiza el archivo.
+
+---
+
+## Comandos Útiles
+
+```bash
+# Limpiar cache
+php artisan cache:clear
+php artisan view:clear
+php artisan config:clear
+
+# Regenerar клавиши
+php artisan key:generate
+
+# Ver rutas
+php artisan route:list
+
+# Modo de producción
+php artisan optimize
+
+# Ver información de la app
+php artisan about
+```
+
+---
+
+## Tecnologías Utilizadas
+
+### Framework y Lenguaje
+
+- **Laravel** 13.x - Framework PHP
+- **PHP** 8.2+ - Lenguaje de programación
+
+### Librerías
+
+- **Greenter** - Librería oficial SUNAT
+- **TailwindCSS** - Framework de estilos
+- **Vite** - Build tool
+- **mpdf** - Generación de PDF
+- **endroid/qr-code** - Código QR
+
+### Base de Datos
+
+- **MySQL** 8.0+
+- **MariaDB** 10.4+
+
+---
+
+## Contribuir
+
+1. Haz un **Fork** del proyecto
+2. Crea una rama (`git checkout -b feature/nueva-caracteristica`)
+3. Realiza tus cambios y haz **commit** (`git commit -am 'Agrega nueva característica'`)
+4. Haz **push** a la rama (`git push origin feature/nueva-caracteristica`)
+5. Abre un **Pull Request**
+
+---
+
+## Licencia
+
+Este proyecto está licenciado bajo la [MIT License](LICENSE).
+
+---
+
+## Soporte
+
+- Documentación oficial SUNAT: [https://www.sunat.gob.pe](https://www.sunat.gob.pe)
+- Greenter: [GitHub](https://github.com/giankpo/greenter)
+- Laravel: [Documentación](https://laravel.com/docs)
+
+---
+
+<p align="center">Desarrollado con ❤️ para Perú</p>
