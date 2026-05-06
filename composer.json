@@ -1,0 +1,78 @@
+{
+    "name": "facturafacil/laravel",
+    "type": "project",
+    "description": "Sistema de Facturación Electrónica SUNAT",
+    "keywords": ["laravel", "facturacion", "sunat", "peru"],
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "ext-openssl": "*",
+        "ext-xml": "*",
+        "ext-zip": "*",
+        "doctrine/dbal": "^4.0",
+        "endroid/qr-code": "^6.1",
+        "greenter/core": "^5.1",
+        "greenter/htmltopdf": "^5.1",
+        "greenter/lite": "^5.2",
+        "greenter/report": "^5.1",
+        "greenter/ws": "^5.1",
+        "greenter/xml": "^5.1",
+        "greenter/xmldsig": "^5.0",
+        "guzzlehttp/guzzle": "^7.9",
+        "laravel/framework": "^13.0",
+        "laravel/sanctum": "^4.0",
+        "laravel/tinker": "^3.0",
+        "mpdf/mpdf": "^8.3",
+        "robrichards/xmlseclibs": "^3.0"
+    },
+    "require-dev": {
+        "fakerphp/faker": "^1.23",
+        "laravel/pint": "^1.27",
+        "mockery/mockery": "^1.6",
+        "nunomaduro/collision": "^8.6",
+        "phpunit/phpunit": "^12.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Database\\Factories\\": "database/factories/",
+            "Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
+        ],
+        "post-update-cmd": [
+            "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
+        ],
+        "post-root-package-install": [
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+        ],
+        "post-create-project-cmd": [
+            "@php artisan key:generate --ansi"
+        ]
+    },
+    "extra": {
+        "laravel": {
+            "dont-discover": []
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
