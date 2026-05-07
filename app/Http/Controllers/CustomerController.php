@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Company;
 use App\Models\Customer;
+use App\Models\Ubigeo;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
@@ -37,6 +38,19 @@ class CustomerController extends Controller
             'ubigeo' => 'nullable|size:6',
         ]);
 
+        // Concatenar dirección con ubigeo
+        $direccion = $validated['direccion'] ?? '';
+        $ubigeoCodigo = $request->ubigeo ?? '';
+
+        if ($ubigeoCodigo) {
+            $ubigeo = Ubigeo::where('codigo', $ubigeoCodigo)->first();
+            if ($ubigeo) {
+                $direccion = trim($direccion) . ' ' . $ubigeo->departamento . ' - ' . $ubigeo->provincia . ' - ' . $ubigeo->distrito;
+            }
+        }
+
+        $validated['direccion'] = $direccion;
+
         Customer::create($validated);
 
         return redirect()->route('customers.index', ['company_id' => $request->company_id])
@@ -65,6 +79,19 @@ class CustomerController extends Controller
             'email' => 'nullable|email',
             'ubigeo' => 'nullable|size:6',
         ]);
+
+        // Concatenar dirección con ubigeo
+        $direccion = $validated['direccion'] ?? '';
+        $ubigeoCodigo = $request->ubigeo ?? '';
+
+        if ($ubigeoCodigo) {
+            $ubigeo = Ubigeo::where('codigo', $ubigeoCodigo)->first();
+            if ($ubigeo) {
+                $direccion = trim($direccion) . ' ' . $ubigeo->departamento . ' - ' . $ubigeo->provincia . ' - ' . $ubigeo->distrito;
+            }
+        }
+
+        $validated['direccion'] = $direccion;
 
         $customer->update($validated);
 

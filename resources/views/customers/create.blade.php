@@ -344,15 +344,28 @@ function loadDistritosForUbigeo(dept, prov, selectedDist) {
             const distSelect = document.getElementById('distrito');
             distSelect.innerHTML = '<option value="">Seleccionar</option>';
             distSelect.disabled = false;
+            var matched = false;
             data.forEach(d => {
                 const opt = document.createElement('option');
                 opt.value = d.codigo;
                 opt.textContent = d.distrito;
                 opt.dataset.distrito = d.distrito;
                 distSelect.appendChild(opt);
+                // Buscar por nombre de distrito
+                if (d.distrito.toUpperCase() === selectedDist.toUpperCase()) {
+                    distSelect.value = d.codigo;
+                    matched = true;
+                }
             });
-            if (selectedDist) {
-                distSelect.value = selectedDist;
+            // Si no encuentra por nombre, buscar por código
+            if (!matched && selectedDist) {
+                data.forEach(d => {
+                    if (d.codigo === selectedDist || d.distrito.toUpperCase() === selectedDist.toUpperCase()) {
+                        distSelect.value = d.codigo;
+                    }
+                });
+            }
+            if (distSelect.value) {
                 document.getElementById('ubigeo_codigo').value = distSelect.value;
             }
         });
