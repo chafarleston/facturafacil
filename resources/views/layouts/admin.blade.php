@@ -344,99 +344,106 @@
     
     if (!deptSelect || !provSelect || !distSelect) return;
     
-    // Verificar si ya hay opciones cargadas, si no, cargarlas primero
-    var hasOptions = deptSelect.options.length > 1;
+    provSelect.disabled = false;
+    distSelect.disabled = false;
     
-    if (!hasOptions) {
-        fetch('/ubigeo/departamentos')
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
-                deptSelect.innerHTML = '<option value="">Seleccionar</option>';
-                data.forEach(function(dept) {
-                    var opt = document.createElement('option');
-                    opt.value = dept;
-                    opt.textContent = dept;
-                    deptSelect.appendChild(opt);
-                });
-                // Ahora que tenemos opciones, cargar el ubigeo
-                fetch('/ubigeo/by-codigo?codigo=' + codigo)
-                    .then(function(res) { return res.json(); })
-                    .then(function(data) {
-                        if (data && data.departamento) {
-                            deptSelect.value = data.departamento;
-                            loadProvinciasForUbigeo(data.departamento, data.provincia, data.distrito);
-                        }
-                    });
-            });
-    } else {
-        // Ya tenemos opciones, solo cargar el ubigeo
-        fetch('/ubigeo/by-codigo?codigo=' + codigo)
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
-                if (data && data.departamento) {
-                    deptSelect.value = data.departamento;
-                    loadProvinciasForUbigeo(data.departamento, data.provincia, data.distrito);
-                }
-            });
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/ubigeo/departamentos', false);
+    xhr.send('');
+    
+    if (xhr.status === 200) {
+        var deptData = JSON.parse(xhr.responseText);
+        deptSelect.innerHTML = '<option value="">Seleccionar</option>';
+        deptData.forEach(function(dept) {
+            var opt = document.createElement('option');
+            opt.value = dept;
+            opt.textContent = dept;
+            deptSelect.appendChild(opt);
+        });
+        
+        var xhr2 = new XMLHttpRequest();
+        xhr2.open('GET', '/ubigeo/by-codigo?codigo=' + codigo, false);
+        xhr2.send('');
+        
+        if (xhr2.status === 200) {
+            var ubigeoData = JSON.parse(xhr2.responseText);
+            if (ubigeoData && ubigeoData.departamento) {
+                deptSelect.value = ubigeoData.departamento;
+                loadProvinciasForUbigeo(ubigeoData.departamento, ubigeoData.provincia, ubigeoData.distrito);
+            }
+        }
     }
   }
-  
+
   function loadProvinciasForUbigeo(dept, selectedProv, selectedDist) {
-      var provSelect = document.getElementById('provincia');
-      if (!provSelect) return;
-      
-      fetch('/ubigeo/provincias?departamento=' + encodeURIComponent(dept))
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-          provSelect.innerHTML = '<option value="">Seleccionar</option>';
-          provSelect.disabled = false;
-          data.forEach(function(prov) {
-              var opt = document.createElement('option');
-              opt.value = prov;
-              opt.textContent = prov;
-              provSelect.appendChild(opt);
-          });
-          if (selectedProv) {
-              provSelect.value = selectedProv;
-              loadDistritosForUbigeo(dept, selectedProv, selectedDist);
-          }
-      });
+    var provSelect = document.getElementById('provincia');
+    if (!provSelect) return;
+    
+    if (document.getElementById('distrito')) {
+        document.getElementById('distrito').disabled = false;
+    }
+    
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/ubigeo/provincias?departamento=' + encodeURIComponent(dept), false);
+    xhr.send('');
+    
+    if (xhr.status === 200) {
+        var provData = JSON.parse(xhr.responseText);
+        provSelect.innerHTML = '<option value="">Seleccionar</option>';
+        provSelect.disabled = false;
+        provData.forEach(function(prov) {
+            var opt = document.createElement('option');
+            opt.value = prov;
+            opt.textContent = prov;
+            provSelect.appendChild(opt);
+        });
+        
+        if (selectedProv) {
+            provSelect.value = selectedProv;
+            loadDistritosForUbigeo(dept, selectedProv, selectedDist);
+        }
+    }
   }
-  
+
   function loadDistritosForUbigeo(dept, prov, selectedDist) {
-      var distSelect = document.getElementById('distrito');
-      if (!distSelect) return;
-      
-      fetch('/ubigeo/distritos?departamento=' + encodeURIComponent(dept) + '&provincia=' + encodeURIComponent(prov))
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
-          distSelect.innerHTML = '<option value="">Seleccionar</option>';
-          distSelect.disabled = false;
-          var matched = false;
-          data.forEach(function(d) {
-              var opt = document.createElement('option');
-              opt.value = d.codigo;
-              opt.textContent = d.distrito;
-              opt.dataset.distrito = d.distrito;
-              distSelect.appendChild(opt);
-              // Buscar por nombre de distrito
-              if (d.distrito.toUpperCase() === selectedDist.toUpperCase()) {
-                  distSelect.value = d.codigo;
-                  matched = true;
-              }
-          });
-          if (!matched && selectedDist) {
-              // Si no encontró por nombre, buscar por código
-              data.forEach(function(d) {
-                  if (d.codigo === selectedDist) {
-                      distSelect.value = d.codigo;
-                  }
-              });
-          }
-          if (document.getElementById('ubigeo_codigo')) {
-              document.getElementById('ubigeo_codigo').value = distSelect.value;
-          }
-      });
+    var distSelect = document.getElementById('distrito');
+    if (!distSelect) return;
+    
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/ubigeo/distritos?departamento=' + encodeURIComponent(dept) + '&provincia=' + encodeURIComponent(prov), false);
+    xhr.send('');
+    
+    if (xhr.status === 200) {
+        var distData = JSON.parse(xhr.responseText);
+        distSelect.innerHTML = '<option value="">Seleccionar</option>';
+        distSelect.disabled = false;
+        
+        var matched = false;
+        distData.forEach(function(d) {
+            var opt = document.createElement('option');
+            opt.value = d.codigo;
+            opt.textContent = d.distrito;
+            opt.dataset.distrito = d.distrito;
+            distSelect.appendChild(opt);
+            
+            if (d.distrito.toUpperCase() === selectedDist.toUpperCase()) {
+                distSelect.value = d.codigo;
+                matched = true;
+            }
+        });
+        
+        if (!matched && selectedDist) {
+            distData.forEach(function(d) {
+                if (d.codigo === selectedDist) {
+                    distSelect.value = d.codigo;
+                }
+            });
+        }
+        
+        if (document.getElementById('ubigeo_codigo')) {
+            document.getElementById('ubigeo_codigo').value = distSelect.value;
+        }
+    }
   }
   </script>
   
