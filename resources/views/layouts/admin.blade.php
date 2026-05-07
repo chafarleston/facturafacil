@@ -272,6 +272,19 @@
       });
   }
   
+  function cleanAddress(direccion) {
+      if (!direccion) return '';
+      // Reemplazar múltiples "- -" por un solo "-"
+      direccion = direccion.replace(/(\s*-\s*)+/g, ' - ');
+      // Eliminar espacios extra antes y después
+      direccion = direccion.trim();
+      // Si termina en "-", removerlo
+      if (direccion.endsWith(' -')) {
+          direccion = direccion.slice(0, -2).trim();
+      }
+      return direccion;
+  }
+  
   function buscarClienteGlobal() {
       var docNumero = document.getElementById('doc_numero').value.trim();
       var companyId = document.querySelector('input[name="company_id"]') ? document.querySelector('input[name="company_id"]').value : 1;
@@ -314,7 +327,7 @@
                       document.getElementById('customer_nombre').value = data.api_data.nombre || '';
                   }
                   if (document.getElementById('customer_direccion')) {
-                      document.getElementById('customer_direccion').value = data.api_data.direccion || '';
+                      document.getElementById('customer_direccion').value = cleanAddress(data.api_data.direccion) || '';
                   }
                   statusEl.textContent = 'Datos cargados desde SUNAT';
                   statusEl.className = 'text-sm text-warning';

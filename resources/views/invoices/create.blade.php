@@ -352,6 +352,16 @@ function submitInvoiceForm() {
     form.submit();
 }
 
+function cleanAddress(direccion) {
+    if (!direccion) return '';
+    direccion = direccion.replace(/(\s*-\s*)+/g, ' - ');
+    direccion = direccion.trim();
+    if (direccion.endsWith(' -')) {
+        direccion = direccion.slice(0, -2).trim();
+    }
+    return direccion;
+}
+
 function buscarCliente() {
     const docNumero = document.getElementById('doc_numero').value.trim();
     const docTipo = document.getElementById('doc_tipo').value;
@@ -365,22 +375,22 @@ function buscarCliente() {
             if (data.found && data.exists) {
                 document.getElementById('customer_id').value = data.customer.id;
                 document.getElementById('customer_nombre').value = data.customer.nombre;
-                document.getElementById('customer_direccion').value = data.customer.direccion || '';
+                document.getElementById('customer_direccion').value = cleanAddress(data.customer.direccion) || '';
                 document.getElementById('doc_tipo').value = data.customer.documento_tipo;
                 document.getElementById('customer_data_documento_tipo').value = data.customer.documento_tipo;
                 document.getElementById('customer_data_documento_numero').value = data.customer.documento_numero;
                 document.getElementById('customer_data_nombre').value = data.customer.nombre;
-                document.getElementById('customer_data_direccion').value = data.customer.direccion || '';
+                document.getElementById('customer_data_direccion').value = cleanAddress(data.customer.direccion) || '';
                 statusEl.textContent = '✓ Cliente encontrado';
                 statusEl.className = 'text-sm text-success';
             } else if (data.api_data) {
                 document.getElementById('customer_nombre').value = data.api_data.nombre || '';
-                document.getElementById('customer_direccion').value = data.api_data.direccion || '';
+                document.getElementById('customer_direccion').value = cleanAddress(data.api_data.direccion) || '';
                 document.getElementById('doc_tipo').value = data.api_data.documento_tipo || docTipo;
                 document.getElementById('customer_data_documento_tipo').value = data.api_data.documento_tipo || docTipo;
                 document.getElementById('customer_data_documento_numero').value = data.api_data.documento_numero || docNumero;
                 document.getElementById('customer_data_nombre').value = data.api_data.nombre || '';
-                document.getElementById('customer_data_direccion').value = data.api_data.direccion || '';
+                document.getElementById('customer_data_direccion').value = cleanAddress(data.api_data.direccion) || '';
                 statusEl.textContent = 'Datos cargados. Presione "Establecer Cliente"';
                 statusEl.className = 'text-sm text-warning';
                 document.getElementById('setCustomerBtn').style.display = 'inline-block';
