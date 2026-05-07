@@ -300,17 +300,39 @@ function submitInvoiceForm() {
     const docTipo = document.getElementById('doc_tipo').value;
     const customerId = document.getElementById('customer_id').value;
     
+    // Si es Factura (01), siempre verificar RUC
     if (tipoDoc === '01') {
-        if (!customerId && docNumero.length !== 11) {
+        // Si hay cliente seleccionado, verificar que sea RUC
+        if (customerId) {
+            // Ya hay un cliente seleccionado, validar que sea RUC de 11 dígitos
+            fetch('/decolecta/search?company_id=' + companyId + '&documento=' + docNumero)
+            .then(res => res.json())
+            .then(data => {
+                if (data.exists && data.customer) {
+                    if (data.customer.documento_tipo !== '6' || data.customer.documento_numero.length !== 11) {
+                        alert('Las facturas requieren cliente con RUC de 11 dígitos. Seleccione un cliente con RUC.');
+                        return;
+                    }
+                }
+                proceedSubmit();
+            });
+            return;
+        }
+        // No hay cliente, validar campos nuevos
+        if (docNumero.length !== 11) {
             alert('Las facturas requieren RUC de 11 dígitos');
             return;
         }
-        if (!customerId && docTipo !== '6') {
+        if (docTipo !== '6') {
             alert('Las facturas requieren tipo de documento RUC (6)');
             return;
         }
     }
     
+    proceedSubmit();
+}
+
+function proceedSubmit() {
     if (items.length === 0) {
         alert('Agregue al menos un producto');
         return;
@@ -362,7 +384,29 @@ function cleanAddress(direccion) {
     return direccion;
 }
 
+function checkFacturaRequired() {
+    const tipoDoc = document.getElementById('tipo_documento').value;
+    const docTipo = document.getElementById('doc_tipo').value;
+    const docNumero = document.getElementById('doc_numero').value.trim();
+    
+    if (tipoDoc === '01') {
+        if (docNumero && docNumero.length !== 11) {
+            return 'Las facturas requieren RUC de 11 dígitos';
+        }
+        if (docTipo !== '6' && docNumero) {
+            return 'Las facturas requieren tipo de documento RUC (6)';
+        }
+    }
+    return null;
+}
+
 function buscarCliente() {
+    const errorMsg = checkFacturaRequired();
+    if (errorMsg) {
+        alert(errorMsg);
+        return;
+    }
+    
     const docNumero = document.getElementById('doc_numero').value.trim();
     const docTipo = document.getElementById('doc_tipo').value;
     const statusEl = document.getElementById('customer-status');
