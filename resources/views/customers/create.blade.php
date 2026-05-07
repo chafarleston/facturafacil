@@ -27,7 +27,7 @@
                         <div class="input-group">
                             <input type="text" name="documento_numero" id="doc_numero" class="form-control" required>
                             <div class="input-group-append">
-                                <button type="button" class="btn btn-info" onclick="buscarCliente()">
+                                <button type="button" class="btn btn-info" onclick="buscarClienteGlobal()">
                                     <i class="fas fa-search"></i> Buscar
                                 </button>
                             </div>
@@ -44,6 +44,33 @@
                 <label>Dirección</label>
                 <input type="text" name="direccion" id="customer_direccion" class="form-control">
             </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>Departamento</label>
+                        <select id="departamento" class="form-control" onchange="loadProvincias()">
+                            <option value="">Seleccionar</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>Provincia</label>
+                        <select id="provincia" class="form-control" onchange="loadDistritos()" disabled>
+                            <option value="">Seleccionar</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>Distrito</label>
+                        <select id="distrito" class="form-control" disabled onchange="updateUbigeo()">
+                            <option value="">Seleccionar</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <input type="hidden" name="ubigeo" id="ubigeo_codigo">
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group">
@@ -71,15 +98,260 @@
 <script>
 const companyId = {{ $companyId }};
 
+document.addEventListener('DOMContentLoaded', function() {
+    loadDepartamentos();
+    updateDocMaxLength();
+});
+
+function updateDocMaxLength() {
+    const docTipo = document.getElementById('doc_tipo').value;
+    const docNumero = document.getElementById('doc_numero');
+    docNumero.maxLength = docTipo === '6' ? 11 : 8;
+}
+
+document.getElementById('doc_tipo').addEventListener('change', function() {
+    updateDocMaxLength();
+});
+
+// Removido event listener problematico para evitar problemas
+
+function loadDepartamentos() {
+    fetch('/ubigeo/departamentos')
+        .then(res => res.json())
+        .then(data => {
+            const deptSelect = document.getElementById('departamento');
+            data.forEach(dept => {
+                const opt = document.createElement('option');
+                opt.value = dept;
+                opt.textContent = dept;
+                deptSelect.appendChild(opt);
+            });
+        });
+}
+
+function loadProvincias() {
+    const dept = document.getElementById('departamento').value;
+    const provSelect = document.getElementById('provincia');
+    const distSelect = document.getElementById('distrito');
+    
+    provSelect.innerHTML = '<option value="">Seleccionar</option>';
+    distSelect.innerHTML = '<option value="">Seleccionar</option>';
+    provSelect.disabled = true;
+    distSelect.disabled = true;
+    document.getElementById('ubigeo_codigo').value = '';
+    
+    if (!dept) return;
+    
+    fetch('/ubigeo/provincias?departamento=' + encodeURIComponent(dept))
+        .then(res => res.json())
+        .then(data => {
+            provSelect.disabled = false;
+            data.forEach(prov => {
+                const opt = document.createElement('option');
+                opt.value = prov;
+                opt.textContent = prov;
+                provSelect.appendChild(opt);
+            });
+        });
+}
+
+function loadDistritos() {
+    const dept = document.getElementById('departamento').value;
+    const prov = document.getElementById('provincia').value;
+    const distSelect = document.getElementById('distrito');
+    
+    distSelect.innerHTML = '<option value="">Seleccionar</option>';
+    distSelect.disabled = true;
+    document.getElementById('ubigeo_codigo').value = '';
+    
+    if (!dept || !prov) return;
+    
+    fetch('/ubigeo/distritos?departamento=' + encodeURIComponent(dept) + '&provincia=' + encodeURIComponent(prov))
+        .then(res => res.json())
+        .then(data => {
+            distSelect.disabled = false;
+            data.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.codigo;
+                opt.textContent = d.distrito;
+                opt.dataset.distrito = d.distrito;
+                distSelect.appendChild(opt);
+            });
+        });
+}
+
+function updateUbigeo() {
+    const distSelect = document.getElementById('distrito');
+    const selected = distSelect.options[distSelect.selectedIndex];
+    if (selected && selected.value) {
+        document.getElementById('ubigeo_codigo').value = selected.value;
+    }
+}
+
 function buscarCliente() {
     const docNumero = document.getElementById('doc_numero').value.trim();
     const docTipo = document.getElementById('doc_tipo').value;
     const statusEl = document.getElementById('customer-status');
+    const buscarBtn = document.querySelector('button[onclick="buscarCliente()"]');
     
     if (!docNumero) {
         alert('Ingrese número de documento');
         return;
     }
+    
+    statusEl.textContent = 'Buscando...';
+    statusEl.className = 'text-sm text-info';
+    if (buscarBtn) buscarBtn.disabled = true;
+    
+    // Use web route instead of API for compatibility
+    fetch('/decolecta/search?company_id=' + companyId + '&documento=' + docNumero)
+    .then(res => {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+    })
+    .then(data => {
+        if (buscarBtn) buscarBtn.disabled = false;
+        
+        if (data.found && data.exists) {
+            document.getElementById('customer_nombre').value = data.customer.nombre;
+            document.getElementById('customer_direccion').value = data.customer.direccion || '';
+            document.getElementById('doc_tipo').value = data.customer.documento_tipo;
+            statusEl.textContent = '✓ Cliente encontrado';
+            statusEl.className = 'text-sm text-success';
+            if (data.customer.ubigeo) {
+                loadUbigeoFromCode(data.customer.ubigeo);
+            }
+        } else if (data.api_data) {
+            document.getElementById('customer_nombre').value = data.api_data.nombre || '';
+            document.getElementById('customer_direccion').value = data.api_data.direccion || '';
+            document.getElementById('doc_tipo').value = data.api_data.documento_tipo || docTipo;
+            statusEl.textContent = 'Datos cargados desde SUNAT';
+            statusEl.className = 'text-sm text-warning';
+            if (data.api_data.ubigeo) {
+                loadUbigeoFromCode(data.api_data.ubigeo);
+            } else if (data.api_data.direccion) {
+                detectUbigeoFromAddress(data.api_data.direccion);
+            }
+        } else {
+            statusEl.textContent = 'Cliente no encontrado';
+            statusEl.className = 'text-sm text-danger';
+        }
+    })
+    .catch(err => {
+        if (buscarBtn) buscarBtn.disabled = false;
+        statusEl.textContent = 'Error: ' + err.message;
+        statusEl.className = 'text-sm text-danger';
+        console.error('Error buscando cliente:', err);
+    });
+}
+
+function loadUbigeoFromCode(codigo) {
+    if (!codigo) {
+        return;
+    }
+    fetch('/ubigeo/by-codigo?codigo=' + codigo)
+        .then(res => res.json())
+        .then(data => {
+            if (data) {
+                document.getElementById('departamento').value = data.departamento;
+                loadProvinciasForUbigeo(data.departamento, data.provincia, data.distrito);
+            }
+        });
+}
+
+function loadProvinciasForUbigeo(dept, selectedProv, selectedDist) {
+    fetch('/ubigeo/provincias?departamento=' + encodeURIComponent(dept))
+        .then(res => res.json())
+        .then(data => {
+            const provSelect = document.getElementById('provincia');
+            provSelect.innerHTML = '<option value="">Seleccionar</option>';
+            provSelect.disabled = false;
+            data.forEach(prov => {
+                const opt = document.createElement('option');
+                opt.value = prov;
+                opt.textContent = prov;
+                provSelect.appendChild(opt);
+            });
+            if (selectedProv) {
+                provSelect.value = selectedProv;
+                loadDistritosForUbigeo(dept, selectedProv, selectedDist);
+            }
+        });
+}
+
+function loadDistritosForUbigeo(dept, prov, selectedDist) {
+    fetch('/ubigeo/distritos?departamento=' + encodeURIComponent(dept) + '&provincia=' + encodeURIComponent(prov))
+        .then(res => res.json())
+        .then(data => {
+            const distSelect = document.getElementById('distrito');
+            distSelect.innerHTML = '<option value="">Seleccionar</option>';
+            distSelect.disabled = false;
+            data.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.codigo;
+                opt.textContent = d.distrito;
+                opt.dataset.distrito = d.distrito;
+                distSelect.appendChild(opt);
+            });
+            if (selectedDist) {
+                distSelect.value = selectedDist;
+                document.getElementById('ubigeo_codigo').value = distSelect.value;
+            }
+        });
+}
+
+function detectUbigeoFromAddress(direccion) {
+    if (!direccion) {
+        return;
+    }
+    direccion = direccion.toUpperCase();
+    fetch('/ubigeo/departamentos')
+        .then(res => res.json())
+        .then(depts => {
+            for (const dept of depts) {
+                if (direccion.includes(dept)) {
+                    document.getElementById('departamento').value = dept;
+                    loadProvinciasForDetect(dept, direccion);
+                    return;
+                }
+            }
+        });
+}
+
+function loadProvinciasForDetect(dept, direccion) {
+    fetch('/ubigeo/provincias?departamento=' + encodeURIComponent(dept))
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('provincia').disabled = false;
+            for (const prov of data) {
+                if (direccion.includes(prov)) {
+                    document.getElementById('provincia').value = prov;
+                    loadDistritosForDetect(dept, prov, direccion);
+                    return;
+                }
+            }
+        });
+}
+
+function loadDistritosForDetect(dept, prov, direccion) {
+    fetch('/ubigeo/distritos?departamento=' + encodeURIComponent(dept) + '&provincia=' + encodeURIComponent(prov))
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('distrito').disabled = false;
+            for (const d of data) {
+                if (direccion.includes(d.distrito)) {
+                    document.getElementById('distrito').value = d.codigo;
+                    document.getElementById('ubigeo_codigo').value = d.codigo;
+                    return;
+                }
+            }
+            // Si no encuentra distrito, poner el primero
+            if (data.length > 0) {
+                document.getElementById('distrito').value = data[0].codigo;
+                document.getElementById('ubigeo_codigo').value = data[0].codigo;
+            }
+        });
+}
     
     statusEl.textContent = 'Buscando...';
     statusEl.className = 'text-sm text-info';

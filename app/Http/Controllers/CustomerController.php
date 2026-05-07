@@ -50,7 +50,8 @@ class CustomerController extends Controller
 
     public function edit(Customer $customer)
     {
-        return view('customers.edit', compact('customer'));
+        $companyId = $customer->company_id;
+        return view('customers.edit', compact('customer', 'companyId'));
     }
 
     public function update(Request $request, Customer $customer)

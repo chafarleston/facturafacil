@@ -19,6 +19,12 @@ class DecolectaController extends Controller
             ->first();
         
         if ($customer) {
+            // Intentar obtener el ubigeo del cliente
+            $ubigeoCodigo = $customer->ubigeo;
+            if (!$ubigeoCodigo && !empty($customer->direccion)) {
+                $ubigeoCodigo = $this->extractUbigeoFromAddress($customer->direccion);
+            }
+            
             return response()->json([
                 'found' => true,
                 'exists' => true,
@@ -30,10 +36,12 @@ class DecolectaController extends Controller
                     'direccion' => $customer->direccion,
                     'email' => $customer->email,
                     'telefono' => $customer->telefono,
+                    'ubigeo' => $ubigeoCodigo,
                 ],
                 'api_data' => [
                     'nombre' => $customer->nombre,
                     'direccion' => $customer->direccion ?? '',
+                    'ubigeo' => $ubigeoCodigo,
                 ]
             ]);
         }
@@ -51,6 +59,7 @@ class DecolectaController extends Controller
                         'condicion' => $sunatData['condicion'] ?? '',
                         'documento_tipo' => '6',
                         'documento_numero' => $documento,
+                        'ubigeo' => $sunatData['ubigeo'] ?? null,
                     ]
                 ]);
             }
@@ -191,24 +200,38 @@ class DecolectaController extends Controller
     
     private function searchInSunatPadron($ruc)
     {
-        // Primero buscar en archivo local
-        $files = glob(storage_path('app/padron*.txt'));
+        // Buscar en archivo local del padrón
+        $filePath = storage_path('app/padron_reducido_ruc.txt');
         
-        if (!empty($files)) {
-            $filePath = $files[0];
+        if (file_exists($filePath)) {
             $handle = fopen($filePath, 'r');
             
             while (($line = fgets($handle)) !== false) {
                 $parts = explode('|', trim($line));
                 
+                // El RUC debe tener 11 dígitos y coincidir exactamente
                 if (isset($parts[0]) && strlen($parts[0]) === 11 && $parts[0] === $ruc) {
                     fclose($handle);
+                    
+                    // Formato: RUC|razon_social|estado|condicion|ubigeo|direccion...
+                    // Posiciones: 0=RUC, 1=razon_social, 2=estado, 3=condicion, 4=ubigeo, 5+=direccion
+                    
+                    // Concatenar direcciones desde posicion 5
+                    $direccionParts = [];
+                    for ($i = 5; $i < count($parts); $i++) {
+                        if (isset($parts[$i]) && !empty(trim($parts[$i]))) {
+                            $direccionParts[] = trim($parts[$i]);
+                        }
+                    }
+                    $direccion = implode(' ', $direccionParts);
+                    
                     return [
                         'ruc' => $parts[0] ?? '',
                         'razon_social' => $parts[1] ?? '',
                         'estado' => $parts[2] ?? '',
                         'condicion' => $parts[3] ?? '',
-                        'direccion' => $parts[4] ?? '',
+                        'ubigeo' => $parts[4] ?? '',
+                        'direccion' => $direccion,
                     ];
                 }
             }
@@ -216,7 +239,7 @@ class DecolectaController extends Controller
             fclose($handle);
         }
         
-        // Si no está en padrón local, buscar en API SUNAT en tiempo real
+        // Si no está en padrón local, buscar en API SUNAT
         return $this->searchSunatApi($ruc);
     }
     
@@ -288,6 +311,35 @@ class DecolectaController extends Controller
             }
         } catch (\Exception $e) {
             \Log::error('Error API alternativa: ' . $e->getMessage());
+        }
+        
+        return null;
+    }
+    
+    private function extractUbigeoFromAddress($direccion)
+    {
+        if (empty($direccion)) {
+            return null;
+        }
+        
+        $direccion = strtoupper(trim($direccion));
+        
+        // Buscar en la tabla de ubigeos por nombre de distrito en la dirección
+        $ubigeos = \App\Models\Ubigeo::all();
+        
+        foreach ($ubigeos as $ubigeo) {
+            if (strpos($direccion, $ubigeo->distrito) !== false || 
+                strpos($direccion, $ubigeo->provincia) !== false ||
+                strpos($direccion, $ubigeo->departamento) !== false) {
+                return $ubigeo->codigo;
+            }
+        }
+        
+        // Si no encuentra coincidencia, buscar por provincia
+        foreach ($ubigeos as $ubigeo) {
+            if (strpos($direccion, $ubigeo->provincia) !== false) {
+                return $ubigeo->codigo;
+            }
         }
         
         return null;

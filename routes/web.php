@@ -15,6 +15,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SunatPadronController;
 use App\Http\Controllers\ThemeController;
+use App\Http\Controllers\UbigeoController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -23,6 +24,13 @@ Route::get('/', function () {
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth'])->name('dashboard');
 Route::post('/theme', [ThemeController::class, 'change'])->name('theme.change')->middleware('auth');
+
+// Rutas públicas
+Route::get('/ubigeo/departamentos', [UbigeoController::class, 'getDepartamentos']);
+Route::get('/ubigeo/provincias', [UbigeoController::class, 'getProvincias']);
+Route::get('/ubigeo/distritos', [UbigeoController::class, 'getDistritos']);
+Route::get('/ubigeo/by-codigo', [UbigeoController::class, 'getByUbigeo']);
+Route::get('/decolecta/search', [DecolectaController::class, 'search'])->name('decolecta.search');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -46,16 +54,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/cashregister/close', [CashRegisterController::class, 'close'])->name('cashregisters.close');
         Route::resource('series', SerieController::class);
         Route::resource('users', \App\Http\Controllers\UserController::class);
-        // Descargar padrón SUNAT (manual)
         Route::post('/companies/download-padron', [SunatPadronController::class, 'downloadPadron'])->name('sunat.padron.download');
     });
     
     Route::get('/invoices/{invoice}/send', [InvoiceController::class, 'sendToSunat'])->name('invoices.send');
     Route::get('/invoices/nv', [InvoiceController::class, 'nvIndex'])->name('invoices.nv');
-    // Nota de Venta printing routes
     Route::get('/invoices/{invoice}/print/nv/a4', [InvoiceController::class, 'printNvA4'])->name('invoices.print_nv_a4');
     Route::get('/invoices/{invoice}/print/nv/ticket', [InvoiceController::class, 'printNvTicket'])->name('invoices.print_nv_ticket');
-    // SUNAT catalog search for Nota de Venta (NV) - optional improvement for UX
     Route::get('/sunat-products/search', [\App\Http\Controllers\SunatProductSearchController::class, 'search'])->name('sunat-products.search');
     Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'generatePdf'])->name('invoices.pdf');
     Route::get('/invoices/{invoice}/ticket', [InvoiceController::class, 'generateTicketPdf'])->name('invoices.ticket');
@@ -65,9 +70,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/invoices/{invoice}/credit-note', [InvoiceController::class, 'sendCreditNote'])->name('invoices.sendCreditNote');
     Route::resource('invoices', InvoiceController::class);
     
-    Route::get('/customers/search', [CustomerApiController::class, 'search'])->name('customers.search');
+Route::get('/customers/search', [CustomerApiController::class, 'search'])->name('customers.search');
     Route::post('/customers/quick-store', [CustomerApiController::class, 'quickStore'])->name('customers.quickStore');
-    Route::get('/decolecta/search', [DecolectaController::class, 'search'])->name('decolecta.search')->middleware('auth');
 });
 
 require __DIR__.'/auth.php';
