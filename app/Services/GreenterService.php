@@ -644,7 +644,7 @@ class GreenterService
                 </div>
             </div>
             <div class="invoice-info">
-                <div class="invoice-type">' . ($invoice->tipo_documento == '01' ? 'FACTURA ELECTRÓNICA' : 'BOLETA DE VENTA ELECTRÓNICA') . '</div>
+                <div class="invoice-type">' . ($invoice->tipo_documento == '01' ? 'FACTURA ELECTRÓNICA' : ($invoice->tipo_documento == 'NV' ? 'NOTA DE VENTA' : 'BOLETA DE VENTA ELECTRÓNICA')) . '</div>
                 <div class="invoice-number">' . e($invoice->full_number) . '</div>
                 <div class="invoice-date">Fecha: ' . date('d/m/Y', strtotime($invoice->fecha_emision)) . '</div>
             </div>

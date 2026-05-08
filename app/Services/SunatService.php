@@ -380,7 +380,7 @@ $xml = '<?xml version="1.0" encoding="UTF-8"?>
             <p>' . ($company->direccion ?? '') . '</p>
         </div>
         <div class="invoice-info">
-            <h1>' . ($invoice->tipo_documento == '01' ? 'FACTURA' : 'BOLETA DE VENTA') . '</h1>
+            <h1>' . ($invoice->tipo_documento == '01' ? 'FACTURA' : ($invoice->tipo_documento == 'NV' ? 'NOTA DE VENTA' : 'BOLETA DE VENTA')) . '</h1>
             <p>' . $invoice->full_number . '</p>
             <p>Fecha: ' . $invoice->fecha_emision . '</p>
         </div>

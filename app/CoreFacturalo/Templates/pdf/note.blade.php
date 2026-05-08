@@ -10,6 +10,7 @@
         '03' => 'BOLETA DE VENTA',
         '07' => 'NOTA DE CREDITO',
         '08' => 'NOTA DE DEBITO',
+        'NV' => 'NOTA DE VENTA',
     ];
     $identity_document_type_description_array = [
         '-' => 'S/D',

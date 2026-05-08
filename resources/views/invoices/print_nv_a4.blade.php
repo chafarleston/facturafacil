@@ -10,7 +10,7 @@
   </head>
   <body>
   <div class="page">
-    <h2>Boleta de venta {{ $invoice->full_number }}</h2>
+    <h2>Nota de Venta {{ $invoice->full_number }}</h2>
     <p>Tipo: {{ $invoice->tipo_documento }}</p>
     <p>Cliente: {{ $invoice->customer->nombre ?? '' }}</p>
     <p>Fecha: {{ $invoice->fecha_emision }}</p>
