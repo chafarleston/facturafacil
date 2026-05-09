@@ -12,11 +12,19 @@
         @method('PATCH')
         <div class="card-body">
             <div class="row">
-                <div class="col-md-6">
+<div class="col-md-6">
                     <div class="form-group">
                         <label>Código Interno</label>
                         <input type="text" name="codigo" value="{{ $product->codigo }}" class="form-control bg-light" readonly>
                     </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label>Código de Barras</label>
+                        <input type="text" name="codigo_barras" value="{{ $product->codigo_barras }}" class="form-control" placeholder="EAN, UPC, etc.">
+                    </div>
+                </div>
+            </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">

@@ -44,6 +44,7 @@ class ProductController extends Controller
         $validated = $request->validate([
             'company_id' => 'required|exists:companies,id',
             'codigo' => 'required|max:50',
+            'codigo_barras' => 'nullable|max:50',
             'descripcion' => 'required',
             'codigo_sunat' => 'nullable|size:8',
             'umedida_codigo' => 'nullable|size:3',
@@ -90,6 +91,7 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'codigo' => 'required|max:50',
+            'codigo_barras' => 'nullable|max:50',
             'descripcion' => 'required',
             'codigo_sunat' => 'nullable|size:8',
             'umedida_codigo' => 'nullable|size:3',

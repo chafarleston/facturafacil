@@ -20,12 +20,16 @@
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label>Código SUNAT (Catálogo UBL 2.1)</label>
-                        <input type="text" id="sunat-search" placeholder="Buscar código SUNAT..." class="form-control" autocomplete="off">
-                        <input type="hidden" name="codigo_sunat" id="codigo_sunat" value="">
-                        <div id="sunat-results" class="position-absolute bg-white border rounded mt-1 p-2" style="display:none;z-index:1000;max-height:200px;overflow:auto;width:100%;"></div>
+                        <label>Código de Barras</label>
+                        <input type="text" name="codigo_barras" class="form-control" placeholder="EAN, UPC, etc.">
                     </div>
                 </div>
+            </div>
+            <div class="form-group">
+                <label>Código SUNAT (Catálogo UBL 2.1)</label>
+                <input type="text" id="sunat-search" placeholder="Buscar código SUNAT..." class="form-control" autocomplete="off">
+                <input type="hidden" name="codigo_sunat" id="codigo_sunat" value="">
+                <div id="sunat-results" class="position-absolute bg-white border rounded mt-1 p-2" style="display:none;z-index:1000;max-height:200px;overflow:auto;width:100%;"></div>
             </div>
             <div class="form-group">
                 <label>Descripción</label>
