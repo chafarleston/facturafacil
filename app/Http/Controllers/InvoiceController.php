@@ -44,7 +44,7 @@ class InvoiceController extends Controller
         $companyId = $mainCompany->id;
         $company = $mainCompany;
         $customers = Customer::where('company_id', $companyId)->where('estado', 'ACTIVO')->get();
-        $products = Product::where('estado', 'ACTIVO')->get();
+        $products = Product::where('estado', 'ACTIVO')->select('id', 'codigo', 'codigo_barras', 'descripcion', 'precio', 'stock')->get();
         $series = Serie::where('company_id', $companyId)->where('estado', 'ACTIVO')->get();
 
         return view('invoices.create', compact('company', 'customers', 'products', 'series'));

@@ -164,15 +164,10 @@
                     <div class="row align-items-end">
                         <div class="col-md-4">
                             <div class="form-group mb-0">
-                                <label>Producto <span id="stock-display" class="ml-2"></span></label>
-                                <select id="productSelect" class="form-control">
-                                    <option value="">Seleccionar producto</option>
-                                    @foreach($products as $product)
-                                        <option value="{{ $product->id }}" data-price="{{ $product->precio }}" data-code="{{ $product->codigo }}" data-name="{{ $product->descripcion }}" data-stock="{{ $product->stock }}">
-                                            {{ $product->codigo }} - {{ $product->descripcion }} - S/ {{ number_format($product->precio, 2) }} (Stock: {{ $product->stock }})
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <label>Buscar Producto (Código de barras o nombre) <span id="stock-display" class="ml-2"></span></label>
+                                <input type="text" id="productSearch" class="form-control" placeholder="Escanee código de barras o escriba nombre..." autocomplete="off">
+                                <input type="hidden" id="productSelect" value="">
+                                <div id="productResults" class="position-absolute bg-white border rounded mt-1" style="display:none;z-index:1000;max-height:250px;overflow:auto;width:100%;box-shadow:0 4px 8px rgba(0,0,0,0.15);"></div>
                             </div>
                         </div>
                         <div class="col-md-2">
@@ -522,21 +517,86 @@ function updateReferencia() {
     }
 }
 
-document.getElementById('productSelect').addEventListener('change', function() {
-    const option = this.options[this.selectedIndex];
-    document.getElementById('itemPrice').value = option.dataset.price || '';
-    updateStockDisplay();
+let selectedProduct = null;
+let productList = @json($products);
+
+document.getElementById('productSearch').addEventListener('input', function() {
+    const q = this.value.trim();
+    const resultsBox = document.getElementById('productResults');
+    
+    if (q.length < 1) {
+        resultsBox.style.display = 'none';
+        return;
+    }
+    
+    const isNumeric = /^\d+$/.test(q);
+    let results;
+    
+    if (isNumeric) {
+        results = productList.filter(p => (p.codigo_barras && p.codigo_barras.includes(q)) || p.codigo.includes(q));
+    } else {
+        results = productList.filter(p => p.descripcion.toLowerCase().includes(q.toLowerCase()) || p.codigo.toLowerCase().includes(q.toLowerCase()));
+    }
+    
+    resultsBox.innerHTML = '';
+    if (results.length === 0) {
+        resultsBox.style.display = 'none';
+        return;
+    }
+    
+    results.slice(0, 15).forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'p-2 border-bottom';
+        div.style.cursor = 'pointer';
+        const stock = p.stock || 0;
+        const stockClass = stock <= 0 ? 'text-danger' : 'text-success';
+        div.innerHTML = `<strong>${p.codigo}</strong> - ${p.descripcion} <span class="${stockClass}">(Stock: ${stock})</span> <span class="text-muted">S/ ${parseFloat(p.precio).toFixed(2)}</span>`;
+        div.onclick = () => selectProduct(p);
+        resultsBox.appendChild(div);
+    });
+    
+    resultsBox.style.display = 'block';
 });
 
+document.getElementById('productSearch').addEventListener('blur', () => {
+    setTimeout(() => { document.getElementById('productResults').style.display = 'none'; }, 200);
+});
+
+document.getElementById('productSearch').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const resultsBox = document.getElementById('productResults');
+        if (resultsBox.style.display === 'block' && resultsBox.children.length > 0) {
+            resultsBox.children[0].click();
+        } else if (this.value.trim()) {
+            const q = this.value.trim();
+            const isNumeric = /^\d+$/.test(q);
+            let results;
+            if (isNumeric) {
+                results = productList.filter(p => (p.codigo_barras && p.codigo_barras.includes(q)) || p.codigo.includes(q));
+            } else {
+                results = productList.filter(p => p.descripcion.toLowerCase().includes(q.toLowerCase()) || p.codigo.toLowerCase().includes(q.toLowerCase()));
+            }
+            if (results.length > 0) selectProduct(results[0]);
+        }
+    }
+});
+
+function selectProduct(p) {
+    selectedProduct = p;
+    document.getElementById('productSearch').value = p.codigo + ' - ' + p.descripcion;
+    document.getElementById('itemPrice').value = parseFloat(p.precio).toFixed(2);
+    document.getElementById('productResults').style.display = 'none';
+    updateStockDisplay();
+}
+
 function updateStockDisplay() {
-    const select = document.getElementById('productSelect');
-    const option = select.options[select.selectedIndex];
-    if (!option.value) {
+    if (!selectedProduct) {
         document.getElementById('stock-display').textContent = '';
         return;
     }
-    const baseStock = parseInt(option.dataset.stock) || 0;
-    const addedQty = items.filter(i => i.product_id === option.value).reduce((sum, i) => sum + i.cantidad, 0);
+    const baseStock = parseInt(selectedProduct.stock) || 0;
+    const addedQty = items.filter(i => i.product_id === selectedProduct.id).reduce((sum, i) => sum + i.cantidad, 0);
     const availableStock = baseStock - addedQty;
     const displayEl = document.getElementById('stock-display');
     if (availableStock <= 0) {
@@ -549,35 +609,28 @@ function updateStockDisplay() {
 }
 
 function agregarItem() {
-    const select = document.getElementById('productSelect');
-    const option = select.options[select.selectedIndex];
-    if (!option.value) { alert('Seleccione un producto'); return; }
+    if (!selectedProduct) { alert('Seleccione un producto'); return; }
     const qty = parseFloat(document.getElementById('itemQty').value);
     const price = Math.round(parseFloat(document.getElementById('itemPrice').value) * 100) / 100;
-    const baseStock = parseInt(option.dataset.stock) || 0;
+    const baseStock = parseInt(selectedProduct.stock) || 0;
     
     if (!qty || !price || qty <= 0) { alert('Ingrese cantidad válida'); return; }
     
-    // Calcular stock ya agregado en esta factura para este producto
-    const addedQty = items.filter(i => i.product_id === option.value).reduce((sum, i) => sum + i.cantidad, 0);
+    const addedQty = items.filter(i => i.product_id === selectedProduct.id).reduce((sum, i) => sum + i.cantidad, 0);
     const availableStock = baseStock - addedQty;
     
-    // Verificar stock disponible
     if (availableStock < qty) {
         if (availableStock <= 0) {
-            if (!confirm('Stock agotado (0). ¿Desea generar Venta con Stock negativo?')) {
-                return;
-            }
+            if (!confirm('Stock agotado (0). ¿Desea generar Venta con Stock negativo?')) return;
         } else {
-            if (!confirm('Stock insuficiente. Disponible: ' + availableStock + '. ¿Desea generar Venta con Stock negativo?')) {
-                return;
-            }
+            if (!confirm('Stock insuficiente. Disponible: ' + availableStock + '. ¿Desea generar Venta con Stock negativo?')) return;
         }
     }
     
-    items.push({ product_id: option.value, codigo: option.dataset.code, descripcion: option.dataset.name, cantidad: qty, precio: price, stock: baseStock });
+    items.push({ product_id: selectedProduct.id, codigo: selectedProduct.codigo, descripcion: selectedProduct.descripcion, cantidad: qty, precio: price, stock: baseStock });
     renderItems();
-    select.value = '';
+    selectedProduct = null;
+    document.getElementById('productSearch').value = '';
     document.getElementById('itemQty').value = '1';
     document.getElementById('itemPrice').value = '';
     updateStockDisplay();
