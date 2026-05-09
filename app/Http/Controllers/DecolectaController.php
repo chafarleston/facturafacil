@@ -200,37 +200,40 @@ class DecolectaController extends Controller
     
     private function searchInSunatPadron($ruc)
     {
-        // Buscar en archivo local del padrón
         $filePath = storage_path('app/padron_reducido_ruc.txt');
         
         if (file_exists($filePath)) {
             $handle = fopen($filePath, 'r');
             
             while (($line = fgets($handle)) !== false) {
-                $parts = explode('|', trim($line));
+                $firstPipe = strpos($line, '|');
+                if ($firstPipe === false) continue;
                 
-                // El RUC debe tener 11 dígitos y coincidir exactamente
-                if (isset($parts[0]) && strlen($parts[0]) === 11 && $parts[0] === $ruc) {
+                $rucInFile = substr($line, 0, $firstPipe);
+                
+                if ($rucInFile === $ruc) {
                     fclose($handle);
                     
-                    // Formato: RUC|razon_social|estado|condicion|ubigeo|direccion...
-                    // Posiciones: 0=RUC, 1=razon_social, 2=estado, 3=condicion, 4=ubigeo, 5+=direccion
+                    $cleanLine = preg_replace('/[\x00-\x1F\x7F]/', '', $line);
+                    $parts = explode('|', trim($cleanLine));
                     
-                    // Concatenar direcciones desde posicion 5
                     $direccionParts = [];
                     for ($i = 5; $i < count($parts); $i++) {
-                        if (isset($parts[$i]) && !empty(trim($parts[$i]))) {
-                            $direccionParts[] = trim($parts[$i]);
+                        $part = isset($parts[$i]) ? trim($parts[$i]) : '';
+                        if (!empty($part) && $part !== '-' && $part !== '|' && $part !== '') {
+                            $direccionParts[] = $part;
                         }
                     }
+                    
                     $direccion = implode(' ', $direccionParts);
+                    $razonSocial = isset($parts[1]) ? trim($parts[1]) : '';
                     
                     return [
-                        'ruc' => $parts[0] ?? '',
-                        'razon_social' => $parts[1] ?? '',
-                        'estado' => $parts[2] ?? '',
-                        'condicion' => $parts[3] ?? '',
-                        'ubigeo' => $parts[4] ?? '',
+                        'ruc' => $rucInFile,
+                        'razon_social' => mb_convert_encoding($razonSocial, 'UTF-8', 'UTF-8'),
+                        'estado' => isset($parts[2]) ? trim($parts[2]) : '',
+                        'condicion' => isset($parts[3]) ? trim($parts[3]) : '',
+                        'ubigeo' => isset($parts[4]) ? trim($parts[4]) : '',
                         'direccion' => $direccion,
                     ];
                 }
@@ -239,7 +242,6 @@ class DecolectaController extends Controller
             fclose($handle);
         }
         
-        // Si no está en padrón local, buscar en API SUNAT
         return $this->searchSunatApi($ruc);
     }
     

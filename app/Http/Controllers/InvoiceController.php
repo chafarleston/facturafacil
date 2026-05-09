@@ -108,6 +108,7 @@ class InvoiceController extends Controller
                 'documento_numero' => $docNumero,
                 'nombre' => $customerData['nombre'],
                 'direccion' => $customerData['direccion'] ?? '',
+                'ubigeo' => $customerData['ubigeo'] ?? null,
                 'estado' => 'ACTIVO',
             ]);
             
