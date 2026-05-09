@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Customer;
+use App\Models\Ubigeo;
 use App\CoreFacturalo\Services\Dni\Dni;
 
 class DecolectaController extends Controller
@@ -19,7 +20,6 @@ class DecolectaController extends Controller
             ->first();
         
         if ($customer) {
-            // Intentar obtener el ubigeo del cliente
             $ubigeoCodigo = $customer->ubigeo;
             if (!$ubigeoCodigo && !empty($customer->direccion)) {
                 $ubigeoCodigo = $this->extractUbigeoFromAddress($customer->direccion);
@@ -40,7 +40,7 @@ class DecolectaController extends Controller
                 ],
                 'api_data' => [
                     'nombre' => $customer->nombre,
-                    'direccion' => $customer->direccion ?? '',
+                    'direccion' => $customer->direccion,
                     'ubigeo' => $ubigeoCodigo,
                 ]
             ]);
@@ -49,17 +49,20 @@ class DecolectaController extends Controller
         if (strlen($documento) === 11) {
             $sunatData = $this->searchInSunatPadron($documento);
             if ($sunatData) {
+                $ubigeoCodigo = $sunatData['ubigeo'] ?? null;
+                $direccionCompleta = $this->concatenateDireccionWithUbigeo($sunatData['direccion'] ?? '', $ubigeoCodigo);
+                
                 return response()->json([
                     'found' => true,
                     'exists' => false,
                     'api_data' => [
                         'nombre' => $sunatData['razon_social'],
-                        'direccion' => $sunatData['direccion'] ?? '',
+                        'direccion' => $direccionCompleta,
                         'estado' => $sunatData['estado'] ?? '',
                         'condicion' => $sunatData['condicion'] ?? '',
                         'documento_tipo' => '6',
                         'documento_numero' => $documento,
-                        'ubigeo' => $sunatData['ubigeo'] ?? null,
+                        'ubigeo' => $ubigeoCodigo,
                     ]
                 ]);
             }
@@ -326,8 +329,7 @@ class DecolectaController extends Controller
         
         $direccion = strtoupper(trim($direccion));
         
-        // Buscar en la tabla de ubigeos por nombre de distrito en la dirección
-        $ubigeos = \App\Models\Ubigeo::all();
+        $ubigeos = Ubigeo::all();
         
         foreach ($ubigeos as $ubigeo) {
             if (strpos($direccion, $ubigeo->distrito) !== false || 
@@ -337,7 +339,6 @@ class DecolectaController extends Controller
             }
         }
         
-        // Si no encuentra coincidencia, buscar por provincia
         foreach ($ubigeos as $ubigeo) {
             if (strpos($direccion, $ubigeo->provincia) !== false) {
                 return $ubigeo->codigo;
@@ -345,5 +346,26 @@ class DecolectaController extends Controller
         }
         
         return null;
+    }
+    
+    private function concatenateDireccionWithUbigeo($direccion, $ubigeoCodigo)
+    {
+        if (empty($ubigeoCodigo) || strlen($ubigeoCodigo) !== 6) {
+            return $direccion;
+        }
+        
+        $ubigeo = Ubigeo::where('codigo', $ubigeoCodigo)->first();
+        
+        if (!$ubigeo) {
+            return $direccion;
+        }
+        
+        $direccion = trim($direccion);
+        
+        if (empty($direccion)) {
+            return $ubigeo->departamento . ' - ' . $ubigeo->provincia . ' - ' . $ubigeo->distrito;
+        }
+        
+        return $direccion . ' ' . $ubigeo->departamento . ' - ' . $ubigeo->provincia . ' - ' . $ubigeo->distrito;
     }
 }
