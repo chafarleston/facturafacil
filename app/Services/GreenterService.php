@@ -339,8 +339,15 @@ class GreenterService
         </style>
         ';
         
+        $logoHtml = '';
+        if ($company->logo && file_exists(storage_path('app/public/' . $company->logo))) {
+            $logoBase64 = 'data:image/' . pathinfo($company->logo, PATHINFO_EXTENSION) . ';base64,' . base64_encode(file_get_contents(storage_path('app/public/' . $company->logo)));
+            $logoHtml = '<div class="text-center mb-2"><img src="' . $logoBase64 . '" alt="Logo" style="max-height: 110px; max-width: 90px;"></div>';
+        }
+        
         $header = '
         <div class="text-center py-2">
+            ' . $logoHtml . '
             <div class="bold" style="font-size:10px;">' . e($company->nombre_comercial ?? $company->razon_social) . '</div>
             <div>' . e($company->razon_social) . '</div>
             <div class="mb-1">RUC: ' . e($company->ruc) . '</div>
