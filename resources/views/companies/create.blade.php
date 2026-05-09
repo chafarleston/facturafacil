@@ -7,7 +7,7 @@
     <div class="card-header">
         <h3 class="card-title">Nueva Empresa</h3>
     </div>
-    <form method="POST" action="{{ route('companies.store') }}">
+    <form method="POST" action="{{ route('companies.store') }}" enctype="multipart/form-data">
         @csrf
         <div class="card-body">
             <div class="row">
@@ -101,6 +101,19 @@
                     </div>
                 </div>
             </div>
+            <div class="form-group">
+                <label>Logo de la Empresa</label>
+                <div class="input-group">
+                    <div class="custom-file">
+                        <input type="file" name="logo" class="custom-file-input" id="logoInput" accept="image/*">
+                        <label class="custom-file-label" for="logoInput">Seleccionar imagen</label>
+                    </div>
+                </div>
+                <small class="form-text text-muted">Formatos: JPEG, PNG, JPG, GIF, SVG. Tamaño máximo: 2MB</small>
+                <div id="logoPreview" class="mt-2" style="display:none;">
+                    <img id="logoPreviewImg" src="" alt="Preview" style="max-height: 100px;">
+                </div>
+            </div>
         </div>
         <div class="card-footer">
             <a href="{{ route('companies.index') }}" class="btn btn-secondary">Cancelar</a>
@@ -109,3 +122,19 @@
     </form>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.getElementById('logoInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('logoPreviewImg').src = e.target.result;
+            document.getElementById('logoPreview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+</script>
+@endpush

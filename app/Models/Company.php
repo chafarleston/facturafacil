@@ -113,4 +113,12 @@ class Company extends Model
         }
         return $company;
     }
+
+    public function getLogoUrl()
+    {
+        if ($this->logo && \Storage::disk('public')->exists($this->logo)) {
+            return asset('storage/' . $this->logo);
+        }
+        return null;
+    }
 }

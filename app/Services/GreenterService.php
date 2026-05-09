@@ -505,42 +505,38 @@ class GreenterService
                 margin: 0;
                 padding: 10px;
             }
-            .header { 
-                display: flex; 
-                justify-content: space-between; 
+            .header-table { 
+                width: 100%; 
                 margin-bottom: 15px;
                 border-bottom: 2px solid #0066cc;
                 padding-bottom: 10px;
+                border-collapse: collapse;
             }
+            .header-table td { vertical-align: top; }
             .company-info { width: 55%; }
-            .company-logo { 
-                font-size: 18px; 
-                font-weight: bold; 
-                color: #0066cc; 
-                margin-bottom: 5px;
-            }
+            .company-logo { margin-right: 10px; }
             .company-name { font-size: 14px; font-weight: bold; }
-            .company-details { font-size: 9px; color: #666; margin-top: 5px; }
+            .company-details { font-size: 9px; color: #666; margin-top: 3px; line-height: 1.3; }
             
             .invoice-info { 
-                width: 40%; 
-                text-align: right;
-                background: #f5f5f5;
-                padding: 10px;
+                width: 42%; 
+                background: #0066cc;
+                color: white;
+                padding: 10px 12px;
                 border-radius: 4px;
+                text-align: center;
+                vertical-align: middle;
             }
             .invoice-type { 
-                font-size: 16px; 
-                font-weight: bold; 
-                color: #0066cc;
-                text-transform: uppercase;
-            }
-            .invoice-number { 
                 font-size: 12px; 
-                font-weight: bold;
-                margin-top: 5px;
+                font-weight: bold; 
+                text-transform: uppercase;
+                border-bottom: 1px solid rgba(255,255,255,0.3);
+                padding-bottom: 8px;
+                margin-bottom: 8px;
             }
-            .invoice-date { font-size: 9px; color: #666; }
+            .invoice-number { font-size: 14px; font-weight: bold; }
+            .invoice-date { font-size: 9px; opacity: 0.9; margin-top: 4px; }
             
             .client-section {
                 margin-bottom: 15px;
@@ -632,23 +628,31 @@ class GreenterService
         </style>
         ';
         
+        $logoHtml = '';
+        if ($company->logo && file_exists(storage_path('app/public/' . $company->logo))) {
+            $logoBase64 = 'data:image/' . pathinfo($company->logo, PATHINFO_EXTENSION) . ';base64,' . base64_encode(file_get_contents(storage_path('app/public/' . $company->logo)));
+            $logoHtml = '<img src="' . $logoBase64 . '" alt="Logo" style="max-height: 60px; max-width: 100px;">';
+        }
+        
+        $invoiceTypeLabel = $invoice->tipo_documento == '01' ? 'FACTURA ELECTRÓNICA' : ($invoice->tipo_documento == 'NV' ? 'NOTA DE VENTA' : 'BOLETA DE VENTA ELECTRÓNICA');
+        
         $header = '
-        <div class="header">
-            <div class="company-info">
-                <div class="company-logo">' . e($company->nombre_comercial ?? $company->razon_social) . '</div>
-                <div class="company-name">' . e($company->razon_social) . '</div>
-                <div class="company-details">
-                    RUC: ' . e($company->ruc) . '<br>
-                    ' . e($company->direccion) . '<br>
-                    ' . ($company->telefono ? 'Tel: ' . e($company->telefono) : '') . '
-                </div>
-            </div>
-            <div class="invoice-info">
-                <div class="invoice-type">' . ($invoice->tipo_documento == '01' ? 'FACTURA ELECTRÓNICA' : ($invoice->tipo_documento == 'NV' ? 'NOTA DE VENTA' : 'BOLETA DE VENTA ELECTRÓNICA')) . '</div>
-                <div class="invoice-number">' . e($invoice->full_number) . '</div>
-                <div class="invoice-date">Fecha: ' . date('d/m/Y', strtotime($invoice->fecha_emision)) . '</div>
-            </div>
-        </div>
+        <table class="header-table">
+            <tr>
+                <td class="company-info" style="padding-top: 10px;">
+                    ' . ($logoHtml ? '<span class="company-logo">' . $logoHtml . '</span>' : '') . '
+                    <span class="company-text">
+                        <div class="company-name">' . e($company->razon_social) . '</div>
+                        <div class="company-details">RUC: ' . e($company->ruc) . ' | ' . e($company->direccion) . ' ' . ($company->telefono ? '| Tel: ' . e($company->telefono) : '') . '</div>
+                    </span>
+                </td>
+                <td class="invoice-info" style="padding-top: 15px; padding-bottom: 15px; vertical-align: middle;">
+                    <div class="invoice-type">' . $invoiceTypeLabel . '</div>
+                    <div class="invoice-number" style="margin-top: 10px;">' . e($invoice->full_number) . '</div>
+                    <div class="invoice-date">Fecha: ' . date('d/m/Y', strtotime($invoice->fecha_emision)) . '</div>
+                </td>
+            </tr>
+        </table>
         ';
         
         $clientSection = '

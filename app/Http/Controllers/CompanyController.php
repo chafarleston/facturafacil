@@ -30,9 +30,17 @@ public function store(Request $request)
             'telefono' => 'nullable',
             'email' => 'nullable|email',
             'tipo_contribuyente' => 'nullable',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
 
-        Company::create($validated);
+        $data = $validated;
+        
+        if ($request->hasFile('logo')) {
+            $logoPath = $request->file('logo')->store('logos', 'public');
+            $data['logo'] = $logoPath;
+        }
+
+        Company::create($data);
 
         return redirect()->route('companies.index')->with('success', 'Empresa creada correctamente');
     }
@@ -56,10 +64,24 @@ public function store(Request $request)
             'direccion' => 'nullable',
             'telefono' => 'nullable',
             'email' => 'nullable|email',
+            'departamento' => 'nullable',
+            'provincia' => 'nullable',
+            'distrito' => 'nullable',
             'tipo_contribuyente' => 'nullable',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
 
-        $company->update($validated);
+        $data = $validated;
+        
+        if ($request->hasFile('logo')) {
+            if ($company->logo) {
+                \Storage::disk('public')->delete($company->logo);
+            }
+            $logoPath = $request->file('logo')->store('logos', 'public');
+            $data['logo'] = $logoPath;
+        }
+
+        $company->update($data);
 
         return redirect()->route('companies.show', $company)->with('success', 'Empresa actualizada');
     }
