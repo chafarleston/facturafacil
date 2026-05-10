@@ -23,6 +23,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
         "mpdf/mpdf": "^8.3",
+        "phpoffice/phpspreadsheet": "^5.7",
         "robrichards/xmlseclibs": "^3.0"
     },
     "require-dev": {

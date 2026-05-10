@@ -123,4 +123,203 @@ class ProductController extends Controller
         $product->update(['estado' => 'INACTIVO']);
         return back()->with('success', 'Producto desactivado');
     }
+
+    public function importForm(Request $request)
+    {
+        $companyId = $request->company_id ?? Company::first()->id;
+        $categories = Category::where('company_id', $companyId)->where('estado', 'ACT')->get();
+        return view('products.import', compact('companyId', 'categories'));
+    }
+
+    public function importStore(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv',
+            'company_id' => 'required|exists:companies,id',
+        ]);
+
+        $file = $request->file('file');
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file->getPathname());
+        $sheet = $spreadsheet->getActiveSheet();
+        $rows = $sheet->toArray();
+
+        if (count($rows) < 2) {
+            return back()->with('error', 'El archivo debe contener al menos una fila de datos');
+        }
+
+        $header = array_map('trim', $rows[0]);
+        $headerLower = array_map('strtolower', $header);
+
+        $colCodigo = $this->findColumn($headerLower, ['codigo', 'codigo_interno', 'code']);
+        $colCodigoBarras = $this->findColumn($headerLower, ['codigo_barras', 'barras', 'barcode', 'ean']);
+        $colDescripcion = $this->findColumn($headerLower, ['descripcion', 'descripcion', 'nombre', 'name', 'producto', 'detalle']);
+        $colPrecio = $this->findColumn($headerLower, ['precio', 'price', 'pvp', 'precio_venta']);
+        $colStock = $this->findColumn($headerLower, ['stock', 'cantidad', 'quantity']);
+        $colTipoAfectacion = $this->findColumn($headerLower, ['tipo_afectacion', 'tipo_igv', 'afectacion']);
+        $colUndMedida = $this->findColumn($headerLower, ['umedida', 'unidad', 'uom', 'medida']);
+        $colCategoria = $this->findColumn($headerLower, ['categoria', 'category', 'categoría']);
+
+        if ($colDescripcion === null) {
+            return back()->with('error', 'No se encontró la columna "descripcion" en el archivo');
+        }
+
+        $created = 0;
+        $skipped = 0;
+        $categoriesCreated = 0;
+        $errors = [];
+
+        $categoryCache = [];
+
+        for ($i = 1; $i < count($rows); $i++) {
+            $row = $rows[$i];
+            if (empty($row[$colDescripcion])) {
+                continue;
+            }
+
+            try {
+                $codigo = $colCodigo !== null ? trim($row[$colCodigo] ?? '') : '';
+                if (empty($codigo)) {
+                    $lastProduct = Product::where('company_id', $request->company_id)->orderBy('id', 'desc')->first();
+                    $nextNumber = $lastProduct ? (int)substr($lastProduct->codigo, -5) + 1 : 1;
+                    $codigo = 'PROD' . str_pad($nextNumber + $i, 5, '0', STR_PAD_LEFT);
+                }
+
+                $descripcion = trim($row[$colDescripcion] ?? '');
+                
+                $existing = Product::where('company_id', $request->company_id)
+                    ->where(function($q) use ($codigo, $descripcion) {
+                        $q->where('codigo', $codigo)->orWhere('descripcion', $descripcion);
+                    })->first();
+
+                if ($existing) {
+                    $skipped++;
+                    continue;
+                }
+
+                $precio = $colPrecio !== null ? floatval($row[$colPrecio] ?? 0) : 0;
+                $stock = $colStock !== null ? intval($row[$colStock] ?? 0) : 0;
+
+                $tipoAfectacion = 'GRA';
+                if ($colTipoAfectacion !== null) {
+                    $val = strtoupper(trim($row[$colTipoAfectacion] ?? ''));
+                    if (in_array($val, ['GRA', 'EXO', 'INA', 'EXE'])) {
+                        $tipoAfectacion = $val;
+                    }
+                }
+
+                $umedida = 'NIU';
+                if ($colUndMedida !== null) {
+                    $val = strtoupper(trim($row[$colUndMedida] ?? ''));
+                    if (in_array($val, ['NIU', 'KGM', 'GRM', 'LTR', 'MLT', 'MTK', 'MTQ', 'HR', 'D', 'TNE', 'BX', 'PK'])) {
+                        $umedida = $val;
+                    }
+                }
+
+                $categoryId = null;
+                if ($colCategoria !== null) {
+                    $categoryName = trim($row[$colCategoria] ?? '');
+                    if (!empty($categoryName)) {
+                        $categoryKey = strtoupper($categoryName);
+                        
+                        if (isset($categoryCache[$categoryKey])) {
+                            $categoryId = $categoryCache[$categoryKey];
+                        } else {
+                            $category = Category::where('company_id', $request->company_id)
+                                ->where('nombre', $categoryName)
+                                ->first();
+                            
+                            if (!$category) {
+                                $category = Category::create([
+                                    'company_id' => $request->company_id,
+                                    'nombre' => $categoryName,
+                                    'estado' => 'ACT',
+                                ]);
+                                $categoriesCreated++;
+                            }
+                            
+                            $categoryId = $category->id;
+                            $categoryCache[$categoryKey] = $categoryId;
+                        }
+                    }
+                }
+
+                Product::create([
+                    'company_id' => $request->company_id,
+                    'codigo' => $codigo,
+                    'codigo_barras' => $colCodigoBarras !== null ? trim($row[$colCodigoBarras] ?? '') : null,
+                    'descripcion' => $descripcion,
+                    'precio' => $precio,
+                    'stock' => $stock,
+                    'tipo_afectacion' => $tipoAfectacion,
+                    'umedida_codigo' => $umedida,
+                    'igv_percent' => 18,
+                    'estado' => 'ACTIVO',
+                    'category_id' => $categoryId,
+                ]);
+
+                $created++;
+            } catch (\Exception $e) {
+                $errors[] = 'Fila ' . ($i + 1) . ': ' . $e->getMessage();
+            }
+        }
+
+        $msg = "Importación completada: {$created} productos creados, {$skipped} omitidos (ya existen)";
+        if ($categoriesCreated > 0) {
+            $msg .= ", {$categoriesCreated} categorías creadas";
+        }
+        if (!empty($errors)) {
+            $msg .= '. Errores: ' . implode('; ', array_slice($errors, 0, 5));
+        }
+
+        return redirect()->route('products.index', ['company_id' => $request->company_id])
+            ->with('success', $msg);
+    }
+
+    private function findColumn(array $header, array $names): ?int
+    {
+        foreach ($names as $name) {
+            $idx = array_search($name, $header);
+            if ($idx !== false) {
+                return $idx;
+            }
+        }
+        return null;
+    }
+
+    public function downloadTemplate()
+    {
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        
+        $headers = ['codigo', 'codigo_barras', 'descripcion', 'precio', 'stock', 'tipo_afectacion', 'umedida', 'categoria'];
+        $sheet->fromArray($headers, null, 'A1');
+        
+        $sampleData = [
+            ['PROD00001', '7501234567890', 'Producto de ejemplo 1', 100.00, 50, 'GRA', 'NIU', 'Bebidas'],
+            ['PROD00002', '7501234567891', 'Galletas de chocolate', 75.50, 30, 'GRA', 'NIU', 'Alimentos'],
+            ['PROD00003', '', 'Servicio de diseño web', 200.00, 0, 'GRA', 'NIU', 'Servicios'],
+            ['PROD00004', '5901234123457', 'Jugo de naranja 1L', 45.00, 100, 'GRA', 'NIU', 'Bebidas'],
+            ['PROD00005', '', 'Camisa manga larga', 89.90, 20, 'EXO', 'NIU', 'Ropa'],
+        ];
+        
+        $row = 2;
+        foreach ($sampleData as $data) {
+            $col = 'A';
+            foreach ($data as $value) {
+                $sheet->setCellValue($col . $row, $value);
+                $col++;
+            }
+            $row++;
+        }
+        
+        foreach (range('A', 'H') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+        
+        $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
+        $tempFile = tempnam(sys_get_temp_dir(), 'template');
+        $writer->save($tempFile);
+        
+        return response()->download($tempFile, 'plantilla_productos.xlsx')->deleteFileAfterSend(true);
+    }
 }

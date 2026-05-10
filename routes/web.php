@@ -43,6 +43,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/companies/{company}/certificate', [CompanyController::class, 'updateCertificate'])->name('companies.certificate');
         Route::post('/companies/{company}/set-main', [CompanyController::class, 'setMain'])->name('companies.setMain');
         Route::resource('customers', CustomerController::class)->parameters(['customers' => 'customer']);
+        Route::get('/products/import', [ProductController::class, 'importForm'])->name('products.import.form');
+        Route::post('/products/import', [ProductController::class, 'importStore'])->name('products.import.store');
+        Route::get('/products/import/template', [ProductController::class, 'downloadTemplate'])->name('products.import.template');
         Route::resource('products', ProductController::class);
         Route::resource('categories', CategoryController::class);
         Route::resource('suppliers', SupplierController::class);

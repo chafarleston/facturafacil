@@ -18,7 +18,10 @@
             @endif
           </form>
           <a href="{{ route('products.create', ['company_id' => $companyId ?? null]) }}" class="btn btn-primary btn-sm ml-2">
-            <i class="fas fa-plus"></i> Nuevo Producto
+            <i class="fas fa-plus"></i> Nuevo
+          </a>
+          <a href="{{ route('products.import.form', ['company_id' => $companyId ?? null]) }}" class="btn btn-success btn-sm ml-1">
+            <i class="fas fa-file-import"></i> Importar
           </a>
         </div>
       </div>
@@ -27,10 +30,10 @@
           <thead>
             <tr>
               <th>Código</th>
+              <th>Cód. Barras</th>
               <th>Descripción</th>
               <th>Categoría</th>
               <th>Precio</th>
-              <th>Tipo Afect.</th>
               <th>Stock</th>
               <th>Acciones</th>
             </tr>
@@ -39,10 +42,10 @@
             @forelse($products as $product)
             <tr>
               <td>{{ $product->codigo }}</td>
+              <td>{{ $product->codigo_barras ?? '-' }}</td>
               <td>{{ $product->descripcion }}</td>
               <td>{{ $product->category->nombre ?? '-' }}</td>
               <td>S/ {{ number_format($product->precio, 2) }}</td>
-              <td>{{ $product->tipo_afectacion }}</td>
               <td>
                 @if($product->stock < 0)
                   <span class="text-danger font-weight-bold">{{ $product->stock }}</span>
