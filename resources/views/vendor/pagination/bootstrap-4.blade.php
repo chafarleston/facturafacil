@@ -1,74 +1,35 @@
-<style>
-.pagination-custom .page-link {
-    color: #0066cc;
-    border-color: #dee2e6;
-    background-color: #fff;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-}
-.pagination-custom .page-item.active .page-link {
-    background-color: #0066cc !important;
-    border-color: #0066cc !important;
-    color: #fff !important;
-}
-.pagination-custom .page-link:hover {
-    color: #004a99;
-    background-color: #e9ecef;
-    border-color: #dee2e6;
-}
-.pagination-custom .page-item.disabled .page-link {
-    color: #6c757d;
-    background-color: #fff;
-    border-color: #dee2e6;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-}
-</style>
-
 @if ($paginator->hasPages())
-    <nav>
-        <ul class="pagination pagination-sm pagination-custom">
+    <div class="d-flex justify-content-between align-items-center">
+        <div style="font-size: 12px; color: #666;">
+            Mostrando {{ $paginator->firstItem() }} a {{ $paginator->lastItem() }} de {{ $paginator->total() }} resultados
+        </div>
+        <div style="display: flex; gap: 4px; align-items: center;">
             @if ($paginator->onFirstPage())
-                <li class="page-item disabled">
-                    <span class="page-link">&laquo; Anterior</span>
-                </li>
+                <button class="btn btn-sm btn-default" disabled style="font-size: 12px; padding: 4px 10px; cursor: not-allowed;">Anterior</button>
             @else
-                <li class="page-item">
-                    <a class="page-link" href="{{ $paginator->previousPageUrl() }}" rel="prev">&laquo; Anterior</a>
-                </li>
+                <a class="btn btn-sm btn-outline-primary" href="{{ $paginator->previousPageUrl() }}" style="font-size: 12px; padding: 4px 10px; color: #0066cc; border-color: #0066cc;">Anterior</a>
             @endif
 
             @foreach ($elements as $element)
                 @if (is_string($element))
-                    <li class="page-item disabled">
-                        <span class="page-link">{{ $element }}</span>
-                    </li>
+                    <span style="padding: 4px 8px; font-size: 12px;">{{ $element }}</span>
                 @endif
-
                 @if (is_array($element))
                     @foreach ($element as $page => $url)
                         @if ($page == $paginator->currentPage())
-                            <li class="page-item active">
-                                <span class="page-link">{{ $page }}</span>
-                            </li>
+                            <button class="btn btn-sm btn-primary" style="font-size: 12px; padding: 4px 10px; min-width: 30px;">{{ $page }}</button>
                         @else
-                            <li class="page-item">
-                                <a class="page-link" href="{{ $url }}">{{ $page }}</a>
-                            </li>
+                            <a class="btn btn-sm btn-outline-primary" href="{{ $url }}" style="font-size: 12px; padding: 4px 10px; min-width: 30px; color: #0066cc; border-color: #0066cc;">{{ $page }}</a>
                         @endif
                     @endforeach
                 @endif
             @endforeach
 
             @if ($paginator->hasMorePages())
-                <li class="page-item">
-                    <a class="page-link" href="{{ $paginator->nextPageUrl() }}" rel="next">Siguiente &raquo;</a>
-                </li>
+                <a class="btn btn-sm btn-outline-primary" href="{{ $paginator->nextPageUrl() }}" style="font-size: 12px; padding: 4px 10px; color: #0066cc; border-color: #0066cc;">Siguiente</a>
             @else
-                <li class="page-item disabled">
-                    <span class="page-link">Siguiente &raquo;</span>
-                </li>
+                <button class="btn btn-sm btn-default" disabled style="font-size: 12px; padding: 4px 10px; cursor: not-allowed;">Siguiente</button>
             @endif
-        </ul>
-    </nav>
+        </div>
+    </div>
 @endif

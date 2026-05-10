@@ -1,37 +1,33 @@
 @if ($paginator->hasPages())
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <div class="text-muted" style="font-size: 12px;">
-            Mostrando {{ $paginator->firstItem() }} a {{ $paginator->lastItem() }} de {{ $paginator->total() }} resultados
-        </div>
-        <nav>
-            <ul class="pagination pagination-sm mb-0">
-                @if ($paginator->onFirstPage())
-                    <li class="page-item disabled"><span class="page-link py-1 px-2" style="font-size: 12px; color: #999;">Anterior</span></li>
-                @else
-                    <li class="page-item"><a class="page-link py-1 px-2" href="{{ $paginator->previousPageUrl() }}" style="font-size: 12px; color: #0066cc;">Anterior</a></li>
-                @endif
+    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+        <span style="color: #666;">Mostrando {{ $paginator->firstItem() }} a {{ $paginator->lastItem() }} de {{ $paginator->total() }} resultados</span>
+        <span>
+            @if ($paginator->onFirstPage())
+                <span style="display: inline-block; padding: 4px 10px; background: #e9ecef; color: #999; border: 1px solid #dee2e6; cursor: not-allowed;">Anterior</span>
+            @else
+                <a href="{{ $paginator->previousPageUrl() }}" style="display: inline-block; padding: 4px 10px; background: #fff; color: #0066cc; border: 1px solid #0066cc; text-decoration: none;">Anterior</a>
+            @endif
 
-                @foreach ($elements as $element)
-                    @if (is_string($element))
-                        <li class="page-item disabled"><span class="page-link py-1 px-2" style="font-size: 12px;">{{ $element }}</span></li>
-                    @endif
-                    @if (is_array($element))
-                        @foreach ($element as $page => $url)
-                            @if ($page == $paginator->currentPage())
-                                <li class="page-item active"><span class="page-link py-1 px-2" style="font-size: 12px; background: #0066cc; border-color: #0066cc; color: #fff;">{{ $page }}</span></li>
-                            @else
-                                <li class="page-item"><a class="page-link py-1 px-2" href="{{ $url }}" style="font-size: 12px; color: #0066cc;">{{ $page }}</a></li>
-                            @endif
-                        @endforeach
-                    @endif
-                @endforeach
-
-                @if ($paginator->hasMorePages())
-                    <li class="page-item"><a class="page-link py-1 px-2" href="{{ $paginator->nextPageUrl() }}" style="font-size: 12px; color: #0066cc;">Siguiente</a></li>
-                @else
-                    <li class="page-item disabled"><span class="page-link py-1 px-2" style="font-size: 12px; color: #999;">Siguiente</span></li>
+            @foreach ($elements as $element)
+                @if (is_string($element))
+                    <span style="padding: 4px 8px;">{{ $element }}</span>
                 @endif
-            </ul>
-        </nav>
+                @if (is_array($element))
+                    @foreach ($element as $page => $url)
+                        @if ($page == $paginator->currentPage())
+                            <span style="display: inline-block; padding: 4px 10px; background: #0066cc; color: #fff; border: 1px solid #0066cc; min-width: 30px; text-align: center;">{{ $page }}</span>
+                        @else
+                            <a href="{{ $url }}" style="display: inline-block; padding: 4px 10px; background: #fff; color: #0066cc; border: 1px solid #dee2e6; text-decoration: none; min-width: 30px; text-align: center;">{{ $page }}</a>
+                        @endif
+                    @endforeach
+                @endif
+            @endforeach
+
+            @if ($paginator->hasMorePages())
+                <a href="{{ $paginator->nextPageUrl() }}" style="display: inline-block; padding: 4px 10px; background: #fff; color: #0066cc; border: 1px solid #0066cc; text-decoration: none;">Siguiente</a>
+            @else
+                <span style="display: inline-block; padding: 4px 10px; background: #e9ecef; color: #999; border: 1px solid #dee2e6; cursor: not-allowed;">Siguiente</span>
+            @endif
+        </span>
     </div>
 @endif
