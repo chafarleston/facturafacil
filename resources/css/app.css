@@ -1,3 +1,30 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.pagination-custom .page-link {
+    color: #0066cc !important;
+    border-color: #dee2e6 !important;
+    background-color: #fff !important;
+    padding: 0.25rem 0.5rem !important;
+    font-size: 12px !important;
+    line-height: 1.5 !important;
+}
+.pagination-custom .page-item.active .page-link {
+    background-color: #0066cc !important;
+    border-color: #0066cc !important;
+    color: #fff !important;
+}
+.pagination-custom .page-link:hover {
+    color: #004a99 !important;
+    background-color: #e9ecef !important;
+    border-color: #dee2e6 !important;
+}
+.pagination-custom .page-item.disabled .page-link {
+    color: #6c757d !important;
+    background-color: #fff !important;
+    border-color: #dee2e6 !important;
+}
+.pagination-custom .pagination {
+    margin: 0 !important;
+}

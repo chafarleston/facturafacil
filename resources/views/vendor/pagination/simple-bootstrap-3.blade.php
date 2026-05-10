@@ -1,18 +1,51 @@
+<style>
+.pagination-custom .page-link {
+    color: #0066cc;
+    border-color: #dee2e6;
+    background-color: #fff;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+.pagination-custom .page-item.active .page-link {
+    background-color: #0066cc !important;
+    border-color: #0066cc !important;
+    color: #fff !important;
+}
+.pagination-custom .page-link:hover {
+    color: #004a99;
+    background-color: #e9ecef;
+    border-color: #dee2e6;
+}
+.pagination-custom .page-item.disabled .page-link {
+    color: #6c757d;
+    background-color: #fff;
+    border-color: #dee2e6;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+</style>
+
 @if ($paginator->hasPages())
     <nav>
-        <ul class="pagination">
-            {{-- Previous Page Link --}}
+        <ul class="pagination pagination-sm pagination-custom">
             @if ($paginator->onFirstPage())
-                <li class="disabled" aria-disabled="true"><span>@lang('pagination.previous')</span></li>
+                <li class="page-item disabled">
+                    <span class="page-link">&laquo; Anterior</span>
+                </li>
             @else
-                <li><a href="{{ $paginator->previousPageUrl() }}" rel="prev">@lang('pagination.previous')</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="{{ $paginator->previousPageUrl() }}" rel="prev">&laquo; Anterior</a>
+                </li>
             @endif
 
-            {{-- Next Page Link --}}
             @if ($paginator->hasMorePages())
-                <li><a href="{{ $paginator->nextPageUrl() }}" rel="next">@lang('pagination.next')</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="{{ $paginator->nextPageUrl() }}" rel="next">Siguiente &raquo;</a>
+                </li>
             @else
-                <li class="disabled" aria-disabled="true"><span>@lang('pagination.next')</span></li>
+                <li class="page-item disabled">
+                    <span class="page-link">Siguiente &raquo;</span>
+                </li>
             @endif
         </ul>
     </nav>
