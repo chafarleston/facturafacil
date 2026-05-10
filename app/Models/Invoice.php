@@ -11,7 +11,7 @@ class Invoice extends Model
 
     protected $fillable = [
         'company_id', 'customer_id', 'tipo_documento', 'serie', 'numero',
-        'fecha_emision', 'fecha_vencimiento', 'moneda',
+        'fecha_emision', 'hora_emision', 'fecha_vencimiento', 'moneda',
         'gravado', 'exonerado', 'inafecto', 'exento', 'igv', 'total', 'total_letras',
         'subtotal',
         'observaciones', 'codigo_hash', 'xml_path', 'pdf_path', 'cdr_path',

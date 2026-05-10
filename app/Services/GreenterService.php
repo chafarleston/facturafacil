@@ -643,7 +643,7 @@ class GreenterService
         
         $invoiceTypeLabel = $invoice->tipo_documento == '01' ? 'FACTURA ELECTRÓNICA' : ($invoice->tipo_documento == 'NV' ? 'NOTA DE VENTA' : ($invoice->tipo_documento == '03' ? 'BOLETA DE VENTA ELECTRÓNICA' : 'DOCUMENTO'));
         
-        $horaEmision = $invoice->hora_emision ? substr($invoice->hora_emision, 0, 8) : date('H:i:s');
+        $horaEmision = !empty($invoice->hora_emision) ? substr($invoice->hora_emision, 0, 8) : '';
         
         $header = '
         <table class="header-table">
