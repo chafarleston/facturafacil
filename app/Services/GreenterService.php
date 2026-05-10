@@ -359,7 +359,7 @@ class GreenterService
         <div class="border-double py-2 mb-2">
             <div class="text-center bold" style="font-size:11px;">' . ($invoice->tipo_documento == '01' ? 'FACTURA ELECTRÓNICA' : ($invoice->tipo_documento == 'NV' ? 'NOTA DE VENTA' : 'BOLETA ELECTRÓNICA')) . '</div>
             <div class="text-center bold" style="font-size:12px;">' . e($invoice->full_number) . '</div>
-            <div class="text-center">Fecha: ' . date('d/m/Y', strtotime($invoice->fecha_emision)) . '</div>
+            <div class="text-center">F. Emisión: ' . date('Y-m-d', strtotime($invoice->fecha_emision)) . ' | H. Emisión: ' . ($invoice->hora_emision ? substr($invoice->hora_emision, 0, 8) : '') . '</div>
         </div>
         ';
         
@@ -643,6 +643,8 @@ class GreenterService
         
         $invoiceTypeLabel = $invoice->tipo_documento == '01' ? 'FACTURA ELECTRÓNICA' : ($invoice->tipo_documento == 'NV' ? 'NOTA DE VENTA' : ($invoice->tipo_documento == '03' ? 'BOLETA DE VENTA ELECTRÓNICA' : 'DOCUMENTO'));
         
+        $horaEmision = $invoice->hora_emision ? substr($invoice->hora_emision, 0, 8) : date('H:i:s');
+        
         $header = '
         <table class="header-table">
             <tr>
@@ -655,8 +657,7 @@ class GreenterService
                 </td>
                 <td class="invoice-info" style="padding-top: 15px; padding-bottom: 15px; vertical-align: middle;">
                     <div class="invoice-type">' . $invoiceTypeLabel . '</div>
-                    <div class="invoice-number" style="margin-top: 10px;">' . e($invoice->full_number) . '</div>
-                    <div class="invoice-date">Fecha: ' . date('d/m/Y', strtotime($invoice->fecha_emision)) . '</div>
+                    <div class="invoice-number" style="margin-top: 12px; font-size: 16px;">' . e($invoice->full_number) . '</div>
                 </td>
             </tr>
         </table>
@@ -669,6 +670,9 @@ class GreenterService
                 <strong>Razón Social:</strong> ' . e($customer->nombre) . '<br>
                 <strong>' . ($customer->documento_tipo == '6' ? 'RUC' : 'DNI') . ':</strong> ' . e($customer->documento_numero) . '<br>
                 ' . ($customer->direccion ? '<strong>Dirección:</strong> ' . e($customer->direccion) . '<br>' : '') . '
+            </div>
+            <div class="mt-2" style="font-size: 10px; color: #666;">
+                <strong>F. Emisión:</strong> ' . date('Y-m-d', strtotime($invoice->fecha_emision)) . ' | <strong>H. Emisión:</strong> ' . $horaEmision . '
             </div>
         </div>
         ';

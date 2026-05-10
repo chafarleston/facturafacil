@@ -36,7 +36,7 @@
             <tr>
               <td>{{ $invoice->document_type_name }} {{ $invoice->full_number }}</td>
               <td>{{ $invoice->customer->nombre }}</td>
-              <td>{{ $invoice->fecha_emision }}</td>
+              <td>{{ date('Y-m-d', strtotime($invoice->fecha_emision)) }} {{ $invoice->hora_emision ? substr($invoice->hora_emision, 0, 8) : '' }}</td>
               <td>S/ {{ number_format($invoice->total, 2) }}</td>
               <td>
                 @switch($invoice->sunat_estado)

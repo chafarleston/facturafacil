@@ -185,6 +185,7 @@ class InvoiceController extends Controller
             'serie' => $serie->serie,
             'numero' => $numero,
             'fecha_emision' => $validated['fecha_emision'],
+            'hora_emision' => now()->format('H:i:s'),
             'moneda' => $validated['moneda'] ?? 'PEN',
             'gravado' => $subtotal,
             'subtotal' => $subtotal,

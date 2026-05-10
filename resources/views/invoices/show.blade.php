@@ -18,8 +18,17 @@
                         <div class="info-box">
                             <span class="info-box-icon bg-info"><i class="fas fa-calendar"></i></span>
                             <div class="info-box-content">
-                                <span class="info-box-text">Fecha</span>
-                                <span class="info-box-number">{{ $invoice->fecha_emision }}</span>
+                                <span class="info-box-text">F. Emisión</span>
+                                <span class="info-box-number">{{ date('Y-m-d', strtotime($invoice->fecha_emision)) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="info-box">
+                            <span class="info-box-icon bg-warning"><i class="fas fa-clock"></i></span>
+                            <div class="info-box-content">
+                                <span class="info-box-text">H. Emisión</span>
+                                <span class="info-box-number">{{ $invoice->hora_emision ? substr($invoice->hora_emision, 0, 8) : '' }}</span>
                             </div>
                         </div>
                     </div>
