@@ -357,7 +357,7 @@ class GreenterService
         
         $docInfo = '
         <div class="border-double py-2 mb-2">
-            <div class="text-center bold" style="font-size:11px;">' . ($invoice->tipo_documento == '01' ? 'FACTURA ELECTRÓNICA' : 'BOLETA ELECTRÓNICA') . '</div>
+            <div class="text-center bold" style="font-size:11px;">' . ($invoice->tipo_documento == '01' ? 'FACTURA ELECTRÓNICA' : ($invoice->tipo_documento == 'NV' ? 'NOTA DE VENTA' : 'BOLETA ELECTRÓNICA')) . '</div>
             <div class="text-center bold" style="font-size:12px;">' . e($invoice->full_number) . '</div>
             <div class="text-center">Fecha: ' . date('d/m/Y', strtotime($invoice->fecha_emision)) . '</div>
         </div>
@@ -641,7 +641,7 @@ class GreenterService
             $logoHtml = '<img src="' . $logoBase64 . '" alt="Logo" style="max-height: 60px; max-width: 100px;">';
         }
         
-        $invoiceTypeLabel = $invoice->tipo_documento == '01' ? 'FACTURA ELECTRÓNICA' : ($invoice->tipo_documento == 'NV' ? 'NOTA DE VENTA' : 'BOLETA DE VENTA ELECTRÓNICA');
+        $invoiceTypeLabel = $invoice->tipo_documento == '01' ? 'FACTURA ELECTRÓNICA' : ($invoice->tipo_documento == 'NV' ? 'NOTA DE VENTA' : ($invoice->tipo_documento == '03' ? 'BOLETA DE VENTA ELECTRÓNICA' : 'DOCUMENTO'));
         
         $header = '
         <table class="header-table">

@@ -53,15 +53,12 @@ class Invoice extends Model
 
     public function getDocumentTypeNameAttribute(): string
     {
-        if ($this->tipo_documento === 'NV') {
-            // Notas de Venta deben mostrarse como "Boleta de venta"
-            return 'Boleta de venta';
-        }
         $types = [
             '01' => 'Factura',
             '03' => 'Boleta',
             '07' => 'Nota de Crédito',
             '08' => 'Nota de Débito',
+            'NV' => 'Nota de Venta',
         ];
         return $types[$this->tipo_documento] ?? $this->tipo_documento;
     }

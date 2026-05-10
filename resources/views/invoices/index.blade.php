@@ -3,7 +3,8 @@
 @section('page_title', 
     $tipoDocumento == '01' ? 'Facturas' : 
     ($tipoDocumento == '03' ? 'Boletas' : 
-    ($tipoDocumento == '07' ? 'Notas de Crédito' : 'Todos los Comprobantes'))
+    ($tipoDocumento == '07' ? 'Notas de Crédito' : 
+    ($tipoDocumento == 'NV' ? 'Notas de Venta' : 'Todos los Comprobantes')))
 )
 
 @section('content')
