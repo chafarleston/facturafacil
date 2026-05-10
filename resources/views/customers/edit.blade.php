@@ -156,7 +156,10 @@ function loadDistritosEdit(dept, prov, selectedDist) {
                 distSelect.appendChild(opt);
             });
             if (selectedDist) {
-                distSelect.value = selectedDist;
+                const match = Array.from(distSelect.options).find(o => o.dataset.distrito === selectedDist);
+                if (match) {
+                    distSelect.value = match.value;
+                }
             }
             document.getElementById('ubigeo_codigo').value = currentUbigeo;
         });
