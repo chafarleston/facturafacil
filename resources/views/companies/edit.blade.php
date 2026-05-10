@@ -26,6 +26,7 @@
                             <option value="RIESGO" {{ (string)$company->tipo_contribuyente == 'RIESGO' ? 'selected' : '' }}>RIESGO</option>
                             <option value="MYPES" {{ (string)$company->tipo_contribuyente == 'MYPES' ? 'selected' : '' }}>MYPES</option>
                             <option value="OTROS" {{ (string)$company->tipo_contribuyente == 'OTROS' ? 'selected' : '' }}>OTROS</option>
+                        </select>
                     </div>
                 </div>
             </div>

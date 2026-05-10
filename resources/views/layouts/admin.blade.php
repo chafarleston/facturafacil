@@ -12,14 +12,11 @@
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <!-- Ionicons -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ionicons@7.2.1/css/ionicons.min.css">
-  
   <!-- AdminLTE CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2.0/dist/css/adminlte.min.css">
   
   <!-- overlayScrollbars -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/overlayscrollbars/1.14.0/css/OverlayScrollbars.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/overlayscrollbars@2.10.1/styles/overlayscrollbars.min.css">
   
   @stack('styles')
 </head>

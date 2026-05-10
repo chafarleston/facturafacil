@@ -24,7 +24,7 @@
                             <span class="info-box-icon bg-info"><i class="fas fa-calendar"></i></span>
                             <div class="info-box-content">
                                 <span class="info-box-text">Fecha Apertura</span>
-                                <span class="info-box-number">{{ $cashregister->fecha_apertura->format('d/m/Y H:i') }}</span>
+                                <span class="info-box-number">{{ $cashregister->fecha_apertura ? $cashregister->fecha_apertura->format('d/m/Y H:i') : '-' }}</span>
                             </div>
                         </div>
                     </div>

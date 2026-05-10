@@ -19,7 +19,7 @@
 
         <div class="card-body">
             <div class="row">
-                <div class="col-md-4">
+                <div class="col-md-2">
                     <div class="form-group">
                         <label>Tipo Documento</label>
                         <select name="tipo_documento" id="tipo_documento" class="form-control" required onchange="updateSerie()">
@@ -29,7 +29,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-2">
                     <div class="form-group">
                         <label>Serie</label>
                         @if($series->isEmpty())
@@ -46,13 +46,13 @@
                         @endif
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-2">
                     <div class="form-group">
                         <label>Fecha</label>
                         <input type="date" name="fecha_emision" class="form-control" required value="{{ date('Y-m-d') }}">
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-2">
                     <div class="form-group">
                         <label>Método de Pago</label>
                         <select name="metodo_pago" id="metodo_pago" class="form-control" onchange="updateReferencia()">

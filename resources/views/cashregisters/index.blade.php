@@ -8,7 +8,7 @@
         @if($cajaAbierta)
         <div class="alert alert-success">
             <h4><i class="fas fa-cash-register"></i> Caja Abierta</h4>
-            <p>Fecha apertura: {{ $cajaAbierta->fecha_apertura->format('d/m/Y H:i') }}</p>
+            <p>Fecha apertura: {{ $cajaAbierta->fecha_apertura ? $cajaAbierta->fecha_apertura->format('d/m/Y H:i') : '-' }}</p>
             <p>Monto apertura: S/ {{ number_format($cajaAbierta->monto_apertura, 2) }}</p>
             <form method="POST" action="{{ route('cashregisters.close') }}" class="mt-3">
                 @csrf
@@ -83,7 +83,7 @@
                     <tbody>
                         @forelse($cajas as $caja)
                         <tr>
-                            <td>{{ $caja->fecha_apertura->format('d/m/Y') }}</td>
+                            <td>{{ $caja->fecha_apertura ? $caja->fecha_apertura->format('d/m/Y') : '-' }}</td>
                             <td>{{ $caja->user->name }}</td>
                             <td>S/ {{ number_format($caja->monto_apertura, 2) }}</td>
                             <td>{{ $caja->monto_cierre ? 'S/ ' . number_format($caja->monto_cierre, 2) : '-' }}</td>
