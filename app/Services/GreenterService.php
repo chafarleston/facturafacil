@@ -528,7 +528,10 @@ class GreenterService
             .company-logo { max-height: 70px; max-width: 100px; }
             .company-name { font-size: 12px; font-weight: bold; margin-bottom: 3px; text-align: center; }
             .company-details { font-size: 8px; color: #666; line-height: 1.3; text-align: center; }
-            .doc-box div { border: none !important; }
+            .doc-box div { 
+                border: 0 !important; 
+                border-width: 0 !important;
+            }
             
             .client-section {
                 margin-bottom: 15px;
@@ -570,19 +573,22 @@ class GreenterService
             td:nth-child(3), td:nth-child(4), td:nth-child(5) { text-align: right; }
             
             .totals-section {
-                display: flex;
-                justify-content: flex-end;
+                margin-top: 15px;
+                text-align: right;
             }
             .totals-table {
+                display: inline-table;
                 width: 200px;
                 border-collapse: collapse;
+                text-align: right;
+                margin-left: auto;
             }
             .totals-table td {
                 padding: 5px 8px;
                 text-align: right;
             }
-            .totals-table .label { color: #666; }
-            .totals-table .value { font-weight: bold; }
+            .totals-table .label { color: #666; text-align: left; }
+            .totals-table .value { font-weight: bold; text-align: right; }
             .totals-table .total-row {
                 background: #0066cc;
                 color: white;
@@ -593,10 +599,14 @@ class GreenterService
                 margin-top: 10px;
                 padding-top: 10px;
                 border-top: 1px solid #ddd;
+                text-align: right;
             }
             .pago-section .totals-table {
+                display: inline-table;
                 width: 200px;
             }
+            .pago-section .label { text-align: left; }
+            .pago-section .value { text-align: right; }
             
             .footer {
                 margin-top: 20px;
@@ -645,11 +655,11 @@ class GreenterService
                     </div>
                 </td>
                 <td class="invoice-block">
-                    <div style="border:2px solid #003399; padding:15px; min-height:100px; text-align:center;" class="doc-box">
-                        <div style="font-size:11px; font-weight:bold; border:none;">R.U.C.: ' . e($company->ruc) . '</div>
-                        <div style="font-size:11px; font-weight:bold; text-transform:uppercase; margin-top:8px; border:none;">' . $invoiceTypeLabel . '</div>
-                        <div style="font-size:15px; font-weight:bold; margin-top:8px; border:none;">' . e($invoice->full_number) . '</div>
-                    </div>
+                    <table style="border:2px solid #003399; padding:15px; min-height:100px; text-align:center; width:100%;" class="doc-box">
+                        <tr><td style="font-size:11px; font-weight:bold; border:none;">R.U.C.: ' . e($company->ruc) . '</td></tr>
+                        <tr><td style="font-size:11px; font-weight:bold; text-transform:uppercase; border:none;">' . $invoiceTypeLabel . '</td></tr>
+                        <tr><td style="font-size:15px; font-weight:bold; border:none;">' . e($invoice->full_number) . '</td></tr>
+                    </table>
                 </td>
             </tr>
         </table>
