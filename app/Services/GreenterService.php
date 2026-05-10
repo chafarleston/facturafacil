@@ -786,11 +786,12 @@ class GreenterService
             ' . $pagoInfo . '
             ' . $sunatInfo . '
             <div class="footer-final">
+                ' . $qrImg . '
+                ' . $hashBlock . '
                 <div class="footer">
                     Documento electrónico emitido en cumplimiento de la Resolución de SUNAT N° 097-2012/SUNAT<br>
                     Representación impresa del documento electrónico - Consultar en www.sunat.gob.pe
                 </div>
-                ' . $qrImg . ' ' . $hashBlock . '
             </div>
         </body>
         </html>';
