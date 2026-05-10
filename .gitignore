@@ -26,3 +26,5 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+test_invoice*.pdf
+test_pdf.php
