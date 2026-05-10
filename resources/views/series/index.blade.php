@@ -22,14 +22,15 @@
               <th>Tipo</th>
               <th>Último Número</th>
               <th>Estado</th>
+              <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
             @forelse($series as $serie)
             <tr>
               <td>{{ $serie->serie }}</td>
-              <td>{{ $serie->tipo == '01' ? 'Factura' : 'Boleta' }}</td>
-              <td>{{ $serie->numero }}</td>
+              <td>{{ $serie->tipo_documento == '01' ? 'Factura' : 'Boleta' }}</td>
+              <td>{{ $serie->numero_actual + 1 }}</td>
               <td>
                 @if($serie->estado === 'ACTIVO')
                   <span class="badge badge-success">ACTIVO</span>
@@ -37,9 +38,12 @@
                   <span class="badge badge-secondary">{{ $serie->estado }}</span>
                 @endif
               </td>
+              <td>
+                <a href="{{ route('series.edit', $serie) }}" class="btn btn-warning btn-xs"><i class="fas fa-edit"></i></a>
+              </td>
             </tr>
             @empty
-            <tr><td colspan="4" class="text-center">No hay series</td></tr>
+            <tr><td colspan="5" class="text-center">No hay series</td></tr>
             @endforelse
           </tbody>
         </table>

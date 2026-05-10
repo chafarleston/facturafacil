@@ -146,6 +146,13 @@
             </li>
             
             <li class="nav-item">
+              <a href="{{ route('invoices.index', ['type' => 'NV']) }}" class="nav-link">
+                <i class="nav-icon fas fa-file-alt"></i>
+                <p>Notas de Venta</p>
+              </a>
+            </li>
+            
+            <li class="nav-item">
               <a href="{{ route('invoices.create') }}" class="nav-link">
                 <i class="nav-icon fas fa-plus"></i>
                 <p>Nuevo Comprobante</p>

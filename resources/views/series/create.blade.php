@@ -23,6 +23,11 @@
                 <input type="text" name="serie" class="form-control" placeholder="Ej: F001, B001" maxlength="4" required>
                 <small class="text-muted">Ingrese hasta 4 caracteres (ej: F001, B001)</small>
             </div>
+            <div class="form-group">
+                <label>Número de Inicio</label>
+                <input type="number" name="numero_inicio" class="form-control" value="1" min="0" required>
+                <small class="text-muted">El primer documento comenzará desde este número</small>
+            </div>
         </div>
         <div class="card-footer">
             <button type="submit" class="btn btn-primary">Crear Serie</button>
