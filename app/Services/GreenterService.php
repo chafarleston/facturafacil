@@ -521,13 +521,13 @@ class GreenterService
             }
             .header-table table { border-collapse: collapse; border: none; }
             .header-table td { vertical-align: middle; padding: 5px; border: none !important; }
-            .logo-block { width: 30%; text-align: left; vertical-align: middle; border: none !important; }
-            .company-block { width: 35%; text-align: center; vertical-align: middle; border: none !important; }
-            .invoice-block { width: 35%; text-align: center; vertical-align: middle; border: none !important; }
+            .logo-block { width: 25%; text-align: left; vertical-align: middle; border: none !important; }
+            .company-block { width: 45%; text-align: center; vertical-align: middle; border: none !important; }
+            .invoice-block { width: 30%; text-align: center; vertical-align: middle; border: none !important; }
             
             .company-logo { max-height: 70px; max-width: 100px; }
-            .company-name { font-size: 12px; font-weight: bold; margin-bottom: 3px; text-align: center; }
-            .company-details { font-size: 8px; color: #666; line-height: 1.3; text-align: center; }
+            .company-name { font-size: 14px; font-weight: bold; margin-bottom: 3px; text-align: center; }
+            .company-details { font-size: 10px; color: #666; line-height: 1.3; text-align: center; }
             .doc-box div { 
                 border: 0 !important; 
                 border-width: 0 !important;
@@ -610,6 +610,18 @@ class GreenterService
             
             .footer {
                 margin-top: 20px;
+                padding-top: 10px;
+                border-top: 1px solid #ddd;
+                font-size: 8px;
+                color: #999;
+                text-align: center;
+            }
+            .footer-final {
+                margin-top: 20px;
+                text-align: center;
+            }
+            .footer-final .footer {
+                margin-top: 15px;
                 padding-top: 10px;
                 border-top: 1px solid #ddd;
                 font-size: 8px;
@@ -773,7 +785,13 @@ class GreenterService
             ' . $totals . '
             ' . $pagoInfo . '
             ' . $sunatInfo . '
-            ' . $footer . ' ' . $qrImg . ' ' . $hashBlock . '
+            <div class="footer-final">
+                <div class="footer">
+                    Documento electrónico emitido en cumplimiento de la Resolución de SUNAT N° 097-2012/SUNAT<br>
+                    Representación impresa del documento electrónico - Consultar en www.sunat.gob.pe
+                </div>
+                ' . $qrImg . ' ' . $hashBlock . '
+            </div>
         </body>
         </html>';
     }
