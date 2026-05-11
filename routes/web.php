@@ -79,6 +79,10 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     
     Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
     Route::post('/pos', [PosController::class, 'store'])->name('pos.store');
+    Route::get('/pos/success/{id}', [PosController::class, 'success'])->name('pos.success');
+    Route::post('/pos/sunat/{id}', [PosController::class, 'sendToSunat'])->name('pos.sunat');
+    Route::get('/pos/print/{id}/{format}', [PosController::class, 'printInvoice'])->name('pos.print');
+    Route::get('/pos/print-html/{id}/{format}', [PosController::class, 'getPrintHtml'])->name('pos.printHtml');
 });
 
 require __DIR__.'/auth.php';

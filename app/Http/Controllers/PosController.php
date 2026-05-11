@@ -41,7 +41,7 @@ class PosController extends Controller
             ->get();
         $series = Serie::where('company_id', $companyId)
             ->where('estado', 'ACTIVO')
-            ->whereIn('tipo', ['01', '03', 'NV'])
+            ->whereIn('tipo_documento', ['01', '03', 'NV'])
             ->get();
         
         return view('pos.index', compact('categories', 'products', 'customers', 'series', 'cajaAbierta'));
@@ -69,41 +69,58 @@ class PosController extends Controller
         }
         
         $customerId = $request->customer_id;
+        if (empty($customerId)) {
+            $customerId = null;
+        }
         
         $customer = null;
         if ($customerId) {
             $customer = Customer::find($customerId);
         }
         
-        $lastInvoice = \App\Models\Invoice::where('company_id', $companyId)
-            ->where('tipo_documento', 'NV')
-            ->orderBy('numero', 'desc')
-            ->first();
-        $nextNumber = $lastInvoice ? ((int)$lastInvoice->numero + 1) : 1;
+        $documentType = $request->document_type ?? 'NV';
         
         $serie = Serie::where('company_id', $companyId)
-            ->where('tipo', 'NV')
+            ->where('tipo_documento', $documentType)
             ->where('estado', 'ACTIVO')
             ->first();
         
+        $lastInvoice = \App\Models\Invoice::where('company_id', $companyId)
+            ->where('tipo_documento', $documentType);
+        
+        if ($serie) {
+            $lastInvoice = $lastInvoice->where('serie', $serie->serie);
+        }
+        
+        $lastInvoice = $lastInvoice->orderBy('numero', 'desc')->first();
+        $nextNumber = $lastInvoice ? ((int)$lastInvoice->numero + 1) : 1;
+        
         if (!$serie) {
+            $prefix = $documentType === 'NV' ? 'NV' : ($documentType === '01' ? 'F' : 'B');
             $serie = new Serie();
             $serie->company_id = $companyId;
-            $serie->tipo = 'NV';
-            $serie->serie = 'NV001';
+            $serie->tipo_documento = $documentType;
+            $serie->serie = $prefix . '001';
             $serie->numero_inicial = 1;
             $serie->numero_actual = $nextNumber;
             $serie->estado = 'ACTIVO';
             $serie->save();
+        } else {
+            if ($nextNumber > $serie->numero_actual) {
+                $serie->numero_actual = $nextNumber;
+                $serie->save();
+            }
         }
         
         $subtotal = 0;
         $igv = 0;
         
         foreach ($items as $item) {
-            $subtotalItem = $item['price'] * $item['quantity'];
-            $igvItem = $subtotalItem * 0.18;
-            $subtotal += $subtotalItem;
+            $priceWithIgv = $item['price'] * $item['quantity'];
+            $base = $priceWithIgv / 1.18;
+            $igvItem = $priceWithIgv - $base;
+            
+            $subtotal += $base;
             $igv += $igvItem;
         }
         
@@ -112,10 +129,10 @@ class PosController extends Controller
         $invoice = \App\Models\Invoice::create([
             'company_id' => $companyId,
             'customer_id' => $customerId,
-            'tipo_documento' => 'NV',
+            'tipo_documento' => $documentType,
             'serie' => $serie->serie,
-            'numero' => $serie->numero_actual,
-            'full_number' => $serie->serie . '-' . str_pad($serie->numero_actual, 8, '0', STR_PAD_LEFT),
+            'numero' => $nextNumber,
+            'full_number' => $serie->serie . '-' . str_pad($nextNumber, 8, '0', STR_PAD_LEFT),
             'fecha_emision' => now()->format('Y-m-d'),
             'hora_emision' => now()->format('H:i:s'),
             'fecha_vencimiento' => now()->format('Y-m-d'),
@@ -125,7 +142,8 @@ class PosController extends Controller
             'total' => $total,
             'subtotal' => $subtotal,
             'total_letras' => strtoupper($this->numberToLetter($total)) . ' SOLES',
-            'metodo_pago' => 'EFECTIVO',
+            'metodo_pago' => $request->payment_method ?? 'EFECTIVO',
+            'referencia_pago' => $request->reference ?? null,
             'sunat_estado' => 'PENDIENTE',
             'estado' => 'ACTIVO',
         ]);
@@ -133,16 +151,18 @@ class PosController extends Controller
         foreach ($items as $item) {
             $producto = Product::find($item['id']);
             
-            $precioVenta = $item['price'] * 1.18;
+            $priceWithIgv = $item['price'] * $item['quantity'];
+            $baseItem = $priceWithIgv / 1.18;
+            $igvItem = $priceWithIgv - $baseItem;
             
             $invoice->items()->create([
                 'product_id' => $item['id'],
                 'codigo' => $producto ? $producto->codigo : 'N/A',
                 'descripcion' => $item['name'],
                 'cantidad' => $item['quantity'],
-                'precio_unitario' => $item['price'],
-                'precio_venta' => $precioVenta * $item['quantity'],
-                'igv' => ($item['price'] * $item['quantity']) * 0.18,
+                'precio_unitario' => $baseItem / $item['quantity'],
+                'precio_venta' => $priceWithIgv,
+                'igv' => $igvItem,
             ]);
             
             if ($producto) {
@@ -150,16 +170,55 @@ class PosController extends Controller
             }
         }
         
-        $serie->increment('numero_actual');
+        $serie->numero_actual = $nextNumber;
+        $serie->save();
         
-        return redirect()->back()
-            ->with('success', 'Venta realizada: ' . $invoice->full_number . ' - Total: S/ ' . number_format($total, 2))
-            ->with(compact('invoice'));
+        return redirect()->route('pos.success', $invoice->id);
     }
     
     private function numberToLetter($number)
     {
         $formatter = new \NumberFormatter('es', \NumberFormatter::SPELLOUT);
         return $formatter->format($number);
+    }
+    
+    public function success($id)
+    {
+        $invoice = \App\Models\Invoice::with(['company', 'customer', 'items.product'])->findOrFail($id);
+        
+        return view('pos.success', compact('invoice'));
+    }
+    
+    public function sendToSunat($id)
+    {
+        $invoice = \App\Models\Invoice::findOrFail($id);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Enviando a SUNAT...',
+            'sunat_estado' => $invoice->sunat_estado
+        ]);
+    }
+    
+    public function printInvoice($id, $format = 'A4')
+    {
+        $invoice = \App\Models\Invoice::with(['company', 'customer', 'items.product'])->findOrFail($id);
+        
+        if ($format === '80mm') {
+            return view('pos.print_80mm', compact('invoice'));
+        }
+        
+        return view('pos.print_a4', compact('invoice'));
+    }
+    
+    public function getPrintHtml($id, $format = 'A4')
+    {
+        $invoice = \App\Models\Invoice::with(['company', 'customer', 'items.product'])->findOrFail($id);
+        
+        if ($format === '80mm') {
+            return view('pos.print_80mm', compact('invoice'))->render();
+        }
+        
+        return view('pos.print_a4', compact('invoice'))->render();
     }
 }
