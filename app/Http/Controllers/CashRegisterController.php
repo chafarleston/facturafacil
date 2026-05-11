@@ -62,13 +62,20 @@ class CashRegisterController extends Controller
 
         $companyId = $caja->company_id;
         
+        $fechaApertura = $caja->fecha_apertura instanceof \Carbon\Carbon 
+            ? $caja->fecha_apertura 
+            : \Carbon\Carbon::parse($caja->fecha_apertura);
+        
         $ventas = Invoice::where('company_id', $companyId)
-            ->whereBetween('fecha_emision', [
-                \Carbon\Carbon::parse($caja->fecha_apertura)->format('Y-m-d'), 
-                now()->format('Y-m-d')
-            ])
+            ->where('fecha_emision', '>=', $fechaApertura->format('Y-m-d'))
+            ->where('fecha_emision', '<=', now()->format('Y-m-d'))
             ->where('sunat_estado', '!=', 'ANULADO')
             ->get();
+
+        $ventas = $ventas->filter(function($venta) use ($fechaApertura) {
+            $fechaVenta = \Carbon\Carbon::parse($venta->fecha_emision . ' ' . ($venta->hora_emision ?? '00:00:00'));
+            return $fechaVenta->gte($fechaApertura);
+        });
 
         $efectivo = 0;
         $tarjeta = 0;
@@ -132,14 +139,24 @@ class CashRegisterController extends Controller
             $cashregister->fecha_cierre = now();
         }
         
+        $fechaApertura = $cashregister->fecha_apertura instanceof \Carbon\Carbon 
+            ? $cashregister->fecha_apertura 
+            : \Carbon\Carbon::parse($cashregister->fecha_apertura);
+        $fechaCierre = $cashregister->fecha_cierre instanceof \Carbon\Carbon 
+            ? $cashregister->fecha_cierre 
+            : \Carbon\Carbon::parse($cashregister->fecha_cierre);
+        
         $ventas = Invoice::where('company_id', $cashregister->company_id)
-            ->whereBetween('fecha_emision', [
-                \Carbon\Carbon::parse($cashregister->fecha_apertura)->format('Y-m-d'),
-                $cashregister->fecha_cierre ? \Carbon\Carbon::parse($cashregister->fecha_cierre)->format('Y-m-d') : now()->format('Y-m-d')
-            ])
+            ->where('fecha_emision', '>=', $fechaApertura->format('Y-m-d'))
+            ->where('fecha_emision', '<=', $fechaCierre->format('Y-m-d'))
             ->where('sunat_estado', '!=', 'ANULADO')
             ->with(['items.product.category', 'customer'])
             ->get();
+
+        $ventas = $ventas->filter(function($venta) use ($fechaApertura, $fechaCierre) {
+            $fechaVenta = \Carbon\Carbon::parse($venta->fecha_emision . ' ' . ($venta->hora_emision ?? '00:00:00'));
+            return $fechaVenta->gte($fechaApertura) && $fechaVenta->lte($fechaCierre);
+        });
 
         $facturas = $ventas->where('tipo_documento', '01');
         $boletas = $ventas->where('tipo_documento', '03');
@@ -185,16 +202,24 @@ class CashRegisterController extends Controller
             $cashregister->fecha_cierre = now();
         }
         
+        $fechaApertura = $cashregister->fecha_apertura instanceof \Carbon\Carbon 
+            ? $cashregister->fecha_apertura 
+            : \Carbon\Carbon::parse($cashregister->fecha_apertura);
+        $fechaCierre = $cashregister->fecha_cierre instanceof \Carbon\Carbon 
+            ? $cashregister->fecha_cierre 
+            : \Carbon\Carbon::parse($cashregister->fecha_cierre);
+        
         $ventas = Invoice::where('company_id', $cashregister->company_id)
-            ->whereBetween('fecha_emision', [
-                \Carbon\Carbon::parse($cashregister->fecha_apertura)->format('Y-m-d'),
-                $cashregister->fecha_cierre 
-                    ? \Carbon\Carbon::parse($cashregister->fecha_cierre)->format('Y-m-d') 
-                    : now()->format('Y-m-d')
-            ])
+            ->where('fecha_emision', '>=', $fechaApertura->format('Y-m-d'))
+            ->where('fecha_emision', '<=', $fechaCierre->format('Y-m-d'))
             ->where('sunat_estado', '!=', 'ANULADO')
             ->with(['items.product.category'])
             ->get();
+
+        $ventas = $ventas->filter(function($venta) use ($fechaApertura, $fechaCierre) {
+            $fechaVenta = \Carbon\Carbon::parse($venta->fecha_emision . ' ' . ($venta->hora_emision ?? '00:00:00'));
+            return $fechaVenta->gte($fechaApertura) && $fechaVenta->lte($fechaCierre);
+        });
 
         $facturas = $ventas->where('tipo_documento', '01');
         $boletas = $ventas->where('tipo_documento', '03');
@@ -251,14 +276,24 @@ class CashRegisterController extends Controller
             $cashregister->fecha_cierre = now();
         }
         
+        $fechaApertura = $cashregister->fecha_apertura instanceof \Carbon\Carbon 
+            ? $cashregister->fecha_apertura 
+            : \Carbon\Carbon::parse($cashregister->fecha_apertura);
+        $fechaCierre = $cashregister->fecha_cierre instanceof \Carbon\Carbon 
+            ? $cashregister->fecha_cierre 
+            : \Carbon\Carbon::parse($cashregister->fecha_cierre);
+        
         $ventas = Invoice::where('company_id', $cashregister->company_id)
-            ->whereBetween('fecha_emision', [
-                \Carbon\Carbon::parse($cashregister->fecha_apertura)->format('Y-m-d'),
-                $cashregister->fecha_cierre ? \Carbon\Carbon::parse($cashregister->fecha_cierre)->format('Y-m-d') : now()->format('Y-m-d')
-            ])
+            ->where('fecha_emision', '>=', $fechaApertura->format('Y-m-d'))
+            ->where('fecha_emision', '<=', $fechaCierre->format('Y-m-d'))
             ->where('sunat_estado', '!=', 'ANULADO')
             ->with(['items.product.category', 'customer'])
             ->get();
+
+        $ventas = $ventas->filter(function($venta) use ($fechaApertura, $fechaCierre) {
+            $fechaVenta = \Carbon\Carbon::parse($venta->fecha_emision . ' ' . ($venta->hora_emision ?? '00:00:00'));
+            return $fechaVenta->gte($fechaApertura) && $fechaVenta->lte($fechaCierre);
+        });
 
         $facturas = $ventas->where('tipo_documento', '01');
         $boletas = $ventas->where('tipo_documento', '03');
