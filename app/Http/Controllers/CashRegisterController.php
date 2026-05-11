@@ -147,11 +147,11 @@ class CashRegisterController extends Controller
             ? $cashregister->fecha_cierre 
             : \Carbon\Carbon::parse($cashregister->fecha_cierre);
         
-$ventas = Invoice::where('company_id', $cashregister->company_id)
+        $ventas = Invoice::where('company_id', $cashregister->company_id)
             ->where('fecha_emision', '>=', $fechaApertura->format('Y-m-d'))
             ->where('fecha_emision', '<=', $fechaCierre->format('Y-m-d'))
             ->where('sunat_estado', '!=', 'ANULADO')
-            ->with(['items.product.category'])
+            ->with(['items.product.category', 'customer'])
             ->get();
 
         $facturas = $ventas->where('tipo_documento', '01');
@@ -185,21 +185,10 @@ $ventas = Invoice::where('company_id', $cashregister->company_id)
         arsort($categoriasVentas);
         arsort($productosVendidos);
 
-        $html = view('cashregisters.pdf', compact('cashregister', 'facturas', 'boletas', 'nvs', 'categoriasVentas', 'productosVendidos', 'ventas'))->render();
-
-        $pdf = new \Mpdf\Mpdf([
-            'mode' => 'utf-8',
-            'format' => 'A4',
-            'margin_top' => 10,
-            'margin_bottom' => 10,
-        ]);
-
-        $pdf->WriteHTML($html);
-
-        return $pdf->Output('resumen-caja-' . $cashregister->id . '.pdf', 'D');
+        return view('cashregisters.show', compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventas', 'categoriasVentas', 'productosVendidos'));
     }
 
-    public function ticketPdf(CashRegister $cashregister)
+    public function pdf(CashRegister $cashregister)
     {
         if (!$cashregister->fecha_apertura) {
             $cashregister->fecha_apertura = now();
