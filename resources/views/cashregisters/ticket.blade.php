@@ -54,6 +54,13 @@
         <div>Plin: S/ {{ number_format($cashregister->ventas_plin, 2) }}</div>
     </div>
 
+    <div class="border-top py-1 mt-1 mb-1 bold">COMPROBANTES</div>
+    @foreach($ventas as $venta)
+    <div>
+        {{ $venta->full_number }} - {{ $venta->customer->nombre ?? 'Varios' }} - S/ {{ number_format($venta->total, 2) }} ({{ $venta->metodo_pago ?? 'Efectivo' }})
+    </div>
+    @endforeach
+
     <div class="border-top py-1 mt-1 text-center">
         <div class="bold">GRACIAS POR SU PREFERENCIA</div>
     </div>

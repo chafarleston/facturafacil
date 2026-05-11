@@ -257,13 +257,14 @@ class CashRegisterController extends Controller
                 $cashregister->fecha_cierre ? \Carbon\Carbon::parse($cashregister->fecha_cierre)->format('Y-m-d') : now()->format('Y-m-d')
             ])
             ->where('sunat_estado', '!=', 'ANULADO')
+            ->with(['items.product.category', 'customer'])
             ->get();
 
         $facturas = $ventas->where('tipo_documento', '01');
         $boletas = $ventas->where('tipo_documento', '03');
         $nvs = $ventas->where('tipo_documento', 'NV');
 
-        $html = view('cashregisters.ticket', compact('cashregister', 'facturas', 'boletas', 'nvs'))->render();
+        $html = view('cashregisters.ticket', compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventas'))->render();
 
         $pdf = new \Mpdf\Mpdf([
             'mode' => 'utf-8',
