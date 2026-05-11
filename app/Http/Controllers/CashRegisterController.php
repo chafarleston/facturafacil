@@ -265,15 +265,40 @@ class CashRegisterController extends Controller
         $nvs = $ventas->where('tipo_documento', 'NV');
 
         $ventasPorMetodo = [];
+        $categoriasVentas = [];
+        $productosVendidos = [];
+        
         foreach ($ventas as $venta) {
             $metodo = $venta->metodo_pago ?? 'Efectivo';
             if (!isset($ventasPorMetodo[$metodo])) {
                 $ventasPorMetodo[$metodo] = [];
             }
             $ventasPorMetodo[$metodo][] = $venta;
+            
+            foreach ($venta->items as $item) {
+                $categoriaNombre = $item->product && $item->product->category 
+                    ? $item->product->category->nombre 
+                    : 'Sin Categoría';
+                
+                if (!isset($categoriasVentas[$categoriaNombre])) {
+                    $categoriasVentas[$categoriaNombre] = ['cantidad' => 0, 'total' => 0];
+                }
+                $categoriasVentas[$categoriaNombre]['cantidad']++;
+                $categoriasVentas[$categoriaNombre]['total'] += $item->precio_venta;
+                
+                $productoNombre = $item->descripcion;
+                if (!isset($productosVendidos[$productoNombre])) {
+                    $productosVendidos[$productoNombre] = ['cantidad' => 0, 'total' => 0];
+                }
+                $productosVendidos[$productoNombre]['cantidad'] += $item->cantidad;
+                $productosVendidos[$productoNombre]['total'] += $item->precio_venta;
+            }
         }
+        
+        arsort($categoriasVentas);
+        arsort($productosVendidos);
 
-        $html = view('cashregisters.ticket', compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventasPorMetodo'))->render();
+        $html = view('cashregisters.ticket', compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventasPorMetodo', 'categoriasVentas', 'productosVendidos'))->render();
 
         $pdf = new \Mpdf\Mpdf([
             'mode' => 'utf-8',

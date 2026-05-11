@@ -62,6 +62,20 @@
     @endforeach
     @endforeach
 
+    @if(count($categoriasVentas) > 0)
+    <div class="border-top py-1 mt-1 mb-1 bold">POR CATEGORÍA</div>
+    @foreach($categoriasVentas as $categoria => $data)
+    <div style="font-size:8px;">{{ $categoria }}: {{ $data['cantidad'] }} und - S/ {{ number_format($data['total'], 2) }}</div>
+    @endforeach
+    @endif
+
+    @if(count($productosVendidos) > 0)
+    <div class="border-top py-1 mt-1 mb-1 bold">PRODUCTOS VENDIDOS</div>
+    @foreach($productosVendidos as $producto => $data)
+    <div style="font-size:8px;">{{ Str::limit($producto, 20) }}: {{ number_format($data['cantidad'], 0) }} und - S/ {{ number_format($data['total'], 2) }}</div>
+    @endforeach
+    @endif
+
     <div class="border-top py-1 mt-1 text-center">
         <div class="bold">GRACIAS POR SU PREFERENCIA</div>
     </div>
