@@ -147,90 +147,12 @@ class CashRegisterController extends Controller
             ? $cashregister->fecha_cierre 
             : \Carbon\Carbon::parse($cashregister->fecha_cierre);
         
-        $ventas = Invoice::where('company_id', $cashregister->company_id)
-            ->where('fecha_emision', '>=', $fechaApertura->format('Y-m-d'))
-            ->where('fecha_emision', '<=', $fechaCierre->format('Y-m-d'))
-            ->where('sunat_estado', '!=', 'ANULADO')
-            ->with(['items.product.category', 'customer'])
-            ->get();
-
-        $ventas = $ventas->filter(function($venta) use ($fechaApertura, $fechaCierre) {
-            $horaVenta = !empty($venta->hora_emision) ? $venta->hora_emision : '00:00:00';
-            $fechaVenta = \Carbon\Carbon::parse($venta->fecha_emision . ' ' . $horaVenta);
-            
-            if ($fechaVenta->lt($fechaApertura)) return false;
-            if ($fechaVenta->gt($fechaCierre)) return false;
-            
-            return true;
-        });
-
-        $facturas = $ventas->where('tipo_documento', '01');
-        $boletas = $ventas->where('tipo_documento', '03');
-        $nvs = $ventas->where('tipo_documento', 'NV');
-
-        $categoriasVentas = [];
-        $productosVendidos = [];
-        
-        foreach ($ventas as $venta) {
-            foreach ($venta->items as $item) {
-                $categoriaNombre = $item->product && $item->product->category 
-                    ? $item->product->category->nombre 
-                    : 'Sin Categoría';
-                
-                if (!isset($categoriasVentas[$categoriaNombre])) {
-                    $categoriasVentas[$categoriaNombre] = ['cantidad' => 0, 'total' => 0];
-                }
-                $categoriasVentas[$categoriaNombre]['cantidad']++;
-                $categoriasVentas[$categoriaNombre]['total'] += $item->precio_venta;
-                
-                $productoNombre = $item->descripcion;
-                if (!isset($productosVendidos[$productoNombre])) {
-                    $productosVendidos[$productoNombre] = ['cantidad' => 0, 'total' => 0];
-                }
-                $productosVendidos[$productoNombre]['cantidad'] += $item->cantidad;
-                $productosVendidos[$productoNombre]['total'] += $item->precio_venta;
-            }
-        }
-        
-        arsort($categoriasVentas);
-        arsort($productosVendidos);
-
-        return view('cashregisters.show', compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventas', 'categoriasVentas', 'productosVendidos'));
-    }
-
-    public function pdf(CashRegister $cashregister)
-    {
-        if (!$cashregister->fecha_apertura) {
-            $cashregister->fecha_apertura = now();
-            $cashregister->save();
-        }
-        if (!$cashregister->fecha_cierre) {
-            $cashregister->fecha_cierre = now();
-        }
-        
-        $fechaApertura = $cashregister->fecha_apertura instanceof \Carbon\Carbon 
-            ? $cashregister->fecha_apertura 
-            : \Carbon\Carbon::parse($cashregister->fecha_apertura);
-        $fechaCierre = $cashregister->fecha_cierre instanceof \Carbon\Carbon 
-            ? $cashregister->fecha_cierre 
-            : \Carbon\Carbon::parse($cashregister->fecha_cierre);
-        
-        $ventas = Invoice::where('company_id', $cashregister->company_id)
+$ventas = Invoice::where('company_id', $cashregister->company_id)
             ->where('fecha_emision', '>=', $fechaApertura->format('Y-m-d'))
             ->where('fecha_emision', '<=', $fechaCierre->format('Y-m-d'))
             ->where('sunat_estado', '!=', 'ANULADO')
             ->with(['items.product.category'])
             ->get();
-
-        $ventas = $ventas->filter(function($venta) use ($fechaApertura, $fechaCierre) {
-            $horaVenta = !empty($venta->hora_emision) ? $venta->hora_emision : '00:00:00';
-            $fechaVenta = \Carbon\Carbon::parse($venta->fecha_emision . ' ' . $horaVenta);
-            
-            if ($fechaVenta->lt($fechaApertura)) return false;
-            if ($fechaVenta->gt($fechaCierre)) return false;
-            
-            return true;
-        });
 
         $facturas = $ventas->where('tipo_documento', '01');
         $boletas = $ventas->where('tipo_documento', '03');
@@ -300,16 +222,6 @@ class CashRegisterController extends Controller
             ->where('sunat_estado', '!=', 'ANULADO')
             ->with(['items.product.category', 'customer'])
             ->get();
-
-        $ventas = $ventas->filter(function($venta) use ($fechaApertura, $fechaCierre) {
-            $horaVenta = !empty($venta->hora_emision) ? $venta->hora_emision : '00:00:00';
-            $fechaVenta = \Carbon\Carbon::parse($venta->fecha_emision . ' ' . $horaVenta);
-            
-            if ($fechaVenta->lt($fechaApertura)) return false;
-            if ($fechaVenta->gt($fechaCierre)) return false;
-            
-            return true;
-        });
 
         $facturas = $ventas->where('tipo_documento', '01');
         $boletas = $ventas->where('tipo_documento', '03');
