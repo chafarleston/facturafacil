@@ -107,7 +107,7 @@
         <div class="card">
             <div class="card-body text-center">
                 <h5>Efectivo</h5>
-                <h4>S/ {{ number_format($cashregister->ventas_efectivo, 2) }}</h4>
+                <h4>S/ {{ number_format($ventasEfectivo, 2) }}</h4>
             </div>
         </div>
     </div>
@@ -115,7 +115,7 @@
         <div class="card">
             <div class="card-body text-center">
                 <h5>Tarjeta</h5>
-                <h4>S/ {{ number_format($cashregister->ventas_tarjeta, 2) }}</h4>
+                <h4>S/ {{ number_format($ventasTarjeta, 2) }}</h4>
             </div>
         </div>
     </div>
@@ -123,7 +123,7 @@
         <div class="card">
             <div class="card-body text-center">
                 <h5>Yape</h5>
-                <h4>S/ {{ number_format($cashregister->ventas_yape, 2) }}</h4>
+                <h4>S/ {{ number_format($ventasYape, 2) }}</h4>
             </div>
         </div>
     </div>
@@ -131,7 +131,7 @@
         <div class="card">
             <div class="card-body text-center">
                 <h5>Plin</h5>
-                <h4>S/ {{ number_format($cashregister->ventas_plin, 2) }}</h4>
+                <h4>S/ {{ number_format($ventasPlin, 2) }}</h4>
             </div>
         </div>
     </div>
@@ -139,7 +139,7 @@
         <div class="card">
             <div class="card-body text-center">
                 <h5>Otro</h5>
-                <h4>S/ {{ number_format($cashregister->ventas_otro, 2) }}</h4>
+                <h4>S/ {{ number_format($ventasOtro, 2) }}</h4>
             </div>
         </div>
     </div>
@@ -147,7 +147,7 @@
         <div class="card bg-success">
             <div class="card-body text-center text-white">
                 <h5>TOTAL</h5>
-                <h4>S/ {{ number_format($cashregister->total_ventas, 2) }}</h4>
+                <h4>S/ {{ number_format($totalMetodos, 2) }}</h4>
             </div>
         </div>
     </div>

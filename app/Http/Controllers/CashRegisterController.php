@@ -160,8 +160,20 @@ class CashRegisterController extends Controller
 
         $categoriasVentas = [];
         $productosVendidos = [];
+        $ventasEfectivo = 0;
+        $ventasTarjeta = 0;
+        $ventasYape = 0;
+        $ventasPlin = 0;
+        $ventasOtro = 0;
         
         foreach ($ventas as $venta) {
+            $metodo = $venta->metodo_pago ?? 'EFECTIVO';
+            if ($metodo === 'EFECTIVO') $ventasEfectivo += $venta->total;
+            elseif ($metodo === 'TARJETA') $ventasTarjeta += $venta->total;
+            elseif ($metodo === 'YAPE') $ventasYape += $venta->total;
+            elseif ($metodo === 'PLIN') $ventasPlin += $venta->total;
+            else $ventasOtro += $venta->total;
+            
             foreach ($venta->items as $item) {
                 $categoriaNombre = $item->product && $item->product->category 
                     ? $item->product->category->nombre 
@@ -182,10 +194,12 @@ class CashRegisterController extends Controller
             }
         }
         
+        $totalMetodos = $ventasEfectivo + $ventasTarjeta + $ventasYape + $ventasPlin + $ventasOtro;
+        
         arsort($categoriasVentas);
         arsort($productosVendidos);
 
-        return view('cashregisters.show', compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventas', 'categoriasVentas', 'productosVendidos'));
+        return view('cashregisters.show', compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventas', 'categoriasVentas', 'productosVendidos', 'ventasEfectivo', 'ventasTarjeta', 'ventasYape', 'ventasPlin', 'ventasOtro', 'totalMetodos'));
     }
 
     public function pdf(CashRegister $cashregister)
