@@ -16,6 +16,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SunatPadronController;
 use App\Http\Controllers\ThemeController;
 use App\Http\Controllers\UbigeoController;
+use App\Http\Controllers\PosController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -75,6 +76,9 @@ Route::middleware('auth')->group(function () {
     
 Route::get('/customers/search', [CustomerApiController::class, 'search'])->name('customers.search');
     Route::post('/customers/quick-store', [CustomerApiController::class, 'quickStore'])->name('customers.quickStore');
+    
+    Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
+    Route::post('/pos', [PosController::class, 'store'])->name('pos.store');
 });
 
 require __DIR__.'/auth.php';

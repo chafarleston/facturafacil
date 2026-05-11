@@ -192,6 +192,13 @@
                 <p>Caja</p>
               </a>
             </li>
+            
+            <li class="nav-item">
+              <a href="{{ route('pos.index') }}" class="nav-link {{ request()->routeIs('pos.*') ? 'active' : '' }}">
+                <i class="nav-icon fas fa-shopping-cart"></i>
+                <p>Punto de Venta</p>
+              </a>
+            </li>
 
           </ul>
         </nav>
