@@ -264,7 +264,16 @@ class CashRegisterController extends Controller
         $boletas = $ventas->where('tipo_documento', '03');
         $nvs = $ventas->where('tipo_documento', 'NV');
 
-        $html = view('cashregisters.ticket', compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventas'))->render();
+        $ventasPorMetodo = [];
+        foreach ($ventas as $venta) {
+            $metodo = $venta->metodo_pago ?? 'Efectivo';
+            if (!isset($ventasPorMetodo[$metodo])) {
+                $ventasPorMetodo[$metodo] = [];
+            }
+            $ventasPorMetodo[$metodo][] = $venta;
+        }
+
+        $html = view('cashregisters.ticket', compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventasPorMetodo'))->render();
 
         $pdf = new \Mpdf\Mpdf([
             'mode' => 'utf-8',
