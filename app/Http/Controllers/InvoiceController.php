@@ -42,6 +42,17 @@ class InvoiceController extends Controller
         }
         
         $companyId = $mainCompany->id;
+        
+        $cajaAbierta = \App\Models\CashRegister::where('company_id', $companyId)
+            ->where('estado', 'ABIERTA')
+            ->where('user_id', auth()->id())
+            ->first();
+            
+        if (!$cajaAbierta) {
+            return redirect()->route('cashregisters.index')
+                ->with('error', 'No se pueden generar ventas mientras no haya apertura de caja');
+        }
+        
         $company = $mainCompany;
         $customers = Customer::where('company_id', $companyId)->where('estado', 'ACTIVO')->get();
         $products = Product::where('estado', 'ACTIVO')->select('id', 'codigo', 'codigo_barras', 'descripcion', 'precio', 'stock')->get();
