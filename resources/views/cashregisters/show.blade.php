@@ -153,6 +153,78 @@
     </div>
 </div>
 
+@if(count($categoriasVentas) > 0)
+<h4 class="mt-4">Resumen por Categoría</h4>
+<div class="table-responsive">
+    <table class="table table-sm table-bordered">
+        <thead class="thead-dark">
+            <tr>
+                <th>Categoría</th>
+                <th class="text-right">Transacciones</th>
+                <th class="text-right">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($categoriasVentas as $categoria => $data)
+            <tr>
+                <td>{{ $categoria }}</td>
+                <td class="text-right">{{ $data['cantidad'] }}</td>
+                <td class="text-right">S/ {{ number_format($data['total'], 2) }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+</div>
+@endif
+
+@if(count($productosVendidos) > 0)
+<h4 class="mt-4">Productos Vendidos</h4>
+<div class="table-responsive">
+    <table class="table table-sm table-bordered">
+        <thead class="thead-dark">
+            <tr>
+                <th>Producto</th>
+                <th class="text-right">Cantidad</th>
+                <th class="text-right">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($productosVendidos as $producto => $data)
+            <tr>
+                <td>{{ $producto }}</td>
+                <td class="text-right">{{ number_format($data['cantidad'], 2) }}</td>
+                <td class="text-right">S/ {{ number_format($data['total'], 2) }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+</div>
+@endif
+
+<h4 class="mt-4">Lista de Comprobantes</h4>
+<div class="table-responsive">
+    <table class="table table-sm table-bordered">
+        <thead class="thead-dark">
+            <tr>
+                <th>Documento</th>
+                <th>Cliente</th>
+                <th class="text-right">Total</th>
+                <th>Método Pago</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($ventas as $venta)
+            <tr>
+                <td>{{ $venta->full_number }}</td>
+                <td>{{ $venta->customer->nombre ?? 'Cliente Varios' }}</td>
+                <td class="text-right">S/ {{ number_format($venta->total, 2) }}</td>
+                <td>{{ $venta->metodo_pago ?? 'Efectivo' }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+</div>
+
 <div class="mt-4">
     <a href="{{ route('cashregisters.index') }}" class="btn btn-secondary">Volver</a>
 </div>

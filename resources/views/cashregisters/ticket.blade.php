@@ -23,7 +23,8 @@
     </div>
 
     <div class="border-bottom py-1 mb-1">
-        <div>Fecha: {{ $cashregister->fecha_apertura->format('d/m/Y') }}</div>
+        <div>Apertura: {{ $cashregister->fecha_apertura->format('d/m/Y H:i') }}</div>
+        <div>Cierre: {{ $cashregister->fecha_cierre ? $cashregister->fecha_cierre->format('d/m/Y H:i') : 'Ahora' }}</div>
         <div>{{ $cashregister->user->name }}</div>
     </div>
 

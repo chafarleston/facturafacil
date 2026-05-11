@@ -124,23 +124,67 @@ class CashRegisterController extends Controller
 
     public function show(CashRegister $cashregister)
     {
+        if (!$cashregister->fecha_apertura) {
+            $cashregister->fecha_apertura = now();
+            $cashregister->save();
+        }
+        if (!$cashregister->fecha_cierre) {
+            $cashregister->fecha_cierre = now();
+        }
+        
         $ventas = Invoice::where('company_id', $cashregister->company_id)
             ->whereBetween('fecha_emision', [
                 \Carbon\Carbon::parse($cashregister->fecha_apertura)->format('Y-m-d'),
                 $cashregister->fecha_cierre ? \Carbon\Carbon::parse($cashregister->fecha_cierre)->format('Y-m-d') : now()->format('Y-m-d')
             ])
             ->where('sunat_estado', '!=', 'ANULADO')
+            ->with(['items.product.category', 'customer'])
             ->get();
 
         $facturas = $ventas->where('tipo_documento', '01');
         $boletas = $ventas->where('tipo_documento', '03');
         $nvs = $ventas->where('tipo_documento', 'NV');
 
-        return view('cashregisters.show', compact('cashregister', 'facturas', 'boletas', 'nvs'));
+        $categoriasVentas = [];
+        $productosVendidos = [];
+        
+        foreach ($ventas as $venta) {
+            foreach ($venta->items as $item) {
+                $categoriaNombre = $item->product && $item->product->category 
+                    ? $item->product->category->nombre 
+                    : 'Sin Categoría';
+                
+                if (!isset($categoriasVentas[$categoriaNombre])) {
+                    $categoriasVentas[$categoriaNombre] = ['cantidad' => 0, 'total' => 0];
+                }
+                $categoriasVentas[$categoriaNombre]['cantidad']++;
+                $categoriasVentas[$categoriaNombre]['total'] += $item->precio_venta;
+                
+                $productoNombre = $item->descripcion;
+                if (!isset($productosVendidos[$productoNombre])) {
+                    $productosVendidos[$productoNombre] = ['cantidad' => 0, 'total' => 0];
+                }
+                $productosVendidos[$productoNombre]['cantidad'] += $item->cantidad;
+                $productosVendidos[$productoNombre]['total'] += $item->precio_venta;
+            }
+        }
+        
+        arsort($categoriasVentas);
+        arsort($productosVendidos);
+
+        return view('cashregisters.show', compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventas', 'categoriasVentas', 'productosVendidos'));
     }
 
     public function pdf(CashRegister $cashregister)
     {
+        if (!$cashregister->fecha_apertura) {
+            $cashregister->fecha_apertura = now();
+            $cashregister->save();
+        }
+        if (!$cashregister->fecha_cierre) {
+            $cashregister->fecha_cierre = now();
+        }
+        
         $ventas = Invoice::where('company_id', $cashregister->company_id)
             ->whereBetween('fecha_emision', [
                 \Carbon\Carbon::parse($cashregister->fecha_apertura)->format('Y-m-d'),
@@ -149,13 +193,41 @@ class CashRegisterController extends Controller
                     : now()->format('Y-m-d')
             ])
             ->where('sunat_estado', '!=', 'ANULADO')
+            ->with(['items.product.category'])
             ->get();
 
         $facturas = $ventas->where('tipo_documento', '01');
         $boletas = $ventas->where('tipo_documento', '03');
         $nvs = $ventas->where('tipo_documento', 'NV');
 
-        $html = view('cashregisters.pdf', compact('cashregister', 'facturas', 'boletas', 'nvs'))->render();
+        $categoriasVentas = [];
+        $productosVendidos = [];
+        
+        foreach ($ventas as $venta) {
+            foreach ($venta->items as $item) {
+                $categoriaNombre = $item->product && $item->product->category 
+                    ? $item->product->category->nombre 
+                    : 'Sin Categoría';
+                
+                if (!isset($categoriasVentas[$categoriaNombre])) {
+                    $categoriasVentas[$categoriaNombre] = ['cantidad' => 0, 'total' => 0];
+                }
+                $categoriasVentas[$categoriaNombre]['cantidad']++;
+                $categoriasVentas[$categoriaNombre]['total'] += $item->precio_venta;
+                
+                $productoNombre = $item->descripcion;
+                if (!isset($productosVendidos[$productoNombre])) {
+                    $productosVendidos[$productoNombre] = ['cantidad' => 0, 'total' => 0];
+                }
+                $productosVendidos[$productoNombre]['cantidad'] += $item->cantidad;
+                $productosVendidos[$productoNombre]['total'] += $item->precio_venta;
+            }
+        }
+        
+        arsort($categoriasVentas);
+        arsort($productosVendidos);
+
+        $html = view('cashregisters.pdf', compact('cashregister', 'facturas', 'boletas', 'nvs', 'categoriasVentas', 'productosVendidos', 'ventas'))->render();
 
         $pdf = new \Mpdf\Mpdf([
             'mode' => 'utf-8',
@@ -171,6 +243,14 @@ class CashRegisterController extends Controller
 
     public function ticketPdf(CashRegister $cashregister)
     {
+        if (!$cashregister->fecha_apertura) {
+            $cashregister->fecha_apertura = now();
+            $cashregister->save();
+        }
+        if (!$cashregister->fecha_cierre) {
+            $cashregister->fecha_cierre = now();
+        }
+        
         $ventas = Invoice::where('company_id', $cashregister->company_id)
             ->whereBetween('fecha_emision', [
                 \Carbon\Carbon::parse($cashregister->fecha_apertura)->format('Y-m-d'),

@@ -107,6 +107,60 @@
         </tr>
     </table>
 
+    @if(count($categoriasVentas) > 0)
+    <div class="border-top py-2 mt-2 mb-1 bold">RESUMEN POR CATEGORÍA</div>
+    <table>
+        <tr class="bold border-bottom">
+            <td>Categoría</td>
+            <td class="text-right">Transacciones</td>
+            <td class="text-right">Total</td>
+        </tr>
+        @foreach($categoriasVentas as $categoria => $data)
+        <tr>
+            <td>{{ $categoria }}</td>
+            <td class="text-right">{{ $data['cantidad'] }}</td>
+            <td class="text-right">S/ {{ number_format($data['total'], 2) }}</td>
+        </tr>
+        @endforeach
+    </table>
+    @endif
+
+    @if(count($productosVendidos) > 0)
+    <div class="border-top py-2 mt-2 mb-1 bold">PRODUCTOS VENDIDOS</div>
+    <table>
+        <tr class="bold border-bottom">
+            <td>Producto</td>
+            <td class="text-right">Cantidad</td>
+            <td class="text-right">Total</td>
+        </tr>
+        @foreach($productosVendidos as $producto => $data)
+        <tr>
+            <td>{{ $producto }}</td>
+            <td class="text-right">{{ number_format($data['cantidad'], 2) }}</td>
+            <td class="text-right">S/ {{ number_format($data['total'], 2) }}</td>
+        </tr>
+        @endforeach
+    </table>
+    @endif
+
+    <div class="border-top py-2 mt-2 mb-1 bold">LISTA DE COMPROBANTES</div>
+    <table>
+        <tr class="bold border-bottom">
+            <td>Documento</td>
+            <td>Cliente</td>
+            <td class="text-right">Total</td>
+            <td>Método Pago</td>
+        </tr>
+        @foreach($ventas as $venta)
+        <tr>
+            <td>{{ $venta->full_number }}</td>
+            <td>{{ $venta->customer->nombre ?? 'Cliente Varios' }}</td>
+            <td class="text-right">S/ {{ number_format($venta->total, 2) }}</td>
+            <td>{{ $venta->metodo_pago ?? 'Efectivo' }}</td>
+        </tr>
+        @endforeach
+    </table>
+
     <div class="text-center mt-4" style="font-size:9px;">
         Documento generado el {{ now()->format('d/m/Y H:i') }}
     </div>
