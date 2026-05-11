@@ -73,7 +73,8 @@ class CashRegisterController extends Controller
             ->get();
 
         $ventas = $ventas->filter(function($venta) use ($fechaApertura) {
-            $fechaVenta = \Carbon\Carbon::parse($venta->fecha_emision . ' ' . ($venta->hora_emision ?? '00:00:00'));
+            $horaVenta = !empty($venta->hora_emision) ? $venta->hora_emision : '00:00:00';
+            $fechaVenta = \Carbon\Carbon::parse($venta->fecha_emision . ' ' . $horaVenta);
             return $fechaVenta->gte($fechaApertura);
         });
 
@@ -154,8 +155,13 @@ class CashRegisterController extends Controller
             ->get();
 
         $ventas = $ventas->filter(function($venta) use ($fechaApertura, $fechaCierre) {
-            $fechaVenta = \Carbon\Carbon::parse($venta->fecha_emision . ' ' . ($venta->hora_emision ?? '00:00:00'));
-            return $fechaVenta->gte($fechaApertura) && $fechaVenta->lte($fechaCierre);
+            $horaVenta = !empty($venta->hora_emision) ? $venta->hora_emision : '00:00:00';
+            $fechaVenta = \Carbon\Carbon::parse($venta->fecha_emision . ' ' . $horaVenta);
+            
+            if ($fechaVenta->lt($fechaApertura)) return false;
+            if ($fechaVenta->gt($fechaCierre)) return false;
+            
+            return true;
         });
 
         $facturas = $ventas->where('tipo_documento', '01');
@@ -217,8 +223,13 @@ class CashRegisterController extends Controller
             ->get();
 
         $ventas = $ventas->filter(function($venta) use ($fechaApertura, $fechaCierre) {
-            $fechaVenta = \Carbon\Carbon::parse($venta->fecha_emision . ' ' . ($venta->hora_emision ?? '00:00:00'));
-            return $fechaVenta->gte($fechaApertura) && $fechaVenta->lte($fechaCierre);
+            $horaVenta = !empty($venta->hora_emision) ? $venta->hora_emision : '00:00:00';
+            $fechaVenta = \Carbon\Carbon::parse($venta->fecha_emision . ' ' . $horaVenta);
+            
+            if ($fechaVenta->lt($fechaApertura)) return false;
+            if ($fechaVenta->gt($fechaCierre)) return false;
+            
+            return true;
         });
 
         $facturas = $ventas->where('tipo_documento', '01');
@@ -291,8 +302,13 @@ class CashRegisterController extends Controller
             ->get();
 
         $ventas = $ventas->filter(function($venta) use ($fechaApertura, $fechaCierre) {
-            $fechaVenta = \Carbon\Carbon::parse($venta->fecha_emision . ' ' . ($venta->hora_emision ?? '00:00:00'));
-            return $fechaVenta->gte($fechaApertura) && $fechaVenta->lte($fechaCierre);
+            $horaVenta = !empty($venta->hora_emision) ? $venta->hora_emision : '00:00:00';
+            $fechaVenta = \Carbon\Carbon::parse($venta->fecha_emision . ' ' . $horaVenta);
+            
+            if ($fechaVenta->lt($fechaApertura)) return false;
+            if ($fechaVenta->gt($fechaCierre)) return false;
+            
+            return true;
         });
 
         $facturas = $ventas->where('tipo_documento', '01');
