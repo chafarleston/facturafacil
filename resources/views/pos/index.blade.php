@@ -389,7 +389,7 @@
 
 <form id="saleForm" method="POST" action="{{ route('pos.store') }}" style="display: none;">
     @csrf
-    <input type="hidden" name="customer_id" id="customerId">
+    <input type="hidden" name="customer_id" id="customerIdInput">
     <input type="hidden" name="document_type" id="documentTypeInput">
     <input type="hidden" name="payment_method" id="paymentMethodInput">
     <input type="hidden" name="reference" id="referenceInput">
@@ -692,7 +692,7 @@ function processSale() {
         return;
     }
     
-    document.getElementById('customerId').value = document.getElementById('customerId').value;
+    document.getElementById('customerIdInput').value = document.getElementById('customerId').value;
     document.getElementById('documentTypeInput').value = document.getElementById('documentType').value;
     document.getElementById('paymentMethodInput').value = document.getElementById('paymentMethod').value;
     document.getElementById('referenceInput').value = document.getElementById('reference').value;
