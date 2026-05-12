@@ -74,10 +74,33 @@
             
             @can('admin')
             <li class="nav-item">
-              <a href="{{ route('companies.index') }}" class="nav-link {{ request()->routeIs('companies.*') ? 'active' : '' }}">
+              <a href="#" class="nav-link {{ request()->routeIs('companies.*') || request()->routeIs('series.*') || request()->routeIs('users.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-building"></i>
-                <p>Empresas</p>
+                <p>
+                  Empresas
+                  <i class="fas fa-angle-left right"></i>
+                </p>
               </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="{{ route('companies.index') }}" class="nav-link {{ request()->routeIs('companies.*') ? 'active' : '' }}">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Datos de Empresa</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{{ route('series.index') }}" class="nav-link {{ request()->routeIs('series.*') ? 'active' : '' }}">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Series</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Usuarios</p>
+                  </a>
+                </li>
+              </ul>
             </li>
             
             <li class="nav-item">
@@ -110,21 +133,6 @@
                 </li>
               </ul>
             </li>
-            
-            <li class="nav-item">
-              <a href="{{ route('series.index') }}" class="nav-link {{ request()->routeIs('series.*') ? 'active' : '' }}">
-                <i class="nav-icon fas fa-list-ol"></i>
-                <p>Series</p>
-              </a>
-            </li>
-            
-            <li class="nav-item">
-              <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
-                <i class="nav-icon fas fa-user-cog"></i>
-                <p>Usuarios</p>
-              </a>
-            </li>
-            @endcan
             
             <li class="nav-header">COMPROBANTES</li>
             
@@ -199,6 +207,7 @@
                 <p>Punto de Venta</p>
               </a>
             </li>
+            @endcan
 
           </ul>
         </nav>
