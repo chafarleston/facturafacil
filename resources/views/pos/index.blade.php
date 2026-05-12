@@ -346,7 +346,12 @@
             <div style="display: flex; gap: 8px; margin-bottom: 10px;">
                 <div style="flex: 1; position: relative;">
                     <label><i class="fas fa-user"></i> Cliente</label>
-                    <input type="text" id="customerSearch" class="form-control form-control-sm" placeholder="Buscar..." autocomplete="off">
+                    <div style="display: flex; gap: 5px;">
+                        <input type="text" id="customerSearch" class="form-control form-control-sm" placeholder="Buscar..." autocomplete="off" style="flex: 1;">
+                        <button type="button" class="btn btn-sm btn-success" onclick="openCustomerModal()" title="Nuevo cliente" style="padding: 4px 10px;">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
                     <input type="hidden" id="customerId" value="">
                     <div id="customerDropdown" class="customer-dropdown" style="display: none;"></div>
                 </div>
@@ -460,6 +465,20 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="customerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-user-plus"></i> Nuevo Cliente</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 0; height: 500px;">
+                <iframe id="customerFrame" src="" style="width: 100%; height: 100%; border: none;"></iframe>
             </div>
         </div>
     </div>
@@ -733,5 +752,17 @@ document.getElementById('customerSearch').addEventListener('blur', function() {
 document.addEventListener('DOMContentLoaded', function() {
     updateSerieByType();
 });
+
+function openCustomerModal() {
+    const companyId = 1;
+    document.getElementById('customerFrame').src = '/customers/create?company_id=' + companyId;
+    $('#customerModal').modal('show');
+}
+
+function onCustomerCreated(customer) {
+    customersData.push(customer);
+    $('#customerModal').modal('hide');
+    selectCustomer(customer.id, customer.nombre);
+}
 </script>
 @endpush

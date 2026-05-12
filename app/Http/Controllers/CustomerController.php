@@ -38,7 +38,14 @@ class CustomerController extends Controller
             'ubigeo' => 'nullable|size:6',
         ]);
 
-        Customer::create($validated);
+        $customer = Customer::create($validated);
+
+        if ($request->expectsJson() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'customer' => $customer
+            ]);
+        }
 
         return redirect()->route('customers.index', ['company_id' => $request->company_id])
             ->with('success', 'Cliente creado correctamente');

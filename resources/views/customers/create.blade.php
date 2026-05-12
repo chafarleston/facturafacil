@@ -7,7 +7,7 @@
     <div class="card-header">
         <h3 class="card-title">Nuevo Cliente</h3>
     </div>
-    <form method="POST" action="{{ route('customers.store') }}">
+    <form method="POST" action="{{ route('customers.store') }}" id="customerForm">
         @csrf
         <input type="hidden" name="company_id" value="{{ $companyId }}">
         <div class="card-body">
@@ -101,7 +101,50 @@ const companyId = {{ $companyId }};
 document.addEventListener('DOMContentLoaded', function() {
     loadDepartamentos();
     updateDocMaxLength();
+    setupParentCallback();
 });
+
+function setupParentCallback() {
+    const form = document.getElementById('customerForm');
+    if (!form) return;
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(form);
+        formData.set('_token', document.querySelector('input[name="_token"]').value);
+
+        fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value,
+                'Accept': 'application/json'
+            },
+            body: formData
+        })
+        .then(res => {
+            if (!res.ok) {
+                if (res.redirected) {
+                    window.location.href = res.url;
+                }
+                throw new Error('HTTP ' + res.status);
+            }
+            return res.json();
+        })
+        .then(data => {
+            if (data.customer || data.id) {
+                const customer = data.customer || data;
+                if (window.parent && window.parent.onCustomerCreated) {
+                    window.parent.onCustomerCreated(customer);
+                }
+            }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            form.submit();
+        });
+    });
+}
 
 function updateDocMaxLength() {
     const docTipo = document.getElementById('doc_tipo').value;
