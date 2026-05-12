@@ -17,6 +17,9 @@ use App\Http\Controllers\SunatPadronController;
 use App\Http\Controllers\ThemeController;
 use App\Http\Controllers\UbigeoController;
 use App\Http\Controllers\PosController;
+use App\Http\Controllers\Restaurant\RestaurantController;
+use App\Http\Controllers\Restaurant\FloorController;
+use App\Http\Controllers\Restaurant\TableController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -33,7 +36,23 @@ Route::get('/ubigeo/distritos', [UbigeoController::class, 'getDistritos']);
 Route::get('/ubigeo/by-codigo', [UbigeoController::class, 'getByUbigeo']);
 Route::get('/decolecta/search', [DecolectaController::class, 'search'])->name('decolecta.search');
 
+Route::get('/test-json', function() {
+    return response()->json(['test' => 'ok', 'time' => now()]);
+});
+
+Route::post('/test-post', function() {
+    return response()->json(['success' => true, 'message' => 'POST works!']);
+});
+
 Route::middleware('auth')->group(function () {
+    // Test route for restaurant
+    Route::post('/test-restaurant-open/{id}', function($id) {
+        return response()->json([
+            'success' => true, 
+            'message' => 'Route works!',
+            'table_id' => $id
+        ]);
+    })->name('test.restaurant.open');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -82,6 +101,34 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     Route::get('/pos/success/{id}', [PosController::class, 'success'])->name('pos.success');
     Route::post('/pos/sunat/{id}', [PosController::class, 'sendToSunat'])->name('pos.sunat');
     Route::get('/pos/print/{id}/{format}', [PosController::class, 'printInvoice'])->name('pos.print');
+
+    // Restaurant Routes
+    Route::get('/restaurant', [RestaurantController::class, 'index'])->name('restaurant.index');
+    Route::post('/restaurant/tables/{tableId}/open', [RestaurantController::class, 'openTable'])->name('restaurant.tables.open');
+    Route::get('/restaurant/orders/{orderId}', [RestaurantController::class, 'getOrder'])->name('restaurant.orders.show');
+    Route::post('/restaurant/orders/{orderId}/items', [RestaurantController::class, 'addItem'])->name('restaurant.orders.items');
+    Route::put('/restaurant/orders/items/{itemId}', [RestaurantController::class, 'updateItem'])->name('restaurant.orders.items.update');
+    Route::delete('/restaurant/orders/items/{itemId}', [RestaurantController::class, 'removeItem'])->name('restaurant.orders.items.destroy');
+    Route::post('/restaurant/orders/{orderId}/send-to-kitchen', [RestaurantController::class, 'sendToKitchen'])->name('restaurant.orders.sendToKitchen');
+    Route::get('/restaurant/orders/{orderId}/print-kitchen', [RestaurantController::class, 'printKitchenTicket'])->name('restaurant.orders.printKitchen');
+    Route::post('/restaurant/orders/{orderId}/close', [RestaurantController::class, 'closeOrder'])->name('restaurant.orders.close');
+    Route::post('/restaurant/orders/{orderId}/cancel', [RestaurantController::class, 'cancelOrder'])->name('restaurant.orders.cancel');
+    Route::get('/restaurant/active-orders', [RestaurantController::class, 'getActiveOrders'])->name('restaurant.activeOrders');
+
+    // Floor Routes
+    Route::get('/restaurant/floors', [FloorController::class, 'index'])->name('restaurant.floors.index');
+    Route::get('/restaurant/floors/create', [FloorController::class, 'create'])->name('restaurant.floors.create');
+    Route::post('/restaurant/floors', [FloorController::class, 'store'])->name('restaurant.floors.store');
+    Route::get('/restaurant/floors/{floor}/edit', [FloorController::class, 'edit'])->name('restaurant.floors.edit');
+    Route::put('/restaurant/floors/{floor}', [FloorController::class, 'update'])->name('restaurant.floors.update');
+    Route::delete('/restaurant/floors/{floor}', [FloorController::class, 'destroy'])->name('restaurant.floors.destroy');
+
+    // Table Routes
+    Route::get('/restaurant/tables/create', [TableController::class, 'create'])->name('restaurant.tables.create');
+    Route::post('/restaurant/tables', [TableController::class, 'store'])->name('restaurant.tables.store');
+    Route::get('/restaurant/tables/{restaurantTable}/edit', [TableController::class, 'edit'])->name('restaurant.tables.edit');
+    Route::put('/restaurant/tables/{restaurantTable}', [TableController::class, 'update'])->name('restaurant.tables.update');
+    Route::delete('/restaurant/tables/{restaurantTable}', [TableController::class, 'destroy'])->name('restaurant.tables.destroy');
 });
 
 require __DIR__.'/auth.php';

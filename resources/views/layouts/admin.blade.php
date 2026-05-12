@@ -207,6 +207,13 @@
                 <p>Punto de Venta</p>
               </a>
             </li>
+            
+            <li class="nav-item">
+              <a href="{{ route('restaurant.index') }}" class="nav-link {{ request()->routeIs('restaurant.*') ? 'active' : '' }}">
+                <i class="nav-icon fas fa-utensils"></i>
+                <p>Restaurante</p>
+              </a>
+            </li>
             @endcan
 
           </ul>
