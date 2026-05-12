@@ -9,38 +9,38 @@
     .content-wrapper { padding-top: 0 !important; }
     
     .pos-container {
-        display: flex !important;
+        display: flex;
         height: calc(100vh - 60px);
-        width: 100% !important;
+        width: 100%;
         gap: 10px;
         padding: 10px;
         box-sizing: border-box;
     }
     
+    /* Columna 1: 65% Categorías/Productos */
     .categories-section {
-        width: 65% !important;
-        display: flex !important;
+        width: 65%;
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        display: flex;
         flex-direction: column;
+        overflow: hidden;
     }
     
     .categories-header {
-        padding: 10px 15px;
-        background: #fff;
-        border-radius: 10px 10px 0 0;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        padding: 15px;
+        border-bottom: 2px solid #eee;
+        flex-shrink: 0;
     }
     
     .categories-grid {
-        flex: 1;
-        background: #fff;
-        padding: 15px;
-        border-radius: 0 0 10px 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        display: grid !important;
+        display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 15px;
-        align-content: start;
+        padding: 15px;
         overflow-y: auto;
+        height: 100%;
     }
     
     .category-card {
@@ -76,9 +76,83 @@
         margin-top: 5px;
     }
     
+    /* Productos */
+    .products-section {
+        display: none;
+        flex-direction: column;
+        height: 100%;
+    }
+    
+    .products-header {
+        padding: 10px 15px;
+        background: #f8f9fa;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .products-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        padding: 15px 15px 30px 15px;
+        overflow-y: auto;
+        flex: 1;
+        align-content: start;
+        min-height: 0;
+    }
+    
+    .product-card {
+        background: #fff;
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        padding: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+        min-height: 85px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+    }
+    .product-card:hover {
+        border-color: #007bff;
+        transform: scale(1.03);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .product-name {
+        font-size: 11px;
+        font-weight: bold;
+        margin-bottom: 6px;
+        height: 32px;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        line-height: 1.2;
+    }
+    .product-price {
+        font-size: 14px;
+        color: #28a745;
+        font-weight: bold;
+    }
+    .product-stock {
+        font-size: 10px;
+        color: #666;
+        margin-top: 4px;
+    }
+    
+    /* Espaciador para la última fila */
+    .products-grid::after {
+        content: '';
+        height: 20px;
+    }
+    
+    /* Columna 2: 35% Venta */
     .sale-section {
-        width: 35% !important;
-        display: flex !important;
+        width: 35%;
+        display: flex;
         flex-direction: column;
         gap: 10px;
     }
@@ -149,6 +223,9 @@
     .remove-item { color: #dc3545; cursor: pointer; margin-left: 5px; }
     .remove-item:hover { color: #c82333; }
     
+    .empty-sale { text-align: center; color: #999; padding: 30px; }
+    .empty-sale i { font-size: 40px; margin-bottom: 10px; }
+    
     .customer-dropdown {
         position: absolute;
         background: #fff;
@@ -169,19 +246,6 @@
     .customer-option:last-child { border-bottom: none; }
     .customer-option-name { font-weight: bold; font-size: 13px; }
     .customer-option-doc { font-size: 11px; color: #666; }
-    
-    .empty-sale { text-align: center; color: #999; padding: 30px; }
-    .empty-sale i { font-size: 40px; margin-bottom: 10px; }
-    
-    .customer-row {
-        margin-bottom: 12px;
-    }
-    .customer-row label {
-        font-weight: bold;
-        font-size: 12px;
-        display: block;
-        margin-bottom: 5px;
-    }
     
     .sale-totals {
         border-top: 2px solid #007bff;
@@ -231,49 +295,6 @@
         cursor: pointer;
         flex: 0 0 auto;
     }
-    
-    .products-section {
-        display: none;
-    }
-    .products-grid {
-        display: grid !important;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-    }
-    .product-card {
-        background: #fff;
-        border: 2px solid #e9ecef;
-        border-radius: 12px;
-        padding: 12px;
-        cursor: pointer;
-        transition: all 0.2s;
-        text-align: center;
-    }
-    .product-card:hover {
-        border-color: #007bff;
-        transform: scale(1.03);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    }
-    .product-name {
-        font-size: 11px;
-        font-weight: bold;
-        margin-bottom: 6px;
-        height: 32px;
-        overflow: hidden;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-    }
-    .product-price {
-        font-size: 14px;
-        color: #28a745;
-        font-weight: bold;
-    }
-    .product-stock {
-        font-size: 10px;
-        color: #666;
-        margin-top: 4px;
-    }
 </style>
 @endpush
 
@@ -283,6 +304,7 @@
         <div class="categories-header">
             <h5 class="panel-title" style="margin:0;"><i class="fas fa-th-large"></i> Seleccionar Categoria</h5>
         </div>
+        
         <div class="categories-grid" id="categoriesGrid">
             @foreach($categories as $category)
             <div class="category-card" style="border-color: {{ $category->color ?? '#007bff' }};"
@@ -295,13 +317,13 @@
         </div>
         
         <div class="products-section" id="productsSection">
-            <div style="padding: 10px 15px; background: #f8f9fa; border-radius: 10px 10px 0 0;">
+            <div class="products-header">
                 <button class="btn btn-sm btn-secondary" onclick="backToCategories()">
                     <i class="fas fa-arrow-left"></i> Volver
                 </button>
                 <span class="ml-3 font-weight-bold" id="categoryTitle"></span>
             </div>
-            <div class="products-grid" id="productsGrid" style="background: #fff; padding: 15px; border-radius: 0 0 10px 10px;"></div>
+            <div class="products-grid" id="productsGrid"></div>
         </div>
     </div>
     
@@ -318,9 +340,9 @@
         
         <div class="sale-data-panel">
             <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-                <div style="flex: 1;">
+                <div style="flex: 1; position: relative;">
                     <label><i class="fas fa-user"></i> Cliente</label>
-                    <input type="text" id="customerSearch" class="form-control form-control-sm" placeholder="Buscar por nombre, DNI o RUC..." autocomplete="off">
+                    <input type="text" id="customerSearch" class="form-control form-control-sm" placeholder="Buscar..." autocomplete="off">
                     <input type="hidden" id="customerId" value="">
                     <div id="customerDropdown" class="customer-dropdown" style="display: none;"></div>
                 </div>
@@ -375,11 +397,10 @@
             </div>
             
             <div style="display: flex; gap: 8px; margin-top: 10px;">
-                <button class="btn-cancel" onclick="cancelSale()" style="flex: 0 0 120px;">
+                <button class="btn-cancel" onclick="cancelSale()" style="flex: 0 0 100px;">
                     <i class="fas fa-trash"></i> Cancelar
                 </button>
-                
-                <button class="btn-pay" id="btnPay" onclick="processSale()" disabled>
+                <button class="btn-pay" id="btnPay" onclick="processSale()" disabled style="flex: 1;">
                     <i class="fas fa-credit-card"></i> COBRAR
                 </button>
             </div>
@@ -424,24 +445,6 @@
     </div>
 </div>
 
-<div class="modal fade" id="printModal" tabindex="-1">
-    <div class="modal-dialog" id="printModalDialog">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-print"></i> Imprimir Comprobante</h5>
-                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
-            </div>
-            <div class="modal-body" id="printContent" style="padding: 0;"></div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="window.print()">
-                    <i class="fas fa-print"></i> Imprimir
-                </button>
-                <button type="button" class="btn btn-primary" data-dismiss="modal">Cerrar</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="modal fade" id="errorModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -465,6 +468,7 @@ let saleItems = [];
 const productsData = @json($products->where('estado', 'ACTIVO'));
 const categoriesData = @json($categories);
 const customersData = @json($customers);
+const seriesData = @json($series);
 
 function searchCustomers(term) {
     if (term.length < 2) {
@@ -487,12 +491,10 @@ function searchCustomers(term) {
     
     let html = '';
     results.slice(0, 10).forEach(customer => {
-        html += `
-            <div class="customer-option" onclick="selectCustomer(${customer.id}, '${customer.nombre.replace(/'/g, "\\'")}')">
-                <div class="customer-option-name">${customer.nombre}</div>
-                <div class="customer-option-doc">${customer.documento_tipo || ''}: ${customer.documento_numero || ''}</div>
-            </div>
-        `;
+        html += '<div class="customer-option" onclick="selectCustomer(' + customer.id + ', \'' + customer.nombre.replace(/'/g, "\\'") + '\')">' +
+            '<div class="customer-option-name">' + customer.nombre + '</div>' +
+            '<div class="customer-option-doc">' + (customer.documento_tipo || '') + ': ' + (customer.documento_numero || '') + '</div>' +
+        '</div>';
     });
     
     document.getElementById('customerDropdown').innerHTML = html;
@@ -505,14 +507,25 @@ function selectCustomer(id, nombre) {
     document.getElementById('customerDropdown').style.display = 'none';
 }
 
-function clearCustomer() {
-    document.getElementById('customerId').value = '';
-    document.getElementById('customerSearch').value = '';
+function updateSerieByType() {
+    const docType = document.getElementById('documentType').value;
+    const typePrefixes = { '01': 'F', '03': 'B', 'NV': 'NV' };
+    const prefix = typePrefixes[docType] || 'F';
+    let defaultSerie = prefix + '001';
+    
+    if (seriesData && seriesData.length > 0) {
+        const matchingSerie = seriesData.find(s => s.tipo_documento === docType);
+        if (matchingSerie && matchingSerie.serie) {
+            defaultSerie = matchingSerie.serie;
+        }
+    }
+    
+    document.getElementById('serieDisplay').value = defaultSerie;
 }
 
 function showProducts(categoryId, categoryName) {
     document.getElementById('categoriesGrid').style.display = 'none';
-    document.getElementById('productsSection').style.display = 'block';
+    document.getElementById('productsSection').style.display = 'flex';
     document.getElementById('categoryTitle').textContent = categoryName;
     
     const products = productsData.filter(p => p.category_id === categoryId);
@@ -524,13 +537,11 @@ function showProducts(categoryId, categoryName) {
     
     let html = '';
     products.forEach(product => {
-        html += `
-            <div class="product-card" onclick="addToSale(${product.id})">
-                <div class="product-name">${product.descripcion}</div>
-                <div class="product-price">S/ ${parseFloat(product.precio).toFixed(2)}</div>
-                <div class="product-stock">Stock: ${product.stock}</div>
-            </div>
-        `;
+        html += '<div class="product-card" onclick="addToSale(' + product.id + ')">' +
+            '<div class="product-name">' + product.descripcion + '</div>' +
+            '<div class="product-price">S/ ' + parseFloat(product.precio).toFixed(2) + '</div>' +
+            '<div class="product-stock">Stock: ' + product.stock + '</div>' +
+        '</div>';
     });
     document.getElementById('productsGrid').innerHTML = html;
 }
@@ -613,20 +624,18 @@ function renderSaleItems() {
     
     let html = '';
     saleItems.forEach(item => {
-        html += `
-            <div class="sale-item">
-                <div class="sale-item-info">
-                    <div class="sale-item-name">${item.name}</div>
-                    <div class="sale-item-price">S/ ${item.price.toFixed(2)} x ${item.quantity}</div>
-                </div>
-                <div class="sale-item-actions">
-                    <button class="qty-btn qty-minus" onclick="decreaseQty(${item.id})">-</button>
-                    <span class="sale-item-qty">${item.quantity}</span>
-                    <button class="qty-btn qty-plus" onclick="increaseQty(${item.id})">+</button>
-                    <i class="fas fa-times remove-item" onclick="removeItem(${item.id})"></i>
-                </div>
-            </div>
-        `;
+        html += '<div class="sale-item">' +
+            '<div class="sale-item-info">' +
+                '<div class="sale-item-name">' + item.name + '</div>' +
+                '<div class="sale-item-price">S/ ' + item.price.toFixed(2) + ' x ' + item.quantity + '</div>' +
+            '</div>' +
+            '<div class="sale-item-actions">' +
+                '<button class="qty-btn qty-minus" onclick="decreaseQty(' + item.id + ')">-</button>' +
+                '<span class="sale-item-qty">' + item.quantity + '</span>' +
+                '<button class="qty-btn qty-plus" onclick="increaseQty(' + item.id + ')">+</button>' +
+                '<i class="fas fa-times remove-item" onclick="removeItem(' + item.id + ')"></i>' +
+            '</div>' +
+        '</div>';
     });
     
     container.innerHTML = html;
@@ -656,36 +665,6 @@ function getTotal() {
     return total;
 }
 
-function getTotal() {
-    let subtotal = 0;
-    saleItems.forEach(item => subtotal += item.price * item.quantity);
-    return subtotal + (subtotal * 0.18);
-}
-
-const seriesData = @json($series);
-
-function updateSerieByType() {
-    var docType = document.getElementById('documentType').value;
-    
-    var typePrefixes = {
-        '01': 'F',
-        '03': 'B',
-        'NV': 'NV'
-    };
-    
-    var prefix = typePrefixes[docType] || 'F';
-    var defaultSerie = prefix + '001';
-    
-    if (typeof seriesData !== 'undefined' && seriesData && seriesData.length > 0) {
-        var matchingSerie = seriesData.find(function(s) { return s.tipo_documento === docType; });
-        if (matchingSerie && matchingSerie.serie) {
-            defaultSerie = matchingSerie.serie;
-        }
-    }
-    
-    document.getElementById('serieDisplay').value = defaultSerie;
-}
-
 function processSale() {
     if (saleItems.length === 0) {
         showError('No hay productos');
@@ -707,13 +686,30 @@ function showError(message) {
     $('#errorModal').modal('show');
 }
 
-function closeSuccessModal() {
-    $('#successModal').modal('hide');
-    saleItems = [];
-    renderSaleItems();
-    document.getElementById('customerId').value = '';
-    document.getElementById('customerSearch').value = '';
-    backToCategories();
+function sendToSunat() {
+    const invoiceId = document.getElementById('lastInvoiceId').value;
+    if (!invoiceId) return;
+    
+    fetch('/pos/sunat/' + invoiceId, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message || (data.success ? 'Enviado' : 'Error'));
+    })
+    .catch(error => {
+        alert('Error al enviar: ' + error);
+    });
+}
+
+function printInvoice(format) {
+    const invoiceId = document.getElementById('lastInvoiceId').value;
+    if (!invoiceId) return;
+    window.open('/pos/print/' + invoiceId + '/' + format, '_blank');
 }
 
 document.addEventListener('keydown', function(e) {
@@ -730,14 +726,7 @@ document.getElementById('customerSearch').addEventListener('blur', function() {
     }, 200);
 });
 
-document.getElementById('customerSearch').addEventListener('focus', function() {
-    if (this.value.length >= 2) {
-        searchCustomers(this.value);
-    }
-});
-
 document.addEventListener('DOMContentLoaded', function() {
-    showCategoriesView();
     updateSerieByType();
 });
 </script>

@@ -187,7 +187,7 @@ class PosController extends Controller
     {
         $invoice = \App\Models\Invoice::with(['company', 'customer', 'items.product'])->findOrFail($id);
         
-        return view('pos.success', compact('invoice'));
+        return view('pos.success', compact('invoice'))->with('invoiceId', $invoice->id);
     }
     
     public function sendToSunat($id)
