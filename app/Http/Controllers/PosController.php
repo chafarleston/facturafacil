@@ -237,9 +237,15 @@ class PosController extends Controller
         $greenterService = app(GreenterService::class);
         
         if ($format === '80mm') {
-            return $greenterService->generateTicketPdf($invoice);
+            $pdfContent = $greenterService->generateTicketPdf($invoice);
+            return response($pdfContent)
+                ->header('Content-Type', 'application/pdf')
+                ->header('Content-Disposition', 'inline; filename="ticket-' . $invoice->full_number . '.pdf"');
         }
         
-        return $greenterService->generatePdf($invoice);
+        $pdfContent = $greenterService->generatePdf($invoice);
+        return response($pdfContent)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="factura-' . $invoice->full_number . '.pdf"');
     }
 }
