@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\CashRegister;
 use App\Models\Customer;
 use App\Models\Serie;
+use App\Services\GreenterService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -191,34 +192,54 @@ class PosController extends Controller
     
     public function sendToSunat($id)
     {
-        $invoice = \App\Models\Invoice::findOrFail($id);
+        $invoice = \App\Models\Invoice::with(['company', 'customer', 'items'])->findOrFail($id);
         
-        return response()->json([
-            'success' => true,
-            'message' => 'Enviando a SUNAT...',
-            'sunat_estado' => $invoice->sunat_estado
-        ]);
+        if ($invoice->tipo_documento === 'NV') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Las Notas de Venta no se envían a SUNAT',
+                'sunat_estado' => $invoice->sunat_estado
+            ]);
+        }
+        
+        if ($invoice->sunat_estado === 'ACEPTADO') {
+            return response()->json([
+                'success' => true,
+                'message' => 'Documento ya fue enviado a SUNAT',
+                'sunat_estado' => $invoice->sunat_estado
+            ]);
+        }
+        
+        $greenterService = app(GreenterService::class);
+        
+        try {
+            $result = $greenterService->sendInvoice($invoice);
+            
+            return response()->json([
+                'success' => $result['success'] ?? false,
+                'message' => $result['description'] ?? 'Respuesta de SUNAT',
+                'sunat_estado' => $invoice->fresh()->sunat_estado,
+                'sunat_code' => $result['code'] ?? null
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al enviar: ' . $e->getMessage(),
+                'sunat_estado' => $invoice->sunat_estado
+            ]);
+        }
     }
     
     public function printInvoice($id, $format = 'A4')
     {
         $invoice = \App\Models\Invoice::with(['company', 'customer', 'items.product'])->findOrFail($id);
         
-        if ($format === '80mm') {
-            return view('pos.print_80mm', compact('invoice'));
-        }
-        
-        return view('pos.print_a4', compact('invoice'));
-    }
-    
-    public function getPrintHtml($id, $format = 'A4')
-    {
-        $invoice = \App\Models\Invoice::with(['company', 'customer', 'items.product'])->findOrFail($id);
+        $greenterService = app(GreenterService::class);
         
         if ($format === '80mm') {
-            return view('pos.print_80mm', compact('invoice'))->render();
+            return $greenterService->generateTicketPdf($invoice);
         }
         
-        return view('pos.print_a4', compact('invoice'))->render();
+        return $greenterService->generatePdf($invoice);
     }
 }

@@ -152,24 +152,6 @@
         </div>
     </div>
 </div>
-
-<div class="modal fade" id="printModal" tabindex="-1">
-    <div class="modal-dialog" id="printModalDialog" style="max-width: 90%;">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-print"></i> Comprobante</h5>
-                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
-            </div>
-            <div class="modal-body" id="printContent" style="padding: 0; background: #fff;"></div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" onclick="window.print()">
-                    <i class="fas fa-print"></i> Imprimir
-                </button>
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-            </div>
-        </div>
-    </div>
-</div>
 @endsection
 
 @push('scripts')
@@ -193,33 +175,21 @@ function sendToSunat(invoiceId) {
             btn.innerHTML = '<i class="fas fa-check"></i> Enviado';
             btn.classList.remove('btn-sunat');
             btn.classList.add('btn-success');
+        } else {
+            alert(data.message || 'Error al enviar a SUNAT');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar a SUNAT';
         }
     })
     .catch(error => {
-        alert('Error al enviar a SUNAT');
+        alert('Error al enviar a SUNAT: ' + error);
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar a SUNAT';
     });
 }
 
 function printInvoice(invoiceId, format) {
-    var modalDialog = document.getElementById('printModalDialog');
-    if (format === '80mm') {
-        modalDialog.style.maxWidth = '350px';
-    } else {
-        modalDialog.style.maxWidth = '90%';
-    }
-    
-    fetch('/pos/print-html/' + invoiceId + '/' + format, {
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        }
-    })
-    .then(response => response.text())
-    .then(html => {
-        document.getElementById('printContent').innerHTML = html;
-        $('#printModal').modal('show');
-    });
+    window.open('/pos/print/' + invoiceId + '/' + format, '_blank');
 }
 </script>
 @endpush
