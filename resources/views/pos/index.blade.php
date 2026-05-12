@@ -158,22 +158,26 @@
     }
     
     .sale-items-panel {
-        flex: 1.2;
+        flex: 1.5;
         background: #fff;
         border-radius: 10px;
-        padding: 15px;
+        padding: 12px;
         display: flex;
         flex-direction: column;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         overflow: hidden;
+        min-height: 250px;
     }
     
     .sale-data-panel {
-        flex: 0.8;
+        flex: 0;
         background: #fff;
         border-radius: 10px;
-        padding: 15px;
+        padding: 12px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        min-height: 280px;
+        max-height: 350px;
+        overflow-y: auto;
     }
     
     .panel-title {
