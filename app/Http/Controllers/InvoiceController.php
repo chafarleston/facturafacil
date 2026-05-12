@@ -228,6 +228,28 @@ class InvoiceController extends Controller
         $hash = hash('sha256', $hashSource);
         $invoice->update(['codigo_hash' => $hash]);
 
+        $invoice->load('customer');
+
+        $responseData = [
+            'success' => true,
+            'invoice' => [
+                'id' => $invoice->id,
+                'full_number' => $invoice->full_number,
+                'numero' => $invoice->numero,
+                'tipo_documento' => $invoice->tipo_documento,
+                'serie' => $invoice->serie,
+                'fecha_emision' => $invoice->fecha_emision,
+                'total' => $invoice->total,
+                'metodo_pago' => $invoice->metodo_pago,
+                'referencia_pago' => $invoice->referencia_pago,
+                'customer_name' => $invoice->customer ? $invoice->customer->nombre : 'Cliente Varios',
+            ],
+        ];
+
+        if ($request->expectsJson()) {
+            return response()->json($responseData);
+        }
+
         return redirect()->route('invoices.show', $invoice)
             ->with('success', 'Documento creado: ' . $invoice->full_number);
     }

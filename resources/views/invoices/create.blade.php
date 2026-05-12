@@ -234,6 +234,46 @@
         </div>
     </form>
 </div>
+
+<div class="modal fade" id="successModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-check-circle"></i> Comprobante Procesado</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="success-icon mb-3" style="font-size: 60px; color: #28a745;">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h4 id="invoiceNumberSuccess"></h4>
+                <div class="customer-info mb-3">
+                    <span id="customerNameSuccess"></span>
+                    <br>
+                    <span id="paymentMethodSuccess"></span>
+                </div>
+                <h3>Total: <span id="saleTotalSuccess" style="color: #28a745; font-weight: bold;"></span></h3>
+                <input type="hidden" id="lastInvoiceId" value="">
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-primary" onclick="sendToSunatFromModal()" id="btnSunatModal">
+                    <i class="fas fa-paper-plane"></i> Enviar a SUNAT
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="printInvoiceFromModal('A4')">
+                    <i class="fas fa-file-alt"></i> A4
+                </button>
+                <button type="button" class="btn btn-info" onclick="printInvoiceFromModal('80mm')">
+                    <i class="fas fa-receipt"></i> 80mm
+                </button>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-success" onclick="newInvoice()">
+                    <i class="fas fa-plus"></i> Nueva Venta
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -800,6 +840,137 @@ function loadInvDistritosForUbigeo(dept, prov, selectedDist) {
                 document.getElementById('inv_ubigeo_codigo').value = distSelect.value;
             }
         });
+}
+
+function proceedSubmit() {
+    if (items.length === 0) {
+        alert('Agregue al menos un producto');
+        return;
+    }
+    const form = document.getElementById('invoice-form');
+    
+    // Remover inputs de items anteriores si existen
+    const oldItems = form.querySelectorAll('input[name^="items["]');
+    oldItems.forEach(el => el.remove());
+    
+    items.forEach((item, idx) => {
+        ['product_id', 'codigo', 'descripcion', 'cantidad', 'precio'].forEach(field => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'items[' + idx + '][' + field + ']';
+            input.value = item[field];
+            form.appendChild(input);
+        });
+    });
+    
+    if (!document.getElementById('customer_id').value) {
+        document.getElementById('customer_data_documento_tipo').value = document.getElementById('doc_tipo').value;
+        document.getElementById('customer_data_documento_numero').value = document.getElementById('doc_numero').value;
+        document.getElementById('customer_data_nombre').value = document.getElementById('customer_nombre').value;
+        document.getElementById('customer_data_direccion').value = document.getElementById('customer_direccion').value;
+        document.getElementById('customer_data_ubigeo').value = document.getElementById('inv_ubigeo_codigo').value || '';
+    }
+    
+    // Enviar por AJAX
+    const formData = new FormData(form);
+    
+    fetch(form.action, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value,
+            'Accept': 'application/json'
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success || data.invoice) {
+            showSuccessModal(data.invoice || data);
+        } else {
+            alert(data.message || 'Error al guardar');
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        form.submit();
+    });
+}
+
+function showSuccessModal(invoice) {
+    document.getElementById('lastInvoiceId').value = invoice.id;
+    document.getElementById('invoiceNumberSuccess').textContent = invoice.full_number || invoice.numero || 'Comprobante #' + invoice.id;
+    document.getElementById('customerNameSuccess').textContent = invoice.customer_name || invoice.cliente || 'Cliente Varios';
+    document.getElementById('paymentMethodSuccess').textContent = (invoice.metodo_pago || 'EFECTIVO') + (invoice.referencia_pago ? ' - ' + invoice.referencia_pago : '');
+    document.getElementById('saleTotalSuccess').textContent = 'S/ ' + parseFloat(invoice.total).toFixed(2);
+    
+    // Reset botón SUNAT
+    const btnSunat = document.getElementById('btnSunatModal');
+    btnSunat.disabled = false;
+    btnSunat.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar a SUNAT';
+    btnSunat.className = 'btn btn-primary';
+    
+    $('#successModal').modal({
+        backdrop: 'static',
+        keyboard: false
+    });
+}
+
+function sendToSunatFromModal() {
+    const invoiceId = document.getElementById('lastInvoiceId').value;
+    if (!invoiceId) return;
+    
+    const btn = document.getElementById('btnSunatModal');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+    
+    fetch('/pos/sunat/' + invoiceId, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            btn.innerHTML = '<i class="fas fa-check"></i> Enviado';
+            btn.className = 'btn btn-success';
+            alert(data.message || 'Enviado a SUNAT correctamente');
+        } else {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar a SUNAT';
+            alert(data.message || 'Error al enviar a SUNAT');
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar a SUNAT';
+        alert('Error al enviar a SUNAT: ' + err);
+    });
+}
+
+function printInvoiceFromModal(format) {
+    const invoiceId = document.getElementById('lastInvoiceId').value;
+    if (!invoiceId) return;
+    window.open('/pos/print/' + invoiceId + '/' + format, '_blank');
+}
+
+function newInvoice() {
+    $('#successModal').modal('hide');
+    items = [];
+    renderItems();
+    selectedProduct = null;
+    document.getElementById('productSearch').value = '';
+    document.getElementById('itemQty').value = '1';
+    document.getElementById('itemPrice').value = '';
+    document.getElementById('customer_id').value = '';
+    document.getElementById('customer_nombre').value = '';
+    document.getElementById('customer_direccion').value = '';
+    document.getElementById('doc_numero').value = '';
+    document.getElementById('customer-status').textContent = '';
+    document.getElementById('customer-status').className = 'text-sm';
+    document.getElementById('setCustomerBtn').style.display = 'none';
+    updateStockDisplay();
 }
 </script>
 @endpush
