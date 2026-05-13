@@ -50,7 +50,7 @@ class UserController extends Controller
     public function edit(User $user): View
     {
         $roles = Role::where('status', true)->get();
-        $userRoles = $user->roles()->pluck('id')->toArray();
+        $userRoles = $user->roles()->pluck('roles.id')->toArray();
         return view('admin.users.edit', compact('user', 'roles', 'userRoles'));
     }
 

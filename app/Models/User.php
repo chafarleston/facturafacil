@@ -85,40 +85,5 @@ class User extends Authenticatable
             $user = self::first();
         }
         return $user ? $user->company : null;
-    }
 }
-
-    public function isUser(): bool
-    {
-        return $this->role === self::ROLE_USER;
-    }
-
-    public function isSuperAdmin(): bool
-    {
-        return $this->role === self::ROLE_SUPERADMIN;
-    }
-
-    public function isMozo(): bool
-    {
-        return $this->role === self::ROLE_WAITER;
-    }
-    
-    public function hasAccessToRestaurant(): bool
-    {
-        return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_SUPERADMIN, self::ROLE_WAITER]);
-    }
-    
-    public function company()
-    {
-        return $this->belongsTo(Company::class);
-    }
-    
-    public static function getMainCompany()
-    {
-        $user = self::where('is_main_company', true)->first();
-        if (!$user) {
-            $user = self::first();
-        }
-        return $user ? $user->company : null;
-    }
 }
