@@ -21,13 +21,17 @@ class AuthServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    public function boot()
+public function boot()
     {
         $this->registerPolicies();
-        // Admin gate
         Gate::define('admin', function ($user) {
-            return $user && (method_exists($user, 'isAdmin') && $user->isAdmin()
-                || (isset($user->role) && ($user->role === 'superadmin')));
+            return $user && ($user->isAdmin() || $user->isSuperAdmin());
+        });
+        Gate::define('restaurant', function ($user) {
+            return $user && ($user->isAdmin() || $user->isSuperAdmin() || $user->isMozo());
+        });
+        Gate::define('permission', function ($user, string $permissionSlug) {
+            return $user && $user->hasPermission($permissionSlug);
         });
     }
 }

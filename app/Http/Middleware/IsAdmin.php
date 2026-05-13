@@ -8,16 +8,23 @@ use Illuminate\Support\Facades\Auth;
 
 class IsAdmin
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure  $next
-     * @return mixed
-     */
     public function handle(Request $request, Closure $next)
     {
-        if (Auth::check() && method_exists($request->user(), 'isAdmin') && $request->user()->isAdmin()) {
+        if (!Auth::check()) {
+            abort(403);
+        }
+
+        $user = $request->user();
+        $routeName = $request->route()?->getName() ?: '';
+
+        if (str_starts_with($routeName, 'restaurant.')) {
+            if (in_array($user->role, ['admin', 'superadmin', 'mozo'])) {
+                return $next($request);
+            }
+            abort(403);
+        }
+
+        if ($user->isAdmin() || $user->isSuperAdmin()) {
             return $next($request);
         }
 

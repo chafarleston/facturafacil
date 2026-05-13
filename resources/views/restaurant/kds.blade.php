@@ -231,10 +231,9 @@
 
     <script>
 let allOrders = [];
-let knownOrderIds = [];
+let lastUpdateTime = 0;
 let audioContext = null;
 let alertSound = null;
-let audioInitialized = false;
 
 function initAudio() {
     if (audioContext) return;
@@ -279,8 +278,6 @@ function initAudio() {
             }, 400);
         }
     };
-    
-    audioInitialized = true;
 }
 
 function playAlertSound() {
@@ -305,20 +302,18 @@ function loadKitchenOrders() {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            const newOrderIds = data.orders.map(o => o.id);
+            const currentTime = Date.now();
             
-            // Verificar si hay nuevos pedidos
-            if (knownOrderIds.length > 0 && data.orders.length > knownOrderIds.length) {
+            // Comparar datos actuales con anteriores
+            const ordersChanged = JSON.stringify(allOrders) !== JSON.stringify(data.orders);
+            
+            // Si hay cambios y no es la primera carga, reproducir sonido
+            if (ordersChanged && lastUpdateTime > 0) {
                 playAlertSound();
             }
             
-            // Si es la primera carga, intentar inicializar el audio automáticamente
-            if (knownOrderIds.length === 0 && data.orders.length > 0) {
-                setTimeout(() => playAlertSound(), 100);
-            }
-            
             allOrders = data.orders;
-            knownOrderIds = newOrderIds;
+            lastUpdateTime = currentTime;
             renderKitchenOrders();
         }
     })

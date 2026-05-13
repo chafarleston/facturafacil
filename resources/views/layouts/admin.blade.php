@@ -100,8 +100,21 @@
                     <p>Usuarios</p>
                   </a>
                 </li>
+                <li class="nav-item">
+                  <a href="{{ route('roles.index') }}" class="nav-link {{ request()->routeIs('roles.*') ? 'active' : '' }}">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Roles</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{{ route('permissions.index') }}" class="nav-link {{ request()->routeIs('permissions.*') ? 'active' : '' }}">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Permisos</p>
+                  </a>
+                </li>
               </ul>
             </li>
+            @endcan
             
             <li class="nav-item">
               <a href="{{ route('customers.index') }}" class="nav-link {{ request()->routeIs('customers.*') ? 'active' : '' }}">
@@ -207,7 +220,8 @@
                 <p>Punto de Venta</p>
               </a>
             </li>
-            
+
+            @can('restaurant')
             <li class="nav-item">
               <a href="{{ route('restaurant.index') }}" class="nav-link {{ request()->routeIs('restaurant.index') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-utensils"></i>
@@ -487,9 +501,11 @@
             });
         }
         
-        if (document.getElementById('ubigeo_codigo')) {
+if (document.getElementById('ubigeo_codigo')) {
             document.getElementById('ubigeo_codigo').value = distSelect.value;
         }
+        }
+      }
     }
   }
   </script>

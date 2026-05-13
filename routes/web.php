@@ -77,6 +77,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/cashregister/close', [CashRegisterController::class, 'close'])->name('cashregisters.close');
         Route::resource('series', SerieController::class);
         Route::resource('users', \App\Http\Controllers\UserController::class);
+        Route::resource('roles', \App\Http\Controllers\RoleController::class);
+        Route::resource('permissions', \App\Http\Controllers\PermissionController::class);
         Route::post('/companies/download-padron', [SunatPadronController::class, 'downloadPadron'])->name('sunat.padron.download');
     });
     

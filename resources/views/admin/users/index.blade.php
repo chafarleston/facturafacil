@@ -23,7 +23,15 @@
                 <tr>
                     <td>{{ $u->name }}</td>
                     <td>{{ $u->email }}</td>
-                    <td>{{ $u->role }}</td>
+                    <td>
+                        @if($u->role === 'admin')
+                            <span class="badge badge-primary">Administrador</span>
+                        @elseif($u->role === 'mozo')
+                            <span class="badge badge-success">Mozo</span>
+                        @else
+                            <span class="badge badge-secondary">Usuario</span>
+                        @endif
+                    </td>
                     <td>
                         <a href="{{ route('users.edit', $u) }}" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></a>
                         <form action="{{ route('users.destroy', $u) }}" method="POST" class="d-inline">

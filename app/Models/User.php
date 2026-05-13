@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -32,10 +32,15 @@ class User extends Authenticatable
         'role' => 'string',
     ];
     
-    // Role helpers
     const ROLE_ADMIN = 'admin';
     const ROLE_USER = 'user';
     const ROLE_SUPERADMIN = 'superadmin';
+    const ROLE_WAITER = 'mozo';
+    
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class, 'role_user');
+    }
     
     public function isAdmin(): bool
     {
@@ -50,6 +55,57 @@ class User extends Authenticatable
     public function isSuperAdmin(): bool
     {
         return $this->role === self::ROLE_SUPERADMIN;
+    }
+
+    public function isMozo(): bool
+    {
+        return $this->role === self::ROLE_WAITER;
+    }
+    
+    public function hasAccessToRestaurant(): bool
+    {
+        return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_SUPERADMIN, self::ROLE_WAITER]);
+    }
+
+    public function hasPermission(string $permissionSlug): bool
+    {
+        if ($this->isAdmin() || $this->isSuperAdmin()) {
+            return true;
+        }
+        
+        return $this->roles()->whereHas('permissions', function($q) use ($permissionSlug) {
+            $q->where('slug', $permissionSlug);
+        })->exists();
+    }
+    
+    public function getMainCompany()
+    {
+        $user = self::where('is_main_company', true)->first();
+        if (!$user) {
+            $user = self::first();
+        }
+        return $user ? $user->company : null;
+    }
+}
+
+    public function isUser(): bool
+    {
+        return $this->role === self::ROLE_USER;
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === self::ROLE_SUPERADMIN;
+    }
+
+    public function isMozo(): bool
+    {
+        return $this->role === self::ROLE_WAITER;
+    }
+    
+    public function hasAccessToRestaurant(): bool
+    {
+        return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_SUPERADMIN, self::ROLE_WAITER]);
     }
     
     public function company()

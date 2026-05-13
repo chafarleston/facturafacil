@@ -228,7 +228,7 @@ class RestaurantController extends Controller
     public function printKitchenTicket(Request $request, $orderId)
     {
         $order = RestaurantOrder::with(['items' => function($q) {
-            $q->whereIn('kitchen_status', ['SENT', 'PENDING']);
+            $q->whereIn('kitchen_status', ['SENT']);
         }, 'table', 'user'])->findOrFail($orderId);
 
         if ($order->items->isEmpty()) {
@@ -321,10 +321,10 @@ class RestaurantController extends Controller
         $orders = RestaurantOrder::where('company_id', $companyId)
             ->whereIn('status', ['OPEN', 'SENT_TO_KITCHEN', 'READY'])
             ->whereHas('items', function($q) {
-                $q->whereIn('kitchen_status', ['SENT', 'PENDING', 'READY']);
+                $q->whereIn('kitchen_status', ['SENT', 'READY']);
             })
             ->with(['items' => function($q) {
-                $q->whereIn('kitchen_status', ['SENT', 'PENDING', 'READY']);
+                $q->whereIn('kitchen_status', ['SENT', 'READY']);
             }, 'table', 'user'])
             ->orderBy('created_at', 'asc')
             ->get();

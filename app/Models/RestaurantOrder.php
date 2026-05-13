@@ -76,15 +76,16 @@ class RestaurantOrder extends Model
 
     public static function generateOrderNumber(): string
     {
+        $companyId = auth()->check() ? auth()->user()->company_id : 1;
         $date = now()->format('Ymd');
-        $lastOrder = self::whereDate('created_at', today())
+        $lastOrder = self::where('company_id', $companyId)
+            ->whereDate('created_at', today())
             ->orderBy('id', 'desc')
             ->first();
         
-        if ($lastOrder && preg_match('/P-(\d+)$/', $lastOrder->order_number, $matches)) {
+        $sequence = 1;
+        if ($lastOrder && preg_match('/-(\d+)$/', $lastOrder->order_number, $matches)) {
             $sequence = intval($matches[1]) + 1;
-        } else {
-            $sequence = 1;
         }
         
         return 'P-' . $date . '-' . str_pad($sequence, 4, '0', STR_PAD_LEFT);
