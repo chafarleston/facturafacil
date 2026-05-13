@@ -159,11 +159,20 @@ class RestaurantController extends Controller
         $item = RestaurantOrderItem::findOrFail($itemId);
         
         $validated = $request->validate([
-            'quantity' => 'required|numeric|min:0.01',
+            'quantity' => 'nullable|numeric|min:0.01',
+            'quantity_delta' => 'nullable|integer',
             'notes' => 'nullable|string|max:500',
         ]);
 
-        $item->quantity = $validated['quantity'];
+        if (isset($validated['quantity_delta'])) {
+            $item->quantity += $validated['quantity_delta'];
+            if ($item->quantity < 0.1) {
+                $item->quantity = 0.1;
+            }
+        } elseif (isset($validated['quantity'])) {
+            $item->quantity = $validated['quantity'];
+        }
+        
         $item->total = $item->quantity * $item->unit_price;
         $item->notes = $request->notes ?? $item->notes;
         $item->save();

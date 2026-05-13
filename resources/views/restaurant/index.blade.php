@@ -9,17 +9,14 @@
     .content-wrapper { padding-top: 0 !important; }
     
     .restaurant-container {
-        display: flex;
         height: calc(100vh - 60px);
         width: 100%;
-        gap: 10px;
         padding: 10px;
         box-sizing: border-box;
     }
     
-    /* Columna Izquierda: Pisos y Mesas (65%) */
     .floors-section {
-        width: 65%;
+        height: 100%;
         background: #fff;
         border-radius: 10px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
@@ -29,13 +26,16 @@
     }
     
     .floors-header {
-        padding: 15px;
+        padding: 12px 15px;
         border-bottom: 2px solid #eee;
         flex-shrink: 0;
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
+    
+    .floors-header h4 { margin: 0; font-size: 16px; }
+    .floors-header small { font-size: 11px; color: #666; }
     
     .floors-tabs {
         display: flex;
@@ -48,13 +48,14 @@
     }
     
     .floor-tab {
-        padding: 8px 20px;
+        padding: 6px 16px;
         border-radius: 20px;
         cursor: pointer;
         background: #fff;
         border: 2px solid #ddd;
         transition: all 0.2s;
         white-space: nowrap;
+        font-size: 13px;
     }
     .floor-tab:hover { border-color: #007bff; }
     .floor-tab.active {
@@ -65,8 +66,8 @@
     
     .tables-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 15px;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 12px;
         padding: 15px;
         overflow-y: auto;
         flex: 1;
@@ -77,11 +78,11 @@
         background: #fff;
         border: 3px solid #28a745;
         border-radius: 12px;
-        padding: 20px 15px;
+        padding: 15px 10px;
         text-align: center;
         cursor: pointer;
         transition: all 0.2s;
-        min-height: 100px;
+        min-height: 90px;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -92,70 +93,101 @@
     .table-card.occupied { border-color: #dc3545; background: #fff5f5; }
     .table-card.reserved { border-color: #ffc107; background: #fffef0; }
     
-    .table-card i { font-size: 28px; margin-bottom: 8px; }
+    .table-card i { font-size: 24px; margin-bottom: 6px; }
     .table-card.available i { color: #28a745; }
     .table-card.occupied i { color: #dc3545; }
     .table-card.reserved i { color: #ffc107; }
     
-    .table-name { font-weight: bold; font-size: 14px; margin-bottom: 4px; }
-    .table-capacity { font-size: 11px; color: #666; }
+    .table-name { font-weight: bold; font-size: 13px; margin-bottom: 2px; }
+    .table-capacity { font-size: 10px; color: #666; }
     .table-order {
-        font-size: 10px;
-        margin-top: 5px;
-        padding: 3px 8px;
+        font-size: 9px;
+        margin-top: 4px;
+        padding: 2px 6px;
         border-radius: 10px;
         background: #007bff;
         color: white;
     }
-    .table-order.pending { background: #ffc107; color: #333; }
     
-    /* Columna Derecha: Productos y Pedido (35%) */
-    .order-section {
-        width: 35%;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-    
-    .products-panel {
-        flex: 1;
+    /* Modal Table Order - Full screen on mobile */
+    .table-order-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
         background: #fff;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        display: flex;
+        z-index: 9999;
         flex-direction: column;
-        overflow: hidden;
-        max-height: 50%;
     }
     
-    .products-header {
+    .table-order-modal.show {
+        display: flex;
+    }
+    
+    .modal-header-bar {
         padding: 12px 15px;
-        background: #f8f9fa;
-        border-bottom: 2px solid #eee;
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         flex-shrink: 0;
     }
     
+    .modal-header-bar h4 { margin: 0; font-size: 16px; }
+    
+    .btn-close-modal {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 5px 10px;
+    }
+    
+    .modal-tabs {
+        display: flex;
+        background: #f8f9fa;
+        border-bottom: 1px solid #ddd;
+        flex-shrink: 0;
+    }
+    
+    .modal-tab {
+        flex: 1;
+        padding: 12px;
+        text-align: center;
+        cursor: pointer;
+        font-weight: 600;
+        border-bottom: 3px solid transparent;
+        transition: all 0.2s;
+    }
+    .modal-tab:hover { background: #e9ecef; }
+    .modal-tab.active {
+        border-bottom-color: #007bff;
+        color: #007bff;
+    }
+    
+    .modal-content-area {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px;
+    }
+    
+    /* Tab Products */
     .products-categories {
         display: flex;
-        gap: 5px;
-        padding: 10px;
+        gap: 8px;
+        padding: 8px 0;
         overflow-x: auto;
+        flex-wrap: nowrap;
         flex-shrink: 0;
-        background: #fff;
-    }
-    
-    .products-categories-original {
-        display: none;
-        gap: 5px;
-        padding: 10px;
-        overflow-x: auto;
-        flex-shrink: 0;
-        background: #fff;
     }
     
     .category-btn {
-        padding: 6px 15px;
-        border-radius: 15px;
+        padding: 6px 14px;
+        border-radius: 20px;
         border: 1px solid #ddd;
         background: #fff;
         cursor: pointer;
@@ -163,165 +195,177 @@
         font-size: 12px;
         transition: all 0.2s;
     }
-    .category-btn:hover { border-color: #007bff; }
-    .category-btn.active { background: #007bff; color: white; border-color: #007bff; }
-    
-    .products-list {
-        flex: 1;
-        overflow-y: auto;
-        padding: 10px;
-        display: none; /* Oculto hasta seleccionar mesa */
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-        align-content: start;
-    }
-    
-    .products-list.active {
-        display: grid;
-    }
-    
-    .product-item {
-        background: #f8f9fa;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        padding: 10px;
-        cursor: pointer;
-        text-align: center;
-        transition: all 0.2s;
-    }
-    .product-item:hover { border-color: #007bff; background: #e7f3ff; }
-    .product-name { font-size: 11px; font-weight: bold; margin-bottom: 4px; height: 32px; overflow: hidden; }
-    .product-price { font-size: 13px; color: #28a745; font-weight: bold; }
-    
-    .current-order-panel {
-        flex: 1;
-        background: #fff;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        min-height: 200px;
-    }
-    
-    .order-header {
-        padding: 12px 15px;
+    .category-btn.active {
         background: #007bff;
         color: white;
-        flex-shrink: 0;
-    }
-    .order-header h5 { margin: 0; font-size: 14px; }
-    .order-header small { font-size: 11px; opacity: 0.9; }
-    
-    .order-items {
-        flex: 1;
-        overflow-y: auto;
-        padding: 10px;
+        border-color: #007bff;
     }
     
-    .order-item {
+    .products-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 10px;
+        padding: 10px 0;
+    }
+    
+    .product-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: #fff;
+    }
+    .product-card:hover {
+        border-color: #007bff;
+        box-shadow: 0 2px 8px rgba(0,123,255,0.2);
+    }
+    
+    .product-name { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+    .product-price { font-size: 14px; color: #28a745; font-weight: bold; }
+    
+    /* Tab Order */
+    .order-items-list {
+        padding: 0;
+    }
+    
+    .order-item-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 8px;
-        background: #f8f9fa;
-        border-radius: 6px;
-        margin-bottom: 6px;
-        font-size: 12px;
-    }
-    .order-item-info { flex: 1; }
-    .order-item-name { font-weight: bold; }
-    .order-item-price { color: #666; font-size: 11px; }
-    .order-item-qty { display: flex; align-items: center; gap: 5px; }
-    .order-item-qty span { font-weight: bold; min-width: 20px; text-align: center; }
-    
-    .kitchen-badge {
-        font-size: 9px;
-        padding: 2px 6px;
-        border-radius: 8px;
-        margin-left: 5px;
-    }
-    .kitchen-badge.pending { background: #ffc107; color: #333; }
-    .kitchen-badge.sent { background: #17a2b8; color: white; }
-    .kitchen-badge.ready { background: #28a745; color: white; }
-    .kitchen-badge.delivered { background: #6c757d; color: white; }
-    
-    .order-empty {
-        text-align: center;
-        color: #999;
-        padding: 30px;
+        padding: 10px;
+        border-bottom: 1px solid #eee;
         font-size: 13px;
     }
-    .order-empty i { font-size: 30px; margin-bottom: 10px; }
     
-    .order-totals {
-        padding: 10px 15px;
-        border-top: 2px solid #007bff;
-        background: #f8f9fa;
+    .order-item-info { flex: 1; }
+    .order-item-name { font-weight: 600; }
+    .order-item-qty { font-size: 11px; color: #666; }
+    
+    .order-item-actions {
+        display: flex;
+        gap: 5px;
+        align-items: center;
     }
+    
+    .btn-qty-change {
+        width: 28px;
+        height: 28px;
+        border: 1px solid #ddd;
+        border-radius: 50%;
+        background: #fff;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+    }
+    .btn-qty-change:hover { background: #007bff; color: white; border-color: #007bff; }
+    
+    .btn-remove-item {
+        width: 28px;
+        height: 28px;
+        border: none;
+        border-radius: 50%;
+        background: #dc3545;
+        color: white;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+    }
+    
+    .order-totals-box {
+        padding: 15px;
+        background: #f8f9fa;
+        border-top: 2px solid #ddd;
+    }
+    
     .order-total-row {
         display: flex;
         justify-content: space-between;
-        padding: 3px 0;
-        font-size: 12px;
+        padding: 5px 0;
+        font-size: 13px;
     }
-    .order-total-row.grand { font-size: 16px; font-weight: bold; color: #007bff; margin-top: 5px; padding-top: 5px; border-top: 1px solid #ddd; }
     
-    .order-actions {
+    .order-total-row.grand {
+        font-size: 18px;
+        font-weight: bold;
+        border-top: 2px solid #333;
+        margin-top: 8px;
+        padding-top: 10px;
+    }
+    
+    .modal-actions {
         padding: 10px;
+        background: #f8f9fa;
+        border-top: 1px solid #ddd;
         display: flex;
         gap: 8px;
+        flex-wrap: wrap;
         flex-shrink: 0;
     }
-    .order-actions button { flex: 1; padding: 10px; font-size: 12px; border: none; border-radius: 6px; cursor: pointer; }
-    .btn-kitchen { background: #17a2b8; color: white; }
-    .btn-kitchen:hover { background: #138496; }
-    .btn-print { background: #ffc107; color: #333; }
-    .btn-print:hover { background: #e0a800; }
-    .btn-close { background: #28a745; color: white; }
-    .btn-close:hover { background: #218838; }
-    .btn-cancel { background: #dc3545; color: white; }
-    .btn-cancel:hover { background: #c82333; }
     
-    /* Modal de cantidad */
-    .qty-modal .modal-body { padding: 20px; }
-    .qty-modal input { font-size: 24px; text-align: center; }
-    
-    /* Animación para productos nuevos */
-    .order-item.new-item {
-        animation: highlight 1s ease-out;
+    .btn-action {
+        flex: 1;
+        min-width: 100px;
+        padding: 10px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        text-align: center;
+        font-size: 12px;
     }
-    @keyframes highlight {
-        0% { background: #d4edda; }
-        100% { background: #f8f9fa; }
+    
+    .btn-kitchen { background: #ff9800; color: white; }
+    .btn-print { background: #17a2b8; color: white; }
+    .btn-close-order { background: #28a745; color: white; }
+    .btn-cancel-order { background: #dc3545; color: white; }
+    
+    .order-empty {
+        text-align: center;
+        padding: 40px;
+        color: #999;
+    }
+    .order-empty i { font-size: 48px; margin-bottom: 10px; }
+    .order-empty p { font-size: 14px; }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .tables-grid {
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            padding: 10px;
+        }
+        .table-card { min-height: 80px; padding: 12px 8px; }
+        .table-name { font-size: 12px; }
+        .products-grid { grid-template-columns: repeat(2, 1fr); }
+        .modal-tabs { font-size: 13px; }
     }
 </style>
 @endpush
 
 @section('content')
 <div class="restaurant-container">
-    {{-- Columna Izquierda: Pisos y Mesas --}}
     <div class="floors-section">
         <div class="floors-header">
-            <h5 class="panel-title" style="margin:0;"><i class="fas fa-layer-group"></i> Seleccionar Mesa</h5>
-            <a href="{{ route('restaurant.floors.index', ['company_id' => $companyId]) }}" class="btn btn-sm btn-outline-secondary">
-                <i class="fas fa-cog"></i> Configurar
-            </a>
+            <div>
+                <h4><i class="fas fa-utensils"></i> Restaurante</h4>
+                <small>Seleccione una mesa</small>
+            </div>
         </div>
         
         <div class="floors-tabs" id="floorsTabs">
             @foreach($floors as $floor)
-            <div class="floor-tab {{ $loop->first ? 'active' : '' }}" 
-                 data-floor-id="{{ $floor->id }}"
-                 onclick="selectFloor({{ $floor->id }})">
-                <i class="fas fa-layer-group"></i> {{ $floor->name }}
-            </div>
+            <button class="floor-tab {{ $loop->first ? 'active' : '' }}" data-floor-id="{{ $floor->id }}" onclick="selectFloor({{ $floor->id }})">
+                {{ $floor->name }}
+            </button>
             @endforeach
             @if($floors->isEmpty())
-            <div class="alert alert-warning m-2" style="width: 100%;">
-                No hay pisos configurados. 
-                <a href="{{ route('restaurant.floors.create', ['company_id' => $companyId]) }}">Crear piso</a>
-            </div>
+            <span class="text-muted">No hay pisos</span>
             @endif
         </div>
         
@@ -344,16 +388,31 @@
             @endforeach
         </div>
     </div>
+</div>
+
+{{-- Modal Table Order --}}
+<div class="table-order-modal" id="tableOrderModal">
+    <div class="modal-header-bar">
+        <div>
+            <h4 id="modalTableName">Mesa</h4>
+            <small id="modalOrderNumber">Sin pedido</small>
+        </div>
+        <button class="btn-close-modal" onclick="closeModal()">&times;</button>
+    </div>
     
-    {{-- Columna Derecha: Productos y Pedido --}}
-    <div class="order-section">
-        <div class="products-panel">
-            <div class="products-header">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="font-weight-bold"><i class="fas fa-utensils"></i> Productos</span>
-                    <span id="selectedTableLabel" class="text-muted" style="font-size: 12px;">Seleccione una mesa</span>
-                </div>
-            </div>
+    <div class="modal-tabs">
+        <div class="modal-tab active" data-tab="products" onclick="switchTab('products')">
+            <i class="fas fa-box-open"></i> Productos
+        </div>
+        <div class="modal-tab" data-tab="order" onclick="switchTab('order')">
+            <i class="fas fa-receipt"></i> Pedido
+            <span class="badge badge-light" id="itemsCount" style="display:none;">0</span>
+        </div>
+    </div>
+    
+    <div class="modal-content-area">
+        {{-- Tab Products --}}
+        <div id="tabProducts">
             <div class="products-categories" id="productsCategories">
                 <button class="category-btn active" data-category="all" onclick="filterProducts('all')">Todos</button>
                 @foreach($categories as $category)
@@ -362,9 +421,9 @@
                 </button>
                 @endforeach
             </div>
-            <div class="products-list" id="productsList" style="display: none;">
+            <div class="products-grid" id="productsList">
                 @foreach($products as $product)
-                <div class="product-item" 
+                <div class="product-card" 
                      data-product-id="{{ $product->id }}"
                      data-category-id="{{ $product->category_id }}"
                      data-product-name="{{ $product->descripcion }}"
@@ -375,55 +434,52 @@
                 </div>
                 @endforeach
                 @if($products->isEmpty())
-                <div class="alert alert-warning" style="grid-column: span 2;">
-                    No hay productos. <a href="{{ route('products.create', ['company_id' => $companyId]) }}">Crear producto</a>
+                <div class="alert alert-warning w-100">
+                    No hay productos. <a href="{{ route('products.create', ['company_id' => $companyId]) }}">Crear</a>
                 </div>
                 @endif
             </div>
         </div>
         
-        <div class="current-order-panel">
-            <div class="order-header">
-                <h5><i class="fas fa-receipt"></i> Pedido Actual</h5>
-                <small id="currentOrderInfo">Sin pedido seleccionado</small>
-            </div>
-            <div class="order-items" id="orderItems">
+        {{-- Tab Order --}}
+        <div id="tabOrder" style="display: none;">
+            <div id="orderItems">
                 <div class="order-empty">
                     <i class="fas fa-shopping-basket"></i>
-                    <p>Seleccione una mesa y agregue productos</p>
+                    <p>Seleccione productos</p>
                 </div>
-            </div>
-            <div class="order-totals" id="orderTotals" style="display: none;">
-                <div class="order-total-row">
-                    <span>Subtotal:</span>
-                    <span id="orderSubtotal">S/ 0.00</span>
-                </div>
-                <div class="order-total-row">
-                    <span>IGV (18%):</span>
-                    <span id="orderIgv">S/ 0.00</span>
-                </div>
-                <div class="order-total-row grand">
-                    <span>TOTAL:</span>
-                    <span id="orderTotal">S/ 0.00</span>
-                </div>
-            </div>
-            <div class="order-actions" id="orderActions" style="display: none;">
-                <button class="btn-kitchen" onclick="sendToKitchen()">
-                    <i class="fas fa-paper-plane"></i> Cocina
-                </button>
-                <button class="btn-print" onclick="printKitchenTicket()">
-                    <i class="fas fa-print"></i> Imprimir
-                </button>
-                <button class="btn-close" onclick="closeTable()">
-                    <i class="fas fa-check"></i> Cerrar
-                </button>
-            </div>
-            <div class="order-actions">
-                <button class="btn-cancel" onclick="cancelOrder()" style="flex: 1;" id="btnCancelOrder" disabled>
-                    <i class="fas fa-times"></i> Anular Pedido
-                </button>
             </div>
         </div>
+    </div>
+    
+    <div class="order-totals-box" id="orderTotals" style="display: none;">
+        <div class="order-total-row">
+            <span>Subtotal:</span>
+            <span id="orderSubtotal">S/ 0.00</span>
+        </div>
+        <div class="order-total-row">
+            <span>IGV (18%):</span>
+            <span id="orderIgv">S/ 0.00</span>
+        </div>
+        <div class="order-total-row grand">
+            <span>TOTAL:</span>
+            <span id="orderTotal">S/ 0.00</span>
+        </div>
+    </div>
+    
+    <div class="modal-actions">
+        <button class="btn-action btn-kitchen" onclick="sendToKitchen()">
+            <i class="fas fa-paper-plane"></i><br>Cocina
+        </button>
+        <button class="btn-action btn-print" onclick="printKitchenTicket()">
+            <i class="fas fa-print"></i><br>Imprimir
+        </button>
+        <button class="btn-action btn-close-order" onclick="closeTable()">
+            <i class="fas fa-check"></i><br>Cerrar
+        </button>
+        <button class="btn-action btn-cancel-order" onclick="cancelOrder()" id="btnCancelOrder" disabled>
+            <i class="fas fa-times"></i><br>Anular
+        </button>
     </div>
 </div>
 
@@ -452,19 +508,36 @@
 <script>
 let currentOrderId = null;
 let currentTableId = null;
+let currentTableName = null;
 let productsData = @json($products);
 let allFloors = @json($floors);
 let pendingProductId = null;
 let previousTableBorderColor = {};
+let currentFloorId = null;
+
+// Initialize: show only first floor's tables
+document.addEventListener('DOMContentLoaded', function() {
+    const firstFloor = document.querySelector('.floor-tab');
+    if (firstFloor) {
+        const floorId = parseInt(firstFloor.dataset.floorId);
+        console.log('Initial floor:', floorId);
+        selectFloor(floorId);
+    }
+});
 
 function selectFloor(floorId) {
-    document.querySelectorAll('.floor-tab').forEach(t => t.classList.remove('active'));
-    document.querySelector(`.floor-tab[data-floor-id="${floorId}"]`).classList.add('active');
+    currentFloorId = floorId;
+    console.log('Selecting floor:', floorId);
     
-    // Ocultar mesas de otros pisos, mostrar solo las del piso seleccionado
+    document.querySelectorAll('.floor-tab').forEach(t => t.classList.remove('active'));
+    const activeTab = document.querySelector(`.floor-tab[data-floor-id="${floorId}"]`);
+    if (activeTab) activeTab.classList.add('active');
+    
     document.querySelectorAll('.table-card').forEach(card => {
-        if (card.dataset.floorId == floorId) {
+        const cardFloorId = parseInt(card.dataset.floorId);
+        if (floorId === null || cardFloorId === floorId) {
             card.style.display = '';
+            console.log('Show table:', card.dataset.tableId, 'floor:', cardFloorId);
         } else {
             card.style.display = 'none';
         }
@@ -475,28 +548,35 @@ function selectTable(tableId) {
     const table = document.querySelector(`.table-card[data-table-id="${tableId}"]`);
     if (!table) return;
     
-    const tableName = table.querySelector('.table-name').textContent;
+    currentTableId = tableId;
+    currentTableName = table.querySelector('.table-name').textContent;
     const orderId = table.dataset.orderId;
     
-    // Marcar mesa como seleccionada
-    if (!previousTableBorderColor[tableId]) {
-        previousTableBorderColor[tableId] = table.style.borderColor || '';
-    }
-    table.style.borderColor = '#007bff';
-    table.style.borderWidth = '4px';
+    document.getElementById('modalTableName').textContent = currentTableName;
+    document.getElementById('modalOrderNumber').textContent = orderId ? 'Pedido: ' + orderId : 'Abriendo...';
+    document.getElementById('btnCancelOrder').disabled = false;
     
-    currentTableId = tableId;
-    document.getElementById('selectedTableLabel').textContent = 'Mesa: ' + tableName;
-    
-    // MOSTRAR productos y categorías al seleccionar mesa
-    document.getElementById('productsCategories').style.display = 'flex';
-    document.getElementById('productsList').style.display = 'grid';
+    document.getElementById('tableOrderModal').classList.add('show');
+    switchTab('products');
     
     if (orderId) {
         loadOrder(orderId);
     } else {
         openTable(tableId);
     }
+}
+
+function closeModal() {
+    document.getElementById('tableOrderModal').classList.remove('show');
+    resetTableStyle(currentTableId);
+}
+
+function switchTab(tab) {
+    document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.modal-tab[data-tab="${tab}"]`).classList.add('active');
+    
+    document.getElementById('tabProducts').style.display = tab === 'products' ? 'block' : 'none';
+    document.getElementById('tabOrder').style.display = tab === 'order' ? 'block' : 'none';
 }
 
 function resetTableStyle(tableId) {
@@ -508,8 +588,7 @@ function resetTableStyle(tableId) {
 }
 
 function openTable(tableId) {
-    document.getElementById('currentOrderInfo').textContent = 'Abriendo mesa...';
-    document.getElementById('btnCancelOrder').disabled = false;
+    document.getElementById('modalOrderNumber').textContent = 'Abriendo mesa...';
     
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     
@@ -523,11 +602,10 @@ function openTable(tableId) {
     })
     .then(res => res.json())
     .then(data => {
-        console.log('Open table result:', data);
         if (data.success) {
             currentOrderId = data.order_id;
             document.querySelector(`.table-card[data-table-id="${tableId}"]`).dataset.orderId = data.order_id;
-            document.getElementById('currentOrderInfo').textContent = 'Pedido: ' + (data.order_number || ' #' + data.order_id);
+            document.getElementById('modalOrderNumber').textContent = 'Pedido: ' + (data.order_number || '#' + data.order_id);
             renderOrder({ items: [], subtotal: 0, igv: 0, total: 0 });
         } else {
             alert(data.message || 'Error al abrir mesa');
@@ -540,16 +618,15 @@ function openTable(tableId) {
 }
 
 function loadOrder(orderId) {
-    document.getElementById('currentOrderInfo').textContent = 'Cargando pedido...';
+    document.getElementById('modalOrderNumber').textContent = 'Cargando pedido...';
     
     fetch('/restaurant/orders/' + orderId)
     .then(res => res.json())
     .then(data => {
-        console.log('Load order result:', data);
         if (data.success) {
             currentOrderId = orderId;
             const order = data.order;
-            document.getElementById('currentOrderInfo').textContent = 'Pedido: ' + order.order_number;
+            document.getElementById('modalOrderNumber').textContent = 'Pedido: ' + order.order_number;
             renderOrder(order);
         } else {
             alert(data.message || 'Error al cargar pedido');
@@ -565,9 +642,9 @@ function renderOrder(order) {
     const container = document.getElementById('orderItems');
     
     if (!order.items || order.items.length === 0) {
-        container.innerHTML = '<div class="order-empty"><i class="fas fa-shopping-basket"></i><p>Seleccione una mesa y agregue productos</p></div>';
+        container.innerHTML = '<div class="order-empty"><i class="fas fa-shopping-basket"></i><p>Seleccione productos</p></div>';
         document.getElementById('orderTotals').style.display = 'none';
-        document.getElementById('orderActions').style.display = 'none';
+        document.getElementById('itemsCount').style.display = 'none';
         return;
     }
     
@@ -581,62 +658,49 @@ function renderOrder(order) {
             'DELIVERED': 'Entregado'
         }[item.kitchen_status] || item.kitchen_status;
         
-        html += `<div class="order-item" data-item-id="${item.id}">
+        html += `<div class="order-item-row">
             <div class="order-item-info">
-                <div class="order-item-name">
-                    ${item.product_name}
-                    <span class="kitchen-badge ${statusClass}">${statusLabel}</span>
-                </div>
-                <div class="order-item-price">S/ ${parseFloat(item.unit_price).toFixed(2)} x ${item.quantity}</div>
+                <div class="order-item-name">${item.product_name}</div>
+                <div class="order-item-qty">${item.quantity} x S/ ${parseFloat(item.unit_price).toFixed(2)} = S/ ${parseFloat(item.total).toFixed(2)}</div>
+                ${item.kitchen_status !== 'PENDING' ? `<span class="badge badge-${statusClass === 'sent' ? 'warning' : statusClass === 'ready' ? 'success' : 'info'}">${statusLabel}</span>` : ''}
             </div>
-            <div class="order-item-qty">
-                <button class="btn btn-sm btn-outline-secondary" onclick="updateItemQty(${item.id}, -1)">-</button>
+            <div class="order-item-actions">
+                <button class="btn-qty-change" onclick="changeItemQty(${item.id}, -1)">-</button>
                 <span>${item.quantity}</span>
-                <button class="btn btn-sm btn-outline-success" onclick="updateItemQty(${item.id}, 1)">+</button>
-                <button class="btn btn-sm btn-outline-danger" onclick="removeItem(${item.id})"><i class="fas fa-trash"></i></button>
+                <button class="btn-qty-change" onclick="changeItemQty(${item.id}, 1)">+</button>
+                <button class="btn-remove-item" onclick="removeItem(${item.id})"><i class="fas fa-trash"></i></button>
             </div>
         </div>`;
     });
     
     container.innerHTML = html;
-    
-    const subtotal = parseFloat(order.subtotal) || 0;
-    const igv = parseFloat(order.igv) || 0;
-    const total = parseFloat(order.total) || 0;
-    
-    document.getElementById('orderSubtotal').textContent = 'S/ ' + subtotal.toFixed(2);
-    document.getElementById('orderIgv').textContent = 'S/ ' + igv.toFixed(2);
-    document.getElementById('orderTotal').textContent = 'S/ ' + total.toFixed(2);
-    document.getElementById('orderTotals').style.display = '';
-    document.getElementById('orderActions').style.display = 'flex';
+    document.getElementById('orderSubtotal').textContent = 'S/ ' + parseFloat(order.subtotal).toFixed(2);
+    document.getElementById('orderIgv').textContent = 'S/ ' + parseFloat(order.igv).toFixed(2);
+    document.getElementById('orderTotal').textContent = 'S/ ' + parseFloat(order.total).toFixed(2);
+    document.getElementById('orderTotals').style.display = 'block';
+    document.getElementById('itemsCount').textContent = order.items.length;
+    document.getElementById('itemsCount').style.display = 'inline';
 }
 
 function filterProducts(categoryId) {
-    document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
-    const activeBtn = document.querySelector(`.category-btn[data-category="${categoryId}"]`);
-    if (activeBtn) activeBtn.classList.add('active');
+    document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.category == categoryId);
+    });
     
-    document.querySelectorAll('.product-item').forEach(item => {
-        if (categoryId === 'all' || item.dataset.categoryId == categoryId) {
-            item.style.display = '';
+    document.querySelectorAll('.product-card').forEach(card => {
+        if (categoryId === 'all' || card.dataset.categoryId == categoryId) {
+            card.style.display = '';
         } else {
-            item.style.display = 'none';
+            card.style.display = 'none';
         }
     });
 }
 
 function addProductToOrder(productId) {
-    if (!currentOrderId) {
-        alert('Seleccione una mesa primero');
-        return;
-    }
-    
     pendingProductId = productId;
     const product = productsData.find(p => p.id === productId);
     document.getElementById('modalProductName').textContent = product.descripcion;
     document.getElementById('itemQtyInput').value = 1;
-    document.getElementById('itemQtyInput').min = 0.1;
-    document.getElementById('itemQtyInput').step = 0.1;
     $('#qtyModal').modal('show');
 }
 
@@ -648,7 +712,6 @@ function confirmAddItem() {
     }
     
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-    console.log('Adding item to order:', currentOrderId, 'Product:', pendingProductId, 'Qty:', quantity);
     
     fetch('/restaurant/orders/' + currentOrderId + '/items', {
         method: 'POST',
@@ -664,24 +727,14 @@ function confirmAddItem() {
     })
     .then(async res => {
         const text = await res.text();
-        console.log('Response status:', res.status);
-        console.log('Response text:', text);
-        
-        if (!res.ok) {
-            throw new Error('HTTP ' + res.status + ': ' + text);
-        }
-        
-        try {
-            return JSON.parse(text);
-        } catch (e) {
-            throw new Error('Invalid JSON: ' + text);
-        }
+        if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + text);
+        return JSON.parse(text);
     })
     .then(data => {
-        console.log('Parsed data:', data);
         if (data.success) {
             loadOrder(currentOrderId);
             $('#qtyModal').modal('hide');
+            switchTab('order');
         } else {
             alert(data.message || 'Error al agregar producto');
         }
@@ -692,88 +745,71 @@ function confirmAddItem() {
     });
 }
 
-function updateItemQty(itemId, change) {
-    const itemEl = document.querySelector(`.order-item[data-item-id="${itemId}"]`);
-    const qtySpan = itemEl.querySelector('.order-item-qty span');
-    let newQty = parseFloat(qtySpan.textContent) + change;
-    
-    if (newQty <= 0) {
-        removeItem(itemId);
-        return;
-    }
+function changeItemQty(itemId, delta) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     
     fetch('/restaurant/orders/items/' + itemId, {
         method: 'PUT',
         headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Content-Type': 'application/json'
+            'X-CSRF-TOKEN': csrfToken,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
         },
-        body: JSON.stringify({ quantity: newQty })
+        body: JSON.stringify({ quantity_delta: delta })
     })
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            qtySpan.textContent = newQty;
             loadOrder(currentOrderId);
+        } else {
+            alert(data.message);
         }
     });
 }
 
 function removeItem(itemId) {
-    if (!confirm('¿Eliminar este producto?')) return;
+    if (!confirm('¿Eliminar producto?')) return;
     
-    fetch('/restaurant/orders/items/' + itemId, { method: 'DELETE',
-        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    
+    fetch('/restaurant/orders/items/' + itemId, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json'
+        }
     })
     .then(res => res.json())
     .then(data => {
         if (data.success) {
             loadOrder(currentOrderId);
+        } else {
+            alert(data.message);
         }
     });
 }
 
 function sendToKitchen() {
     if (!currentOrderId) return;
+    if (!confirm('¿Enviar pedido a cocina?')) return;
+    
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     
     fetch('/restaurant/orders/' + currentOrderId + '/send-to-kitchen', {
         method: 'POST',
         headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
             'Accept': 'application/json'
         }
     })
-    .then(res => {
-        if (!res.ok) throw new Error('Error HTTP');
-        return res.json();
-    })
+    .then(res => res.json())
     .then(data => {
-        console.log('Send to kitchen response:', data);
         if (data.success) {
-            alert(data.message);
-            // Actualizar estado visual de la mesa
-            const tableCard = document.querySelector(`.table-card[data-table-id="${currentTableId}"]`);
-            if (tableCard) {
-                tableCard.classList.remove('available');
-                tableCard.classList.add('occupied');
-                tableCard.style.borderColor = '#dc3545';
-                // Agregar badge de pedido si no existe
-                if (!tableCard.querySelector('.table-order')) {
-                    const badge = document.createElement('div');
-                    badge.className = 'table-order';
-                    badge.textContent = 'En cocina';
-                    tableCard.appendChild(badge);
-                }
-            }
+            alert('Pedido enviado a cocina');
             loadOrder(currentOrderId);
         } else {
-            alert(data.message || 'Error al enviar a cocina');
+            alert(data.message || 'Error');
         }
-    })
-    .catch(err => {
-        console.error('Error:', err);
-        alert('Error al enviar a cocina');
     });
 }
 
@@ -782,111 +818,52 @@ function printKitchenTicket() {
     window.open('/restaurant/orders/' + currentOrderId + '/print-kitchen', '_blank');
 }
 
-function closeTableSilently() {
-    if (!currentOrderId) return;
-    
-    fetch('/restaurant/orders/' + currentOrderId + '/close', {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(res => res.json());
-    
-    resetOrderUI();
-}
-
 function closeTable() {
     if (!currentOrderId) return;
+    if (!confirm('¿Cerrar pedido?')) return;
     
-    if (!confirm('¿Cerrar la mesa? El pedido se completará.')) return;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     
     fetch('/restaurant/orders/' + currentOrderId + '/close', {
         method: 'POST',
         headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Content-Type': 'application/json'
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json'
         }
     })
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            alert('Mesa cerrada exitosamente');
-            // Actualizar visualmente la mesa como disponible
-            if (currentTableId) {
-                const tableCard = document.querySelector(`.table-card[data-table-id="${currentTableId}"]`);
-                if (tableCard) {
-                    tableCard.classList.remove('occupied');
-                    tableCard.classList.add('available');
-                    tableCard.style.borderColor = '#28a745';
-                    tableCard.dataset.orderId = '';
-                    const badge = tableCard.querySelector('.table-order');
-                    if (badge) badge.remove();
-                }
-            }
-            resetOrderUI();
+            alert('Pedido cerrado');
+            location.reload();
+        } else {
+            alert(data.message || 'Error');
         }
     });
-}
-
-function resetOrderUI() {
-    if (currentTableId) {
-        const tableCard = document.querySelector(`.table-card[data-table-id="${currentTableId}"]`);
-        if (tableCard) {
-            resetTableStyle(currentTableId);
-        }
-    }
-    
-    currentOrderId = null;
-    currentTableId = null;
-    
-    document.getElementById('currentOrderInfo').textContent = 'Sin pedido seleccionado';
-    document.getElementById('selectedTableLabel').textContent = 'Seleccione una mesa';
-    document.getElementById('orderItems').innerHTML = '<div class="order-empty"><i class="fas fa-shopping-basket"></i><p>Seleccione una mesa y agregue productos</p></div>';
-    document.getElementById('orderTotals').style.display = 'none';
-    document.getElementById('orderActions').style.display = 'none';
-    document.getElementById('btnCancelOrder').disabled = true;
-    document.getElementById('productsCategories').style.display = 'none';
-    document.getElementById('productsList').style.display = 'none';
 }
 
 function cancelOrder() {
     if (!currentOrderId) return;
+    if (!confirm('¿Anular pedido? Esta acción no se puede deshacer.')) return;
     
-    if (!confirm('¿Anular este pedido? Se eliminarán todos los productos.')) return;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     
     fetch('/restaurant/orders/' + currentOrderId + '/cancel', {
         method: 'POST',
         headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Content-Type': 'application/json'
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json'
         }
     })
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            // Actualizar visualmente la mesa como disponible
-            if (currentTableId) {
-                const tableCard = document.querySelector(`.table-card[data-table-id="${currentTableId}"]`);
-                if (tableCard) {
-                    tableCard.classList.remove('occupied');
-                    tableCard.classList.add('available');
-                    tableCard.style.borderColor = '#28a745';
-                    tableCard.dataset.orderId = '';
-                    const badge = tableCard.querySelector('.table-order');
-                    if (badge) badge.remove();
-                }
-            }
-            resetOrderUI();
+            alert('Pedido anulado');
+            location.reload();
+        } else {
+            alert(data.message || 'Error');
         }
     });
 }
-
-document.addEventListener('DOMContentLoaded', function() {
-    if (allFloors.length > 0) {
-        selectFloor(allFloors[0].id);
-    }
-});
 </script>
 @endpush
