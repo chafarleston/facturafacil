@@ -39,8 +39,8 @@
                         @endif
                     </td>
                     <td>
+                        <a href="{{ route('roles.edit', $role) }}" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></a>
                         @if(!$role->is_system)
-                            <a href="{{ route('roles.edit', $role) }}" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></a>
                             <form action="{{ route('roles.destroy', $role) }}" method="POST" class="d-inline">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Eliminar rol?')"><i class="fas fa-trash"></i></button>
