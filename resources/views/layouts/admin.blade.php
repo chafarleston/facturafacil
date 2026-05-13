@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>@yield('title', 'FacturaIA') - Admin</title>
+  <title>@yield('title', 'FacturaFacil by RealComputer SAC') - Admin</title>
   
   <!-- Google Font: Source Sans Pro -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap">
@@ -58,7 +58,7 @@
     <aside class="main-sidebar sidebar-dark-primary elevation-4">
       <a href="{{ route('dashboard') }}" class="brand-link">
         <i class="fas fa-file-invoice brand-image ml-3 mr-2" style="font-size: 1.5rem;"></i>
-        <span class="brand-text font-weight-light">FacturaIA</span>
+        <span class="brand-text font-weight-light">FacturaFacil by RealComputer SAC</span>
       </a>
       
       <div class="sidebar">
@@ -287,7 +287,7 @@
       <div class="float-right d-none d-sm-block">
         <b>Version</b> 1.0
       </div>
-      <strong>FacturaIA &copy; {{ date('Y') }}</strong>
+      <strong>FacturaFacil by RealComputer SAC &copy; {{ date('Y') }}</strong>
     </footer>
   </div>
   

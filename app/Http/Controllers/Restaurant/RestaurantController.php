@@ -123,6 +123,9 @@ class RestaurantController extends Controller
             if ($existingItem) {
                 $existingItem->quantity += $validated['quantity'];
                 $existingItem->total = $existingItem->quantity * $existingItem->unit_price;
+                if (isset($validated['notes'])) {
+                    $existingItem->notes = $validated['notes'];
+                }
                 $existingItem->save();
                 $item = $existingItem;
             } else {
@@ -134,7 +137,7 @@ class RestaurantController extends Controller
                     'unit_price' => $product->precio,
                     'total' => $product->precio * $validated['quantity'],
                     'kitchen_status' => 'PENDING',
-                    'notes' => $request->notes,
+                    'notes' => $validated['notes'] ?? null,
                 ]);
             }
 
@@ -173,8 +176,11 @@ class RestaurantController extends Controller
             $item->quantity = $validated['quantity'];
         }
         
+        if (array_key_exists('notes', $validated)) {
+            $item->notes = $validated['notes'];
+        }
+        
         $item->total = $item->quantity * $item->unit_price;
-        $item->notes = $request->notes ?? $item->notes;
         $item->save();
 
         $this->updateOrderTotals($item->order);
@@ -345,6 +351,7 @@ class RestaurantController extends Controller
                 'status' => $order->status,
                 'table_name' => $order->table ? $order->table->name : 'Mesa',
                 'user_name' => $order->user ? $order->user->name : null,
+                'notes' => $order->notes,
                 'created_at' => $order->created_at->toIso8601String(),
                 'items' => $order->items->map(function($item) {
                     return [
@@ -409,5 +416,27 @@ class RestaurantController extends Controller
             'igv' => round($igv, 2),
             'total' => round($total, 2),
         ]);
+    }
+
+    public function saveOrderNotes(Request $request, $orderId)
+    {
+        try {
+            $validated = $request->validate([
+                'notes' => 'nullable|string|max:1000',
+            ]);
+
+            $order = RestaurantOrder::findOrFail($orderId);
+            $order->update(['notes' => $validated['notes'] ?? null]);
+
+            return response()->json([
+                'success' => true,
+                'order' => $order->fresh(['items']),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
 }

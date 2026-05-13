@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Login - FacturaIA</title>
+  <title>Login - FacturaFacil by RealComputer SAC</title>
   
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -14,7 +14,7 @@
 <div class="login-box">
   <div class="card card-primary card-outline">
     <div class="card-header text-center">
-      <a href="/" class="h1"><i class="fas fa-file-invoice"></i> <b>FacturaIA</b></a>
+      <a href="/" class="h1"><i class="fas fa-file-invoice"></i> <b>FacturaFacil by RealComputer SAC</b></a>
     </div>
     <div class="card-body">
       <p class="login-box-msg">Iniciar Sesión</p>

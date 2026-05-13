@@ -116,6 +116,7 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     Route::put('/restaurant/orders/items/{itemId}', [RestaurantController::class, 'updateItem'])->name('restaurant.orders.items.update');
     Route::delete('/restaurant/orders/items/{itemId}', [RestaurantController::class, 'removeItem'])->name('restaurant.orders.items.destroy');
     Route::post('/restaurant/orders/{orderId}/send-to-kitchen', [RestaurantController::class, 'sendToKitchen'])->name('restaurant.orders.sendToKitchen');
+    Route::post('/restaurant/orders/{orderId}/notes', [RestaurantController::class, 'saveOrderNotes'])->name('restaurant.orders.notes');
     Route::get('/restaurant/orders/{orderId}/print-kitchen', [RestaurantController::class, 'printKitchenTicket'])->name('restaurant.orders.printKitchen');
     Route::post('/restaurant/orders/{orderId}/close', [RestaurantController::class, 'closeOrder'])->name('restaurant.orders.close');
     Route::post('/restaurant/orders/{orderId}/cancel', [RestaurantController::class, 'cancelOrder'])->name('restaurant.orders.cancel');

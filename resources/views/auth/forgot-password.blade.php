@@ -2,14 +2,14 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Recuperar Contraseña - FacturaIA</title>
+  <title>Recuperar Contraseña - FacturaFacil by RealComputer SAC</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2.0/dist/css/adminlte.min.css">
 </head>
 <body class="hold-transition login-page">
 <div class="login-box">
   <div class="card card-primary card-outline">
     <div class="card-header text-center">
-      <a href="/" class="h1"><b>FacturaIA</b></a>
+      <a href="/" class="h1"><b>FacturaFacil by RealComputer SAC</b></a>
     </div>
     <div class="card-body">
       <p class="login-box-msg">Recuperar Contraseña</p>

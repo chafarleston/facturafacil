@@ -263,7 +263,7 @@
     }
     .btn-qty-change:hover { background: #007bff; color: white; border-color: #007bff; }
     
-    .btn-remove-item {
+.btn-remove-item {
         width: 28px;
         height: 28px;
         border: none;
@@ -276,26 +276,26 @@
         justify-content: center;
         font-size: 11px;
     }
-    
-    .order-totals-box {
-        padding: 15px;
-        background: #f8f9fa;
-        border-top: 2px solid #ddd;
-    }
-    
-    .order-total-row {
+    .btn-note-item {
+        width: 28px;
+        height: 28px;
+        border: 1px solid #007bff;
+        border-radius: 50%;
+        background: #fff;
+        color: #007bff;
+        cursor: pointer;
         display: flex;
-        justify-content: space-between;
-        padding: 5px 0;
-        font-size: 13px;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
     }
+    .btn-note-item:hover { background: #007bff; color: white; }
     
-    .order-total-row.grand {
-        font-size: 18px;
-        font-weight: bold;
-        border-top: 2px solid #333;
-        margin-top: 8px;
-        padding-top: 10px;
+    .order-item-note {
+        font-size: 11px;
+        color: #ff9800;
+        font-style: italic;
+        margin-top: 3px;
     }
     
     .modal-actions {
@@ -324,6 +324,27 @@
     .btn-print { background: #17a2b8; color: white; }
     .btn-close-order { background: #28a745; color: white; }
     .btn-cancel-order { background: #dc3545; color: white; }
+    
+    .order-totals-box {
+        padding: 15px;
+        background: #f8f9fa;
+        border-top: 2px solid #ddd;
+    }
+    
+    .order-total-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+        font-size: 13px;
+    }
+    
+    .order-total-row.grand {
+        font-size: 18px;
+        font-weight: bold;
+        border-top: 2px solid #333;
+        margin-top: 8px;
+        padding-top: 10px;
+    }
     
     .order-empty {
         text-align: center;
@@ -485,13 +506,27 @@
 
 {{-- Modal Cantidad --}}
 <div class="qty-overlay" id="qtyOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
-    <div class="qty-popup" style="background:white; padding:20px; border-radius:10px; min-width:280px; max-width:90%;">
+    <div class="qty-popup" style="background:white; padding:20px; border-radius:10px; min-width:300px; max-width:90%;">
         <h5 style="margin:0 0 15px 0;">Cantidad</h5>
         <input type="number" id="itemQtyInput" class="form-control" value="1" min="0.1" step="0.1" style="margin-bottom:10px;">
+        <textarea id="itemNotesInput" class="form-control" rows="2" placeholder="Nota para cocina (opcional)..." style="margin-bottom:10px;"></textarea>
         <small class="text-muted d-block mb-2">Producto: <span id="modalProductName"></span></small>
         <div style="display:flex; gap:10px; justify-content:flex-end;">
             <button type="button" class="btn btn-secondary" onclick="closeQtyModal()">Cancelar</button>
             <button type="button" class="btn btn-primary" onclick="confirmAddItem()">Agregar</button>
+        </div>
+    </div>
+</div>
+
+{{-- Modal Editar Nota Item --}}
+<div class="qty-overlay" id="itemNotesOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+    <div class="qty-popup" style="background:white; padding:20px; border-radius:10px; min-width:300px; max-width:90%;">
+        <h5 style="margin:0 0 15px 0;">Nota del Producto</h5>
+        <input type="hidden" id="editItemNotesItemId">
+        <textarea id="editItemNotesInput" class="form-control" rows="2" placeholder="Nota para cocina..." style="margin-bottom:10px;"></textarea>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button type="button" class="btn btn-secondary" onclick="closeItemNotesModal()">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="saveItemNotes()">Guardar</button>
         </div>
     </div>
 </div>
@@ -619,6 +654,7 @@ function loadOrder(orderId) {
         if (data.success) {
             currentOrderId = orderId;
             const order = data.order;
+            window.currentOrderData = order;
             document.getElementById('modalOrderNumber').textContent = 'Pedido: ' + order.order_number;
             renderOrder(order);
         } else {
@@ -632,6 +668,7 @@ function loadOrder(orderId) {
 }
 
 function renderOrder(order) {
+    window.currentOrderData = order;
     const container = document.getElementById('orderItems');
     
     if (!order.items || order.items.length === 0) {
@@ -655,12 +692,14 @@ function renderOrder(order) {
             <div class="order-item-info">
                 <div class="order-item-name">${item.product_name}</div>
                 <div class="order-item-qty">${item.quantity} x S/ ${parseFloat(item.unit_price).toFixed(2)} = S/ ${parseFloat(item.total).toFixed(2)}</div>
-                ${item.kitchen_status !== 'PENDING' ? `<span class="badge badge-${statusClass === 'sent' ? 'warning' : statusClass === 'ready' ? 'success' : 'info'}">${statusLabel}</span>` : ''}
+                ${item.notes ? `<div class="order-item-note"><i class="fas fa-sticky-note"></i> ${item.notes}</div>` : ''}
+                ${item.kitchen_status !== 'PENDING' ? `<span class="badge badge-${statusClass === 'sent' ? 'warning' : statusClass === 'ready' ? 'success' : 'info'}" style="font-size:10px;">${statusLabel}</span>` : ''}
             </div>
             <div class="order-item-actions">
                 <button class="btn-qty-change" onclick="changeItemQty(${item.id}, -1)">-</button>
                 <span>${item.quantity}</span>
                 <button class="btn-qty-change" onclick="changeItemQty(${item.id}, 1)">+</button>
+                <button class="btn-note-item" onclick="editItemNotes(${item.id}, '${item.notes || ''}')" title="Agregar nota"><i class="fas fa-edit"></i></button>
                 <button class="btn-remove-item" onclick="removeItem(${item.id})"><i class="fas fa-trash"></i></button>
             </div>
         </div>`;
@@ -700,6 +739,7 @@ function addProductToOrder(productId) {
 
 function closeQtyModal() {
     document.getElementById('qtyOverlay').style.display = 'none';
+    document.getElementById('itemNotesInput').value = '';
 }
 
 function confirmAddItem() {
@@ -709,7 +749,9 @@ function confirmAddItem() {
         return;
     }
     
+    const itemNotes = document.getElementById('itemNotesInput').value.trim();
     document.getElementById('qtyOverlay').style.display = 'none';
+    document.getElementById('itemNotesInput').value = '';
     
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     
@@ -722,7 +764,8 @@ function confirmAddItem() {
         },
         body: JSON.stringify({
             product_id: pendingProductId,
-            quantity: quantity
+            quantity: quantity,
+            notes: itemNotes || null
         })
     })
     .then(async res => {
@@ -741,6 +784,46 @@ function confirmAddItem() {
     .catch(err => {
         console.error('Error:', err);
         alert('Error al agregar producto: ' + err.message);
+    });
+}
+
+function editItemNotes(itemId, currentNotes) {
+    document.getElementById('editItemNotesItemId').value = itemId;
+    document.getElementById('editItemNotesInput').value = currentNotes || '';
+    document.getElementById('editItemNotesInput').focus();
+    document.getElementById('itemNotesOverlay').style.display = 'flex';
+}
+
+function closeItemNotesModal() {
+    document.getElementById('itemNotesOverlay').style.display = 'none';
+}
+
+function saveItemNotes() {
+    const itemId = document.getElementById('editItemNotesItemId').value;
+    const notes = document.getElementById('editItemNotesInput').value.trim();
+    
+    if (!itemId) return;
+    
+    closeItemNotesModal();
+    
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    
+    fetch('/restaurant/orders/items/' + itemId, {
+        method: 'PUT',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ notes: notes || null })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            loadOrder(currentOrderId);
+        } else {
+            alert(data.message || 'Error al guardar nota');
+        }
     });
 }
 

@@ -74,6 +74,12 @@
             @endif
         </div>
         
+        @if($order->notes)
+        <div class="notes" style="background:#ffeb3b; padding:2mm; margin-bottom:2mm; font-size:9pt;">
+            <strong>NOTA:</strong> {{ $order->notes }}
+        </div>
+        @endif
+        
         <div class="items">
             @foreach($order->items as $item)
             <div class="item">

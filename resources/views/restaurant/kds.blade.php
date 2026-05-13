@@ -19,32 +19,34 @@
             padding: 10px;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
         
         .kds-header {
             background: linear-gradient(135deg, #e94560, #c23a51);
-            padding: 15px 20px;
+            padding: 10px 15px;
             border-radius: 10px;
             margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 15px;
+            gap: 10px;
+            flex-shrink: 0;
         }
         
-        .kds-header h2 { margin: 0; font-size: 24px; }
-        .kds-header .time { font-size: 18px; font-weight: bold; }
+        .kds-header h2 { margin: 0; font-size: 18px; }
+        .kds-header .time { font-size: 14px; font-weight: bold; }
         
         .kds-header-right {
             display: flex;
             align-items: center;
-            gap: 20px;
+            gap: 15px;
         }
         
         .kds-stats {
             display: flex;
-            gap: 20px;
+            gap: 15px;
         }
         
         .kds-stat {
@@ -52,29 +54,31 @@
         }
         
         .kds-stat-value {
-            font-size: 28px;
+            font-size: 20px;
             font-weight: bold;
         }
         
         .kds-stat-label {
-            font-size: 12px;
+            font-size: 10px;
             opacity: 0.8;
         }
         
         .kds-orders {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 280px));
+            gap: 12px;
             flex: 1;
             overflow-y: auto;
             padding-bottom: 10px;
+            align-content: start;
         }
         
         .kds-order {
             background: #16213e;
-            border-radius: 12px;
-            border-left: 5px solid #e94560;
+            border-radius: 10px;
+            border-left: 4px solid #e94560;
             overflow: hidden;
+            font-size: 12px;
         }
         
         .kds-order.ready { border-left-color: #00ff88; }
@@ -82,30 +86,31 @@
         
         .kds-order-header {
             background: #1a1a2e;
-            padding: 12px 15px;
+            padding: 8px 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         
-        .kds-order-number { font-size: 18px; font-weight: bold; color: #e94560; }
+        .kds-order-number { font-size: 14px; font-weight: bold; color: #e94560; }
         .kds-order.ready .kds-order-number { color: #00ff88; }
         .kds-order.sent .kds-order-number { color: #ffc107; }
         
-        .kds-order-table { font-size: 14px; color: #888; }
-        .kds-order-user { font-size: 12px; color: #4fc3f7; margin-top: 2px; }
-        .kds-order-time { font-size: 12px; color: #666; }
+        .kds-order-table { font-size: 12px; color: #888; }
+        .kds-order-user { font-size: 10px; color: #4fc3f7; margin-top: 1px; }
+        .kds-order-notes { font-size: 10px; color: #ffeb3b; margin-top: 2px; font-style: italic; }
+        .kds-order-time { font-size: 10px; color: #666; }
         .kds-order.elapsed .kds-order-time { color: #ff4444; font-weight: bold; }
         
         .kds-items {
-            padding: 15px;
+            padding: 10px;
         }
         
         .kds-item {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            padding: 8px 0;
+            padding: 6px 0;
             border-bottom: 1px dashed #333;
         }
         
@@ -114,11 +119,11 @@
         .kds-item-qty {
             background: #e94560;
             color: white;
-            padding: 5px 12px;
-            border-radius: 20px;
+            padding: 4px 10px;
+            border-radius: 15px;
             font-weight: bold;
-            font-size: 16px;
-            min-width: 45px;
+            font-size: 13px;
+            min-width: 36px;
             text-align: center;
         }
         
@@ -126,34 +131,41 @@
         
         .kds-item-name {
             flex: 1;
-            margin-left: 12px;
-            font-size: 16px;
+            margin-left: 10px;
+            font-size: 13px;
             font-weight: bold;
         }
         
         .kds-item-notes {
-            font-size: 12px;
+            font-size: 10px;
             color: #ffc107;
             font-style: italic;
-            margin-left: 12px;
+            margin-left: 10px;
         }
         
         .kds-order-actions {
-            padding: 10px 15px;
+            padding: 8px 10px;
             background: #1a1a2e;
             display: flex;
-            gap: 10px;
+            gap: 8px;
         }
         
-        .kds-btn {
+.kds-btn {
             flex: 1;
-            padding: 12px;
+            min-width: 80px;
+            padding: 8px 4px;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 11px;
             cursor: pointer;
             transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            text-decoration: none;
+            white-space: nowrap;
         }
         
         .kds-btn:hover { transform: scale(1.02); }
@@ -172,21 +184,70 @@
         .kds-empty i { font-size: 80px; margin-bottom: 20px; }
         .kds-empty h3 { font-size: 24px; }
         
-        .btn {
-            padding: 8px 16px;
+.kds-btn {
+            flex: 1;
+            padding: 12px;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 14px;
             cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            text-decoration: none;
         }
         
-        .btn-dark {
+        .kds-btn:hover { transform: scale(1.02); filter: brightness(1.1); }
+        
+        .kds-btn-ready { background: #ff9800; color: white; }
+        .kds-btn-deliver { background: #4caf50; color: white; }
+        .kds-btn-print { background: #2196f3; color: white; }
+        
+        .kds-header .btn-dark {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
             background: #333;
             color: #fff;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
+        .kds-header .btn-dark:hover { background: #555; }
+        
+        .kds-empty {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+            grid-column: 1 / -1;
+        }
+        
+        .kds-empty i { font-size: 80px; margin-bottom: 20px; opacity: 0.5; }
+        .kds-empty h3 { font-size: 24px; margin-bottom: 10px; }
+        .kds-empty p { font-size: 14px; opacity: 0.7; }
+        
         .kds-order.pending { border-left-color: #e94560; }
-        .kds-order.sent-to-kitchen { border-left-color: #ffc107; }
-        .kds-order.ready-to-deliver { border-left-color: #00ff88; }
+        .kds-order.sent { border-left-color: #ffc107; }
+        .kds-order.ready { border-left-color: #00ff88; }
+        
+        @media (max-width: 768px) {
+            .kds-orders {
+                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            }
+            .kds-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            .kds-stats {
+                justify-content: center;
+            }
+        }
     </style>
 </head>
 <body>
@@ -380,6 +441,7 @@ function renderKitchenOrders() {
                             <i class="fas fa-chair"></i> ${order.table_name || 'Mesa'}
                         </div>
                         ${order.user_name ? `<div class="kds-order-user"><i class="fas fa-user"></i> ${order.user_name}</div>` : ''}
+                        ${order.notes ? `<div class="kds-order-notes"><i class="fas fa-sticky-note"></i> ${order.notes}</div>` : ''}
                     </div>
                     <div class="kds-order-time ${overdue ? 'overdue' : ''}">${elapsed}</div>
                 </div>
@@ -406,7 +468,7 @@ function renderKitchenOrders() {
                         </button>
                     ` : ''}
                     <button class="kds-btn kds-btn-print" onclick="printTicket(${order.id})">
-                        <i class="fas fa-print"></i>
+                        <i class="fas fa-print"></i> IMPRIMIR
                     </button>
                 </div>
             </div>
