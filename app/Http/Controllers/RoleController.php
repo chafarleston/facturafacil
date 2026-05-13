@@ -45,7 +45,7 @@ class RoleController extends Controller
     {
         $permissions = Permission::where('status', true)->orderBy('module')->orderBy('name')->get();
         $groupedPermissions = $permissions->groupBy('module');
-        $rolePermissions = $role->permissions()->pluck('id')->toArray();
+        $rolePermissions = $role->permissions()->pluck('permissions.id')->toArray();
 
         return view('admin.roles.edit', compact('role', 'groupedPermissions', 'rolePermissions'));
     }
