@@ -12,6 +12,7 @@ use App\Models\Company;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class RestaurantController extends Controller
@@ -227,6 +228,8 @@ class RestaurantController extends Controller
             $order->status = 'SENT_TO_KITCHEN';
             $order->save();
 
+            $this->broadcastKitchenUpdate($order->company_id, 'sent');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Pedido enviado a cocina',
@@ -268,14 +271,15 @@ class RestaurantController extends Controller
         $item->save();
 
         $order = $item->order;
-        $allReady = $order->items()->where('kitchen_status', '!=', 'READY')->where('kitchen_status', '!=', 'DELIVERED')->count() == 0;
-        
-        if ($allReady) {
-            $order->status = 'READY';
-            $order->save();
-        }
+$allReady = $order->items()->where('kitchen_status', '!=', 'READY')->where('kitchen_status', '!=', 'DELIVERED')->count() == 0;
+            if ($allReady) {
+                $order->status = 'READY';
+                $order->save();
+            }
 
-        return response()->json(['success' => true]);
+            $this->broadcastKitchenUpdate($order->company_id, 'updated');
+
+            return response()->json(['success' => true]);
     }
 
     public function deliverItem($itemId)
@@ -340,7 +344,7 @@ class RestaurantController extends Controller
             })
             ->with(['items' => function($q) {
                 $q->whereIn('kitchen_status', ['SENT', 'READY']);
-            }, 'table', 'user'])
+            }, 'table.floor', 'user'])
             ->orderBy('created_at', 'asc')
             ->get();
 
@@ -350,6 +354,7 @@ class RestaurantController extends Controller
                 'order_number' => $order->order_number,
                 'status' => $order->status,
                 'table_name' => $order->table ? $order->table->name : 'Mesa',
+                'floor_name' => $order->table && $order->table->floor ? $order->table->floor->name : null,
                 'user_name' => $order->user ? $order->user->name : null,
                 'notes' => $order->notes,
                 'created_at' => $order->created_at->toIso8601String(),
@@ -368,6 +373,98 @@ class RestaurantController extends Controller
         return response()->json(['success' => true, 'orders' => $formattedOrders]);
     }
 
+    public function kitchenStream(Request $request)
+    {
+        $companyId = $request->company_id ?? Company::first()->id;
+        
+        header('Content-Type: text/event-stream');
+        header('Cache-Control: no-cache');
+        header('Connection: keep-alive');
+        header('X-Accel-Buffering: no');
+        
+        echo "retry: 2000\n";
+        
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        
+        $lastOrderCount = -1;
+        $lastStatusChange = null;
+        $lastCheck = time();
+        $lastCacheKey = 'kitchen_updated_' . $companyId;
+        
+        while (true) {
+            if (connection_aborted()) {
+                break;
+            }
+            
+            $currentTime = time();
+            $currentCache = Cache::get($lastCacheKey);
+            
+            $orders = RestaurantOrder::where('company_id', $companyId)
+                ->whereIn('status', ['OPEN', 'SENT_TO_KITCHEN', 'READY'])
+                ->whereHas('items', function($q) {
+                    $q->whereIn('kitchen_status', ['SENT', 'READY']);
+                })
+                ->with(['items' => function($q) {
+                    $q->whereIn('kitchen_status', ['SENT', 'READY']);
+                }, 'table.floor', 'user'])
+                ->orderBy('created_at', 'asc')
+                ->get();
+            
+            $shouldSend = false;
+            
+            if ($currentCache !== $lastStatusChange) {
+                $shouldSend = true;
+                $lastStatusChange = $currentCache;
+            }
+            
+            if ($orders->count() !== $lastOrderCount) {
+                $shouldSend = true;
+                $lastOrderCount = $orders->count();
+            }
+            
+            if ($currentTime - $lastCheck >= 5) {
+                $shouldSend = true;
+                $lastCheck = $currentTime;
+            }
+            
+            if ($shouldSend) {
+                $formattedOrders = $orders->map(function($order) {
+                    return [
+                        'id' => $order->id,
+                        'order_number' => $order->order_number,
+                        'status' => $order->status,
+                        'table_id' => $order->table_id,
+                        'table_name' => $order->table ? $order->table->name : 'Mesa',
+                        'floor_name' => $order->table && $order->table->floor ? $order->table->floor->name : null,
+                        'user_name' => $order->user ? $order->user->name : null,
+                        'notes' => $order->notes,
+                        'created_at' => $order->created_at->toIso8601String(),
+                        'items' => $order->items->map(function($item) {
+                            return [
+                                'id' => $item->id,
+                                'product_name' => $item->product_name,
+                                'quantity' => $item->quantity,
+                                'kitchen_status' => $item->kitchen_status,
+                                'notes' => $item->notes,
+                            ];
+                        })
+                    ];
+                });
+                
+                $eventId = time();
+                echo "id: {$eventId}\n";
+                echo "data: " . json_encode(['success' => true, 'orders' => $formattedOrders, 'timestamp' => date('H:i:s')]) . "\n\n";
+                flush();
+            }
+            
+            usleep(1000000);
+        }
+        
+        return response()->json(['success' => true]);
+    }
+
     public function markKitchenReady($orderId)
     {
         try {
@@ -379,6 +476,8 @@ class RestaurantController extends Controller
             
             $order->status = 'READY';
             $order->save();
+
+            $this->broadcastKitchenUpdate($order->company_id, 'ready');
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
@@ -397,25 +496,50 @@ class RestaurantController extends Controller
 
             $order->table->update(['status' => 'AVAILABLE']);
 
+            Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
-    private function updateOrderTotals(RestaurantOrder $order)
+private function broadcastKitchenUpdate(int $companyId, string $action): void
     {
-        $items = $order->items;
-        
-        $subtotal = $items->sum('total') / 1.18;
-        $igv = $items->sum('total') - $subtotal;
-        $total = $items->sum('total');
+        $orders = RestaurantOrder::where('company_id', $companyId)
+            ->whereIn('status', ['OPEN', 'SENT_TO_KITCHEN', 'READY'])
+            ->whereHas('items', function($q) {
+                $q->whereIn('kitchen_status', ['SENT', 'READY']);
+            })
+            ->with(['items' => function($q) {
+                $q->whereIn('kitchen_status', ['SENT', 'READY']);
+            }, 'table.floor', 'user'])
+            ->orderBy('created_at', 'asc')
+            ->get();
 
-        $order->update([
-            'subtotal' => round($subtotal, 2),
-            'igv' => round($igv, 2),
-            'total' => round($total, 2),
-        ]);
+        $formattedOrders = $orders->map(function($order) {
+            return [
+                'id' => $order->id,
+                'order_number' => $order->order_number,
+                'status' => $order->status,
+                'table_name' => $order->table ? $order->table->name : 'Mesa',
+                'floor_name' => $order->table && $order->table->floor ? $order->table->floor->name : null,
+                'user_name' => $order->user ? $order->user->name : null,
+                'notes' => $order->notes,
+                'created_at' => $order->created_at->toIso8601String(),
+                'items' => $order->items->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'product_name' => $item->product_name,
+                        'quantity' => $item->quantity,
+                        'kitchen_status' => $item->kitchen_status,
+                        'notes' => $item->notes,
+                    ];
+                })
+            ];
+        })->values();
+
+        event(new KitchenOrderUpdated($companyId, $action, $formattedOrders->toArray()));
     }
 
     public function saveOrderNotes(Request $request, $orderId)

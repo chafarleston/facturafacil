@@ -551,6 +551,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Initial floor:', floorId);
         selectFloor(floorId);
     }
+    connectTableSSE();
 });
 
 function selectFloor(floorId) {
@@ -592,6 +593,45 @@ function selectTable(tableId) {
     } else {
         openTable(tableId);
     }
+}
+
+let sseConnection = null;
+let lastTableStates = {};
+
+function connectTableSSE() {
+    if (sseConnection) sseConnection.close();
+    
+    sseConnection = new EventSource('/restaurant/kitchen-stream');
+    
+    sseConnection.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        if (!data.success || !data.orders) return;
+        
+        data.orders.forEach(order => {
+            const tableCard = document.querySelector(`.table-card[data-table-id="${order.table_id}"]`);
+            if (!tableCard) return;
+            
+            const statusBadge = tableCard.querySelector('.table-status-badge');
+            const prevStatus = tableCard.dataset.currentStatus;
+            
+            if (prevStatus !== order.status) {
+                tableCard.dataset.currentStatus = order.status;
+                
+                if (order.status === 'READY') {
+                    statusBadge.textContent = 'LISTO';
+                    statusBadge.className = 'table-status-badge status-ready';
+                } else if (order.status === 'COMPLETED') {
+                    statusBadge.textContent = 'DISPONIBLE';
+                    statusBadge.className = 'table-status-badge status-available';
+                }
+            }
+        });
+    };
+    
+    sseConnection.onerror = function() {
+        sseConnection.close();
+        setTimeout(connectTableSSE, 5000);
+    };
 }
 
 function closeModal() {

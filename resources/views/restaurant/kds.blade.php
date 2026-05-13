@@ -439,6 +439,7 @@ function renderKitchenOrders() {
                         <div class="kds-order-number">${order.order_number}</div>
                         <div class="kds-order-table">
                             <i class="fas fa-chair"></i> ${order.table_name || 'Mesa'}
+                            ${order.floor_name ? ` <span style="opacity:0.6;">(${order.floor_name})</span>` : ''}
                         </div>
                         ${order.user_name ? `<div class="kds-order-user"><i class="fas fa-user"></i> ${order.user_name}</div>` : ''}
                         ${order.notes ? `<div class="kds-order-notes"><i class="fas fa-sticky-note"></i> ${order.notes}</div>` : ''}
@@ -514,8 +515,37 @@ function printTicket(orderId) {
     window.open('/restaurant/orders/' + orderId + '/print-kitchen', '_blank');
 }
 
-loadKitchenOrders();
-setInterval(loadKitchenOrders, 5000);
+window.kdsOrders = null;
+
+function connectSSE() {
+    const es = new EventSource('/restaurant/kitchen-stream');
+    
+    es.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        if (data.success && data.orders !== undefined) {
+            const prevIds = window.kdsOrders ? window.kdsOrders.map(o => o.id) : [];
+            const newIds = data.orders.map(o => o.id);
+            
+            const hasChanges = JSON.stringify(prevIds.sort()) !== JSON.stringify(newIds.sort());
+            
+            if (hasChanges) {
+                if (prevIds.length > 0) {
+                    playAlertSound();
+                }
+                window.kdsOrders = data.orders;
+                renderOrders(data.orders);
+                updateStats(data.orders);
+            }
+        }
+    };
+    
+    es.onerror = function() {
+        es.close();
+        setTimeout(connectSSE, 3000);
+    };
+}
+
+connectSSE();
     </script>
 </body>
 </html>
