@@ -548,10 +548,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const firstFloor = document.querySelector('.floor-tab');
     if (firstFloor) {
         const floorId = parseInt(firstFloor.dataset.floorId);
-        console.log('Initial floor:', floorId);
         selectFloor(floorId);
     }
-    connectTableSSE();
+    pollActiveOrders();
+    setInterval(pollActiveOrders, 10000);
 });
 
 function selectFloor(floorId) {
@@ -593,48 +593,9 @@ function selectTable(tableId) {
     } else {
         openTable(tableId);
     }
-}
-
-let sseConnection = null;
-let lastTableStates = {};
-
-function connectTableSSE() {
-    if (sseConnection) sseConnection.close();
+    }
     
-    sseConnection = new EventSource('/restaurant/kitchen-stream');
-    
-    sseConnection.onmessage = function(event) {
-        const data = JSON.parse(event.data);
-        if (!data.success || !data.orders) return;
-        
-        data.orders.forEach(order => {
-            const tableCard = document.querySelector(`.table-card[data-table-id="${order.table_id}"]`);
-            if (!tableCard) return;
-            
-            const statusBadge = tableCard.querySelector('.table-status-badge');
-            const prevStatus = tableCard.dataset.currentStatus;
-            
-            if (prevStatus !== order.status) {
-                tableCard.dataset.currentStatus = order.status;
-                
-                if (order.status === 'READY') {
-                    statusBadge.textContent = 'LISTO';
-                    statusBadge.className = 'table-status-badge status-ready';
-                } else if (order.status === 'COMPLETED') {
-                    statusBadge.textContent = 'DISPONIBLE';
-                    statusBadge.className = 'table-status-badge status-available';
-                }
-            }
-        });
-    };
-    
-    sseConnection.onerror = function() {
-        sseConnection.close();
-        setTimeout(connectTableSSE, 5000);
-    };
-}
-
-function closeModal() {
+    function closeModal() {
     document.getElementById('tableOrderModal').classList.remove('show');
     resetTableStyle(currentTableId);
 }
@@ -986,6 +947,43 @@ function cancelOrder() {
             alert(data.message || 'Error');
         }
     });
+}
+
+function pollActiveOrders() {
+    fetch('/restaurant/active-orders')
+    .then(res => res.json())
+    .then(data => {
+        if (!data.success) return;
+        
+        data.orders.forEach(order => {
+            const tableCard = document.querySelector(`.table-card[data-table-id="${order.table_id}"]`);
+            if (!tableCard) return;
+            
+            const statusBadge = tableCard.querySelector('.table-status-badge');
+            tableCard.dataset.orderId = order.id;
+            tableCard.dataset.currentStatus = order.status;
+            
+            const statusLabels = {
+                'OPEN': 'ABIERTO',
+                'SENT_TO_KITCHEN': 'EN COCINA',
+                'READY': 'LISTO',
+                'COMPLETED': 'COMPLETADO',
+                'CANCELLED': 'ANULADO'
+            };
+            
+            const classMap = {
+                'OPEN': 'status-occupied',
+                'SENT_TO_KITCHEN': 'status-sent',
+                'READY': 'status-ready',
+                'COMPLETED': 'status-available',
+                'CANCELLED': 'status-cancelled'
+            };
+            
+            statusBadge.textContent = statusLabels[order.status] || 'DISPONIBLE';
+            statusBadge.className = 'table-status-badge ' + (classMap[order.status] || 'status-available');
+        });
+    })
+    .catch(() => {});
 }
 </script>
 @endpush

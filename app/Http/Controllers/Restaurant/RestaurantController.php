@@ -228,7 +228,7 @@ class RestaurantController extends Controller
             $order->status = 'SENT_TO_KITCHEN';
             $order->save();
 
-            $this->broadcastKitchenUpdate($order->company_id, 'sent');
+            Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
 
             return response()->json([
                 'success' => true,
@@ -271,15 +271,15 @@ class RestaurantController extends Controller
         $item->save();
 
         $order = $item->order;
-$allReady = $order->items()->where('kitchen_status', '!=', 'READY')->where('kitchen_status', '!=', 'DELIVERED')->count() == 0;
-            if ($allReady) {
-                $order->status = 'READY';
-                $order->save();
-            }
+        $allReady = $order->items()->where('kitchen_status', '!=', 'READY')->where('kitchen_status', '!=', 'DELIVERED')->count() == 0;
+        if ($allReady) {
+            $order->status = 'READY';
+            $order->save();
+        }
 
-            $this->broadcastKitchenUpdate($order->company_id, 'updated');
+        Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
 
-            return response()->json(['success' => true]);
+        return response()->json(['success' => true]);
     }
 
     public function deliverItem($itemId)
@@ -477,7 +477,7 @@ $allReady = $order->items()->where('kitchen_status', '!=', 'READY')->where('kitc
             $order->status = 'READY';
             $order->save();
 
-            $this->broadcastKitchenUpdate($order->company_id, 'ready');
+            Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
@@ -504,42 +504,19 @@ $allReady = $order->items()->where('kitchen_status', '!=', 'READY')->where('kitc
         }
     }
 
-private function broadcastKitchenUpdate(int $companyId, string $action): void
+private function updateOrderTotals(RestaurantOrder $order)
     {
-        $orders = RestaurantOrder::where('company_id', $companyId)
-            ->whereIn('status', ['OPEN', 'SENT_TO_KITCHEN', 'READY'])
-            ->whereHas('items', function($q) {
-                $q->whereIn('kitchen_status', ['SENT', 'READY']);
-            })
-            ->with(['items' => function($q) {
-                $q->whereIn('kitchen_status', ['SENT', 'READY']);
-            }, 'table.floor', 'user'])
-            ->orderBy('created_at', 'asc')
-            ->get();
+        $items = $order->items;
+        
+        $subtotal = $items->sum('total') / 1.18;
+        $igv = $items->sum('total') - $subtotal;
+        $total = $items->sum('total');
 
-        $formattedOrders = $orders->map(function($order) {
-            return [
-                'id' => $order->id,
-                'order_number' => $order->order_number,
-                'status' => $order->status,
-                'table_name' => $order->table ? $order->table->name : 'Mesa',
-                'floor_name' => $order->table && $order->table->floor ? $order->table->floor->name : null,
-                'user_name' => $order->user ? $order->user->name : null,
-                'notes' => $order->notes,
-                'created_at' => $order->created_at->toIso8601String(),
-                'items' => $order->items->map(function($item) {
-                    return [
-                        'id' => $item->id,
-                        'product_name' => $item->product_name,
-                        'quantity' => $item->quantity,
-                        'kitchen_status' => $item->kitchen_status,
-                        'notes' => $item->notes,
-                    ];
-                })
-            ];
-        })->values();
-
-        event(new KitchenOrderUpdated($companyId, $action, $formattedOrders->toArray()));
+        $order->update([
+            'subtotal' => round($subtotal, 2),
+            'igv' => round($igv, 2),
+            'total' => round($total, 2),
+        ]);
     }
 
     public function saveOrderNotes(Request $request, $orderId)

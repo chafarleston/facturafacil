@@ -515,37 +515,8 @@ function printTicket(orderId) {
     window.open('/restaurant/orders/' + orderId + '/print-kitchen', '_blank');
 }
 
-window.kdsOrders = null;
-
-function connectSSE() {
-    const es = new EventSource('/restaurant/kitchen-stream');
-    
-    es.onmessage = function(event) {
-        const data = JSON.parse(event.data);
-        if (data.success && data.orders !== undefined) {
-            const prevIds = window.kdsOrders ? window.kdsOrders.map(o => o.id) : [];
-            const newIds = data.orders.map(o => o.id);
-            
-            const hasChanges = JSON.stringify(prevIds.sort()) !== JSON.stringify(newIds.sort());
-            
-            if (hasChanges) {
-                if (prevIds.length > 0) {
-                    playAlertSound();
-                }
-                window.kdsOrders = data.orders;
-                renderOrders(data.orders);
-                updateStats(data.orders);
-            }
-        }
-    };
-    
-    es.onerror = function() {
-        es.close();
-        setTimeout(connectSSE, 3000);
-    };
-}
-
-connectSSE();
+loadKitchenOrders();
+setInterval(loadKitchenOrders, 5000);
     </script>
 </body>
 </html>
