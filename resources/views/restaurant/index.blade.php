@@ -332,7 +332,6 @@
                      data-table-id="{{ $table->id }}"
                      data-floor-id="{{ $floor->id }}"
                      data-order-id="{{ $table->activeOrder()?->id }}"
-                     style="{{ $table->status == 'AVAILABLE' ? '' : 'display:none' }}"
                      onclick="selectTable({{ $table->id }})">
                     <i class="fas fa-chair"></i>
                     <div class="table-name">{{ $table->name }}</div>
@@ -462,9 +461,13 @@ function selectFloor(floorId) {
     document.querySelectorAll('.floor-tab').forEach(t => t.classList.remove('active'));
     document.querySelector(`.floor-tab[data-floor-id="${floorId}"]`).classList.add('active');
     
-    // Mostrar todas las mesas, no ocultar las de otros pisos
+    // Ocultar mesas de otros pisos, mostrar solo las del piso seleccionado
     document.querySelectorAll('.table-card').forEach(card => {
-        card.style.display = '';
+        if (card.dataset.floorId == floorId) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
     });
 }
 
@@ -474,15 +477,6 @@ function selectTable(tableId) {
     
     const tableName = table.querySelector('.table-name').textContent;
     const orderId = table.dataset.orderId;
-    
-    // Si ya hay un pedido activo y es otra mesa, confirmar cambio
-    if (currentOrderId && currentTableId && currentTableId != tableId) {
-        if (!confirm('Hay un pedido activo en otra mesa. ¿Cambiar de mesa?')) {
-            return;
-        }
-        // Restaurar estilo de mesa anterior
-        resetTableStyle(currentTableId);
-    }
     
     // Marcar mesa como seleccionada
     if (!previousTableBorderColor[tableId]) {
@@ -746,15 +740,40 @@ function sendToKitchen() {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
         }
     })
-    .then(res => res.json())
+    .then(res => {
+        if (!res.ok) throw new Error('Error HTTP');
+        return res.json();
+    })
     .then(data => {
-        alert(data.message);
+        console.log('Send to kitchen response:', data);
         if (data.success) {
+            alert(data.message);
+            // Actualizar estado visual de la mesa
+            const tableCard = document.querySelector(`.table-card[data-table-id="${currentTableId}"]`);
+            if (tableCard) {
+                tableCard.classList.remove('available');
+                tableCard.classList.add('occupied');
+                tableCard.style.borderColor = '#dc3545';
+                // Agregar badge de pedido si no existe
+                if (!tableCard.querySelector('.table-order')) {
+                    const badge = document.createElement('div');
+                    badge.className = 'table-order';
+                    badge.textContent = 'En cocina';
+                    tableCard.appendChild(badge);
+                }
+            }
             loadOrder(currentOrderId);
+        } else {
+            alert(data.message || 'Error al enviar a cocina');
         }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        alert('Error al enviar a cocina');
     });
 }
 
@@ -794,13 +813,31 @@ function closeTable() {
     .then(data => {
         if (data.success) {
             alert('Mesa cerrada exitosamente');
+            // Actualizar visualmente la mesa como disponible
+            if (currentTableId) {
+                const tableCard = document.querySelector(`.table-card[data-table-id="${currentTableId}"]`);
+                if (tableCard) {
+                    tableCard.classList.remove('occupied');
+                    tableCard.classList.add('available');
+                    tableCard.style.borderColor = '#28a745';
+                    tableCard.dataset.orderId = '';
+                    const badge = tableCard.querySelector('.table-order');
+                    if (badge) badge.remove();
+                }
+            }
             resetOrderUI();
-            location.reload();
         }
     });
 }
 
 function resetOrderUI() {
+    if (currentTableId) {
+        const tableCard = document.querySelector(`.table-card[data-table-id="${currentTableId}"]`);
+        if (tableCard) {
+            resetTableStyle(currentTableId);
+        }
+    }
+    
     currentOrderId = null;
     currentTableId = null;
     
@@ -812,11 +849,6 @@ function resetOrderUI() {
     document.getElementById('btnCancelOrder').disabled = true;
     document.getElementById('productsCategories').style.display = 'none';
     document.getElementById('productsList').style.display = 'none';
-    
-    // Restaurar estilo de mesa
-    Object.keys(previousTableBorderColor).forEach(tableId => {
-        resetTableStyle(parseInt(tableId));
-    });
 }
 
 function cancelOrder() {
@@ -834,8 +866,19 @@ function cancelOrder() {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
+            // Actualizar visualmente la mesa como disponible
+            if (currentTableId) {
+                const tableCard = document.querySelector(`.table-card[data-table-id="${currentTableId}"]`);
+                if (tableCard) {
+                    tableCard.classList.remove('occupied');
+                    tableCard.classList.add('available');
+                    tableCard.style.borderColor = '#28a745';
+                    tableCard.dataset.orderId = '';
+                    const badge = tableCard.querySelector('.table-order');
+                    if (badge) badge.remove();
+                }
+            }
             resetOrderUI();
-            location.reload();
         }
     });
 }

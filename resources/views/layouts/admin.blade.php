@@ -209,9 +209,16 @@
             </li>
             
             <li class="nav-item">
-              <a href="{{ route('restaurant.index') }}" class="nav-link {{ request()->routeIs('restaurant.*') ? 'active' : '' }}">
+              <a href="{{ route('restaurant.index') }}" class="nav-link {{ request()->routeIs('restaurant.index') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-utensils"></i>
                 <p>Restaurante</p>
+              </a>
+            </li>
+            
+            <li class="nav-item">
+              <a href="{{ route('restaurant.kitchen') }}" class="nav-link {{ request()->routeIs('restaurant.kitchen') ? 'active' : '' }}" target="_blank">
+                <i class="nav-icon fas fa-fire"></i>
+                <p>Cocina (KDS)</p>
               </a>
             </li>
             @endcan

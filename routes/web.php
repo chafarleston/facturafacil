@@ -104,6 +104,10 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
 
     // Restaurant Routes
     Route::get('/restaurant', [RestaurantController::class, 'index'])->name('restaurant.index');
+    Route::get('/restaurant/kitchen', [RestaurantController::class, 'kitchenIndex'])->name('restaurant.kitchen');
+    Route::get('/restaurant/kitchen-orders', [RestaurantController::class, 'getKitchenOrders'])->name('restaurant.kitchenOrders');
+    Route::post('/restaurant/kitchen/{orderId}/ready', [RestaurantController::class, 'markKitchenReady'])->name('restaurant.kitchenReady');
+    Route::post('/restaurant/kitchen/{orderId}/deliver', [RestaurantController::class, 'deliverKitchenOrder'])->name('restaurant.kitchenDeliver');
     Route::post('/restaurant/tables/{tableId}/open', [RestaurantController::class, 'openTable'])->name('restaurant.tables.open');
     Route::get('/restaurant/orders/{orderId}', [RestaurantController::class, 'getOrder'])->name('restaurant.orders.show');
     Route::post('/restaurant/orders/{orderId}/items', [RestaurantController::class, 'addItem'])->name('restaurant.orders.items');

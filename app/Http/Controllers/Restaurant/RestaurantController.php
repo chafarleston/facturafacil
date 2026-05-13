@@ -189,37 +189,40 @@ class RestaurantController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function sendToKitchen(Request $request)
+    public function sendToKitchen(Request $request, $orderId)
     {
-        $validated = $request->validate([
-            'order_id' => 'required|exists:restaurant_orders,id',
-        ]);
+        try {
+            $order = RestaurantOrder::with('items')->findOrFail($orderId);
+            
+            $pendingItems = $order->items()->where('kitchen_status', 'PENDING')->get();
+            
+            if ($pendingItems->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hay productos pendientes para enviar'
+                ]);
+            }
 
-        $order = RestaurantOrder::with('items')->findOrFail($validated['order_id']);
-        
-        $pendingItems = $order->items()->where('kitchen_status', 'PENDING')->get();
-        
-        if ($pendingItems->isEmpty()) {
+            foreach ($pendingItems as $item) {
+                $item->kitchen_status = 'SENT';
+                $item->sent_to_kitchen_at = now();
+                $item->save();
+            }
+
+            $order->status = 'SENT_TO_KITCHEN';
+            $order->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pedido enviado a cocina',
+                'items_sent' => $pendingItems->count()
+            ]);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'No hay productos pendientes para enviar'
-            ]);
+                'message' => $e->getMessage()
+            ], 500);
         }
-
-        foreach ($pendingItems as $item) {
-            $item->kitchen_status = 'SENT';
-            $item->sent_to_kitchen_at = now();
-            $item->save();
-        }
-
-        $order->status = 'SENT_TO_KITCHEN';
-        $order->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Pedido enviado a cocina',
-            'items_sent' => $pendingItems->count()
-        ]);
     }
 
     public function printKitchenTicket(Request $request, $orderId)
@@ -232,8 +235,13 @@ class RestaurantController extends Controller
             return back()->with('error', 'No hay productos para imprimir');
         }
 
-        $pdf = Pdf::loadView('restaurant.tickets.kitchen', compact('order'));
-        $pdf->setPaper([0, 0, 80, 200], 'portrait');
+        $pdf = Pdf::loadView('restaurant.tickets.kitchen', compact('order'))
+            ->setPaper([0, 0, 226.77, 1000], 'portrait')
+            ->setOption('margin-top', 0)
+            ->setOption('margin-right', 0)
+            ->setOption('margin-bottom', 0)
+            ->setOption('margin-left', 0)
+            ->setOption('encoding', 'UTF-8');
         
         return $pdf->stream('ticket-cocina-' . $order->order_number . '.pdf');
     }
@@ -299,6 +307,84 @@ class RestaurantController extends Controller
             ->get();
 
         return response()->json(['success' => true, 'orders' => $orders]);
+    }
+
+    public function kitchenIndex(Request $request)
+    {
+        return view('restaurant.kds');
+    }
+
+    public function getKitchenOrders(Request $request)
+    {
+        $companyId = $request->company_id ?? Company::first()->id;
+        
+        $orders = RestaurantOrder::where('company_id', $companyId)
+            ->whereIn('status', ['OPEN', 'SENT_TO_KITCHEN', 'READY'])
+            ->whereHas('items', function($q) {
+                $q->whereIn('kitchen_status', ['SENT', 'PENDING', 'READY']);
+            })
+            ->with(['items' => function($q) {
+                $q->whereIn('kitchen_status', ['SENT', 'PENDING', 'READY']);
+            }, 'table', 'user'])
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        $formattedOrders = $orders->map(function($order) {
+            return [
+                'id' => $order->id,
+                'order_number' => $order->order_number,
+                'status' => $order->status,
+                'table_name' => $order->table ? $order->table->name : 'Mesa',
+                'user_name' => $order->user ? $order->user->name : null,
+                'created_at' => $order->created_at->toIso8601String(),
+                'items' => $order->items->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'product_name' => $item->product_name,
+                        'quantity' => $item->quantity,
+                        'kitchen_status' => $item->kitchen_status,
+                        'notes' => $item->notes,
+                    ];
+                })
+            ];
+        });
+
+        return response()->json(['success' => true, 'orders' => $formattedOrders]);
+    }
+
+    public function markKitchenReady($orderId)
+    {
+        try {
+            $order = RestaurantOrder::with('items')->findOrFail($orderId);
+            
+            $order->items()->whereIn('kitchen_status', ['SENT', 'PENDING'])->update([
+                'kitchen_status' => 'READY'
+            ]);
+            
+            $order->status = 'READY';
+            $order->save();
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function deliverKitchenOrder($orderId)
+    {
+        try {
+            $order = RestaurantOrder::with('items')->findOrFail($orderId);
+            
+            $order->items()->update(['kitchen_status' => 'DELIVERED']);
+            $order->status = 'COMPLETED';
+            $order->save();
+
+            $order->table->update(['status' => 'AVAILABLE']);
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 
     private function updateOrderTotals(RestaurantOrder $order)

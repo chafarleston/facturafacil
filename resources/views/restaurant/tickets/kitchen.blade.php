@@ -4,32 +4,49 @@
     <meta charset="utf-8">
     <title>Ticket Cocina</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; }
-        .ticket { padding: 5px; }
-        .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }
-        .header h3 { font-size: 14px; }
-        .info { margin-bottom: 5px; }
-        .info-row { display: flex; justify-content: space-between; }
-        .items { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 5px 0; margin: 5px 0; }
-        .item { margin-bottom: 3px; }
-        .item-name { font-weight: bold; }
-        .item-qty { display: flex; justify-content: space-between; }
-        .notes { font-style: italic; color: #666; font-size: 10px; }
-        .footer { text-align: center; margin-top: 5px; }
-        .footer h4 { font-size: 16px; }
-        .time { font-size: 10px; color: #666; }
-        @media print {
-            body { width: 80mm; }
-            .ticket { page-break-inside: avoid; }
+        @page {
+            margin: 0;
+            size: 80mm auto;
         }
+        * { margin: 0; padding: 0; }
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 10pt;
+            width: 75mm;
+            margin: 0 auto;
+            padding: 3mm;
+        }
+        .ticket { width: 100%; }
+        .header {
+            text-align: center;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 2mm;
+            margin-bottom: 2mm;
+        }
+        .header h3 { font-size: 12pt; margin-bottom: 1mm; }
+        .header .company { font-size: 8pt; }
+        .info { margin-bottom: 2mm; font-size: 9pt; }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 1mm; }
+        .items {
+            border-top: 1px dashed #000;
+            border-bottom: 1px dashed #000;
+            padding: 2mm 0;
+            margin: 2mm 0;
+        }
+        .item { margin-bottom: 3mm; }
+        .item-qty { font-weight: bold; font-size: 11pt; }
+        .item-name { font-weight: bold; font-size: 10pt; }
+        .notes { font-style: italic; color: #666; font-size: 8pt; margin-left: 2mm; }
+        .footer { text-align: center; margin-top: 2mm; }
+        .footer .separator { font-size: 11pt; margin: 1mm 0; }
+        .time { font-size: 8pt; color: #666; }
     </style>
 </head>
 <body>
     <div class="ticket">
         <div class="header">
-            <h3>*** PEDIDO COCINA ***</h3>
-            <div>{{ $order->company->name ?? 'Restaurante' }}</div>
+            <h3>** PEDIDO COCINA **</h3>
+            <div class="company">{{ $order->company->name ?? 'Restaurante' }}</div>
         </div>
         
         <div class="info">
@@ -60,9 +77,7 @@
         <div class="items">
             @foreach($order->items as $item)
             <div class="item">
-                <div class="item-qty">
-                    <span>{{ $item->quantity }}x</span>
-                </div>
+                <div class="item-qty">{{ $item->quantity }}x</div>
                 <div class="item-name">{{ $item->product_name }}</div>
                 @if($item->notes)
                 <div class="notes">Obs: {{ $item->notes }}</div>
@@ -73,10 +88,8 @@
         
         <div class="footer">
             <div class="time">{{ now()->format('d/m/Y H:i:s') }}</div>
-            <h4>*** COCINA ***</h4>
+            <div class="separator">**** COCINA ****</div>
         </div>
     </div>
-    
-    <script>window.print();</script>
 </body>
 </html>
