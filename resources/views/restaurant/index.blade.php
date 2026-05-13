@@ -397,7 +397,7 @@
             <h4 id="modalTableName">Mesa</h4>
             <small id="modalOrderNumber">Sin pedido</small>
         </div>
-        <button class="btn-close-modal" onclick="closeModal()">&times;</button>
+        <button class="btn-close-modal" onclick="closeModal()">&#8592; Retornar a mesas</button>
     </div>
     
     <div class="modal-tabs">
@@ -484,21 +484,14 @@
 </div>
 
 {{-- Modal Cantidad --}}
-<div class="modal fade qty-modal" id="qtyModal" tabindex="-1">
-    <div class="modal-dialog modal-sm">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Cantidad</h5>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <input type="number" id="itemQtyInput" class="form-control" value="1" min="0.1" step="0.1">
-                <small class="text-muted">Producto: <span id="modalProductName"></span></small>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="confirmAddItem()">Agregar</button>
-            </div>
+<div class="qty-overlay" id="qtyOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+    <div class="qty-popup" style="background:white; padding:20px; border-radius:10px; min-width:280px; max-width:90%;">
+        <h5 style="margin:0 0 15px 0;">Cantidad</h5>
+        <input type="number" id="itemQtyInput" class="form-control" value="1" min="0.1" step="0.1" style="margin-bottom:10px;">
+        <small class="text-muted d-block mb-2">Producto: <span id="modalProductName"></span></small>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button type="button" class="btn btn-secondary" onclick="closeQtyModal()">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="confirmAddItem()">Agregar</button>
         </div>
     </div>
 </div>
@@ -701,7 +694,12 @@ function addProductToOrder(productId) {
     const product = productsData.find(p => p.id === productId);
     document.getElementById('modalProductName').textContent = product.descripcion;
     document.getElementById('itemQtyInput').value = 1;
-    $('#qtyModal').modal('show');
+    document.getElementById('itemQtyInput').focus();
+    document.getElementById('qtyOverlay').style.display = 'flex';
+}
+
+function closeQtyModal() {
+    document.getElementById('qtyOverlay').style.display = 'none';
 }
 
 function confirmAddItem() {
@@ -710,6 +708,8 @@ function confirmAddItem() {
         alert('Ingrese una cantidad válida');
         return;
     }
+    
+    document.getElementById('qtyOverlay').style.display = 'none';
     
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     
@@ -733,7 +733,6 @@ function confirmAddItem() {
     .then(data => {
         if (data.success) {
             loadOrder(currentOrderId);
-            $('#qtyModal').modal('hide');
             switchTab('order');
         } else {
             alert(data.message || 'Error al agregar producto');
