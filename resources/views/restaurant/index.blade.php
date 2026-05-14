@@ -673,6 +673,7 @@ let previousTableBorderColor = {};
 let currentFloorId = null;
 let pendingDeleteItems = {};
 let pendingDeleteItemId = null;
+let pendingCancelAction = null;
 
 // Initialize: show only first floor's tables
 document.addEventListener('DOMContentLoaded', function() {
@@ -1095,16 +1096,40 @@ function closeTable() {
 
 function cancelOrder() {
     if (!currentOrderId) return;
-    if (!confirm('¿Anular pedido? Esta acción no se puede deshacer.')) return;
     
+    const order = window.currentOrderData;
+    const hasKitchenItems = order && order.items && order.items.some(i => ['SENT', 'READY', 'DELIVERED'].includes(i.kitchen_status));
+    
+    if (hasKitchenItems) {
+        if (pendingCancelAction) {
+            pendingCancelAction = currentOrderId;
+            document.getElementById('adminPasswordItemId').value = 'cancel_' + currentOrderId;
+            document.getElementById('adminPasswordInput').value = '';
+            document.getElementById('adminPasswordOverlay').style.display = 'flex';
+            document.getElementById('adminPasswordInput').focus();
+        } else {
+            pendingCancelAction = true;
+            alert('El pedido tiene productos en cocina. Presione Anular nuevamente para confirmar con contraseña de administrador.');
+        }
+        return;
+    }
+    
+    if (!confirm('¿Anular pedido?')) return;
+    cancelOrderRequest();
+}
+
+function cancelOrderRequest(password) {
+    const body = password ? { admin_password: password } : {};
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     
     fetch('/restaurant/orders/' + currentOrderId + '/cancel', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': csrfToken,
+            'Content-Type': 'application/json',
             'Accept': 'application/json'
-        }
+        },
+        body: JSON.stringify(body)
     })
     .then(res => res.json())
     .then(data => {
@@ -1119,12 +1144,20 @@ function cancelOrder() {
 
 function closeAdminPasswordModal() {
     document.getElementById('adminPasswordOverlay').style.display = 'none';
+    pendingCancelAction = null;
 }
 
 function confirmAdminPassword() {
     const itemId = document.getElementById('adminPasswordItemId').value;
     const password = document.getElementById('adminPasswordInput').value;
     if (!password) { alert('Ingrese su contraseña'); return; }
+    
+    closeAdminPasswordModal();
+    
+    if (itemId.startsWith('cancel_')) {
+        cancelOrderRequest(password);
+        return;
+    }
     
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     fetch('/restaurant/orders/items/' + itemId, {
@@ -1138,7 +1171,6 @@ function confirmAdminPassword() {
     })
     .then(res => res.json())
     .then(data => {
-        closeAdminPasswordModal();
         delete pendingDeleteItems[itemId];
         if (data.success) {
             loadOrder(currentOrderId);

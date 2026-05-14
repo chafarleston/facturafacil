@@ -27,7 +27,17 @@ class RestaurantController extends Controller
     public function index(Request $request)
     {
         $companyId = $request->company_id ?? Company::first()->id;
-        
+
+        $cajaAbierta = CashRegister::where('company_id', $companyId)
+            ->where('estado', 'ABIERTA')
+            ->where('user_id', auth()->id())
+            ->first();
+
+        if (!$cajaAbierta) {
+            return redirect()->route('cashregisters.index')
+                ->with('error', 'No se puede acceder al restaurante sin tener una caja abierta');
+        }
+
         $floors = Floor::where('company_id', $companyId)
             ->active()
             ->ordered()
@@ -307,6 +317,7 @@ class RestaurantController extends Controller
     public function printPrebill(Request $request, $orderId)
     {
         $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($orderId);
+        $order->setRelation('items', $order->items->where('kitchen_status', '!=', 'CANCELLED'));
 
         $company = Company::getMainCompany();
 
@@ -365,17 +376,40 @@ class RestaurantController extends Controller
         ]);
     }
 
-    public function cancelOrder($orderId)
+    public function cancelOrder(Request $request, $orderId)
     {
         if (auth()->user()->isMozo()) {
             return response()->json(['success' => false, 'message' => 'No tienes permiso para anular pedidos'], 403);
         }
         
-        $order = RestaurantOrder::findOrFail($orderId);
+        $order = RestaurantOrder::with('items')->findOrFail($orderId);
+        
+        $hasKitchenItems = $order->items->whereIn('kitchen_status', ['SENT', 'READY', 'DELIVERED'])->isNotEmpty();
+        
+        if ($hasKitchenItems) {
+            $adminPassword = $request->input('admin_password');
+            if (!$adminPassword) {
+                return response()->json([
+                    'success' => false,
+                    'requires_admin' => true,
+                    'message' => 'El pedido tiene productos enviados a cocina. Requiere autorización de administrador.'
+                ]);
+            }
+
+            $admin = auth()->user();
+            if (!$admin || !$admin->isAdmin() || !Hash::check($adminPassword, $admin->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Contraseña de administrador incorrecta'
+                ]);
+            }
+        }
         
         $order->items()->delete();
         $order->update(['status' => 'CANCELLED']);
         $order->table->update(['status' => 'AVAILABLE']);
+
+        Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
 
         return response()->json(['success' => true]);
     }
@@ -602,6 +636,7 @@ class RestaurantController extends Controller
             }
             
             $order = RestaurantOrder::with('items')->findOrFail($orderId);
+            $order->setRelation('items', $order->items->where('kitchen_status', '!=', 'CANCELLED'));
             
             if ($order->items->isEmpty()) {
                 return response()->json([
