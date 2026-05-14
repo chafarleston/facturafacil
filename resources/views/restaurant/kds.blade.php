@@ -271,7 +271,7 @@
 <body>
     <div class="kds-container">
         <div class="kds-header">
-            <h2><i class="fas fa-utensils"></i> COCINA - KDS</h2>
+            <h2><i class="fas fa-utensils"></i> {{ $kds === 'bar' ? 'KDS BAR' : ($kds === 'cocina2' ? 'KDS COCINA 2' : 'KDS COCINA') }}</h2>
             <div class="kds-stats">
                 <div class="kds-stat">
                     <div class="kds-stat-value" id="pendingCount">0</div>
@@ -309,6 +309,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <script>
+let kdsFilter = '{{ $kds ?? "cocina" }}';
 let allOrders = [];
 let audioContext = null;
 let alertSound = null;
@@ -376,7 +377,7 @@ setInterval(updateClock, 1000);
 updateClock();
 
 function loadKitchenOrders() {
-    fetch('/restaurant/kitchen-orders?_=' + Date.now())
+    fetch('/restaurant/kitchen-orders?_=' + Date.now() + '&kds=' + kdsFilter)
     .then(res => res.json())
     .then(data => {
         if (data.success) {

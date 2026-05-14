@@ -230,10 +230,12 @@ class DecolectaController extends Controller
                     
                     $direccion = implode(' ', $direccionParts);
                     $razonSocial = isset($parts[1]) ? trim($parts[1]) : '';
+                    $razonSocial = mb_convert_encoding($razonSocial, 'UTF-8', 'ISO-8859-1');
+                    $direccion = mb_convert_encoding($direccion, 'UTF-8', 'ISO-8859-1');
                     
                     return [
                         'ruc' => $rucInFile,
-                        'razon_social' => mb_convert_encoding($razonSocial, 'UTF-8', 'UTF-8'),
+                        'razon_social' => $razonSocial,
                         'estado' => isset($parts[2]) ? trim($parts[2]) : '',
                         'condicion' => isset($parts[3]) ? trim($parts[3]) : '',
                         'ubigeo' => isset($parts[4]) ? trim($parts[4]) : '',

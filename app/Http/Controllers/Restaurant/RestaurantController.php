@@ -165,6 +165,7 @@ class RestaurantController extends Controller
                     'total' => $product->precio * $validated['quantity'],
                     'kitchen_status' => 'PENDING',
                     'notes' => $validated['notes'] ?? null,
+                    'kds_destination' => $product->kds_destination ?? 'cocina',
                 ]);
             }
 
@@ -274,6 +275,10 @@ class RestaurantController extends Controller
             foreach ($pendingItems as $item) {
                 $item->kitchen_status = 'SENT';
                 $item->sent_to_kitchen_at = now();
+                $product = Product::find($item->product_id);
+                if ($product && $product->kds_destination) {
+                    $item->kds_destination = $product->kds_destination;
+                }
                 $item->save();
             }
 
@@ -431,20 +436,24 @@ class RestaurantController extends Controller
 
     public function kitchenIndex(Request $request)
     {
-        return view('restaurant.kds');
+        $kds = $request->kds ?? 'cocina';
+        return view('restaurant.kds', compact('kds'));
     }
 
     public function getKitchenOrders(Request $request)
     {
         $companyId = $request->company_id ?? Company::first()->id;
+        $kds = $request->kds ?? 'cocina';
         
         $orders = RestaurantOrder::where('company_id', $companyId)
             ->whereIn('status', ['OPEN', 'SENT_TO_KITCHEN', 'READY'])
-            ->whereHas('items', function($q) {
-                $q->whereIn('kitchen_status', ['SENT', 'READY']);
+            ->whereHas('items', function($q) use ($kds) {
+                $q->whereIn('kitchen_status', ['SENT', 'READY'])
+                  ->where('kds_destination', $kds);
             })
-            ->with(['items' => function($q) {
-                $q->whereIn('kitchen_status', ['SENT', 'READY', 'CANCELLED']);
+            ->with(['items' => function($q) use ($kds) {
+                $q->whereIn('kitchen_status', ['SENT', 'READY', 'CANCELLED'])
+                  ->where('kds_destination', $kds);
             }, 'table.floor', 'user'])
             ->orderBy('created_at', 'asc')
             ->get();
@@ -479,6 +488,7 @@ class RestaurantController extends Controller
     public function kitchenStream(Request $request)
     {
         $companyId = $request->company_id ?? Company::first()->id;
+        $kds = $request->kds ?? 'cocina';
         
         header('Content-Type: text/event-stream');
         header('Cache-Control: no-cache');
@@ -506,11 +516,13 @@ class RestaurantController extends Controller
             
             $orders = RestaurantOrder::where('company_id', $companyId)
                 ->whereIn('status', ['OPEN', 'SENT_TO_KITCHEN', 'READY'])
-                ->whereHas('items', function($q) {
-                    $q->whereIn('kitchen_status', ['SENT', 'READY']);
+                ->whereHas('items', function($q) use ($kds) {
+                    $q->whereIn('kitchen_status', ['SENT', 'READY'])
+                      ->where('kds_destination', $kds);
                 })
-                ->with(['items' => function($q) {
-                    $q->whereIn('kitchen_status', ['SENT', 'READY', 'CANCELLED']);
+                ->with(['items' => function($q) use ($kds) {
+                    $q->whereIn('kitchen_status', ['SENT', 'READY', 'CANCELLED'])
+                      ->where('kds_destination', $kds);
                 }, 'table.floor', 'user'])
                 ->orderBy('created_at', 'asc')
                 ->get();

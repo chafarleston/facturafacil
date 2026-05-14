@@ -229,17 +229,51 @@
 
             @can('restaurant')
             <li class="nav-item">
-              <a href="{{ route('restaurant.index') }}" class="nav-link {{ request()->routeIs('restaurant.index') ? 'active' : '' }}">
+              <a href="#" class="nav-link {{ request()->routeIs('restaurant.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-utensils"></i>
-                <p>Restaurante</p>
+                <p>
+                  Restaurante
+                  <i class="fas fa-angle-left right"></i>
+                </p>
               </a>
-            </li>
-            
-            <li class="nav-item">
-              <a href="{{ route('restaurant.kitchen') }}" class="nav-link {{ request()->routeIs('restaurant.kitchen') ? 'active' : '' }}" target="_blank">
-                <i class="nav-icon fas fa-fire"></i>
-                <p>Cocina (KDS)</p>
-              </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="{{ route('restaurant.index') }}" class="nav-link {{ request()->routeIs('restaurant.index') ? 'active' : '' }}">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Mesas</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{{ route('restaurant.kitchen') }}" class="nav-link {{ request()->routeIs('restaurant.kitchen') ? 'active' : '' }}" target="_blank">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Cocina (KDS)</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{{ route('restaurant.kitchen.cocina') }}" class="nav-link" target="_blank">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>KDS Cocina</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{{ route('restaurant.kitchen.cocina2') }}" class="nav-link" target="_blank">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>KDS Cocina 2</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{{ route('restaurant.kitchen.bar') }}" class="nav-link" target="_blank">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>KDS Bar</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{{ route('restaurant.floors.index') }}" class="nav-link {{ request()->routeIs('restaurant.floors.*') ? 'active' : '' }}">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Pisos</p>
+                  </a>
+                </li>
+              </ul>
             </li>
             @endcan
 
@@ -509,8 +543,6 @@
         
 if (document.getElementById('ubigeo_codigo')) {
             document.getElementById('ubigeo_codigo').value = distSelect.value;
-        }
-        }
       }
     }
   }

@@ -107,6 +107,9 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     // Restaurant Routes
     Route::get('/restaurant', [RestaurantController::class, 'index'])->name('restaurant.index');
     Route::get('/restaurant/kitchen', [RestaurantController::class, 'kitchenIndex'])->name('restaurant.kitchen');
+    Route::get('/restaurant/kitchen/cocina', function () { return redirect('/restaurant/kitchen?kds=cocina'); })->name('restaurant.kitchen.cocina');
+    Route::get('/restaurant/kitchen/cocina2', function () { return redirect('/restaurant/kitchen?kds=cocina2'); })->name('restaurant.kitchen.cocina2');
+    Route::get('/restaurant/kitchen/bar', function () { return redirect('/restaurant/kitchen?kds=bar'); })->name('restaurant.kitchen.bar');
     Route::get('/restaurant/kitchen-orders', [RestaurantController::class, 'getKitchenOrders'])->name('restaurant.kitchenOrders');
     Route::get('/restaurant/kitchen-stream', [RestaurantController::class, 'kitchenStream'])->name('restaurant.kitchenStream');
     Route::post('/restaurant/kitchen/{orderId}/ready', [RestaurantController::class, 'markKitchenReady'])->name('restaurant.kitchenReady');

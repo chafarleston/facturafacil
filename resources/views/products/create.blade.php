@@ -31,22 +31,41 @@
                 <input type="hidden" name="codigo_sunat" id="codigo_sunat" value="">
                 <div id="sunat-results" class="position-absolute bg-white border rounded mt-1 p-2" style="display:none;z-index:1000;max-height:200px;overflow:auto;width:100%;"></div>
             </div>
-            <div class="form-group">
-                <label>Descripción</label>
-                <input type="text" name="descripcion" class="form-control" required placeholder="Nombre del producto">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>Descripción</label>
+                        <input type="text" name="descripcion" class="form-control" required placeholder="Nombre del producto">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label>Categoría</label>
+                        <select name="category_id" class="form-control">
+                            <option value="">Sin categoría</option>
+                            @foreach($categories as $category)
+                                <option value="{{ $category->id }}">{{ $category->nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label>Stock Inicial</label>
+                        <input type="number" name="stock" class="form-control" value="0" min="0" placeholder="0">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label>Destino KDS</label>
+                        <select name="kds_destination" class="form-control">
+                            <option value="cocina">KDS Cocina</option>
+                            <option value="cocina2">KDS Cocina 2</option>
+                            <option value="bar">KDS Bar</option>
+                        </select>
+                    </div>
+                </div>
             </div>
-            <div class="form-group">
-                <label>Categoría</label>
-                <select name="category_id" class="form-control">
-                    <option value="">Sin categoría</option>
-                    @foreach($categories as $category)
-                        <option value="{{ $category->id }}">{{ $category->nombre }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Stock Inicial</label>
-                <input type="number" name="stock" class="form-control" value="0" min="0" placeholder="0">
             </div>
             <div class="row">
                 <div class="col-md-6">

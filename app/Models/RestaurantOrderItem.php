@@ -22,6 +22,7 @@ class RestaurantOrderItem extends Model
         'notes',
         'cancelled_from',
         'cancelled_at',
+        'kds_destination',
     ];
 
     protected $casts = [

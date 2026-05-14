@@ -67,6 +67,15 @@
             </div>
             <div class="col-md-4">
                 <div class="info-box">
+                    <span class="info-box-icon bg-info"><i class="fas fa-tag"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Categoría</span>
+                        <span class="info-box-number">{{ $product->category->nombre ?? 'Sin categoría' }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="info-box">
                     <span class="info-box-icon {{ $product->stock < 0 ? 'bg-danger' : ($product->stock == 0 ? 'bg-warning' : 'bg-info') }}">
                         <i class="fas fa-cubes"></i>
                     </span>
@@ -81,11 +90,33 @@
                     </div>
                 </div>
             </div>
+            <div class="col-md-4">
+                <div class="info-box">
+                    <span class="info-box-icon bg-dark"><i class="fas fa-utensils"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Destino KDS</span>
+                        <span class="info-box-number">
+                            @if(($product->kds_destination ?? 'cocina') == 'cocina2') KDS Cocina 2
+                            @elseif(($product->kds_destination ?? 'cocina') == 'bar') KDS Bar
+                            @else KDS Cocina
+                            @endif
+                        </span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="card-footer">
-        <a href="{{ route('products.edit', $product) }}" class="btn btn-warning"><i class="fas fa-edit"></i> Editar</a>
-        <a href="{{ route('products.index') }}" class="btn btn-secondary">Volver</a>
+    <div class="card-footer d-flex justify-content-between">
+        <div>
+            @if($prev)
+            <a href="{{ route('products.show', $prev) }}" class="btn btn-outline-primary"><i class="fas fa-chevron-left"></i> Anterior</a>
+            @endif
+            <a href="{{ route('products.edit', $product) }}" class="btn btn-warning"><i class="fas fa-edit"></i> Editar</a>
+            <a href="{{ route('products.index') }}" class="btn btn-secondary">Volver</a>
+            @if($next)
+            <a href="{{ route('products.show', $next) }}" class="btn btn-outline-primary">Siguiente <i class="fas fa-chevron-right"></i></a>
+            @endif
+        </div>
     </div>
 </div>
 @endsection

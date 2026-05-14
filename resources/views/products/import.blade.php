@@ -21,7 +21,12 @@
                 <li><strong>tipo_afectacion</strong> (opcional, valores: GRA, EXO, INA, EXE)</li>
                 <li><strong>umedida</strong> (opcional, valores: NIU, KGM, LTR, etc.)</li>
                 <li><strong>categoria</strong> (opcional, se crea automáticamente si no existe)</li>
+                <li><strong>codigo_sunat</strong> (opcional, ej: 53121801, 53121605, 51121701, etc.)</li>
+                <li><strong>kds_destination</strong> (opcional, valores: cocina, cocina2, bar)</li>
             </ul>
+            <p class="mt-2 mb-0 text-muted" style="font-size:12px;">
+                <strong>Destinos KDS:</strong> cocina (KDS Cocina), cocina2 (KDS Cocina 2), bar (KDS Bar)
+            </p>
         </div>
 
         <form method="POST" action="{{ route('products.import.store') }}" enctype="multipart/form-data">
@@ -61,6 +66,8 @@
                     <th>tipo_afectacion</th>
                     <th>umedida</th>
                     <th>categoria</th>
+                    <th>codigo_sunat</th>
+                    <th>kds_destination</th>
                 </tr>
             </thead>
             <tbody>
@@ -73,6 +80,8 @@
                     <td>GRA</td>
                     <td>NIU</td>
                     <td>Bebidas</td>
+                    <td>53121801</td>
+                    <td>cocina</td>
                 </tr>
                 <tr>
                     <td>PROD00002</td>
@@ -83,6 +92,32 @@
                     <td>GRA</td>
                     <td>NIU</td>
                     <td>Alimentos</td>
+                    <td>53121605</td>
+                    <td>cocina</td>
+                </tr>
+                <tr>
+                    <td>PROD00003</td>
+                    <td></td>
+                    <td>Jugo de naranja</td>
+                    <td>45.00</td>
+                    <td>100</td>
+                    <td>GRA</td>
+                    <td>NIU</td>
+                    <td>Bebidas</td>
+                    <td>51121701</td>
+                    <td>cocina2</td>
+                </tr>
+                <tr>
+                    <td>PROD00004</td>
+                    <td></td>
+                    <td>Cerveza artesanal</td>
+                    <td>35.00</td>
+                    <td>60</td>
+                    <td>GRA</td>
+                    <td>NIU</td>
+                    <td>Bebidas</td>
+                    <td>51111702</td>
+                    <td>bar</td>
                 </tr>
             </tbody>
         </table>

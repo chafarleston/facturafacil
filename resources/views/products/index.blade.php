@@ -11,12 +11,24 @@
         <div class="card-tools">
           <form method="GET" action="{{ route('products.index') }}" class="form-inline">
             <input type="hidden" name="company_id" value="{{ $companyId ?? null }}">
-            <input type="text" name="search" class="form-control" placeholder="Buscar..." value="{{ request('search') }}">
-            <button type="submit" class="btn btn-secondary ml-1"><i class="fas fa-search"></i></button>
+            <select name="search_type" class="form-control form-control-sm mr-1" style="width:auto;" onchange="updateSearchPlaceholder(this)">
+              <option value="descripcion" {{ request('search_type', 'descripcion') == 'descripcion' ? 'selected' : '' }}>Descripción</option>
+              <option value="codigo" {{ request('search_type') == 'codigo' ? 'selected' : '' }}>Código</option>
+              <option value="codigo_barras" {{ request('search_type') == 'codigo_barras' ? 'selected' : '' }}>Cód. Barras</option>
+              <option value="categoria" {{ request('search_type') == 'categoria' ? 'selected' : '' }}>Categoría</option>
+            </select>
+            <input type="text" name="search" class="form-control form-control-sm" placeholder="Buscar por descripción..." value="{{ request('search') }}" id="searchInput">
+            <button type="submit" class="btn btn-secondary btn-sm ml-1"><i class="fas fa-search"></i></button>
             @if(request('search'))
-            <a href="{{ route('products.index', ['company_id' => $companyId ?? null]) }}" class="btn btn-link ml-1">Limpiar</a>
+            <a href="{{ route('products.index', ['company_id' => $companyId ?? null]) }}" class="btn btn-link btn-sm ml-1">Limpiar</a>
             @endif
           </form>
+          <script>
+          function updateSearchPlaceholder(sel) {
+            const labels = { 'descripcion': 'Buscar por descripción...', 'codigo': 'Buscar por código...', 'codigo_barras': 'Buscar por código de barras...', 'categoria': 'Buscar por categoría...' };
+            document.getElementById('searchInput').placeholder = labels[sel.value] || 'Buscar...';
+          }
+          </script>
           <a href="{{ route('products.create', ['company_id' => $companyId ?? null]) }}" class="btn btn-primary btn-sm ml-2">
             <i class="fas fa-plus"></i> Nuevo
           </a>

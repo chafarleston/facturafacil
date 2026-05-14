@@ -13,14 +13,18 @@ class ProductController extends Controller
     {
         $companyId = $request->company_id ?? Company::first()->id;
         $search = $request->get('search');
+        $searchType = $request->get('search_type', 'descripcion');
         
         $products = Product::where('company_id', $companyId)
             ->where('estado', 'ACTIVO')
-            ->when($search, function($q) use ($search) {
-                $q->where(function($query) use ($search) {
-                    $query->where('codigo', 'like', "%{$search}%")
-                          ->orWhere('descripcion', 'like', "%{$search}%");
-                });
+            ->when($search, function($q) use ($search, $searchType) {
+                if ($searchType === 'categoria') {
+                    $q->whereHas('category', function($cq) use ($search) {
+                        $cq->where('nombre', 'like', "%{$search}%");
+                    });
+                } else {
+                    $q->where($searchType, 'like', "%{$search}%");
+                }
             })
             ->paginate(15);
 
@@ -34,7 +38,7 @@ class ProductController extends Controller
         $nextNumber = $lastProduct ? (int)substr($lastProduct->codigo, -5) + 1 : 1;
         $codigo = 'PROD' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
         
-        $categories = Category::where('company_id', $companyId)->where('estado', 'ACT')->get();
+        $categories = Category::where('company_id', $companyId)->whereIn('estado', ['ACTIVO', 'ACT'])->get();
         
         return view('products.create', compact('companyId', 'codigo', 'categories'));
     }
@@ -52,8 +56,9 @@ class ProductController extends Controller
             'precio_minimo' => 'nullable|numeric|min:0',
             'tipo_afectacion' => 'required|in:GRA,EXO,INA,EXE',
             'igv_percent' => 'nullable|numeric|min:0|max:100',
-'category_id' => 'nullable|exists:categories,id',
+            'category_id' => 'nullable|exists:categories,id',
             'stock' => 'nullable|integer|min:0',
+            'kds_destination' => 'nullable|in:cocina,cocina2,bar',
         ]);
 
         if (is_null($validated['precio'] ?? null)) {
@@ -78,12 +83,22 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
-        return view('products.show', compact('product'));
+        $prev = Product::where('company_id', $product->company_id)
+            ->where('id', '<', $product->id)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        $next = Product::where('company_id', $product->company_id)
+            ->where('id', '>', $product->id)
+            ->orderBy('id', 'asc')
+            ->first();
+
+        return view('products.show', compact('product', 'prev', 'next'));
     }
 
     public function edit(Product $product)
     {
-        $categories = Category::where('company_id', $product->company_id)->where('estado', 'ACT')->get();
+        $categories = Category::where('company_id', $product->company_id)->whereIn('estado', ['ACTIVO', 'ACT'])->get();
         return view('products.edit', compact('product', 'categories'));
     }
 
@@ -101,6 +116,7 @@ class ProductController extends Controller
             'igv_percent' => 'nullable|numeric|min:0|max:100',
             'category_id' => 'nullable|exists:categories,id',
             'stock' => 'nullable|integer|min:0',
+            'kds_destination' => 'nullable|in:cocina,cocina2,bar',
         ]);
 
         if (is_null($validated['precio'] ?? null)) {
@@ -158,6 +174,8 @@ class ProductController extends Controller
         $colTipoAfectacion = $this->findColumn($headerLower, ['tipo_afectacion', 'tipo_igv', 'afectacion']);
         $colUndMedida = $this->findColumn($headerLower, ['umedida', 'unidad', 'uom', 'medida']);
         $colCategoria = $this->findColumn($headerLower, ['categoria', 'category', 'categoría']);
+        $colCodigoSunat = $this->findColumn($headerLower, ['codigo_sunat', 'sunat', 'sunat_code']);
+        $colKdsDest = $this->findColumn($headerLower, ['kds_destination', 'kds', 'destino_kds']);
 
         if ($colDescripcion === null) {
             return back()->with('error', 'No se encontró la columna "descripcion" en el archivo');
@@ -255,6 +273,8 @@ class ProductController extends Controller
                     'igv_percent' => 18,
                     'estado' => 'ACTIVO',
                     'category_id' => $categoryId,
+                    'codigo_sunat' => $colCodigoSunat !== null ? trim($row[$colCodigoSunat] ?? '') : null,
+                    'kds_destination' => $colKdsDest !== null ? trim($row[$colKdsDest] ?? '') : 'cocina',
                 ]);
 
                 $created++;
@@ -291,15 +311,15 @@ class ProductController extends Controller
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         
-        $headers = ['codigo', 'codigo_barras', 'descripcion', 'precio', 'stock', 'tipo_afectacion', 'umedida', 'categoria'];
+        $headers = ['codigo', 'codigo_barras', 'descripcion', 'precio', 'stock', 'tipo_afectacion', 'umedida', 'categoria', 'codigo_sunat', 'kds_destination'];
         $sheet->fromArray($headers, null, 'A1');
         
         $sampleData = [
-            ['PROD00001', '7501234567890', 'Producto de ejemplo 1', 100.00, 50, 'GRA', 'NIU', 'Bebidas'],
-            ['PROD00002', '7501234567891', 'Galletas de chocolate', 75.50, 30, 'GRA', 'NIU', 'Alimentos'],
-            ['PROD00003', '', 'Servicio de diseño web', 200.00, 0, 'GRA', 'NIU', 'Servicios'],
-            ['PROD00004', '5901234123457', 'Jugo de naranja 1L', 45.00, 100, 'GRA', 'NIU', 'Bebidas'],
-            ['PROD00005', '', 'Camisa manga larga', 89.90, 20, 'EXO', 'NIU', 'Ropa'],
+            ['PROD00001', '7501234567890', 'Producto de ejemplo 1', 100.00, 50, 'GRA', 'NIU', 'Bebidas', '53121801', 'cocina'],
+            ['PROD00002', '7501234567891', 'Galletas de chocolate', 75.50, 30, 'GRA', 'NIU', 'Alimentos', '53121605', 'cocina'],
+            ['PROD00003', '', 'Jugo de naranja 1L', 45.00, 100, 'GRA', 'NIU', 'Bebidas', '51121701', 'cocina2'],
+            ['PROD00004', '', 'Cerveza artesanal', 35.00, 60, 'GRA', 'NIU', 'Bebidas', '51111702', 'bar'],
+            ['PROD00005', '', 'Servicio de diseño web', 200.00, 0, 'GRA', 'NIU', 'Servicios', '', 'cocina'],
         ];
         
         $row = 2;
@@ -312,7 +332,7 @@ class ProductController extends Controller
             $row++;
         }
         
-        foreach (range('A', 'H') as $col) {
+        foreach (range('A', 'J') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
         
