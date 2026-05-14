@@ -531,11 +531,13 @@ class RestaurantController extends Controller
         try {
             $order = RestaurantOrder::with('items')->findOrFail($orderId);
             
-            $order->items()->update(['kitchen_status' => 'DELIVERED']);
-            $order->status = 'COMPLETED';
-            $order->save();
+            $order->items()->whereIn('kitchen_status', ['SENT', 'READY'])->update(['kitchen_status' => 'DELIVERED']);
 
-            $order->table->update(['status' => 'AVAILABLE']);
+            $hasPending = $order->items()->whereNotIn('kitchen_status', ['DELIVERED'])->exists();
+            if (!$hasPending) {
+                $order->status = 'READY';
+                $order->save();
+            }
 
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
 

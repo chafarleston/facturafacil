@@ -66,6 +66,7 @@
         .kds-orders {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(220px, 280px));
+            grid-auto-rows: max-content;
             gap: 12px;
             flex: 1;
             overflow-y: auto;
@@ -81,7 +82,7 @@
             font-size: 12px;
             display: flex;
             flex-direction: column;
-            max-height: 400px;
+            max-height: 380px;
         }
         
         .kds-order.ready { border-left-color: #00ff88; }
@@ -138,7 +139,9 @@
             text-align: center;
         }
         
-        .kds-order.ready .kds-item-qty { background: #00ff88; color: #000; }
+        .kds-item.q-sent .kds-item-qty { background: #ff9800; color: white; }
+        .kds-item.q-ready .kds-item-qty { background: #00ff88; color: #000; }
+        .kds-item.q-delivered .kds-item-qty { background: #555; color: #aaa; }
         
         .kds-item-name {
             flex: 1;
@@ -437,6 +440,11 @@ function renderKitchenOrders() {
         const statusClass = order.status === 'READY' ? 'ready' : 
                            order.status === 'SENT_TO_KITCHEN' ? 'sent' : 'pending';
         
+        const sortedItems = [...order.items].sort((a, b) => {
+            const orderVal = { 'PENDING': 0, 'SENT': 1, 'READY': 2, 'DELIVERED': 3 };
+            return (orderVal[a.kitchen_status] || 0) - (orderVal[b.kitchen_status] || 0);
+        });
+        
         html += `
             <div class="kds-order ${statusClass}" data-order-id="${order.id}">
                 <div class="kds-order-header">
@@ -452,15 +460,17 @@ function renderKitchenOrders() {
                     <div class="kds-order-time ${overdue ? 'overdue' : ''}">${elapsed}</div>
                 </div>
                 <div class="kds-items">
-                    ${order.items.map(item => `
-                        <div class="kds-item">
+                    ${sortedItems.map(item => {
+                        const qClass = item.kitchen_status === 'READY' ? 'q-ready' : item.kitchen_status === 'DELIVERED' ? 'q-delivered' : 'q-sent';
+                        return `
+                        <div class="kds-item ${qClass}">
                             <span class="kds-item-qty">${item.quantity}x</span>
                             <div>
                                 <div class="kds-item-name">${item.product_name}</div>
                                 ${item.notes ? `<div class="kds-item-notes">${item.notes}</div>` : ''}
                             </div>
-                        </div>
-                    `).join('')}
+                        </div>`;
+                    }).join('')}
                 </div>
                 <div class="kds-order-actions">
                     ${order.status === 'OPEN' || order.status === 'SENT_TO_KITCHEN' ? `
