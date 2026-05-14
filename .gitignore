@@ -31,3 +31,4 @@ Thumbs.db
 test_invoice*.pdf
 test_pdf.php
 /storage/framework/cache/data
+/storage/framework/cache/data

@@ -15,9 +15,11 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Serie;
 use App\Models\CashRegister;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class RestaurantController extends Controller
@@ -203,18 +205,42 @@ class RestaurantController extends Controller
         return response()->json(['success' => true, 'item' => $item]);
     }
 
-    public function removeItem($itemId)
+    public function removeItem(Request $request, $itemId)
     {
         $item = RestaurantOrderItem::findOrFail($itemId);
         $order = $item->order;
-        
-        $item->delete();
+
+        if (in_array($item->kitchen_status, ['READY', 'DELIVERED'])) {
+            $adminPassword = $request->input('admin_password');
+            if (!$adminPassword) {
+                return response()->json([
+                    'success' => false,
+                    'requires_admin' => true,
+                    'message' => 'El producto ya está preparado o entregado. Requiere autorización de administrador.'
+                ]);
+            }
+
+            $admin = auth()->user();
+            if (!$admin || !$admin->isAdmin() || !Hash::check($adminPassword, $admin->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Contraseña de administrador incorrecta'
+                ]);
+            }
+        }
+
+        $item->kitchen_status = 'CANCELLED';
+        $item->save();
+
         $this->updateOrderTotals($order);
 
-        if ($order->items()->count() == 0) {
+        $activeItems = $order->items()->where('kitchen_status', '!=', 'CANCELLED')->count();
+        if ($activeItems == 0) {
             $order->update(['status' => 'CANCELLED']);
             $order->table->update(['status' => 'AVAILABLE']);
         }
+
+        Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
 
         return response()->json(['success' => true]);
     }
@@ -382,7 +408,7 @@ class RestaurantController extends Controller
                 $q->whereIn('kitchen_status', ['SENT', 'READY']);
             })
             ->with(['items' => function($q) {
-                $q->whereIn('kitchen_status', ['SENT', 'READY']);
+                $q->whereIn('kitchen_status', ['SENT', 'READY', 'CANCELLED']);
             }, 'table.floor', 'user'])
             ->orderBy('created_at', 'asc')
             ->get();
@@ -448,7 +474,7 @@ class RestaurantController extends Controller
                     $q->whereIn('kitchen_status', ['SENT', 'READY']);
                 })
                 ->with(['items' => function($q) {
-                    $q->whereIn('kitchen_status', ['SENT', 'READY']);
+                    $q->whereIn('kitchen_status', ['SENT', 'READY', 'CANCELLED']);
                 }, 'table.floor', 'user'])
                 ->orderBy('created_at', 'asc')
                 ->get();
@@ -708,7 +734,7 @@ class RestaurantController extends Controller
 
 private function updateOrderTotals(RestaurantOrder $order)
     {
-        $items = $order->items;
+        $items = $order->items->where('kitchen_status', '!=', 'CANCELLED');
         
         $subtotal = $items->sum('total') / 1.18;
         $igv = $items->sum('total') - $subtotal;

@@ -643,6 +643,20 @@
         </div>
     </div>
 </div>
+
+{{-- Modal Contraseña Admin --}}
+<div class="qty-overlay" id="adminPasswordOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+    <div class="qty-popup" style="background:white; padding:20px; border-radius:10px; min-width:320px; max-width:90%;">
+        <h5 style="margin:0 0 5px 0;">Autorización requerida</h5>
+        <p style="font-size:13px; color:#666; margin-bottom:15px;">Ingrese su contraseña de administrador para eliminar este producto</p>
+        <input type="hidden" id="adminPasswordItemId">
+        <input type="password" id="adminPasswordInput" class="form-control" placeholder="Contraseña" style="margin-bottom:10px;" autocomplete="off">
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button type="button" class="btn btn-secondary" onclick="closeAdminPasswordModal()">Cancelar</button>
+            <button type="button" class="btn btn-danger" onclick="confirmAdminPassword()">Eliminar</button>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -657,6 +671,8 @@ let allFloors = @json($floors);
 let pendingProductId = null;
 let previousTableBorderColor = {};
 let currentFloorId = null;
+let pendingDeleteItems = {};
+let pendingDeleteItemId = null;
 
 // Initialize: show only first floor's tables
 document.addEventListener('DOMContentLoaded', function() {
@@ -980,6 +996,24 @@ function changeItemQty(itemId, delta) {
 }
 
 function removeItem(itemId) {
+    const order = window.currentOrderData;
+    const item = order ? order.items.find(i => i.id === itemId) : null;
+    const needsAdmin = item && ['READY', 'DELIVERED'].includes(item.kitchen_status);
+    
+    if (needsAdmin) {
+        if (pendingDeleteItems[itemId]) {
+            pendingDeleteItemId = itemId;
+            document.getElementById('adminPasswordItemId').value = itemId;
+            document.getElementById('adminPasswordInput').value = '';
+            document.getElementById('adminPasswordOverlay').style.display = 'flex';
+            document.getElementById('adminPasswordInput').focus();
+        } else {
+            pendingDeleteItems[itemId] = true;
+            alert('Este producto ya está preparado o entregado. Presione eliminar nuevamente para confirmar con contraseña de administrador.');
+        }
+        return;
+    }
+    
     if (!confirm('¿Eliminar producto?')) return;
     
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -1077,6 +1111,37 @@ function cancelOrder() {
         if (data.success) {
             alert('Pedido anulado');
             location.reload();
+        } else {
+            alert(data.message || 'Error');
+        }
+    });
+}
+
+function closeAdminPasswordModal() {
+    document.getElementById('adminPasswordOverlay').style.display = 'none';
+}
+
+function confirmAdminPassword() {
+    const itemId = document.getElementById('adminPasswordItemId').value;
+    const password = document.getElementById('adminPasswordInput').value;
+    if (!password) { alert('Ingrese su contraseña'); return; }
+    
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    fetch('/restaurant/orders/items/' + itemId, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ admin_password: password })
+    })
+    .then(res => res.json())
+    .then(data => {
+        closeAdminPasswordModal();
+        delete pendingDeleteItems[itemId];
+        if (data.success) {
+            loadOrder(currentOrderId);
         } else {
             alert(data.message || 'Error');
         }

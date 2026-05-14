@@ -142,6 +142,9 @@
         .kds-item.q-sent .kds-item-qty { background: #ff9800; color: white; }
         .kds-item.q-ready .kds-item-qty { background: #00ff88; color: #000; }
         .kds-item.q-delivered .kds-item-qty { background: #555; color: #aaa; }
+        .kds-item.q-cancelled { opacity: 0.5; }
+        .kds-item.q-cancelled .kds-item-name { text-decoration: line-through; color: #ff4444; }
+        .kds-item.q-cancelled .kds-item-qty { background: #cc0000; color: white; }
         
         .kds-item-name {
             flex: 1;
@@ -441,7 +444,7 @@ function renderKitchenOrders() {
                            order.status === 'SENT_TO_KITCHEN' ? 'sent' : 'pending';
         
         const sortedItems = [...order.items].sort((a, b) => {
-            const orderVal = { 'PENDING': 0, 'SENT': 1, 'READY': 2, 'DELIVERED': 3 };
+            const orderVal = { 'PENDING': 0, 'SENT': 1, 'READY': 2, 'DELIVERED': 3, 'CANCELLED': 4 };
             return (orderVal[a.kitchen_status] || 0) - (orderVal[b.kitchen_status] || 0);
         });
         
@@ -461,7 +464,7 @@ function renderKitchenOrders() {
                 </div>
                 <div class="kds-items">
                     ${sortedItems.map(item => {
-                        const qClass = item.kitchen_status === 'READY' ? 'q-ready' : item.kitchen_status === 'DELIVERED' ? 'q-delivered' : 'q-sent';
+                        const qClass = item.kitchen_status === 'READY' ? 'q-ready' : item.kitchen_status === 'DELIVERED' ? 'q-delivered' : item.kitchen_status === 'CANCELLED' ? 'q-cancelled' : 'q-sent';
                         return `
                         <div class="kds-item ${qClass}">
                             <span class="kds-item-qty">${item.quantity}x</span>
