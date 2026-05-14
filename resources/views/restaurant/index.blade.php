@@ -521,18 +521,14 @@
 </div>
 
 {{-- Customer Modal --}}
-<div class="modal fade" id="customerModal" tabindex="-1" role="dialog" aria-labelledby="customerModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="customerModalLabel">Nuevo Cliente</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body" style="padding:0; height:450px;">
-                <iframe id="customerFrame" src="" style="width:100%; height:100%; border:none;"></iframe>
-            </div>
+<div class="qty-overlay" id="customerModalOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10001; align-items:center; justify-content:center;">
+    <div class="qty-popup" style="background:white; padding:0; border-radius:10px; min-width:500px; max-width:90%; overflow:hidden;">
+        <div style="padding:12px 15px; background:linear-gradient(135deg, #007bff, #0056b3); color:white; display:flex; justify-content:space-between; align-items:center;">
+            <h5 style="margin:0; font-size:16px;"><i class="fas fa-user-plus"></i> Nuevo Cliente</h5>
+            <button onclick="closeCustomerModal()" style="background:none; border:none; color:white; font-size:22px; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+        <div style="padding:0;">
+            <iframe id="customerFrame" src="" style="width:100%; height:450px; border:none;"></iframe>
         </div>
     </div>
 </div>
@@ -732,10 +728,12 @@ function selectTable(tableId) {
     } else {
         openTable(tableId);
     }
-    }
+}
     
-    function closeModal() {
+function closeModal() {
     document.getElementById('tableOrderModal').classList.remove('show');
+    document.getElementById('chargeOverlay').style.display = 'none';
+    document.getElementById('customerModalOverlay').style.display = 'none';
     resetTableStyle(currentTableId);
 }
 
@@ -1272,14 +1270,20 @@ function updateChargeSerie() {
 }
 
 function openCustomerModal() {
+    document.getElementById('chargeOverlay').style.display = 'none';
     const companyId = {{ $companyId }};
     document.getElementById('customerFrame').src = '/customers/create?company_id=' + companyId + '&modal=1';
-    $('#customerModal').modal('show');
+    document.getElementById('customerModalOverlay').style.display = 'flex';
+}
+
+function closeCustomerModal() {
+    document.getElementById('customerModalOverlay').style.display = 'none';
+    document.getElementById('chargeOverlay').style.display = 'flex';
 }
 
 function onCustomerCreated(customer) {
     customersData.push(customer);
-    $('#customerModal').modal('hide');
+    closeCustomerModal();
     selectChargeCustomer(customer.id, customer.nombre);
 }
 
