@@ -324,6 +324,14 @@
     .btn-print { background: #17a2b8; color: white; }
     .btn-close-order { background: #28a745; color: white; }
     .btn-cancel-order { background: #dc3545; color: white; }
+    .btn-charge { background: #28a745; color: white; }
+    .btn-charge:hover { background: #218838; }
+    .btn-prebill { background: #17a2b8; color: white; }
+    .btn-prebill:hover { background: #138496; }
+    .customer-option { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee; }
+    .customer-option:hover { background: #f0f9ff; }
+    .customer-option-name { font-weight: 600; font-size: 13px; }
+    .customer-option-doc { font-size: 11px; color: #666; }
     
     .order-totals-box {
         padding: 15px;
@@ -495,14 +503,119 @@
         <button class="btn-action btn-print" onclick="printKitchenTicket()">
             <i class="fas fa-print"></i><br>Imprimir
         </button>
+        <button class="btn-action btn-prebill" onclick="printPrebill()" id="btnPrebill" disabled>
+            <i class="fas fa-receipt"></i><br>Precuenta
+        </button>
+        @if(!auth()->user()->isMozo())
         <button class="btn-action btn-close-order" onclick="closeTable()">
             <i class="fas fa-check"></i><br>Cerrar
+        </button>
+        <button class="btn-action btn-charge" onclick="showChargeModal()" id="btnCharge" disabled>
+            <i class="fas fa-credit-card"></i><br>Cobrar
         </button>
         <button class="btn-action btn-cancel-order" onclick="cancelOrder()" id="btnCancelOrder" disabled>
             <i class="fas fa-times"></i><br>Anular
         </button>
+        @endif
     </div>
 </div>
+
+{{-- Customer Modal --}}
+<div class="modal fade" id="customerModal" tabindex="-1" role="dialog" aria-labelledby="customerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="customerModalLabel">Nuevo Cliente</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="padding:0; height:450px;">
+                <iframe id="customerFrame" src="" style="width:100%; height:100%; border:none;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Charge Modal --}}
+<div class="charge-overlay" id="chargeOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+    <div class="charge-popup" style="background:white; padding:25px; border-radius:10px; min-width:400px; max-width:500px; max-height:90vh; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h5 style="margin:0;"><i class="fas fa-credit-card"></i> Cobrar Pedido <span id="chargeOrderNumber" style="font-weight:normal; font-size:14px;"></span></h5>
+            <button onclick="closeChargeModal()" style="border:none; background:none; font-size:20px; cursor:pointer;">&times;</button>
+        </div>
+        
+        <div style="margin-bottom:12px;">
+            <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;"><i class="fas fa-user"></i> Cliente</label>
+            <div style="display:flex; gap:5px;">
+                <div style="flex:1; position:relative;">
+                    <input type="text" id="chargeCustomerSearch" class="form-control form-control-sm" placeholder="Buscar cliente..." autocomplete="off">
+                    <input type="hidden" id="chargeCustomerId" value="">
+                    <div id="chargeCustomerDropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid #ddd; border-radius:4px; max-height:200px; overflow-y:auto; z-index:999;"></div>
+                </div>
+                <button type="button" class="btn btn-sm btn-success" onclick="openCustomerModal()" title="Nuevo cliente" style="padding:4px 10px;">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+            <div style="flex:1;">
+                <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Tipo Documento</label>
+                <select id="chargeDocumentType" class="form-control form-control-sm" onchange="updateChargeSerie()">
+                    <option value="03">BOLETA</option>
+                    <option value="01">FACTURA</option>
+                    <option value="NV" selected>NOTA DE VENTA</option>
+                </select>
+            </div>
+            <div style="flex:1;">
+                <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Serie</label>
+                <input type="text" id="chargeSerieDisplay" class="form-control form-control-sm" readonly disabled>
+            </div>
+        </div>
+        
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+            <div style="flex:1;">
+                <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Método de Pago</label>
+                <select id="chargePaymentMethod" class="form-control form-control-sm">
+                    <option value="EFECTIVO">EFECTIVO</option>
+                    <option value="TARJETA">TARJETA</option>
+                    <option value="TRANSFERENCIA">TRANSFERENCIA</option>
+                    <option value="YAPE">YAPE</option>
+                    <option value="PLIN">PLIN</option>
+                    <option value="MIXTO">MIXTO</option>
+                </select>
+            </div>
+            <div style="flex:1;">
+                <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Referencia</label>
+                <input type="text" id="chargeReference" class="form-control form-control-sm" placeholder="N° operación">
+            </div>
+        </div>
+        
+        <div style="border-top:2px solid #eee; padding-top:12px; margin-bottom:15px;">
+            <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;">
+                <span>Subtotal:</span>
+                <span id="chargeSubtotal">S/ 0.00</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;">
+                <span>IGV (18%):</span>
+                <span id="chargeIgv">S/ 0.00</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:18px; font-weight:bold; margin-top:8px;">
+                <span>TOTAL:</span>
+                <span id="chargeTotal">S/ 0.00</span>
+            </div>
+        </div>
+        
+        <div style="display:flex; gap:8px;">
+            <button class="btn btn-secondary btn-sm" onclick="closeChargeModal()" style="flex:0 0 80px;">Cancelar</button>
+            <button class="btn btn-success btn-sm" id="btnProcessCharge" onclick="processCharge()" style="flex:1; padding:8px 0;">
+                <i class="fas fa-credit-card"></i> COBRAR S/ 0.00
+            </button>
+        </div>
+    </div>
+</div>
+{{-- End Charge Modal --}}
 
 {{-- Modal Cantidad --}}
 <div class="qty-overlay" id="qtyOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
@@ -538,6 +651,8 @@ let currentOrderId = null;
 let currentTableId = null;
 let currentTableName = null;
 let productsData = @json($products);
+let customersData = @json($customers);
+let seriesData = @json($series);
 let allFloors = @json($floors);
 let pendingProductId = null;
 let previousTableBorderColor = {};
@@ -552,6 +667,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     pollActiveOrders();
     setInterval(pollActiveOrders, 10000);
+    
+    const chargeSearch = document.getElementById('chargeCustomerSearch');
+    if (chargeSearch) {
+        chargeSearch.addEventListener('input', function(e) { searchChargeCustomers(e.target.value); });
+        chargeSearch.addEventListener('blur', function() { setTimeout(function() { document.getElementById('chargeCustomerDropdown').style.display = 'none'; }, 200); });
+    }
 });
 
 function selectFloor(floorId) {
@@ -583,7 +704,8 @@ function selectTable(tableId) {
     
     document.getElementById('modalTableName').textContent = currentTableName;
     document.getElementById('modalOrderNumber').textContent = orderId ? 'Pedido: ' + orderId : 'Abriendo...';
-    document.getElementById('btnCancelOrder').disabled = false;
+    const cancelBtn = document.getElementById('btnCancelOrder');
+    if (cancelBtn) cancelBtn.disabled = false;
     
     document.getElementById('tableOrderModal').classList.add('show');
     switchTab('products');
@@ -676,8 +798,15 @@ function renderOrder(order) {
         container.innerHTML = '<div class="order-empty"><i class="fas fa-shopping-basket"></i><p>Seleccione productos</p></div>';
         document.getElementById('orderTotals').style.display = 'none';
         document.getElementById('itemsCount').style.display = 'none';
+        const chargeBtn = document.getElementById('btnCharge');
+        if (chargeBtn) chargeBtn.disabled = true;
+        document.getElementById('btnPrebill').disabled = true;
         return;
     }
+    
+    const chargeBtn = document.getElementById('btnCharge');
+    if (chargeBtn) chargeBtn.disabled = false;
+    document.getElementById('btnPrebill').disabled = false;
     
     let html = '';
     order.items.forEach(item => {
@@ -901,6 +1030,11 @@ function printKitchenTicket() {
     window.open('/restaurant/orders/' + currentOrderId + '/print-kitchen', '_blank');
 }
 
+function printPrebill() {
+    if (!currentOrderId) return;
+    window.open('/restaurant/orders/' + currentOrderId + '/print-prebill', '_blank', 'width=400,height=600');
+}
+
 function closeTable() {
     if (!currentOrderId) return;
     if (!confirm('¿Cerrar pedido?')) return;
@@ -950,40 +1084,144 @@ function cancelOrder() {
 }
 
 function pollActiveOrders() {
-    fetch('/restaurant/active-orders')
+    fetch('/restaurant/active-orders?_=' + Date.now())
     .then(res => res.json())
     .then(data => {
         if (!data.success) return;
-        
+        const tablesWithOrders = {};
         data.orders.forEach(order => {
-            const tableCard = document.querySelector(`.table-card[data-table-id="${order.table_id}"]`);
-            if (!tableCard) return;
-            
-            const statusBadge = tableCard.querySelector('.table-status-badge');
-            tableCard.dataset.orderId = order.id;
-            tableCard.dataset.currentStatus = order.status;
-            
-            const statusLabels = {
-                'OPEN': 'ABIERTO',
-                'SENT_TO_KITCHEN': 'EN COCINA',
-                'READY': 'LISTO',
-                'COMPLETED': 'COMPLETADO',
-                'CANCELLED': 'ANULADO'
-            };
-            
-            const classMap = {
-                'OPEN': 'status-occupied',
-                'SENT_TO_KITCHEN': 'status-sent',
-                'READY': 'status-ready',
-                'COMPLETED': 'status-available',
-                'CANCELLED': 'status-cancelled'
-            };
-            
-            statusBadge.textContent = statusLabels[order.status] || 'DISPONIBLE';
-            statusBadge.className = 'table-status-badge ' + (classMap[order.status] || 'status-available');
+            tablesWithOrders[order.table_id] = order;
+            const card = document.querySelector(`.table-card[data-table-id="${order.table_id}"]`);
+            if (!card) return;
+            card.className = 'table-card occupied has-order';
+            card.dataset.orderId = order.id;
+            let orderDiv = card.querySelector('.table-order');
+            if (!orderDiv) {
+                orderDiv = document.createElement('div');
+                orderDiv.className = 'table-order';
+                card.appendChild(orderDiv);
+            }
+            orderDiv.textContent = order.order_number;
+        });
+        document.querySelectorAll('.table-card').forEach(card => {
+            const tid = parseInt(card.dataset.tableId);
+            if (!tid) return;
+            if (!tablesWithOrders[tid] && card.classList.contains('occupied')) {
+                card.className = 'table-card available';
+                card.dataset.orderId = '';
+                const orderDiv = card.querySelector('.table-order');
+                if (orderDiv) orderDiv.remove();
+            }
         });
     })
     .catch(() => {});
+}
+
+function showChargeModal() {
+    if (!window.currentOrderData) return;
+    const order = window.currentOrderData;
+    const total = parseFloat(order.total) || 0;
+    document.getElementById('chargeOrderNumber').textContent = '#' + (order.order_number || order.id);
+    document.getElementById('chargeSubtotal').textContent = 'S/ ' + (parseFloat(order.subtotal) || total / 1.18).toFixed(2);
+    document.getElementById('chargeIgv').textContent = 'S/ ' + (parseFloat(order.igv) || total - total / 1.18).toFixed(2);
+    document.getElementById('chargeTotal').textContent = 'S/ ' + total.toFixed(2);
+    document.getElementById('btnProcessCharge').innerHTML = '<i class="fas fa-credit-card"></i> COBRAR S/ ' + total.toFixed(2);
+    document.getElementById('chargeOverlay').style.display = 'flex';
+    updateChargeSerie();
+}
+
+function closeChargeModal() {
+    document.getElementById('chargeOverlay').style.display = 'none';
+}
+
+function searchChargeCustomers(term) {
+    if (term.length < 2) { document.getElementById('chargeCustomerDropdown').style.display = 'none'; return; }
+    const termLower = term.toLowerCase();
+    const results = customersData.filter(c => {
+        return (c.nombre && c.nombre.toLowerCase().includes(termLower)) || (c.documento_numero && c.documento_numero.includes(term));
+    });
+    if (results.length === 0) {
+        document.getElementById('chargeCustomerDropdown').innerHTML = '<div style="padding:8px;color:#999;">Sin resultados</div>';
+        document.getElementById('chargeCustomerDropdown').style.display = 'block';
+        return;
+    }
+    let html = '';
+    results.slice(0, 10).forEach(customer => {
+        html += '<div class="customer-option" onclick="selectChargeCustomer(' + customer.id + ', \'' + customer.nombre.replace(/'/g, "\\'") + '\')">' +
+            '<div class="customer-option-name">' + customer.nombre + '</div>' +
+            '<div class="customer-option-doc">' + (customer.documento_tipo || '') + ': ' + (customer.documento_numero || '') + '</div></div>';
+    });
+    document.getElementById('chargeCustomerDropdown').innerHTML = html;
+    document.getElementById('chargeCustomerDropdown').style.display = 'block';
+}
+
+function selectChargeCustomer(id, nombre) {
+    document.getElementById('chargeCustomerId').value = id;
+    document.getElementById('chargeCustomerSearch').value = nombre;
+    document.getElementById('chargeCustomerDropdown').style.display = 'none';
+}
+
+function updateChargeSerie() {
+    const docType = document.getElementById('chargeDocumentType').value;
+    const typePrefixes = { '01': 'F', '03': 'B', 'NV': 'NV' };
+    const prefix = typePrefixes[docType] || 'F';
+    let defaultSerie = prefix + '001';
+    if (seriesData && seriesData.length > 0) {
+        const matchingSerie = seriesData.find(s => s.tipo_documento === docType);
+        if (matchingSerie && matchingSerie.serie) defaultSerie = matchingSerie.serie;
+    }
+    document.getElementById('chargeSerieDisplay').value = defaultSerie;
+}
+
+function openCustomerModal() {
+    const companyId = {{ $companyId }};
+    document.getElementById('customerFrame').src = '/customers/create?company_id=' + companyId + '&modal=1';
+    $('#customerModal').modal('show');
+}
+
+function onCustomerCreated(customer) {
+    customersData.push(customer);
+    $('#customerModal').modal('hide');
+    selectChargeCustomer(customer.id, customer.nombre);
+}
+
+function processCharge() {
+    if (!currentOrderId) return;
+    const btn = document.getElementById('btnProcessCharge');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+    fetch('/restaurant/orders/' + currentOrderId + '/charge', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            customer_id: document.getElementById('chargeCustomerId').value,
+            document_type: document.getElementById('chargeDocumentType').value,
+            payment_method: document.getElementById('chargePaymentMethod').value,
+            reference: document.getElementById('chargeReference').value,
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        btn.disabled = false;
+        if (data.success) {
+            closeChargeModal();
+            window.open('/pos/print/' + data.invoice_id + '/80mm', '_blank', 'width=400,height=600');
+            document.getElementById('chargeCustomerSearch').value = '';
+            document.getElementById('chargeCustomerId').value = '';
+            location.reload();
+        } else {
+            btn.innerHTML = '<i class="fas fa-credit-card"></i> COBRAR';
+            alert(data.message || 'Error al procesar');
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-credit-card"></i> COBRAR';
+        alert('Error: ' + err.message);
+    });
 }
 </script>
 @endpush

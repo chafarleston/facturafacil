@@ -292,7 +292,6 @@
 
     <script>
 let allOrders = [];
-let lastUpdateTime = 0;
 let audioContext = null;
 let alertSound = null;
 
@@ -359,26 +358,20 @@ setInterval(updateClock, 1000);
 updateClock();
 
 function loadKitchenOrders() {
-    fetch('/restaurant/kitchen-orders')
+    fetch('/restaurant/kitchen-orders?_=' + Date.now())
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            const currentTime = Date.now();
+            const prevCount = allOrders.length;
+            allOrders = data.orders;
+            renderKitchenOrders();
             
-            // Comparar datos actuales con anteriores
-            const ordersChanged = JSON.stringify(allOrders) !== JSON.stringify(data.orders);
-            
-            // Si hay cambios y no es la primera carga, reproducir sonido
-            if (ordersChanged && lastUpdateTime > 0) {
+            if (prevCount > 0 && allOrders.length > prevCount) {
                 playAlertSound();
             }
-            
-            allOrders = data.orders;
-            lastUpdateTime = currentTime;
-            renderKitchenOrders();
         }
     })
-    .catch(err => console.error('Error:', err));
+    .catch(err => console.error('KDS Error:', err));
 }
 
 function getElapsedTime(dateString) {

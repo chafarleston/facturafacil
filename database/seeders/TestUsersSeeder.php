@@ -49,5 +49,16 @@ class TestUsersSeeder extends Seeder
                 'role' => 'admin',
             ]
         );
+
+        // Demo mozo user
+        User::updateOrCreate(
+            ['email' => 'mozo@gmail.com'],
+            [
+                'name' => 'Mozo Restaurante',
+                'password' => Hash::make('mozo123'),
+                'role' => 'mozo',
+                'company_id' => $company->id,
+            ]
+        );
     }
 }
