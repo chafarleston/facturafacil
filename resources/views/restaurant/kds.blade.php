@@ -79,6 +79,9 @@
             border-left: 4px solid #e94560;
             overflow: hidden;
             font-size: 12px;
+            display: flex;
+            flex-direction: column;
+            max-height: 400px;
         }
         
         .kds-order.ready { border-left-color: #00ff88; }
@@ -90,6 +93,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-shrink: 0;
         }
         
         .kds-order-number { font-size: 14px; font-weight: bold; color: #e94560; }
@@ -104,7 +108,14 @@
         
         .kds-items {
             padding: 10px;
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
         }
+        .kds-items::-webkit-scrollbar { width: 6px; }
+        .kds-items::-webkit-scrollbar-track { background: transparent; }
+        .kds-items::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+        .kds-items::-webkit-scrollbar-thumb:hover { background: #666; }
         
         .kds-item {
             display: flex;
@@ -144,10 +155,11 @@
         }
         
         .kds-order-actions {
-            padding: 8px 10px;
+            padding: 6px 8px;
             background: #1a1a2e;
             display: flex;
-            gap: 8px;
+            gap: 6px;
+            flex-shrink: 0;
         }
         
 .kds-btn {
@@ -186,11 +198,11 @@
         
 .kds-btn {
             flex: 1;
-            padding: 12px;
+            padding: 6px 8px;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 11px;
             cursor: pointer;
             transition: all 0.2s;
             display: flex;
