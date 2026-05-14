@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CashRegister;
 use App\Models\Invoice;
+use App\Models\RestaurantOrderItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -202,7 +203,7 @@ class CashRegisterController extends Controller
         return view('cashregisters.show', compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventas', 'categoriasVentas', 'productosVendidos', 'ventasEfectivo', 'ventasTarjeta', 'ventasYape', 'ventasPlin', 'ventasOtro', 'totalMetodos'));
     }
 
-    public function pdf(CashRegister $cashregister)
+    private function getCashRegisterData(CashRegister $cashregister)
     {
         if (!$cashregister->fecha_apertura) {
             $cashregister->fecha_apertura = now();
@@ -211,19 +212,26 @@ class CashRegisterController extends Controller
         if (!$cashregister->fecha_cierre) {
             $cashregister->fecha_cierre = now();
         }
-        
+
         $fechaApertura = $cashregister->fecha_apertura instanceof \Carbon\Carbon 
             ? $cashregister->fecha_apertura 
             : \Carbon\Carbon::parse($cashregister->fecha_apertura);
         $fechaCierre = $cashregister->fecha_cierre instanceof \Carbon\Carbon 
             ? $cashregister->fecha_cierre 
             : \Carbon\Carbon::parse($cashregister->fecha_cierre);
-        
+
         $ventas = Invoice::where('company_id', $cashregister->company_id)
             ->where('fecha_emision', '>=', $fechaApertura->format('Y-m-d'))
             ->where('fecha_emision', '<=', $fechaCierre->format('Y-m-d'))
             ->where('sunat_estado', '!=', 'ANULADO')
             ->with(['items.product.category', 'customer'])
+            ->get();
+
+        $lineasEliminadas = RestaurantOrderItem::where('kitchen_status', 'CANCELLED')
+            ->whereNotNull('cancelled_from')
+            ->whereIn('cancelled_from', ['SENT', 'READY', 'DELIVERED'])
+            ->where('cancelled_at', '>=', $fechaApertura)
+            ->where('cancelled_at', '<=', $fechaCierre)
             ->get();
 
         $facturas = $ventas->where('tipo_documento', '01');
@@ -233,25 +241,25 @@ class CashRegisterController extends Controller
         $ventasPorMetodo = [];
         $categoriasVentas = [];
         $productosVendidos = [];
-        
+
         foreach ($ventas as $venta) {
             $metodo = $venta->metodo_pago ?? 'Efectivo';
             if (!isset($ventasPorMetodo[$metodo])) {
                 $ventasPorMetodo[$metodo] = [];
             }
             $ventasPorMetodo[$metodo][] = $venta;
-            
+
             foreach ($venta->items as $item) {
                 $categoriaNombre = $item->product && $item->product->category 
                     ? $item->product->category->nombre 
                     : 'Sin Categoría';
-                
+
                 if (!isset($categoriasVentas[$categoriaNombre])) {
                     $categoriasVentas[$categoriaNombre] = ['cantidad' => 0, 'total' => 0];
                 }
                 $categoriasVentas[$categoriaNombre]['cantidad']++;
                 $categoriasVentas[$categoriaNombre]['total'] += $item->precio_venta;
-                
+
                 $productoNombre = $item->descripcion;
                 if (!isset($productosVendidos[$productoNombre])) {
                     $productosVendidos[$productoNombre] = ['cantidad' => 0, 'total' => 0];
@@ -260,11 +268,16 @@ class CashRegisterController extends Controller
                 $productosVendidos[$productoNombre]['total'] += $item->precio_venta;
             }
         }
-        
+
         arsort($categoriasVentas);
         arsort($productosVendidos);
 
-        $html = view('cashregisters.ticket', compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventasPorMetodo', 'categoriasVentas', 'productosVendidos'))->render();
+        return compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventasPorMetodo', 'categoriasVentas', 'productosVendidos', 'lineasEliminadas');
+    }
+
+    public function pdf(CashRegister $cashregister)
+    {
+        $data = $this->getCashRegisterData($cashregister);
 
         $pdf = new \Mpdf\Mpdf([
             'mode' => 'utf-8',
@@ -273,6 +286,24 @@ class CashRegisterController extends Controller
             'margin_bottom' => 2,
         ]);
 
+        $html = view('cashregisters.ticket', $data)->render();
+        $pdf->WriteHTML($html);
+
+        return $pdf->Output('resumen-caja-ticket-' . $cashregister->id . '.pdf', 'D');
+    }
+
+    public function ticketPdf(CashRegister $cashregister)
+    {
+        $data = $this->getCashRegisterData($cashregister);
+
+        $pdf = new \Mpdf\Mpdf([
+            'mode' => 'utf-8',
+            'format' => [80, 200],
+            'margin_top' => 2,
+            'margin_bottom' => 2,
+        ]);
+
+        $html = view('cashregisters.ticket', $data)->render();
         $pdf->WriteHTML($html);
 
         return $pdf->Output('resumen-caja-ticket-' . $cashregister->id . '.pdf', 'D');

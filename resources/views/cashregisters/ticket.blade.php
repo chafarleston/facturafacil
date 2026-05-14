@@ -76,6 +76,15 @@
     @endforeach
     @endif
 
+    @if(count($lineasEliminadas) > 0)
+    <div class="border-top py-1 mt-1"></div>
+    <div class="border-bottom py-1 mb-1 bold text-center">REPORTE DE LÍNEAS ELIMINADAS</div>
+    @foreach($lineasEliminadas as $item)
+    <div style="font-size:8px;">{{ Str::limit($item->product_name, 22) }} x{{ number_format($item->quantity, 0) }} - {{ $item->cancelled_from }} - {{ $item->cancelled_at ? $item->cancelled_at->format('H:i') : '' }}</div>
+    @endforeach
+    <div class="border-top py-1 mt-1"></div>
+    @endif
+
     <div class="border-top py-1 mt-1 text-center">
         <div class="bold">GRACIAS POR SU PREFERENCIA</div>
     </div>

@@ -822,7 +822,7 @@ function renderOrder(order) {
     }
     
     const chargeBtn = document.getElementById('btnCharge');
-    if (chargeBtn) chargeBtn.disabled = false;
+    if (chargeBtn) chargeBtn.disabled = order.status === 'OPEN';
     document.getElementById('btnPrebill').disabled = false;
     
     let html = '';
@@ -1217,6 +1217,7 @@ function pollActiveOrders() {
 function showChargeModal() {
     if (!window.currentOrderData) return;
     const order = window.currentOrderData;
+    if (order.status === 'OPEN') { alert('Debe enviar el pedido a cocina antes de cobrar'); return; }
     const total = parseFloat(order.total) || 0;
     document.getElementById('chargeOrderNumber').textContent = '#' + (order.order_number || order.id);
     document.getElementById('chargeSubtotal').textContent = 'S/ ' + (parseFloat(order.subtotal) || total / 1.18).toFixed(2);

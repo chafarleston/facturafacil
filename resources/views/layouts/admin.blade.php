@@ -147,34 +147,40 @@
               </ul>
             </li>
             
-            <li class="nav-header">COMPROBANTES</li>
-            
             <li class="nav-item">
-              <a href="{{ route('invoices.index', ['type' => '01']) }}" class="nav-link">
+              <a href="#" class="nav-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-file-invoice"></i>
-                <p>Facturas</p>
+                <p>
+                  Comprobantes
+                  <i class="fas fa-angle-left right"></i>
+                </p>
               </a>
-            </li>
-            
-            <li class="nav-item">
-              <a href="{{ route('invoices.index', ['type' => '03']) }}" class="nav-link">
-                <i class="nav-icon fas fa-receipt"></i>
-                <p>Boletas</p>
-              </a>
-            </li>
-            
-            <li class="nav-item">
-              <a href="{{ route('invoices.index', ['type' => 'NV']) }}" class="nav-link">
-                <i class="nav-icon fas fa-file-alt"></i>
-                <p>Notas de Venta</p>
-              </a>
-            </li>
-            
-            <li class="nav-item">
-              <a href="{{ route('invoices.create') }}" class="nav-link">
-                <i class="nav-icon fas fa-plus"></i>
-                <p>Nuevo Comprobante</p>
-              </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="{{ route('invoices.index', ['type' => '01']) }}" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Facturas</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{{ route('invoices.index', ['type' => '03']) }}" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Boletas</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{{ route('invoices.index', ['type' => 'NV']) }}" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Notas de Venta</p>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a href="{{ route('invoices.create') }}" class="nav-link">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Nuevo Comprobante</p>
+                  </a>
+                </li>
+              </ul>
             </li>
             
             <li class="nav-item">

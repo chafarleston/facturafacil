@@ -239,6 +239,8 @@ class RestaurantController extends Controller
             }
         }
 
+        $item->cancelled_from = $item->kitchen_status;
+        $item->cancelled_at = now();
         $item->kitchen_status = 'CANCELLED';
         $item->save();
 
@@ -595,7 +597,7 @@ class RestaurantController extends Controller
 
             $hasPending = $order->items()->whereNotIn('kitchen_status', ['DELIVERED'])->exists();
             if (!$hasPending) {
-                $order->status = 'READY';
+                $order->status = 'DELIVERED';
                 $order->save();
             }
 
@@ -636,6 +638,14 @@ class RestaurantController extends Controller
             }
             
             $order = RestaurantOrder::with('items')->findOrFail($orderId);
+
+            if ($order->status === 'OPEN') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Debe enviar el pedido a cocina antes de cobrar'
+                ], 400);
+            }
+
             $order->setRelation('items', $order->items->where('kitchen_status', '!=', 'CANCELLED'));
             
             if ($order->items->isEmpty()) {

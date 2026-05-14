@@ -20,6 +20,8 @@ class RestaurantOrderItem extends Model
         'kitchen_status',
         'sent_to_kitchen_at',
         'notes',
+        'cancelled_from',
+        'cancelled_at',
     ];
 
     protected $casts = [
