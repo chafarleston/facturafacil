@@ -16,6 +16,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SunatPadronController;
 use App\Http\Controllers\ThemeController;
 use App\Http\Controllers\UbigeoController;
+use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\Restaurant\RestaurantController;
 use App\Http\Controllers\Restaurant\FloorController;
@@ -80,8 +81,10 @@ Route::middleware('auth')->group(function () {
         Route::resource('roles', \App\Http\Controllers\RoleController::class);
         Route::resource('permissions', \App\Http\Controllers\PermissionController::class);
         Route::post('/companies/download-padron', [SunatPadronController::class, 'downloadPadron'])->name('sunat.padron.download');
-        Route::resource('printers', \App\Http\Controllers\Admin\PrinterController::class);
         Route::get('/printers/detect', [\App\Http\Controllers\Admin\PrinterController::class, 'detect'])->name('printers.detect');
+        Route::post('/printers/detect', [\App\Http\Controllers\Admin\PrinterController::class, 'detect'])->name('printers.detect.post');
+        Route::get('/printers', [\App\Http\Controllers\Admin\PrinterController::class, 'index'])->name('printers.index');
+        Route::put('/printers/{printer}', [\App\Http\Controllers\Admin\PrinterController::class, 'update'])->name('printers.update');
     });
     
     Route::get('/invoices/{invoice}/send', [InvoiceController::class, 'sendToSunat'])->name('invoices.send');
@@ -150,5 +153,4 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
 
 require __DIR__.'/auth.php';
 
-use App\Http\Controllers\Auth\LogoutController;
 Route::post('/logout', [LogoutController::class, 'logout'])->name('logout');

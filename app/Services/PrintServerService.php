@@ -40,10 +40,21 @@ class PrintServerService
 
     public function printPdf(Printer $printer, string $pdfBase64): bool
     {
+        return $this->sendPrint($printer, $pdfBase64, 'pdf');
+    }
+
+    public function printText(Printer $printer, string $text): bool
+    {
+        return $this->sendPrint($printer, $text, 'escpos');
+    }
+
+    protected function sendPrint(Printer $printer, string $content, string $mode): bool
+    {
         try {
             $payload = [
-                'data' => $pdfBase64,
+                'data' => $content,
                 'type' => $printer->type,
+                'mode' => $mode,
             ];
 
             if ($printer->type === 'network') {

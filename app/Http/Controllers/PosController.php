@@ -8,6 +8,7 @@ use App\Models\CashRegister;
 use App\Models\Customer;
 use App\Models\Serie;
 use App\Services\GreenterService;
+use App\Services\PrintService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -173,7 +174,15 @@ class PosController extends Controller
         
         $serie->numero_actual = $nextNumber;
         $serie->save();
-        
+
+        try {
+            $printService = app(PrintService::class);
+            $invoice->load('items', 'customer');
+            $printService->printInvoice($invoice);
+        } catch (\Exception $e) {
+            \Log::error('POS print error: ' . $e->getMessage());
+        }
+
         return redirect()->route('pos.success', $invoice->id);
     }
     

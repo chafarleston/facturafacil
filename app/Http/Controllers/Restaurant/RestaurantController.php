@@ -826,7 +826,15 @@ class RestaurantController extends Controller
             };
             $cajaAbierta->$paymentField = ($cajaAbierta->$paymentField ?? 0) + round($total, 2);
             $cajaAbierta->save();
-            
+
+            try {
+                $printService = app(PrintService::class);
+                $invoice->load('items', 'customer');
+                $printService->printInvoice($invoice);
+            } catch (\Exception $e) {
+                \Log::error('Invoice print error: ' . $e->getMessage());
+            }
+
             return response()->json([
                 'success' => true,
                 'invoice_id' => $invoice->id,
