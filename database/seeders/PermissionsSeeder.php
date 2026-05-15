@@ -52,6 +52,10 @@ class PermissionsSeeder extends Seeder
             ['name' => 'Editar Roles', 'slug' => 'edit_roles', 'module' => 'users', 'description' => 'Editar roles'],
             ['name' => 'Ver Permisos', 'slug' => 'view_permissions', 'module' => 'users', 'description' => 'Ver permisos'],
             ['name' => 'Crear Permisos', 'slug' => 'create_permissions', 'module' => 'users', 'description' => 'Crear permisos'],
+            ['name' => 'Ver Series', 'slug' => 'view_series', 'module' => 'series', 'description' => 'Ver series'],
+            ['name' => 'Ver Impresoras', 'slug' => 'view_printers', 'module' => 'printers', 'description' => 'Ver configuración de impresoras'],
+            ['name' => 'Ver Cola Impresión', 'slug' => 'view_print_queue', 'module' => 'printers', 'description' => 'Ver cola de impresión'],
+            ['name' => 'Ver Modo Pedidos', 'slug' => 'view_order_mode', 'module' => 'restaurant', 'description' => 'Ver configuración del modo de pedidos'],
         ];
 
         foreach ($permissions as $perm) {
@@ -79,6 +83,9 @@ class PermissionsSeeder extends Seeder
             'view_kitchen', 'manage_kitchen',
             'view_roles', 'create_roles', 'edit_roles',
             'view_permissions', 'create_permissions',
+            'view_series',
+            'view_printers', 'view_print_queue',
+            'view_order_mode',
         ])->pluck('id')->toArray());
 
         $mozoRole = Role::firstOrCreate(['slug' => 'mozo'], [

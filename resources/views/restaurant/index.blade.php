@@ -177,13 +177,17 @@
     
     /* Tab Products */
     .products-categories {
-        display: flex;
+        display: grid;
+        grid-template-rows: repeat(2, auto);
+        grid-auto-flow: column;
         gap: 8px;
         padding: 8px 0;
         overflow-x: auto;
-        flex-wrap: nowrap;
+        overflow-y: hidden;
         flex-shrink: 0;
     }
+    .products-categories::-webkit-scrollbar { height: 4px; }
+    .products-categories::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
     
     .category-btn {
         padding: 6px 14px;
@@ -384,14 +388,17 @@
             <div>
                 <h4><i class="fas fa-utensils"></i> Restaurante</h4>
                 <small>Seleccione una mesa</small>
+                @if($orderMode === 'print')
+                <span class="badge badge-{{ $printServerRunning ? 'success' : 'danger' }}" style="font-size:9px; margin-left:5px;">
+                    <i class="fas fa-{{ $printServerRunning ? 'check-circle' : 'times-circle' }}"></i>
+                    Print Server {{ $printServerRunning ? 'activo' : 'inactivo' }}
+                </span>
+                @endif
             </div>
-            <form method="POST" action="{{ route('restaurant.toggleMode') }}" style="display:inline;">
-                @csrf
-                <button type="submit" class="btn btn-sm {{ $orderMode === 'print' ? 'btn-info' : 'btn-secondary' }}">
-                    <i class="fas {{ $orderMode === 'print' ? 'fa-print' : 'fa-tv' }}"></i>
-                    {{ $orderMode === 'print' ? 'Impresión 80mm' : 'KDS' }}
-                </button>
-            </form>
+            <span class="badge badge-{{ $orderMode === 'print' ? 'info' : 'secondary' }}" style="font-size:11px;">
+                <i class="fas {{ $orderMode === 'print' ? 'fa-print' : 'fa-tv' }}"></i>
+                {{ $orderMode === 'print' ? 'Impresión 80mm' : 'KDS' }}
+            </span>
         </div>
         
         <div class="floors-tabs" id="floorsTabs">
@@ -694,6 +701,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const floorId = parseInt(firstFloor.dataset.floorId);
         selectFloor(floorId);
     }
+    connectRestaurantSSE();
     pollActiveOrders();
     setInterval(pollActiveOrders, 10000);
     
@@ -703,6 +711,21 @@ document.addEventListener('DOMContentLoaded', function() {
         chargeSearch.addEventListener('blur', function() { setTimeout(function() { document.getElementById('chargeCustomerDropdown').style.display = 'none'; }, 200); });
     }
 });
+
+let sseRetry = 0;
+
+function connectRestaurantSSE() {
+    const es = new EventSource('/restaurant/stream');
+    es.onmessage = function(e) {
+        sseRetry = 0;
+        pollActiveOrders();
+    };
+    es.onerror = function() {
+        es.close();
+        sseRetry = Math.min(sseRetry + 1, 5);
+        setTimeout(connectRestaurantSSE, sseRetry * 3000);
+    };
+}
 
 function selectFloor(floorId) {
     currentFloorId = floorId;
@@ -759,6 +782,8 @@ function switchTab(tab) {
     
     document.getElementById('tabProducts').style.display = tab === 'products' ? 'block' : 'none';
     document.getElementById('tabOrder').style.display = tab === 'order' ? 'block' : 'none';
+    const totals = document.getElementById('orderTotals');
+    if (totals) totals.style.display = (tab === 'order' && totals.dataset.hasItems === 'true') ? 'block' : 'none';
 }
 
 function resetTableStyle(tableId) {
@@ -828,6 +853,7 @@ function renderOrder(order) {
     if (!order.items || order.items.length === 0) {
         container.innerHTML = '<div class="order-empty"><i class="fas fa-shopping-basket"></i><p>Seleccione productos</p></div>';
         document.getElementById('orderTotals').style.display = 'none';
+        document.getElementById('orderTotals').dataset.hasItems = 'false';
         document.getElementById('itemsCount').style.display = 'none';
         const chargeBtn = document.getElementById('btnCharge');
         if (chargeBtn) chargeBtn.disabled = true;
@@ -870,7 +896,10 @@ function renderOrder(order) {
     document.getElementById('orderSubtotal').textContent = 'S/ ' + parseFloat(order.subtotal).toFixed(2);
     document.getElementById('orderIgv').textContent = 'S/ ' + parseFloat(order.igv).toFixed(2);
     document.getElementById('orderTotal').textContent = 'S/ ' + parseFloat(order.total).toFixed(2);
-    document.getElementById('orderTotals').style.display = 'block';
+    const isOrderTab = document.getElementById('tabOrder').style.display !== 'none';
+    const totals = document.getElementById('orderTotals');
+    totals.dataset.hasItems = 'true';
+    totals.style.display = isOrderTab ? 'block' : 'none';
     document.getElementById('itemsCount').textContent = order.items.length;
     document.getElementById('itemsCount').style.display = 'inline';
 }

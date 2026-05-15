@@ -93,7 +93,7 @@ class PlainTextTicket
 
         $first = true;
         foreach ($this->lines as $line) {
-            $trimmed = trim($line);
+            $trimmed = mb_convert_encoding(trim($line), 'ISO-8859-1', 'UTF-8');
             if ($first) {
                 $out .= self::BOLD_ON . strtoupper($trimmed) . self::BOLD_OFF . self::LF;
                 $first = false;

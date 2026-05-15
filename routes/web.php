@@ -84,6 +84,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/printers/detect', [\App\Http\Controllers\Admin\PrinterController::class, 'detect'])->name('printers.detect');
         Route::post('/printers/detect', [\App\Http\Controllers\Admin\PrinterController::class, 'detect'])->name('printers.detect.post');
         Route::get('/printers', [\App\Http\Controllers\Admin\PrinterController::class, 'index'])->name('printers.index');
+        Route::get('/printers/queue', [\App\Http\Controllers\Admin\PrinterController::class, 'queue'])->name('printers.queue');
+        Route::post('/printers/queue/{printJob}/retry', [\App\Http\Controllers\Admin\PrinterController::class, 'retry'])->name('printers.queue.retry');
+        Route::delete('/printers/queue/{printJob}', [\App\Http\Controllers\Admin\PrinterController::class, 'destroy'])->name('printers.queue.destroy');
         Route::put('/printers/{printer}', [\App\Http\Controllers\Admin\PrinterController::class, 'update'])->name('printers.update');
     });
     
@@ -118,6 +121,7 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     Route::get('/restaurant/kitchen/bar', function () { return redirect('/restaurant/kitchen?kds=bar'); })->name('restaurant.kitchen.bar');
     Route::get('/restaurant/kitchen-orders', [RestaurantController::class, 'getKitchenOrders'])->name('restaurant.kitchenOrders');
     Route::get('/restaurant/kitchen-stream', [RestaurantController::class, 'kitchenStream'])->name('restaurant.kitchenStream');
+    Route::get('/restaurant/stream', [RestaurantController::class, 'restaurantStream'])->name('restaurant.stream');
     Route::post('/restaurant/kitchen/{orderId}/ready', [RestaurantController::class, 'markKitchenReady'])->name('restaurant.kitchenReady');
     Route::post('/restaurant/kitchen/{orderId}/deliver', [RestaurantController::class, 'deliverKitchenOrder'])->name('restaurant.kitchenDeliver');
     Route::post('/restaurant/tables/{tableId}/open', [RestaurantController::class, 'openTable'])->name('restaurant.tables.open');

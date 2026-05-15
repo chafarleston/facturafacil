@@ -20,18 +20,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use App\Services\PrintServerService;
 use App\Services\PrintService;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class RestaurantController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, PrintServerService $printServer)
     {
         $companyId = $request->company_id ?? Company::first()->id;
 
         $cajaAbierta = CashRegister::where('company_id', $companyId)
             ->where('estado', 'ABIERTA')
-            ->where('user_id', auth()->id())
             ->first();
 
         if (!$cajaAbierta) {
@@ -71,8 +71,9 @@ class RestaurantController extends Controller
 
         $company = Company::find($companyId);
         $orderMode = $company->order_mode ?? 'kds';
+        $printServerRunning = $printServer->isServerRunning();
 
-        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId', 'orderMode'));
+        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId', 'orderMode', 'printServerRunning'));
     }
 
     public function modeIndex()
@@ -287,6 +288,7 @@ class RestaurantController extends Controller
         }
 
         Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+            Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
         return response()->json(['success' => true]);
     }
@@ -319,12 +321,13 @@ class RestaurantController extends Controller
             $order->save();
 
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+            Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
             $company = Company::find($order->company_id);
             if ($company && ($company->order_mode ?? 'kds') === 'print') {
                 try {
                     $printService = app(PrintService::class);
-                    $printService->printKitchenOrder($order->fresh(['items', 'table.floor', 'user']));
+                    $printService->printKitchenOrder($order->fresh(['table.floor', 'user']), $pendingItems);
                 } catch (\Exception $e) {
                     \Log::error('Print error: ' . $e->getMessage());
                 }
@@ -393,6 +396,38 @@ class RestaurantController extends Controller
         return $pdf->stream('precuenta-' . $order->order_number . '.pdf');
     }
 
+    public function restaurantStream(Request $request)
+    {
+        $companyId = $request->company_id ?? Company::first()->id;
+        
+        header('Content-Type: text/event-stream');
+        header('Cache-Control: no-cache');
+        header('Connection: keep-alive');
+        header('X-Accel-Buffering: no');
+        
+        echo "retry: 2000\n";
+        
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        
+        $lastChange = null;
+        $lastCacheKey = 'restaurant_updated_' . $companyId;
+        
+        while (true) {
+            if (connection_aborted()) break;
+            
+            $current = Cache::get($lastCacheKey);
+            if ($current !== $lastChange) {
+                $lastChange = $current;
+                echo "data: updated\n\n";
+                flush();
+            }
+            
+            usleep(2000000);
+        }
+    }
+
     public function markItemReady($itemId)
     {
         $item = RestaurantOrderItem::findOrFail($itemId);
@@ -407,6 +442,7 @@ class RestaurantController extends Controller
         }
 
         Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+            Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
         return response()->json(['success' => true]);
     }
@@ -430,6 +466,8 @@ class RestaurantController extends Controller
         
         $order->update(['status' => 'COMPLETED']);
         $order->table->update(['status' => 'AVAILABLE']);
+
+        Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
         return response()->json([
             'success' => true,
@@ -489,6 +527,7 @@ class RestaurantController extends Controller
         }
 
         Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+            Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
         return response()->json(['success' => true]);
     }
@@ -665,6 +704,7 @@ class RestaurantController extends Controller
             $order->save();
 
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+            Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
@@ -686,6 +726,7 @@ class RestaurantController extends Controller
             }
 
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+            Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
@@ -711,7 +752,6 @@ class RestaurantController extends Controller
             
             $cajaAbierta = CashRegister::where('company_id', $companyId)
                 ->where('estado', 'ABIERTA')
-                ->where('user_id', auth()->id())
                 ->first();
                 
             if (!$cajaAbierta) {
@@ -829,6 +869,7 @@ class RestaurantController extends Controller
             $order->table->update(['status' => 'AVAILABLE']);
             
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+            Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
             
             $fullNumber = $serie->serie . '-' . str_pad($nextNumber, 8, '0', STR_PAD_LEFT);
             

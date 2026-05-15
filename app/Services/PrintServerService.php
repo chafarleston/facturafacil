@@ -51,8 +51,9 @@ class PrintServerService
     protected function sendPrint(Printer $printer, string $content, string $mode): bool
     {
         try {
+            $data = ($mode === 'pdf') ? $content : base64_encode($content);
             $payload = [
-                'data' => $content,
+                'data' => $data,
                 'type' => $printer->type,
                 'mode' => $mode,
             ];

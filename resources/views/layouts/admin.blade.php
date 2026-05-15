@@ -71,224 +71,161 @@
         <nav class="mt-2">
           <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
             
+            @can('permission', 'view_dashboard')
             <li class="nav-item">
               <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-tachometer-alt"></i>
                 <p>Dashboard</p>
               </a>
             </li>
+            @endcan
             
-            @can('admin')
+            @can('permission', 'view_companies')
             <li class="nav-item">
-              <a href="#" class="nav-link {{ request()->routeIs('companies.*') || request()->routeIs('series.*') || request()->routeIs('users.*') ? 'active' : '' }}">
+              <a href="#" class="nav-link {{ request()->routeIs('companies.*') || request()->routeIs('series.*') || request()->routeIs('users.*') || request()->routeIs('roles.*') || request()->routeIs('permissions.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-building"></i>
-                <p>
-                  Empresas
-                  <i class="fas fa-angle-left right"></i>
-                </p>
+                <p>Empresas<i class="fas fa-angle-left right"></i></p>
               </a>
               <ul class="nav nav-treeview">
                 <li class="nav-item">
-                  <a href="{{ route('companies.index') }}" class="nav-link {{ request()->routeIs('companies.*') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Datos de Empresa</p>
-                  </a>
+                  <a href="{{ route('companies.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Datos de Empresa</p></a>
                 </li>
+                @can('permission', 'view_series')
                 <li class="nav-item">
-                  <a href="{{ route('series.index') }}" class="nav-link {{ request()->routeIs('series.*') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Series</p>
-                  </a>
+                  <a href="{{ route('series.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Series</p></a>
                 </li>
+                @endcan
+                @can('permission', 'view_users')
                 <li class="nav-item">
-                  <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Usuarios</p>
-                  </a>
+                  <a href="{{ route('users.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Usuarios</p></a>
                 </li>
+                @endcan
+                @can('permission', 'view_roles')
                 <li class="nav-item">
-                  <a href="{{ route('roles.index') }}" class="nav-link {{ request()->routeIs('roles.*') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Roles</p>
-                  </a>
+                  <a href="{{ route('roles.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Roles</p></a>
                 </li>
+                @endcan
+                @can('permission', 'view_permissions')
                 <li class="nav-item">
-                  <a href="{{ route('permissions.index') }}" class="nav-link {{ request()->routeIs('permissions.*') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Permisos</p>
-                  </a>
+                  <a href="{{ route('permissions.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Permisos</p></a>
                 </li>
+                @endcan
               </ul>
             </li>
             @endcan
             
+            @can('permission', 'view_customers')
             <li class="nav-item">
               <a href="{{ route('customers.index') }}" class="nav-link {{ request()->routeIs('customers.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-users"></i>
                 <p>Clientes</p>
               </a>
             </li>
+            @endcan
             
+            @can('permission', 'view_products')
             <li class="nav-item">
               <a href="#" class="nav-link {{ request()->routeIs('products.*') || request()->routeIs('categories.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-box"></i>
-                <p>
-                  Productos
-                  <i class="fas fa-angle-left right"></i>
-                </p>
+                <p>Productos<i class="fas fa-angle-left right"></i></p>
               </a>
               <ul class="nav nav-treeview">
                 <li class="nav-item">
-                  <a href="{{ route('products.index') }}" class="nav-link {{ request()->routeIs('products.*') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Lista de Productos</p>
-                  </a>
+                  <a href="{{ route('products.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Lista de Productos</p></a>
                 </li>
+                @can('permission', 'view_categories')
                 <li class="nav-item">
-                  <a href="{{ route('categories.index') }}" class="nav-link {{ request()->routeIs('categories.*') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Categorías</p>
-                  </a>
+                  <a href="{{ route('categories.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Categorías</p></a>
                 </li>
+                @endcan
               </ul>
             </li>
+            @endcan
             
+            @can('permission', 'view_invoices')
             <li class="nav-item">
               <a href="#" class="nav-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-file-invoice"></i>
-                <p>
-                  Comprobantes
-                  <i class="fas fa-angle-left right"></i>
-                </p>
+                <p>Comprobantes<i class="fas fa-angle-left right"></i></p>
               </a>
               <ul class="nav nav-treeview">
-                <li class="nav-item">
-                  <a href="{{ route('invoices.index', ['type' => '01']) }}" class="nav-link">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Facturas</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="{{ route('invoices.index', ['type' => '03']) }}" class="nav-link">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Boletas</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="{{ route('invoices.index', ['type' => 'NV']) }}" class="nav-link">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Notas de Venta</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="{{ route('invoices.create') }}" class="nav-link">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Nuevo Comprobante</p>
-                  </a>
-                </li>
+                <li class="nav-item"><a href="{{ route('invoices.index', ['type' => '01']) }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Facturas</p></a></li>
+                <li class="nav-item"><a href="{{ route('invoices.index', ['type' => '03']) }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Boletas</p></a></li>
+                <li class="nav-item"><a href="{{ route('invoices.index', ['type' => 'NV']) }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Notas de Venta</p></a></li>
+                <li class="nav-item"><a href="{{ route('invoices.create') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Nuevo Comprobante</p></a></li>
               </ul>
             </li>
+            @endcan
             
+            @can('permission', 'view_purchases')
             <li class="nav-item">
               <a href="#" class="nav-link {{ request()->routeIs('purchases.*') || request()->routeIs('suppliers.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-shopping-cart"></i>
-                <p>
-                  Compras
-                  <i class="fas fa-angle-left right"></i>
-                </p>
+                <p>Compras<i class="fas fa-angle-left right"></i></p>
               </a>
               <ul class="nav nav-treeview">
-                <li class="nav-item">
-                  <a href="{{ route('purchases.index') }}" class="nav-link {{ request()->routeIs('purchases.index') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Lista de Compras</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="{{ route('purchases.create') }}" class="nav-link {{ request()->routeIs('purchases.create') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Nueva Compra</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="{{ route('suppliers.index') }}" class="nav-link {{ request()->routeIs('suppliers.*') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Proveedores</p>
-                  </a>
-                </li>
+                <li class="nav-item"><a href="{{ route('purchases.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Lista de Compras</p></a></li>
+                <li class="nav-item"><a href="{{ route('purchases.create') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Nueva Compra</p></a></li>
+                @can('permission', 'view_suppliers')
+                <li class="nav-item"><a href="{{ route('suppliers.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Proveedores</p></a></li>
+                @endcan
               </ul>
             </li>
+            @endcan
             
+            @can('permission', 'view_cashregisters')
             <li class="nav-item">
               <a href="{{ route('cashregisters.index') }}" class="nav-link {{ request()->routeIs('cashregisters.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-cash-register"></i>
                 <p>Caja</p>
               </a>
             </li>
+            @endcan
             
+            @can('permission', 'view_pos')
             <li class="nav-item">
               <a href="{{ route('pos.index') }}" class="nav-link {{ request()->routeIs('pos.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-shopping-cart"></i>
                 <p>Punto de Venta</p>
               </a>
             </li>
+            @endcan
 
-            @can('restaurant')
+            @can('permission', 'view_restaurant')
             <li class="nav-item">
               <a href="#" class="nav-link {{ request()->routeIs('restaurant.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-utensils"></i>
-                <p>
-                  Restaurante
-                  <i class="fas fa-angle-left right"></i>
-                </p>
+                <p>Restaurante<i class="fas fa-angle-left right"></i></p>
               </a>
               <ul class="nav nav-treeview">
-                <li class="nav-item">
-                  <a href="{{ route('restaurant.index') }}" class="nav-link {{ request()->routeIs('restaurant.index') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Mesas</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="{{ route('restaurant.kitchen.cocina') }}" class="nav-link" target="_blank">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>KDS Cocina</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="{{ route('restaurant.kitchen.cocina2') }}" class="nav-link" target="_blank">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>KDS Cocina 2</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="{{ route('restaurant.kitchen.bar') }}" class="nav-link" target="_blank">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>KDS Bar</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="{{ route('restaurant.floors.index') }}" class="nav-link {{ request()->routeIs('restaurant.floors.*') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Pisos</p>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a href="{{ route('restaurant.mode') }}" class="nav-link {{ request()->routeIs('restaurant.mode') ? 'active' : '' }}">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Modo de Pedidos</p>
-                  </a>
-                </li>
+                <li class="nav-item"><a href="{{ route('restaurant.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Mesas</p></a></li>
+                @can('permission', 'view_kitchen')
+                <li class="nav-item"><a href="{{ route('restaurant.kitchen.cocina') }}" class="nav-link" target="_blank"><i class="far fa-circle nav-icon"></i><p>KDS Cocina</p></a></li>
+                <li class="nav-item"><a href="{{ route('restaurant.kitchen.cocina2') }}" class="nav-link" target="_blank"><i class="far fa-circle nav-icon"></i><p>KDS Cocina 2</p></a></li>
+                <li class="nav-item"><a href="{{ route('restaurant.kitchen.bar') }}" class="nav-link" target="_blank"><i class="far fa-circle nav-icon"></i><p>KDS Bar</p></a></li>
+                @endcan
+                <li class="nav-item"><a href="{{ route('restaurant.floors.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Pisos</p></a></li>
+                @can('permission', 'view_order_mode')
+                <li class="nav-item"><a href="{{ route('restaurant.mode') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Modo de Pedidos</p></a></li>
+                @endcan
               </ul>
             </li>
             @endcan
 
+            @can('permission', 'view_printers')
             <li class="nav-item">
-              <a href="{{ route('printers.index') }}" class="nav-link {{ request()->routeIs('printers.*') ? 'active' : '' }}">
+              <a href="#" class="nav-link {{ request()->routeIs('printers.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-print"></i>
-                <p>Impresoras</p>
+                <p>Impresoras<i class="fas fa-angle-left right"></i></p>
               </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item"><a href="{{ route('printers.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Configuración</p></a></li>
+                @can('permission', 'view_print_queue')
+                <li class="nav-item"><a href="{{ route('printers.queue') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Cola de Impresión</p></a></li>
+                @endcan
+              </ul>
             </li>
+            @endcan
 
           </ul>
         </nav>
