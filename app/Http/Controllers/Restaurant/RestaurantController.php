@@ -446,7 +446,10 @@ class RestaurantController extends Controller
         $order = RestaurantOrder::with('items')->findOrFail($orderId);
         
         $hasKitchenItems = $order->items->whereIn('kitchen_status', ['SENT', 'READY', 'DELIVERED'])->isNotEmpty();
-        
+
+        $company = Company::find($order->company_id);
+        $isPrintMode = $company && ($company->order_mode ?? 'kds') === 'print';
+
         if ($hasKitchenItems) {
             $adminPassword = $request->input('admin_password');
             if (!$adminPassword) {
@@ -465,10 +468,25 @@ class RestaurantController extends Controller
                 ]);
             }
         }
-        
+
+        if ($isPrintMode && $hasKitchenItems) {
+            try {
+                $printService = app(PrintService::class);
+                $kitchenItems = $order->items->whereIn('kitchen_status', ['SENT', 'READY', 'DELIVERED']);
+                foreach ($kitchenItems as $item) {
+                    $printService->printCancelNotification($order, $item);
+                }
+            } catch (\Exception $e) {
+                \Log::error('Cancel print error: ' . $e->getMessage());
+            }
+        }
+
         $order->items()->delete();
         $order->update(['status' => 'CANCELLED']);
-        $order->table->update(['status' => 'AVAILABLE']);
+
+        if ($order->table) {
+            $order->table->update(['status' => 'AVAILABLE']);
+        }
 
         Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
 

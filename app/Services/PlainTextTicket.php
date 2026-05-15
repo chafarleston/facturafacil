@@ -20,7 +20,7 @@ class PlainTextTicket
     const DOUBLE_ON = "\x1B\x21\x30";
     const DOUBLE_OFF = "\x1B\x21\x00";
     const CUT = "\x1D\x56\x00";
-    const FEED = "\x1B\x64\x03";
+    const FEED = "\x1B\x64\x05";
     const QR_MODEL = "\x1D\x28\x6B\x04\x00\x31\x41\x32\x00";
     const QR_SIZE = "\x1D\x28\x6B\x03\x00\x31\x43\x06";
     const QR_EC = "\x1D\x28\x6B\x03\x00\x31\x45\x30";
@@ -95,7 +95,7 @@ class PlainTextTicket
         foreach ($this->lines as $line) {
             $trimmed = trim($line);
             if ($first) {
-                $out .= self::BOLD_ON . self::DOUBLE_ON . $trimmed . self::DOUBLE_OFF . self::BOLD_OFF . self::LF;
+                $out .= self::BOLD_ON . strtoupper($trimmed) . self::BOLD_OFF . self::LF;
                 $first = false;
                 continue;
             }
@@ -109,7 +109,7 @@ class PlainTextTicket
                 $out .= self::ALIGN_LEFT . $trimmed . self::LF;
             }
         }
-        $out .= self::FEED;
+        $out .= self::LF . self::FEED;
         if ($this->qrData) {
             $out .= $this->buildQR();
         }
@@ -157,7 +157,6 @@ class PlainTextTicket
             if ($item->notes) $t->text('  Obs: ' . $item->notes);
         }
         $t->separator();
-        $t->center(now()->format('d/m/Y H:i:s'));
         $footer = match($dest) { 'cocina2' => 'COCINA 2', 'bar' => 'BAR', default => 'COCINA 1' };
         $t->center("**** $footer ****");
         return $format === 'escpos' ? $t->getEscPos() : $t->getText();
@@ -222,17 +221,14 @@ class PlainTextTicket
         return $format === 'escpos' ? $t->getEscPos() : $t->getText();
     }
 
-    public static function cancelNotification($order, $item, string $format = 'text'): string
+    public static function cancelNotification($order, $item, string $format = 'text', string $dest = 'cocina'): string
     {
         $t = new self();
+        $t->buildKitchenHeader($order, $dest);
+        $t->center('*** ANULADO ***');
+        $t->separator();
+        $t->itemLine("{$item->quantity}x", $item->product_name, '');
         $t->separator('=');
-        $t->center('*** ANULACIÓN ***', ' ');
-        $t->separator('=');
-        $t->twoColumns('Pedido:', $order->order_number);
-        $t->twoColumns('Mesa:', $order->table->name ?? 'N/A');
-        $t->itemLine("{$item->quantity}x", $item->product_name, 'ANULADO');
-        $t->separator('=');
-        $t->center(now()->format('d/m/Y H:i:s'));
         return $format === 'escpos' ? $t->getEscPos() : $t->getText();
     }
 

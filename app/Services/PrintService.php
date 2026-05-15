@@ -62,7 +62,7 @@ class PrintService
         $printer = $this->getPrinter($printerKey);
         if (!$printer) return;
 
-        $data = PlainTextTicket::cancelNotification($order, $item, 'escpos');
+        $data = PlainTextTicket::cancelNotification($order, $item, 'escpos', $dest);
         $this->printServer->printText($printer, $data);
     }
 

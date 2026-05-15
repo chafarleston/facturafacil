@@ -225,6 +225,34 @@
     </table>
 </div>
 
+@if(count($lineasEliminadas) > 0)
+<div class="mt-4">
+    <h4>Reporte de Líneas Eliminadas</h4>
+    <div class="table-responsive">
+        <table class="table table-sm table-bordered">
+            <thead class="thead-dark">
+                <tr>
+                    <th>Producto</th>
+                    <th>Cant.</th>
+                    <th>Estado anterior</th>
+                    <th>Eliminado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($lineasEliminadas as $item)
+                <tr>
+                    <td>{{ $item->product_name }}</td>
+                    <td>{{ number_format($item->quantity, 0) }}</td>
+                    <td>{{ $item->cancelled_from }}</td>
+                    <td>{{ $item->cancelled_at ? $item->cancelled_at->format('d/m/Y H:i') : '-' }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+@endif
+
 <div class="mt-4">
     <a href="{{ route('cashregisters.index') }}" class="btn btn-secondary">Volver</a>
 </div>

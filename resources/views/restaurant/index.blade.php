@@ -1149,6 +1149,13 @@ function cancelOrderRequest(password) {
     .then(data => {
         if (data.success) {
             alert('Pedido anulado');
+            const tableCard = document.querySelector(`.table-card[data-table-id="${currentTableId}"]`);
+            if (tableCard) {
+                tableCard.className = 'table-card available';
+                tableCard.dataset.orderId = '';
+                const orderDiv = tableCard.querySelector('.table-order');
+                if (orderDiv) orderDiv.remove();
+            }
             location.reload();
         } else {
             alert(data.message || 'Error');
