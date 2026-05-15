@@ -241,13 +241,13 @@ class RestaurantController extends Controller
         $item = RestaurantOrderItem::findOrFail($itemId);
         $order = $item->order;
 
-        if (in_array($item->kitchen_status, ['READY', 'DELIVERED'])) {
+        if (in_array($item->kitchen_status, ['SENT', 'READY', 'DELIVERED'])) {
             $adminPassword = $request->input('admin_password');
             if (!$adminPassword) {
                 return response()->json([
                     'success' => false,
                     'requires_admin' => true,
-                    'message' => 'El producto ya está preparado o entregado. Requiere autorización de administrador.'
+                    'message' => 'El producto ya está enviado a cocina. Requiere autorización de administrador.'
                 ]);
             }
 

@@ -1013,7 +1013,7 @@ function changeItemQty(itemId, delta) {
 function removeItem(itemId) {
     const order = window.currentOrderData;
     const item = order ? order.items.find(i => i.id === itemId) : null;
-    const needsAdmin = item && ['READY', 'DELIVERED'].includes(item.kitchen_status);
+    const needsAdmin = item && ['SENT', 'READY', 'DELIVERED'].includes(item.kitchen_status);
     
     if (needsAdmin) {
         if (pendingDeleteItems[itemId]) {
@@ -1024,7 +1024,7 @@ function removeItem(itemId) {
             document.getElementById('adminPasswordInput').focus();
         } else {
             pendingDeleteItems[itemId] = true;
-            alert('Este producto ya está preparado o entregado. Presione eliminar nuevamente para confirmar con contraseña de administrador.');
+            alert('Este producto ya está enviado a cocina. Presione eliminar nuevamente para confirmar con contraseña de administrador.');
         }
         return;
     }

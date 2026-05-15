@@ -93,19 +93,20 @@ class PlainTextTicket
 
         $first = true;
         foreach ($this->lines as $line) {
+            $trimmed = trim($line);
             if ($first) {
-                $out .= self::BOLD_ON . self::DOUBLE_ON . $line . self::DOUBLE_OFF . self::BOLD_OFF . self::LF;
+                $out .= self::BOLD_ON . self::DOUBLE_ON . $trimmed . self::DOUBLE_OFF . self::BOLD_OFF . self::LF;
                 $first = false;
                 continue;
             }
-            if (str_starts_with($line, '*** ') || str_starts_with($line, '** ')) {
-                $out .= self::ALIGN_CENTER . self::BOLD_ON . $line . self::BOLD_OFF . self::LF;
-            } elseif (str_starts_with($line, '--') || str_starts_with($line, '==')) {
-                $out .= self::ALIGN_LEFT . $line . self::LF;
-            } elseif (trim($line) === '') {
+            if (str_starts_with($trimmed, '*** ') || str_starts_with($trimmed, '** ')) {
+                $out .= self::ALIGN_CENTER . self::BOLD_ON . $trimmed . self::BOLD_OFF . self::LF;
+            } elseif (str_starts_with($trimmed, '--') || str_starts_with($trimmed, '==')) {
+                $out .= self::ALIGN_LEFT . $trimmed . self::LF;
+            } elseif ($trimmed === '') {
                 $out .= self::LF;
             } else {
-                $out .= self::ALIGN_LEFT . $line . self::LF;
+                $out .= self::ALIGN_LEFT . $trimmed . self::LF;
             }
         }
         $out .= self::FEED;
