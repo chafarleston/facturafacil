@@ -56,7 +56,7 @@ class RestaurantController extends Controller
             ->get();
 
         $categories = Category::where('company_id', $companyId)
-            ->where('estado', 'ACTIVO')
+            ->whereIn('estado', ['ACTIVO', 'ACT'])
             ->orderBy('nombre')
             ->get();
 
