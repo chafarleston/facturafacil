@@ -80,6 +80,8 @@ Route::middleware('auth')->group(function () {
         Route::resource('roles', \App\Http\Controllers\RoleController::class);
         Route::resource('permissions', \App\Http\Controllers\PermissionController::class);
         Route::post('/companies/download-padron', [SunatPadronController::class, 'downloadPadron'])->name('sunat.padron.download');
+        Route::resource('printers', \App\Http\Controllers\Admin\PrinterController::class);
+        Route::get('/printers/detect', [\App\Http\Controllers\Admin\PrinterController::class, 'detect'])->name('printers.detect');
     });
     
     Route::get('/invoices/{invoice}/send', [InvoiceController::class, 'sendToSunat'])->name('invoices.send');
@@ -106,6 +108,7 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
 
     // Restaurant Routes
     Route::get('/restaurant', [RestaurantController::class, 'index'])->name('restaurant.index');
+    Route::get('/restaurant/mode', [RestaurantController::class, 'modeIndex'])->name('restaurant.mode');
     Route::get('/restaurant/kitchen', [RestaurantController::class, 'kitchenIndex'])->name('restaurant.kitchen');
     Route::get('/restaurant/kitchen/cocina', function () { return redirect('/restaurant/kitchen?kds=cocina'); })->name('restaurant.kitchen.cocina');
     Route::get('/restaurant/kitchen/cocina2', function () { return redirect('/restaurant/kitchen?kds=cocina2'); })->name('restaurant.kitchen.cocina2');
@@ -126,6 +129,7 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     Route::post('/restaurant/orders/{orderId}/close', [RestaurantController::class, 'closeOrder'])->name('restaurant.orders.close');
     Route::post('/restaurant/orders/{orderId}/cancel', [RestaurantController::class, 'cancelOrder'])->name('restaurant.orders.cancel');
     Route::post('/restaurant/orders/{orderId}/charge', [RestaurantController::class, 'chargeOrder'])->name('restaurant.orders.charge');
+    Route::post('/restaurant/toggle-mode', [RestaurantController::class, 'toggleMode'])->name('restaurant.toggleMode');
     Route::get('/restaurant/active-orders', [RestaurantController::class, 'getActiveOrders'])->name('restaurant.activeOrders');
 
     // Floor Routes

@@ -385,6 +385,13 @@
                 <h4><i class="fas fa-utensils"></i> Restaurante</h4>
                 <small>Seleccione una mesa</small>
             </div>
+            <form method="POST" action="{{ route('restaurant.toggleMode') }}" style="display:inline;">
+                @csrf
+                <button type="submit" class="btn btn-sm {{ $orderMode === 'print' ? 'btn-info' : 'btn-secondary' }}">
+                    <i class="fas {{ $orderMode === 'print' ? 'fa-print' : 'fa-tv' }}"></i>
+                    {{ $orderMode === 'print' ? 'Impresión 80mm' : 'KDS' }}
+                </button>
+            </form>
         </div>
         
         <div class="floors-tabs" id="floorsTabs">
@@ -497,6 +504,14 @@
     </div>
     
     <div class="modal-actions">
+        @if($orderMode === 'print')
+        <button class="btn-action btn-print" onclick="sendToKitchen()">
+            <i class="fas fa-print"></i><br>Imprimir
+        </button>
+        <button class="btn-action btn-prebill" onclick="printPrebill()" id="btnPrebill" disabled>
+            <i class="fas fa-receipt"></i><br>Precuenta
+        </button>
+        @else
         <button class="btn-action btn-kitchen" onclick="sendToKitchen()">
             <i class="fas fa-paper-plane"></i><br>Cocina
         </button>
@@ -506,10 +521,11 @@
         <button class="btn-action btn-prebill" onclick="printPrebill()" id="btnPrebill" disabled>
             <i class="fas fa-receipt"></i><br>Precuenta
         </button>
-        @if(!auth()->user()->isMozo())
         <button class="btn-action btn-close-order" onclick="closeTable()">
             <i class="fas fa-check"></i><br>Cerrar
         </button>
+        @endif
+        @if(!auth()->user()->isMozo())
         <button class="btn-action btn-charge" onclick="showChargeModal()" id="btnCharge" disabled>
             <i class="fas fa-credit-card"></i><br>Cobrar
         </button>

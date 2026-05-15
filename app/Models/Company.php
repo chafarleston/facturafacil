@@ -15,7 +15,8 @@ class Company extends Model
         'telefono', 'email', 'logo', 'certificado_path',
         'certificado_password', 'certificado_vence',
         'tipo_contribuyente', 'estado',
-        'soap_type_id', 'soap_username', 'soap_password', 'certificate'
+        'soap_type_id', 'soap_username', 'soap_password', 'certificate',
+        'order_mode'
     ];
 
     public function hasCertificate()

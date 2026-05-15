@@ -20,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use App\Services\PrintService;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class RestaurantController extends Controller
@@ -68,7 +69,26 @@ class RestaurantController extends Controller
             ->whereIn('tipo_documento', ['01', '03', 'NV'])
             ->get();
 
-        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId'));
+        $company = Company::find($companyId);
+        $orderMode = $company->order_mode ?? 'kds';
+
+        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId', 'orderMode'));
+    }
+
+    public function modeIndex()
+    {
+        $company = Company::getMainCompany();
+        $orderMode = $company->order_mode ?? 'kds';
+        return view('restaurant.mode', compact('orderMode', 'company'));
+    }
+
+    public function toggleMode(Request $request)
+    {
+        $companyId = $request->company_id ?? Company::first()->id;
+        $company = Company::findOrFail($companyId);
+        $newMode = $company->order_mode === 'print' ? 'kds' : 'print';
+        $company->update(['order_mode' => $newMode]);
+        return back()->with('success', "Modo cambiado a " . ($newMode === 'print' ? 'Impresión 80mm' : 'KDS'));
     }
 
     public function openTable(Request $request, $tableId)
@@ -245,6 +265,19 @@ class RestaurantController extends Controller
         $item->kitchen_status = 'CANCELLED';
         $item->save();
 
+        if (in_array($item->cancelled_from, ['SENT', 'READY', 'DELIVERED'])) {
+            $company = Company::find($order->company_id);
+            if ($company && ($company->order_mode ?? 'kds') === 'print') {
+                try {
+                    $printService = app(PrintService::class);
+                    $order->load(['table', 'items']);
+                    $printService->printCancelNotification($order, $item);
+                } catch (\Exception $e) {
+                    \Log::error('Cancel print error: ' . $e->getMessage());
+                }
+            }
+        }
+
         $this->updateOrderTotals($order);
 
         $activeItems = $order->items()->where('kitchen_status', '!=', 'CANCELLED')->count();
@@ -287,6 +320,16 @@ class RestaurantController extends Controller
 
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
 
+            $company = Company::find($order->company_id);
+            if ($company && ($company->order_mode ?? 'kds') === 'print') {
+                try {
+                    $printService = app(PrintService::class);
+                    $printService->printKitchenOrder($order->fresh(['items', 'table.floor', 'user']));
+                } catch (\Exception $e) {
+                    \Log::error('Print error: ' . $e->getMessage());
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Pedido enviado a cocina',
@@ -327,6 +370,17 @@ class RestaurantController extends Controller
         $order->setRelation('items', $order->items->where('kitchen_status', '!=', 'CANCELLED'));
 
         $company = Company::getMainCompany();
+
+        $companyRecord = Company::find($order->company_id);
+        if ($companyRecord && ($companyRecord->order_mode ?? 'kds') === 'print') {
+            try {
+                $printService = app(PrintService::class);
+                $order->load(['table', 'items']);
+                $printService->printPrebill($order);
+            } catch (\Exception $e) {
+                \Log::error('Prebill print error: ' . $e->getMessage());
+            }
+        }
 
         $pdf = Pdf::loadView('restaurant.tickets.prebill', compact('order', 'company'))
             ->setPaper([0, 0, 226.77, 1000], 'portrait')

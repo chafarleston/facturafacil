@@ -244,12 +244,6 @@
                   </a>
                 </li>
                 <li class="nav-item">
-                  <a href="{{ route('restaurant.kitchen') }}" class="nav-link {{ request()->routeIs('restaurant.kitchen') ? 'active' : '' }}" target="_blank">
-                    <i class="far fa-circle nav-icon"></i>
-                    <p>Cocina (KDS)</p>
-                  </a>
-                </li>
-                <li class="nav-item">
                   <a href="{{ route('restaurant.kitchen.cocina') }}" class="nav-link" target="_blank">
                     <i class="far fa-circle nav-icon"></i>
                     <p>KDS Cocina</p>
@@ -273,9 +267,22 @@
                     <p>Pisos</p>
                   </a>
                 </li>
+                <li class="nav-item">
+                  <a href="{{ route('restaurant.mode') }}" class="nav-link {{ request()->routeIs('restaurant.mode') ? 'active' : '' }}">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Modo de Pedidos</p>
+                  </a>
+                </li>
               </ul>
             </li>
             @endcan
+
+            <li class="nav-item">
+              <a href="{{ route('printers.index') }}" class="nav-link {{ request()->routeIs('printers.*') ? 'active' : '' }}">
+                <i class="nav-icon fas fa-print"></i>
+                <p>Impresoras</p>
+              </a>
+            </li>
 
           </ul>
         </nav>
