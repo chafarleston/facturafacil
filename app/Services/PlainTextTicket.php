@@ -243,7 +243,7 @@ class PlainTextTicket
         $this->separator();
         $this->twoColumns('Pedido:', $order->order_number);
         $this->twoColumns('Mesa:', ($order->table->name ?? 'N/A') . ($order->table && $order->table->floor ? ' (' . $order->table->floor->name . ')' : ''));
-        $this->twoColumns('Hora:', $order->created_at ? $order->created_at->format('H:i') : now()->format('H:i'));
+        $this->twoColumns('Hora:', now()->format('H:i'));
         if ($order->user) $this->twoColumns('Mozo:', $order->user->name);
         if ($order->notes) $this->text('NOTA: ' . $order->notes);
         $this->separator();
