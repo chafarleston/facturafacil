@@ -19,13 +19,14 @@ class TableController extends Controller
     {
         $companyId = $request->company_id ?? Company::first()->id;
         $floors = Floor::where('company_id', $companyId)->active()->ordered()->get();
+        $floorId = $request->floor_id;
         
         if ($floors->isEmpty()) {
             return redirect()->route('restaurant.floors.index', ['company_id' => $companyId])
                 ->with('error', 'Primero debe crear al menos un piso');
         }
 
-        return view('restaurant.tables.create', compact('floors', 'companyId'));
+        return view('restaurant.tables.create', compact('floors', 'companyId', 'floorId'));
     }
 
     public function store(Request $request)
