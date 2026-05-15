@@ -17,6 +17,12 @@
   
   <!-- overlayScrollbars -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/overlayscrollbars@2.10.1/styles/overlayscrollbars.min.css">
+  <style>
+  .main-sidebar .sidebar { overflow-y: auto !important; max-height: calc(100vh - 60px); }
+  .main-sidebar .sidebar::-webkit-scrollbar { width: 5px; }
+  .main-sidebar .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .main-sidebar .sidebar::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+  </style>
   
   @stack('styles')
 </head>
