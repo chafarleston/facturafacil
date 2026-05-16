@@ -1,0 +1,77 @@
+Opción 1: Sin Docker (recomendada para empezar)
+# Conectarse a Hetzner
+ssh root@IP_DEL_SERVIDOR
+# === 1. Actualizar sistema ===
+apt update && apt upgrade -y
+# === 2. Instalar Nginx + PHP 8.4 ===
+add-apt-repository -y ppa:ondrej/php  # solo para Ubuntu 22.04
+apt install -y nginx php8.4-fpm php8.4-cli php8.4-mysql php8.4-mbstring \
+  php8.4-xml php8.4-curl php8.4-gd php8.4-zip php8.4-bcmath php8.4-intl php8.4-soap
+# === 3. Instalar MariaDB ===
+apt install -y mariadb-server
+# === 4. Iniciar servicios ===
+systemctl start nginx php8.4-fpm mariadb
+systemctl enable nginx php8.4-fpm mariadb
+# === 5. Crear BD ===
+mysql -u root
+CREATE DATABASE facturafacil CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'factura_user'@'localhost' IDENTIFIED BY 'TuPasswordMuySeguro123!';
+GRANT ALL PRIVILEGES ON facturafacil.* TO 'factura_user'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
+# === 6. Instalar Composer + Node.js + Git ===
+apt install -y git curl unzip
+curl -sS https://getcomposer.org/installer | php
+mv composer.phar /usr/local/bin/composer
+curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+apt install -y nodejs
+# === 7. Clonar proyecto ===
+cd /var/www
+git clone https://github.com/TU_USUARIO/facturafacil.git
+cd facturafacil
+# === 8. Configurar .env ===
+cp .env.example .env
+nano .env
+# Editar: APP_URL, DB_DATABASE, DB_USERNAME=root, DB_PASSWORD=
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=facturafacil
+DB_USERNAME=factura_user
+DB_PASSWORD=TuPasswordMuySeguro123!
+
+# === 9. Instalar dependencias ===
+composer install --no-dev --optimize-autoloader
+php artisan key:generate
+php artisan migrate --seed
+php artisan view:clear     # ← este paso evita el error
+php artisan optimize  
+# === 10. Permisos ===
+chown -R www-data:www-data storage bootstrap/cache
+chmod -R 775 storage bootstrap/cache
+chmod -R 775 storage/framework/views
+chown -R www-data:www-data storage/framework/views
+
+# === 11. Nginx ===
+nano /etc/nginx/sites-available/facturafacil
+Pegar esto:
+server {
+    listen 80;
+    server_name _;
+    root /var/www/facturafacil/public;
+    index index.php;
+    client_max_body_size 50M;
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+    location ~ \.php$ {
+        fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+    location ~ /\.(ht|env|git) { deny all; }
+}
+ln -s /etc/nginx/sites-available/facturafacil /etc/nginx/sites-enabled/
+rm /etc/nginx/sites-enabled/default
+nginx -t && systemctl reload nginx
+---

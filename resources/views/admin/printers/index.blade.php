@@ -20,8 +20,11 @@
             <div class="card-header">
                 <h3 class="card-title">Puntos de Impresión</h3>
                 <div class="card-tools">
+                    <a href="{{ route('printers.detect') }}" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-search"></i> Detectar
+                    </a>
                     <button class="btn btn-info btn-sm" onclick="document.getElementById('detectModal').style.display='flex'">
-                        <i class="fas fa-search"></i> Detectar y asignar impresoras
+                        <i class="fas fa-plus"></i> Asignar
                     </button>
                 </div>
             </div>
@@ -80,7 +83,7 @@
 {{-- Modal detect --}}
 <div class="qty-overlay" id="detectModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
     <div class="qty-popup" style="background:white; padding:25px; border-radius:10px; min-width:450px; max-width:90%;">
-        <h5><i class="fas fa-search"></i> Asignar impresora</h5>
+        <h5><i class="fas fa-plus"></i> Asignar impresora</h5>
         <form method="POST" action="{{ route('printers.detect.post') }}">
             @csrf
             <div class="form-group">

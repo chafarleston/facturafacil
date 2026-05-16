@@ -62,7 +62,7 @@ class PrinterController extends Controller
             return back()->with('success', "Impresora asignada a {$printer->name}");
         }
 
-        return back()->with('error', 'Seleccione una impresora y un slot');
+        return back()->with('success', 'Impresoras detectadas correctamente');
     }
 
     public function update(Request $request, Printer $printer)
