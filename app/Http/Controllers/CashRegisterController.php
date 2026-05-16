@@ -308,15 +308,15 @@ class CashRegisterController extends Controller
 
         $pdf = new \Mpdf\Mpdf([
             'mode' => 'utf-8',
-            'format' => [80, 200],
-            'margin_top' => 2,
-            'margin_bottom' => 2,
+            'format' => 'A4',
+            'margin_top' => 10,
+            'margin_bottom' => 15,
         ]);
 
-        $html = view('cashregisters.ticket', $data)->render();
+        $html = view('cashregisters.pdf', $data)->render();
         $pdf->WriteHTML($html);
 
-        return $pdf->Output('resumen-caja-ticket-' . $cashregister->id . '.pdf', 'D');
+        return $pdf->Output('resumen-caja-a4-' . $cashregister->id . '.pdf', 'D');
     }
 
     public function ticketPdf(CashRegister $cashregister)
