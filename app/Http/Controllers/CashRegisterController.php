@@ -299,7 +299,7 @@ class CashRegisterController extends Controller
         arsort($categoriasVentas);
         arsort($productosVendidos);
 
-        return compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventasPorMetodo', 'categoriasVentas', 'productosVendidos', 'lineasEliminadas');
+        return compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventasPorMetodo', 'categoriasVentas', 'productosVendidos', 'lineasEliminadas', 'ventas');
     }
 
     public function pdf(CashRegister $cashregister)
