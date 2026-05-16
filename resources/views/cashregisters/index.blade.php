@@ -17,7 +17,7 @@
                     <div class="col-md-4">
                         <div class="form-group">
                             <label>Monto de cierre</label>
-                            <input type="number" name="monto_cierre" class="form-control" step="0.01" placeholder="S/ total en caja">
+                            <input type="number" name="monto_cierre" class="form-control" step="0.01" placeholder="S/ total en caja" required>
                         </div>
                     </div>
                     <div class="col-md-8">
@@ -27,7 +27,7 @@
                         </div>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-danger" onclick="return confirm('¿Cerrar caja? Se generará el resumen de ventas.')">
+                <button type="submit" class="btn btn-danger">
                     <i class="fas fa-lock"></i> Cerrar Caja
                 </button>
             </form>

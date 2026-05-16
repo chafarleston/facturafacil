@@ -46,6 +46,7 @@ class CashRegisterController extends Controller
             'company_id' => $companyId,
             'user_id' => Auth::id(),
             'monto_apertura' => $request->monto_apertura,
+            'fecha_apertura' => now(),
             'estado' => 'ABIERTA',
         ]);
 
