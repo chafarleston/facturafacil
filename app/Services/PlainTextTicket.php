@@ -232,6 +232,19 @@ class PlainTextTicket
         return $format === 'escpos' ? $t->getEscPos() : $t->getText();
     }
 
+    public static function cancelNotificationGrouped($order, string $format = 'text', string $dest = 'cocina'): string
+    {
+        $t = new self();
+        $t->buildKitchenHeader($order, $dest);
+        $t->center('*** PRODUCTOS ANULADOS ***');
+        $t->separator();
+        foreach ($order->items as $item) {
+            $t->itemLine("{$item->quantity}x", $item->product_name, '');
+        }
+        $t->separator('=');
+        return $format === 'escpos' ? $t->getEscPos() : $t->getText();
+    }
+
     protected function buildKitchenHeader($order, string $dest = 'cocina'): void
     {
         $label = match($dest) {

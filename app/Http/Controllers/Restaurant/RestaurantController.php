@@ -511,9 +511,7 @@ class RestaurantController extends Controller
             try {
                 $printService = app(PrintService::class);
                 $kitchenItems = $order->items->whereIn('kitchen_status', ['SENT', 'READY', 'DELIVERED']);
-                foreach ($kitchenItems as $item) {
-                    $printService->printCancelNotification($order, $item);
-                }
+                $printService->printCancelNotificationGrouped($order, $kitchenItems);
             } catch (\Exception $e) {
                 \Log::error('Cancel print error: ' . $e->getMessage());
             }

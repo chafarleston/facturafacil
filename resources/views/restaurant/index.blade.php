@@ -429,11 +429,69 @@
                 </div>
                 @endforeach
             @endforeach
+    </div>
+</div>
+
+{{-- Modal Confirmación --}}
+<div class="qty-overlay" id="confirmOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+    <div class="qty-popup" style="background:white; padding:25px; border-radius:10px; min-width:350px; max-width:90%; text-align:center;">
+        <div style="font-size:40px; margin-bottom:10px;" id="confirmIcon"><i class="fas fa-question-circle" style="color:#ffc107;"></i></div>
+        <h5 style="margin:0 0 10px 0;" id="confirmTitle">Confirmar</h5>
+        <p style="color:#666; margin-bottom:20px;" id="confirmMessage">¿Está seguro?</p>
+        <div style="display:flex; gap:10px; justify-content:center;">
+            <button type="button" class="btn btn-secondary" id="confirmCancelBtn" onclick="closeConfirm()">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="confirmOkBtn" onclick="confirmOk()">Aceptar</button>
         </div>
     </div>
 </div>
 
-{{-- Modal Table Order --}}
+{{-- Modal Toast --}}
+<div id="toastAlert" style="display:none; position:fixed; top:20px; right:20px; z-index:99999; background:#28a745; color:white; padding:15px 25px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.2); font-weight:bold; font-size:14px;">
+    <i class="fas fa-check-circle mr-2"></i> <span id="toastMessage">Operación exitosa</span>
+</div>
+
+{{-- Modal Cantidad --}}
+<div class="qty-overlay" id="qtyOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+    <div class="qty-popup" style="background:white; padding:20px; border-radius:10px; min-width:300px; max-width:90%;">
+        <h5 style="margin:0 0 15px 0;">Cantidad</h5>
+        <input type="number" id="itemQtyInput" class="form-control" value="1" min="0.1" step="0.1" style="margin-bottom:10px;">
+        <textarea id="itemNotesInput" class="form-control" rows="2" placeholder="Nota para cocina (opcional)..." style="margin-bottom:10px;"></textarea>
+        <small class="text-muted d-block mb-2">Producto: <span id="modalProductName"></span></small>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button type="button" class="btn btn-secondary" onclick="closeQtyModal()">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="confirmAddItem()">Agregar</button>
+        </div>
+    </div>
+</div>
+
+{{-- Modal Editar Nota Item --}}
+<div class="qty-overlay" id="itemNotesOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+    <div class="qty-popup" style="background:white; padding:20px; border-radius:10px; min-width:300px; max-width:90%;">
+        <h5 style="margin:0 0 15px 0;">Nota del Producto</h5>
+        <input type="hidden" id="editItemNotesItemId">
+        <textarea id="editItemNotesInput" class="form-control" rows="2" placeholder="Nota para cocina..." style="margin-bottom:10px;"></textarea>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button type="button" class="btn btn-secondary" onclick="closeItemNotesModal()">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="saveItemNotes()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+{{-- Modal Contraseña Admin --}}
+<div class="qty-overlay" id="adminPasswordOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+    <div class="qty-popup" style="background:white; padding:20px; border-radius:10px; min-width:320px; max-width:90%;">
+        <h5 style="margin:0 0 5px 0;">Autorización requerida</h5>
+        <p style="font-size:13px; color:#666; margin-bottom:15px;">Ingrese su contraseña de administrador para eliminar este producto</p>
+        <input type="hidden" id="adminPasswordItemId">
+        <input type="password" id="adminPasswordInput" class="form-control" placeholder="Contraseña" style="margin-bottom:10px;" autocomplete="off">
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button type="button" class="btn btn-secondary" onclick="closeAdminPasswordModal()">Cancelar</button>
+            <button type="button" class="btn btn-danger" onclick="confirmAdminPassword()">Eliminar</button>
+        </div>
+    </div>
+</div>
+
+{{-- Table Order Modal --}}
 <div class="table-order-modal" id="tableOrderModal">
     <div class="modal-header-bar">
         <div>
@@ -454,7 +512,6 @@
     </div>
     
     <div class="modal-content-area">
-        {{-- Tab Products --}}
         <div id="tabProducts">
             <div class="products-categories" id="productsCategories">
                 <button class="category-btn active" data-category="all" onclick="filterProducts('all')">Todos</button>
@@ -466,7 +523,7 @@
             </div>
             <div class="products-grid" id="productsList">
                 @foreach($products as $product)
-                <div class="product-card" 
+                <div class="product-card"
                      data-product-id="{{ $product->id }}"
                      data-category-id="{{ $product->category_id }}"
                      data-product-name="{{ $product->descripcion }}"
@@ -476,15 +533,8 @@
                     <div class="product-price">S/ {{ number_format($product->precio, 2) }}</div>
                 </div>
                 @endforeach
-                @if($products->isEmpty())
-                <div class="alert alert-warning w-100">
-                    No hay productos. <a href="{{ route('products.create', ['company_id' => $companyId]) }}">Crear</a>
-                </div>
-                @endif
             </div>
         </div>
-        
-        {{-- Tab Order --}}
         <div id="tabOrder" style="display: none;">
             <div id="orderItems">
                 <div class="order-empty">
@@ -496,49 +546,24 @@
     </div>
     
     <div class="order-totals-box" id="orderTotals" style="display: none;">
-        <div class="order-total-row">
-            <span>Subtotal:</span>
-            <span id="orderSubtotal">S/ 0.00</span>
-        </div>
-        <div class="order-total-row">
-            <span>IGV (18%):</span>
-            <span id="orderIgv">S/ 0.00</span>
-        </div>
-        <div class="order-total-row grand">
-            <span>TOTAL:</span>
-            <span id="orderTotal">S/ 0.00</span>
-        </div>
+        <div class="order-total-row"><span>Subtotal:</span><span id="orderSubtotal">S/ 0.00</span></div>
+        <div class="order-total-row"><span>IGV (18%):</span><span id="orderIgv">S/ 0.00</span></div>
+        <div class="order-total-row grand"><span>TOTAL:</span><span id="orderTotal">S/ 0.00</span></div>
     </div>
     
     <div class="modal-actions">
         @if($orderMode === 'print')
-        <button class="btn-action btn-print" onclick="sendToKitchen()">
-            <i class="fas fa-print"></i><br>Imprimir
-        </button>
-        <button class="btn-action btn-prebill" onclick="printPrebill()" id="btnPrebill" disabled>
-            <i class="fas fa-receipt"></i><br>Precuenta
-        </button>
+        <button class="btn-action btn-print" onclick="sendToKitchen()"><i class="fas fa-print"></i><br>Imprimir</button>
+        <button class="btn-action btn-prebill" onclick="printPrebill()" id="btnPrebill" disabled><i class="fas fa-receipt"></i><br>Precuenta</button>
         @else
-        <button class="btn-action btn-kitchen" onclick="sendToKitchen()">
-            <i class="fas fa-paper-plane"></i><br>Cocina
-        </button>
-        <button class="btn-action btn-print" onclick="printKitchenTicket()">
-            <i class="fas fa-print"></i><br>Imprimir
-        </button>
-        <button class="btn-action btn-prebill" onclick="printPrebill()" id="btnPrebill" disabled>
-            <i class="fas fa-receipt"></i><br>Precuenta
-        </button>
-        <button class="btn-action btn-close-order" onclick="closeTable()">
-            <i class="fas fa-check"></i><br>Cerrar
-        </button>
+        <button class="btn-action btn-kitchen" onclick="sendToKitchen()"><i class="fas fa-paper-plane"></i><br>Cocina</button>
+        <button class="btn-action btn-print" onclick="printKitchenTicket()"><i class="fas fa-print"></i><br>Imprimir</button>
+        <button class="btn-action btn-prebill" onclick="printPrebill()" id="btnPrebill" disabled><i class="fas fa-receipt"></i><br>Precuenta</button>
+        <button class="btn-action btn-close-order" onclick="closeTable()"><i class="fas fa-check"></i><br>Cerrar</button>
         @endif
         @if(!auth()->user()->isMozo())
-        <button class="btn-action btn-charge" onclick="showChargeModal()" id="btnCharge" disabled>
-            <i class="fas fa-credit-card"></i><br>Cobrar
-        </button>
-        <button class="btn-action btn-cancel-order" onclick="cancelOrder()" id="btnCancelOrder" disabled>
-            <i class="fas fa-times"></i><br>Anular
-        </button>
+        <button class="btn-action btn-charge" onclick="showChargeModal()" id="btnCharge" disabled><i class="fas fa-credit-card"></i><br>Cobrar</button>
+        <button class="btn-action btn-cancel-order" onclick="cancelOrder()" id="btnCancelOrder" disabled><i class="fas fa-times"></i><br>Anular</button>
         @endif
     </div>
 </div>
@@ -550,9 +575,7 @@
             <h5 style="margin:0; font-size:16px;"><i class="fas fa-user-plus"></i> Nuevo Cliente</h5>
             <button onclick="closeCustomerModal()" style="background:none; border:none; color:white; font-size:22px; cursor:pointer; line-height:1;">&times;</button>
         </div>
-        <div style="padding:0;">
-            <iframe id="customerFrame" src="" style="width:100%; height:450px; border:none;"></iframe>
-        </div>
+        <div style="padding:0;"><iframe id="customerFrame" src="" style="width:100%; height:450px; border:none;"></iframe></div>
     </div>
 </div>
 
@@ -563,7 +586,6 @@
             <h5 style="margin:0;"><i class="fas fa-credit-card"></i> Cobrar Pedido <span id="chargeOrderNumber" style="font-weight:normal; font-size:14px;"></span></h5>
             <button onclick="closeChargeModal()" style="border:none; background:none; font-size:20px; cursor:pointer;">&times;</button>
         </div>
-        
         <div style="margin-bottom:12px;">
             <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;"><i class="fas fa-user"></i> Cliente</label>
             <div style="display:flex; gap:5px;">
@@ -572,69 +594,45 @@
                     <input type="hidden" id="chargeCustomerId" value="">
                     <div id="chargeCustomerDropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid #ddd; border-radius:4px; max-height:200px; overflow-y:auto; z-index:999;"></div>
                 </div>
-                <button type="button" class="btn btn-sm btn-success" onclick="openCustomerModal()" title="Nuevo cliente" style="padding:4px 10px;">
-                    <i class="fas fa-plus"></i>
-                </button>
+                <button type="button" class="btn btn-sm btn-success" onclick="openCustomerModal()" title="Nuevo cliente"><i class="fas fa-plus"></i></button>
             </div>
         </div>
-        
         <div style="display:flex; gap:8px; margin-bottom:12px;">
-            <div style="flex:1;">
-                <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Tipo Documento</label>
-                <select id="chargeDocumentType" class="form-control form-control-sm" onchange="updateChargeSerie()">
-                    <option value="03">BOLETA</option>
-                    <option value="01">FACTURA</option>
-                    <option value="NV" selected>NOTA DE VENTA</option>
-                </select>
-            </div>
-            <div style="flex:1;">
-                <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Serie</label>
-                <input type="text" id="chargeSerieDisplay" class="form-control form-control-sm" readonly disabled>
-            </div>
+            <div style="flex:1;"><label>Tipo Documento</label><select id="chargeDocumentType" class="form-control form-control-sm" onchange="updateChargeSerie()"><option value="03">BOLETA</option><option value="01">FACTURA</option><option value="NV" selected>NOTA DE VENTA</option></select></div>
+            <div style="flex:1;"><label>Serie</label><input type="text" id="chargeSerieDisplay" class="form-control form-control-sm" readonly disabled></div>
         </div>
-        
         <div style="display:flex; gap:8px; margin-bottom:12px;">
-            <div style="flex:1;">
-                <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Método de Pago</label>
-                <select id="chargePaymentMethod" class="form-control form-control-sm">
-                    <option value="EFECTIVO">EFECTIVO</option>
-                    <option value="TARJETA">TARJETA</option>
-                    <option value="TRANSFERENCIA">TRANSFERENCIA</option>
-                    <option value="YAPE">YAPE</option>
-                    <option value="PLIN">PLIN</option>
-                    <option value="MIXTO">MIXTO</option>
-                </select>
-            </div>
-            <div style="flex:1;">
-                <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Referencia</label>
-                <input type="text" id="chargeReference" class="form-control form-control-sm" placeholder="N° operación">
-            </div>
+            <div style="flex:1;"><label>Método de Pago</label><select id="chargePaymentMethod" class="form-control form-control-sm"><option value="EFECTIVO">EFECTIVO</option><option value="TARJETA">TARJETA</option><option value="TRANSFERENCIA">TRANSFERENCIA</option><option value="YAPE">YAPE</option><option value="PLIN">PLIN</option><option value="MIXTO">MIXTO</option></select></div>
+            <div style="flex:1;"><label>Referencia</label><input type="text" id="chargeReference" class="form-control form-control-sm" placeholder="N° operación"></div>
         </div>
-        
         <div style="border-top:2px solid #eee; padding-top:12px; margin-bottom:15px;">
-            <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;">
-                <span>Subtotal:</span>
-                <span id="chargeSubtotal">S/ 0.00</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;">
-                <span>IGV (18%):</span>
-                <span id="chargeIgv">S/ 0.00</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; font-size:18px; font-weight:bold; margin-top:8px;">
-                <span>TOTAL:</span>
-                <span id="chargeTotal">S/ 0.00</span>
-            </div>
+            <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;"><span>Subtotal:</span><span id="chargeSubtotal">S/ 0.00</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;"><span>IGV (18%):</span><span id="chargeIgv">S/ 0.00</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:18px; font-weight:bold; margin-top:8px;"><span>TOTAL:</span><span id="chargeTotal">S/ 0.00</span></div>
         </div>
-        
         <div style="display:flex; gap:8px;">
             <button class="btn btn-secondary btn-sm" onclick="closeChargeModal()" style="flex:0 0 80px;">Cancelar</button>
-            <button class="btn btn-success btn-sm" id="btnProcessCharge" onclick="processCharge()" style="flex:1; padding:8px 0;">
-                <i class="fas fa-credit-card"></i> COBRAR S/ 0.00
-            </button>
+            <button class="btn btn-success btn-sm" id="btnProcessCharge" onclick="processCharge()" style="flex:1; padding:8px 0;"><i class="fas fa-credit-card"></i> COBRAR S/ 0.00</button>
         </div>
     </div>
 </div>
-{{-- End Charge Modal --}}
+
+{{-- Modal Confirmación --}}
+<div class="qty-overlay" id="confirmOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+    <div class="qty-popup" style="background:white; padding:25px; border-radius:10px; min-width:350px; max-width:90%; text-align:center;">
+        <div style="font-size:40px; margin-bottom:10px;" id="confirmIcon"><i class="fas fa-question-circle" style="color:#ffc107;"></i></div>
+        <h5 style="margin:0 0 10px 0;" id="confirmTitle">Confirmar</h5>
+        <p style="color:#666; margin-bottom:20px;" id="confirmMessage">¿Está seguro?</p>
+        <div style="display:flex; gap:10px; justify-content:center;">
+            <button type="button" class="btn btn-secondary" id="confirmCancelBtn" onclick="closeConfirm()">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="confirmOkBtn" onclick="confirmOk()">Aceptar</button>
+        </div>
+    </div>
+</div>
+
+<div id="toastAlert" style="display:none; position:fixed; top:20px; right:20px; z-index:99999; background:#28a745; color:white; padding:15px 25px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.2); font-weight:bold; font-size:14px;">
+    <i class="fas fa-check-circle mr-2"></i> <span id="toastMessage">Operación exitosa</span>
+</div>
 
 {{-- Modal Cantidad --}}
 <div class="qty-overlay" id="qtyOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
@@ -701,9 +699,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const floorId = parseInt(firstFloor.dataset.floorId);
         selectFloor(floorId);
     }
-    connectRestaurantSSE();
     pollActiveOrders();
-    setInterval(pollActiveOrders, 10000);
+    setInterval(pollActiveOrders, 3000);
     
     const chargeSearch = document.getElementById('chargeCustomerSearch');
     if (chargeSearch) {
@@ -712,24 +709,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-let sseRetry = 0;
-
-function connectRestaurantSSE() {
-    const es = new EventSource('/restaurant/stream');
-    es.onmessage = function(e) {
-        sseRetry = 0;
-        pollActiveOrders();
-    };
-    es.onerror = function() {
-        es.close();
-        sseRetry = Math.min(sseRetry + 1, 5);
-        setTimeout(connectRestaurantSSE, sseRetry * 3000);
-    };
-}
-
 function selectFloor(floorId) {
     currentFloorId = floorId;
-    console.log('Selecting floor:', floorId);
     
     document.querySelectorAll('.floor-tab').forEach(t => t.classList.remove('active'));
     const activeTab = document.querySelector(`.floor-tab[data-floor-id="${floorId}"]`);
@@ -739,7 +720,6 @@ function selectFloor(floorId) {
         const cardFloorId = parseInt(card.dataset.floorId);
         if (floorId === null || cardFloorId === floorId) {
             card.style.display = '';
-            console.log('Show table:', card.dataset.tableId, 'floor:', cardFloorId);
         } else {
             card.style.display = 'none';
         }
@@ -815,12 +795,12 @@ function openTable(tableId) {
             document.getElementById('modalOrderNumber').textContent = 'Pedido: ' + (data.order_number || '#' + data.order_id);
             renderOrder({ items: [], subtotal: 0, igv: 0, total: 0 });
         } else {
-            alert(data.message || 'Error al abrir mesa');
+            showError(data.message || 'Error al abrir mesa');
         }
     })
     .catch(err => {
         console.error('Error:', err);
-        alert('Error al abrir mesa: ' + err.message);
+        showError('Error al abrir mesa: ' + err.message);
     });
 }
 
@@ -837,12 +817,12 @@ function loadOrder(orderId) {
             document.getElementById('modalOrderNumber').textContent = 'Pedido: ' + order.order_number;
             renderOrder(order);
         } else {
-            alert(data.message || 'Error al cargar pedido');
+            showError(data.message || 'Error al cargar pedido');
         }
     })
     .catch(err => {
         console.error('Error:', err);
-        alert('Error al cargar pedido: ' + err.message);
+        showError('Error al cargar pedido: ' + err.message);
     });
 }
 
@@ -935,7 +915,7 @@ function closeQtyModal() {
 function confirmAddItem() {
     const quantity = parseFloat(document.getElementById('itemQtyInput').value);
     if (!quantity || quantity <= 0) {
-        alert('Ingrese una cantidad válida');
+        showError('Ingrese una cantidad válida');
         return;
     }
     
@@ -968,12 +948,12 @@ function confirmAddItem() {
             loadOrder(currentOrderId);
             switchTab('order');
         } else {
-            alert(data.message || 'Error al agregar producto');
+            showError(data.message || 'Error al agregar producto');
         }
     })
     .catch(err => {
         console.error('Error:', err);
-        alert('Error al agregar producto: ' + err.message);
+        showError('Error al agregar producto: ' + err.message);
     });
 }
 
@@ -991,13 +971,9 @@ function closeItemNotesModal() {
 function saveItemNotes() {
     const itemId = document.getElementById('editItemNotesItemId').value;
     const notes = document.getElementById('editItemNotesInput').value.trim();
-    
     if (!itemId) return;
-    
     closeItemNotesModal();
-    
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-    
     fetch('/restaurant/orders/items/' + itemId, {
         method: 'PUT',
         headers: {
@@ -1012,7 +988,7 @@ function saveItemNotes() {
         if (data.success) {
             loadOrder(currentOrderId);
         } else {
-            alert(data.message || 'Error al guardar nota');
+            showError(data.message || 'Error al guardar nota');
         }
     });
 }
@@ -1034,7 +1010,7 @@ function changeItemQty(itemId, delta) {
         if (data.success) {
             loadOrder(currentOrderId);
         } else {
-            alert(data.message);
+            showError(data.message);
         }
     });
 }
@@ -1053,53 +1029,108 @@ function removeItem(itemId) {
             document.getElementById('adminPasswordInput').focus();
         } else {
             pendingDeleteItems[itemId] = true;
-            alert('Este producto ya está enviado a cocina. Presione eliminar nuevamente para confirmar con contraseña de administrador.');
+            showAlert('Este producto ya está enviado a cocina. Presione eliminar nuevamente para confirmar con contraseña de administrador.');
         }
         return;
     }
     
-    if (!confirm('¿Eliminar producto?')) return;
-    
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-    
-    fetch('/restaurant/orders/items/' + itemId, {
-        method: 'DELETE',
-        headers: {
-            'X-CSRF-TOKEN': csrfToken,
-            'Accept': 'application/json'
-        }
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            loadOrder(currentOrderId);
-        } else {
-            alert(data.message);
-        }
+    showConfirm('¿Eliminar producto?', function() {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        
+        fetch('/restaurant/orders/items/' + itemId, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                loadOrder(currentOrderId);
+            } else {
+                showError(data.message);
+            }
+        });
     });
+}
+
+let confirmCallback = null;
+
+function showConfirm(msg, callback) {
+    document.getElementById('confirmMessage').textContent = msg;
+    document.getElementById('confirmTitle').textContent = 'Confirmar';
+    document.getElementById('confirmIcon').innerHTML = '<i class="fas fa-question-circle" style="color:#ffc107;"></i>';
+    document.getElementById('confirmCancelBtn').style.display = '';
+    confirmCallback = callback;
+    document.getElementById('confirmOverlay').style.display = 'flex';
+}
+
+function closeConfirm() {
+    document.getElementById('confirmOverlay').style.display = 'none';
+    confirmCallback = null;
+}
+
+function confirmOk() {
+    document.getElementById('confirmOverlay').style.display = 'none';
+    if (confirmCallback) {
+        const cb = confirmCallback;
+        confirmCallback = null;
+        cb();
+    }
+}
+
+function showAlert(msg) {
+    document.getElementById('confirmMessage').textContent = msg;
+    document.getElementById('confirmTitle').textContent = '';
+    document.getElementById('confirmIcon').innerHTML = '<i class="fas fa-check-circle" style="color:#28a745;"></i>';
+    document.getElementById('confirmCancelBtn').style.display = 'none';
+    document.getElementById('confirmOverlay').style.display = 'flex';
+    document.getElementById('confirmOkBtn').onclick = function() {
+        document.getElementById('confirmOverlay').style.display = 'none';
+        document.getElementById('confirmOkBtn').onclick = confirmOk;
+    };
+}
+
+function showError(msg) {
+    document.getElementById('confirmMessage').textContent = msg;
+    document.getElementById('confirmTitle').textContent = '';
+    document.getElementById('confirmIcon').innerHTML = '<i class="fas fa-exclamation-circle" style="color:#dc3545;"></i>';
+    document.getElementById('confirmCancelBtn').style.display = 'none';
+    document.getElementById('confirmOverlay').style.display = 'flex';
+    document.getElementById('confirmOkBtn').onclick = function() {
+        document.getElementById('confirmOverlay').style.display = 'none';
+        document.getElementById('confirmOkBtn').onclick = confirmOk;
+    };
+}
+
+function showToast(msg) {
+    document.getElementById('toastMessage').textContent = msg;
+    const toast = document.getElementById('toastAlert');
+    toast.style.display = 'flex';
+    setTimeout(function() { toast.style.display = 'none'; }, 3000);
 }
 
 function sendToKitchen() {
     if (!currentOrderId) return;
-    if (!confirm('¿Enviar pedido a cocina?')) return;
-    
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-    
-    fetch('/restaurant/orders/' + currentOrderId + '/send-to-kitchen', {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': csrfToken,
-            'Accept': 'application/json'
-        }
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            alert('Pedido enviado a cocina');
-            loadOrder(currentOrderId);
-        } else {
-            alert(data.message || 'Error');
-        }
+    showConfirm('¿Enviar pedido a cocina?', function() {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        fetch('/restaurant/orders/' + currentOrderId + '/send-to-kitchen', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Pedido enviado a cocina');
+                closeModal();
+            } else {
+                showAlert(data.message || 'Error');
+            }
+        });
     });
 }
 
@@ -1115,25 +1146,25 @@ function printPrebill() {
 
 function closeTable() {
     if (!currentOrderId) return;
-    if (!confirm('¿Cerrar pedido?')) return;
-    
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-    
-    fetch('/restaurant/orders/' + currentOrderId + '/close', {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': csrfToken,
-            'Accept': 'application/json'
-        }
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            alert('Pedido cerrado');
-            location.reload();
-        } else {
-            alert(data.message || 'Error');
-        }
+    showConfirm('¿Cerrar pedido?', function() {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        
+        fetch('/restaurant/orders/' + currentOrderId + '/close', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('Pedido cerrado');
+                location.reload();
+            } else {
+                showError(data.message || 'Error');
+            }
+        });
     });
 }
 
@@ -1152,13 +1183,12 @@ function cancelOrder() {
             document.getElementById('adminPasswordInput').focus();
         } else {
             pendingCancelAction = true;
-            alert('El pedido tiene productos en cocina. Presione Anular nuevamente para confirmar con contraseña de administrador.');
+            showAlert('El pedido tiene productos en cocina. Presione Anular nuevamente para confirmar con contraseña de administrador.');
         }
         return;
     }
     
-    if (!confirm('¿Anular pedido?')) return;
-    cancelOrderRequest();
+    showConfirm('¿Anular pedido?', cancelOrderRequest);
 }
 
 function cancelOrderRequest(password) {
@@ -1177,7 +1207,7 @@ function cancelOrderRequest(password) {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            alert('Pedido anulado');
+            showAlert('Pedido anulado');
             const tableCard = document.querySelector(`.table-card[data-table-id="${currentTableId}"]`);
             if (tableCard) {
                 tableCard.className = 'table-card available';
@@ -1187,7 +1217,7 @@ function cancelOrderRequest(password) {
             }
             location.reload();
         } else {
-            alert(data.message || 'Error');
+            showError(data.message || 'Error');
         }
     });
 }
@@ -1200,7 +1230,7 @@ function closeAdminPasswordModal() {
 function confirmAdminPassword() {
     const itemId = document.getElementById('adminPasswordItemId').value;
     const password = document.getElementById('adminPasswordInput').value;
-    if (!password) { alert('Ingrese su contraseña'); return; }
+    if (!password) { showError('Ingrese su contraseña'); return; }
     
     closeAdminPasswordModal();
     
@@ -1225,7 +1255,7 @@ function confirmAdminPassword() {
         if (data.success) {
             loadOrder(currentOrderId);
         } else {
-            alert(data.message || 'Error');
+            showError(data.message || 'Error');
         }
     });
 }
@@ -1267,7 +1297,7 @@ function pollActiveOrders() {
 function showChargeModal() {
     if (!window.currentOrderData) return;
     const order = window.currentOrderData;
-    if (order.status === 'OPEN') { alert('Debe enviar el pedido a cocina antes de cobrar'); return; }
+    if (order.status === 'OPEN') { showError('Debe enviar el pedido a cocina antes de cobrar'); return; }
     const total = parseFloat(order.total) || 0;
     document.getElementById('chargeOrderNumber').textContent = '#' + (order.order_number || order.id);
     document.getElementById('chargeSubtotal').textContent = 'S/ ' + (parseFloat(order.subtotal) || total / 1.18).toFixed(2);
@@ -1368,13 +1398,13 @@ function processCharge() {
             location.reload();
         } else {
             btn.innerHTML = '<i class="fas fa-credit-card"></i> COBRAR';
-            alert(data.message || 'Error al procesar');
+            showError(data.message || 'Error al procesar');
         }
     })
     .catch(err => {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-credit-card"></i> COBRAR';
-        alert('Error: ' + err.message);
+        showError('Error: ' + err.message);
     });
 }
 </script>

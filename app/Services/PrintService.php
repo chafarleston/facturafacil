@@ -64,6 +64,25 @@ class PrintService
         $this->processQueue();
     }
 
+    public function printCancelNotificationGrouped($order, $items): void
+    {
+        $groups = ['cocina' => [], 'cocina2' => [], 'bar' => []];
+        foreach ($items as $item) {
+            $dest = $item->kds_destination ?? 'cocina';
+            if (isset($groups[$dest])) $groups[$dest][] = $item;
+        }
+        foreach ($groups as $dest => $groupItems) {
+            if (empty($groupItems)) continue;
+            $printerKey = $dest === 'cocina' ? 'cocina-1' : ($dest === 'cocina2' ? 'cocina-2' : 'bar-1');
+            $printer = $this->getPrinter($printerKey);
+            if (!$printer) continue;
+            $order->setRelation('items', collect($groupItems));
+            $data = PlainTextTicket::cancelNotificationGrouped($order, 'escpos', $dest);
+            $this->queuePrint($printer, $data, 'cancel', get_class($order), $order->id);
+        }
+        $this->processQueue();
+    }
+
     public function printCancelNotification($order, $item): void
     {
         $dest = $item->kds_destination ?? 'cocina';
