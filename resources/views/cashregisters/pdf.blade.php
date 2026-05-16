@@ -161,6 +161,27 @@
         @endforeach
     </table>
 
+    @if(count($lineasEliminadas) > 0)
+    <div class="border-top py-2 mt-2 mb-1 bold">REPORTE DE LÍNEAS ELIMINADAS</div>
+    <div style="margin-bottom:4px; font-size:10px;">Hay {{ count($lineasEliminadas) }} línea(s) eliminada(s) en el Sistema</div>
+    <table>
+        <tr class="bold border-bottom">
+            <td>Producto</td>
+            <td class="text-right">Cant.</td>
+            <td>Estado anterior</td>
+            <td>Eliminado</td>
+        </tr>
+        @foreach($lineasEliminadas as $item)
+        <tr>
+            <td>{{ $item->product_name }}</td>
+            <td class="text-right">{{ number_format($item->quantity, 0) }}</td>
+            <td>{{ $item->cancelled_from }}</td>
+            <td>{{ $item->cancelled_at ? $item->cancelled_at->format('d/m/Y H:i') : '-' }}</td>
+        </tr>
+        @endforeach
+    </table>
+    @endif
+
     <div class="text-center mt-4" style="font-size:9px;">
         Documento generado el {{ now()->format('d/m/Y H:i') }}
     </div>
