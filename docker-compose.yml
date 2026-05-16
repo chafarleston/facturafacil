@@ -1,0 +1,60 @@
+services:
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - .:/var/www
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - php
+    networks:
+      - app-network
+
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/var/www
+      - ./docker/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DB_HOST=mariadb
+      - DB_DATABASE=facturafacil
+      - DB_USERNAME=facturafacil
+      - DB_PASSWORD=secret
+      - PRINT_SERVER_URL=http://CLIENT_IP:9100
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  mariadb:
+    image: mariadb:11.4
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_DATABASE=facturafacil
+      - MYSQL_USER=facturafacil
+      - MYSQL_PASSWORD=secret
+      - MYSQL_ROOT_PASSWORD=rootsecret
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+volumes:
+  mariadb_data:
+
+networks:
+  app-network:
+    driver: bridge

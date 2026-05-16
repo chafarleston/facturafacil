@@ -1,0 +1,13 @@
+.env
+.git
+.gitignore
+node_modules/
+vendor/
+storage/framework/cache/data/*
+storage/framework/views/*
+storage/logs/*
+print-server/
+*.log
+.DS_Store
+Thumbs.db
+docker/
