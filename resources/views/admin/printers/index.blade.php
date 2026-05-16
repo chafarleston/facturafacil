@@ -8,7 +8,7 @@
         @if(!$serverRunning)
         <div class="alert alert-warning">
             <i class="fas fa-exclamation-triangle"></i>
-            Servidor de impresión no disponible. Ejecuta <code>php C:\laragon\www\print-server\print-server.php</code>
+            Servidor de impresión no disponible. Ejecuta <code>php C:\laragon\www\print-server-node\start.bat</code>
         </div>
         @else
         <div class="alert alert-success">
