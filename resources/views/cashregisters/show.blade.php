@@ -15,6 +15,12 @@
                     <a href="{{ route('cashregisters.ticket', $cashregister) }}" class="btn btn-warning btn-sm" target="_blank">
                         <i class="fas fa-print"></i> Ticket 80mm
                     </a>
+                    <form method="POST" action="{{ route('cashregisters.printCaja', $cashregister) }}" style="display:inline;" id="printCajaForm">
+                        @csrf
+                        <button type="button" class="btn btn-success btn-sm" onclick="showPrintConfirm()">
+                            <i class="fas fa-receipt"></i> Imprimir en Caja
+                        </button>
+                    </form>
                 </div>
             </div>
             <div class="card-body">
@@ -256,4 +262,34 @@
 <div class="mt-4">
     <a href="{{ route('cashregisters.index') }}" class="btn btn-secondary">Volver</a>
 </div>
-@endsection
+
+{{-- Confirm Modal --}}
+<div class="confirm-overlay" id="printConfirmOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+    <div style="background:white; padding:25px; border-radius:10px; min-width:350px; max-width:90%; text-align:center;">
+        <div style="font-size:40px; margin-bottom:10px;"><i class="fas fa-print" style="color:#28a745;"></i></div>
+        <h5 style="margin:0 0 10px 0;">Imprimir resumen</h5>
+        <p style="color:#666; margin-bottom:20px;">¿Enviar resumen de caja a la impresora Caja?</p>
+        <div style="display:flex; gap:10px; justify-content:center;">
+            <button type="button" class="btn btn-secondary" onclick="closePrintConfirm()">Cancelar</button>
+            <button type="button" class="btn btn-success" onclick="submitPrintCaja()">Imprimir</button>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+function showPrintConfirm() {
+    document.getElementById('printConfirmOverlay').style.display = 'flex';
+}
+function closePrintConfirm() {
+    document.getElementById('printConfirmOverlay').style.display = 'none';
+}
+function submitPrintCaja() {
+    closePrintConfirm();
+    document.getElementById('printCajaForm').submit();
+}
+</script>
+<style>
+.confirm-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center; }
+</style>
+@endpush

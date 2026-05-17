@@ -74,6 +74,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('cashregisters', CashRegisterController::class);
         Route::get('/cashregisters/{cashregister}/pdf', [CashRegisterController::class, 'pdf'])->name('cashregisters.pdf');
         Route::get('/cashregisters/{cashregister}/ticket', [CashRegisterController::class, 'ticketPdf'])->name('cashregisters.ticket');
+        Route::post('/cashregisters/{cashregister}/print-caja', [CashRegisterController::class, 'printCaja'])->name('cashregisters.printCaja');
         Route::post('/cashregister/open', [CashRegisterController::class, 'open'])->name('cashregisters.open');
         Route::post('/cashregister/close', [CashRegisterController::class, 'close'])->name('cashregisters.close');
         Route::resource('series', SerieController::class);

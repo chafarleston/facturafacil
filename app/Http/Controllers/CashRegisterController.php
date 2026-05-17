@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CashRegister;
 use App\Models\Invoice;
 use App\Models\RestaurantOrderItem;
+use App\Services\PrintService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -334,5 +335,23 @@ class CashRegisterController extends Controller
         $pdf->WriteHTML($html);
 
         return $pdf->Output('resumen-caja-ticket-' . $cashregister->id . '.pdf', 'D');
+    }
+
+    public function printCaja(CashRegister $cashregister)
+    {
+        try {
+            $data = $this->getCashRegisterData($cashregister);
+            $text = \App\Services\PlainTextTicket::cashRegisterSummary($cashregister, $data, 'escpos');
+            $printService = app(PrintService::class);
+            $printer = \App\Models\Printer::where('assigned_to', 'caja')->where('active', true)->first();
+            if (!$printer) {
+                return back()->with('error', 'No hay impresora Caja configurada');
+            }
+            app(\App\Services\PrintServerService::class)->printText($printer, $text);
+            return back()->with('success', 'Resumen enviado a impresora Caja');
+        } catch (\Exception $e) {
+            \Log::error('Print caja error: ' . $e->getMessage());
+            return back()->with('error', 'Error al imprimir: ' . $e->getMessage());
+        }
     }
 }

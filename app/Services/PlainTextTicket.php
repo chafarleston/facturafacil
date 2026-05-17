@@ -93,7 +93,7 @@ class PlainTextTicket
 
         $first = true;
         foreach ($this->lines as $line) {
-            $trimmed = mb_convert_encoding(trim($line), 'ISO-8859-1', 'UTF-8');
+            $trimmed = trim($line);
             if ($first) {
                 $out .= self::BOLD_ON . strtoupper($trimmed) . self::BOLD_OFF . self::LF;
                 $first = false;
@@ -143,7 +143,13 @@ class PlainTextTicket
 
     protected function clean(string $text): string
     {
-        return preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', $text);
+        $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', $text);
+        return strtr($text, [
+            'Á' => "\x41", 'É' => "\x90", 'Í' => "\xB6", 'Ó' => "\xE0", 'Ú' => "\xE9",
+            'á' => "\xA0", 'é' => "\x82", 'í' => "\xA1", 'ó' => "\xA2", 'ú' => "\xA3",
+            'Ñ' => "\xA4", 'ñ' => "\xA5", 'Ü' => "\x9A", 'ü' => "\x9A",
+            '¿' => "\xA8", '¡' => "\xAD", 'º' => "\xA7",
+        ]);
     }
 
     public static function kitchenTicket($order, string $format = 'text'): string
@@ -242,6 +248,45 @@ class PlainTextTicket
             $t->itemLine("{$item->quantity}x", $item->product_name, '');
         }
         $t->separator('=');
+        return $format === 'escpos' ? $t->getEscPos() : $t->getText();
+    }
+
+    public static function cashRegisterSummary($cashregister, array $data, string $format = 'text'): string
+    {
+        $t = new self();
+        $company = \App\Models\Company::getMainCompany();
+        $t->center($company->nombre_comercial ?? $company->razon_social ?? 'Restaurante');
+        if ($company->ruc) $t->center('RUC: ' . $company->ruc);
+        $t->center('** RESUMEN DE CAJA **');
+        $t->separator();
+        $t->twoColumns('Apertura:', $cashregister->fecha_apertura ? $cashregister->fecha_apertura->format('d/m/Y H:i') : '-');
+        $t->twoColumns('Cierre:', $cashregister->fecha_cierre ? $cashregister->fecha_cierre->format('d/m/Y H:i') : now()->format('d/m/Y H:i'));
+        $t->twoColumns('Apertura S/:', number_format($cashregister->monto_apertura, 2));
+        $t->twoColumns('Cierre S/:', number_format($cashregister->monto_cierre ?? 0, 2));
+        $t->separator();
+        $t->center('RESUMEN POR DOCUMENTO');
+        $t->twoColumns('Facturas:', $data['facturas']->count() . ' - S/ ' . number_format($data['facturas']->sum('total'), 2));
+        $t->twoColumns('Boletas:', $data['boletas']->count() . ' - S/ ' . number_format($data['boletas']->sum('total'), 2));
+        $t->twoColumns('Notas Venta:', $data['nvs']->count() . ' - S/ ' . number_format($data['nvs']->sum('total'), 2));
+        $t->separator('=');
+        $t->twoColumns('TOTAL:', 'S/ ' . number_format($cashregister->total_ventas, 2));
+        $t->separator();
+        $t->center('POR MÉTODO DE PAGO');
+        $t->twoColumns('Efectivo:', 'S/ ' . number_format($cashregister->ventas_efectivo, 2));
+        $t->twoColumns('Tarjeta:', 'S/ ' . number_format($cashregister->ventas_tarjeta, 2));
+        $t->twoColumns('Yape:', 'S/ ' . number_format($cashregister->ventas_yape, 2));
+        $t->twoColumns('Plin:', 'S/ ' . number_format($cashregister->ventas_plin, 2));
+        $t->twoColumns('Otro:', 'S/ ' . number_format($cashregister->ventas_otro, 2));
+        if (isset($data['lineasEliminadas']) && count($data['lineasEliminadas']) > 0) {
+            $t->separator();
+            $t->center('LÍNEAS ELIMINADAS');
+            foreach ($data['lineasEliminadas'] as $item) {
+                $t->text($item->product_name . ' x' . number_format($item->quantity, 0) . ' - ' . ($item->cancelled_at ? $item->cancelled_at->format('H:i') : ''));
+            }
+        }
+        $t->separator();
+        $t->center(now()->format('d/m/Y H:i:s'));
+        $t->center('Gracias por su preferencia');
         return $format === 'escpos' ? $t->getEscPos() : $t->getText();
     }
 
