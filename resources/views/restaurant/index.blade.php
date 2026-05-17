@@ -389,7 +389,7 @@
                 <h4><i class="fas fa-utensils"></i> Restaurante</h4>
                 <small>Seleccione una mesa</small>
                 @if($orderMode === 'print')
-                <span class="badge badge-{{ $printServerRunning ? 'success' : 'danger' }}" style="font-size:9px; margin-left:5px;">
+                <span class="badge badge-{{ $printServerRunning ? 'success' : 'danger' }}" id="printServerBadge" style="font-size:9px; margin-left:5px;">
                     <i class="fas fa-{{ $printServerRunning ? 'check-circle' : 'times-circle' }}"></i>
                     Print Server {{ $printServerRunning ? 'activo' : 'inactivo' }}
                 </span>
@@ -701,6 +701,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     pollActiveOrders();
     setInterval(pollActiveOrders, 3000);
+    
+    const psBadge = document.getElementById('printServerBadge');
+    if (psBadge) {
+        setInterval(pollPrintServer, 10000);
+    }
     
     const chargeSearch = document.getElementById('chargeCustomerSearch');
     if (chargeSearch) {
@@ -1292,6 +1297,29 @@ function pollActiveOrders() {
         });
     })
     .catch(() => {});
+}
+
+function pollPrintServer() {
+    fetch('/restaurant/print-status?_=' + Date.now())
+    .then(res => res.json())
+    .then(data => {
+        const badge = document.getElementById('printServerBadge');
+        if (!badge) return;
+        if (data.running) {
+            badge.className = 'badge badge-success';
+            badge.innerHTML = '<i class="fas fa-check-circle"></i> Print Server activo';
+        } else {
+            badge.className = 'badge badge-danger';
+            badge.innerHTML = '<i class="fas fa-times-circle"></i> Print Server inactivo';
+        }
+    })
+    .catch(() => {
+        const badge = document.getElementById('printServerBadge');
+        if (badge) {
+            badge.className = 'badge badge-danger';
+            badge.innerHTML = '<i class="fas fa-times-circle"></i> Print Server inactivo';
+        }
+    });
 }
 
 function showChargeModal() {

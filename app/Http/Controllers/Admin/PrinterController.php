@@ -78,4 +78,13 @@ class PrinterController extends Controller
         $printer->update($validated);
         return redirect()->route('printers.index')->with('success', 'Impresora actualizada');
     }
+
+    public function status(PrintServerService $printServer)
+    {
+        $running = $printServer->isServerRunning();
+        return response()->json([
+            'status' => $running ? 'ok' : 'error',
+            'running' => $running,
+        ]);
+    }
 }

@@ -265,7 +265,7 @@
 
 {{-- Confirm Modal --}}
 <div class="confirm-overlay" id="printConfirmOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
-    <div style="background:white; padding:25px; border-radius:10px; min-width:350px; max-width:90%; text-align:center;">
+    <div style="background:white; padding:25px; border-radius:10px; min-width:350px; max-width:90%; text-align:center; box-shadow:0 5px 20px rgba(0,0,0,0.2);">
         <div style="font-size:40px; margin-bottom:10px;"><i class="fas fa-print" style="color:#28a745;"></i></div>
         <h5 style="margin:0 0 10px 0;">Imprimir resumen</h5>
         <p style="color:#666; margin-bottom:20px;">¿Enviar resumen de caja a la impresora Caja?</p>
@@ -276,20 +276,12 @@
     </div>
 </div>
 
-@push('scripts')
-<script>
-function showPrintConfirm() {
-    document.getElementById('printConfirmOverlay').style.display = 'flex';
-}
-function closePrintConfirm() {
-    document.getElementById('printConfirmOverlay').style.display = 'none';
-}
-function submitPrintCaja() {
-    closePrintConfirm();
-    document.getElementById('printCajaForm').submit();
-}
-</script>
 <style>
 .confirm-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center; }
 </style>
-@endpush
+<script>
+function showPrintConfirm() { document.getElementById('printConfirmOverlay').style.display = 'flex'; }
+function closePrintConfirm() { document.getElementById('printConfirmOverlay').style.display = 'none'; }
+function submitPrintCaja() { closePrintConfirm(); document.getElementById('printCajaForm').submit(); }
+</script>
+@endsection
