@@ -30,6 +30,7 @@ class RestaurantOrderItem extends Model
         'unit_price' => 'decimal:2',
         'total' => 'decimal:2',
         'sent_to_kitchen_at' => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     public function order(): BelongsTo
