@@ -267,7 +267,6 @@
             }
         }
     </style>
-    <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
 </head>
 <body>
     <div class="kds-container">
@@ -537,23 +536,6 @@ function printTicket(orderId) {
 
 loadKitchenOrders();
 setInterval(loadKitchenOrders, 5000);
-
-// Laravel Reverb via Pusher protocol
-try {
-    const pusher = new Pusher('{{ $reverbKey }}', {
-        wsHost: '{{ $reverbHost }}',
-        wsPort: {{ $reverbPort }},
-        forceTLS: false,
-        disableStats: true,
-        enabledTransports: ['ws', 'wss'],
-    });
-    const channel = pusher.subscribe('kitchen.{{ $companyId ?? \App\Models\Company::getMainCompany()->id ?? 1 }}');
-    channel.bind('order.updated', function() {
-        loadKitchenOrders();
-    });
-} catch(e) {
-    console.warn('Reverb not available, using polling only');
-}
     </script>
 </body>
 </html>

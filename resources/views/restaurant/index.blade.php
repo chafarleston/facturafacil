@@ -1463,23 +1463,4 @@ function processCharge() {
     });
 }
 </script>
-<script>
-try {
-    const pusher = new Pusher('{{ $reverbKey }}', {
-        wsHost: '{{ $reverbHost }}',
-        wsPort: {{ $reverbPort }},
-        forceTLS: false,
-        disableStats: true,
-        enabledTransports: ['ws', 'wss'],
-    });
-    const channel = pusher.subscribe('kitchen.{{ $companyId ?? \App\Models\Company::getMainCompany()->id ?? 1 }}');
-    channel.bind('order.updated', function(data) {
-        if (data.type === 'restaurant' || data.type === 'kitchen') {
-            pollActiveOrders();
-        }
-    });
-} catch(e) {
-    console.warn('Reverb not available, using polling');
-}
-</script>
 @endpush

@@ -73,11 +73,8 @@ class RestaurantController extends Controller
         $company = Company::find($companyId);
         $orderMode = $company->order_mode ?? 'kds';
         $printServerRunning = $printServer->isServerRunning();
-        $reverbKey = config('reverb-client.key');
-        $reverbHost = config('reverb-client.host');
-        $reverbPort = config('reverb-client.port');
 
-        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId', 'orderMode', 'printServerRunning', 'reverbKey', 'reverbHost', 'reverbPort'));
+        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId', 'orderMode', 'printServerRunning'));
     }
 
     public function modeIndex()
@@ -566,10 +563,7 @@ class RestaurantController extends Controller
     public function kitchenIndex(Request $request)
     {
         $kds = $request->kds ?? 'cocina';
-        $reverbKey = config('reverb-client.key');
-        $reverbHost = config('reverb-client.host');
-        $reverbPort = config('reverb-client.port');
-        return view('restaurant.kds', compact('kds', 'reverbKey', 'reverbHost', 'reverbPort'));
+        return view('restaurant.kds', compact('kds'));
     }
 
     public function getKitchenOrders(Request $request)
