@@ -20,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use App\Events\KitchenOrderUpdated;
 use App\Services\PrintServerService;
 use App\Services\PrintService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -72,8 +73,11 @@ class RestaurantController extends Controller
         $company = Company::find($companyId);
         $orderMode = $company->order_mode ?? 'kds';
         $printServerRunning = $printServer->isServerRunning();
+        $reverbKey = config('reverb-client.key');
+        $reverbHost = config('reverb-client.host');
+        $reverbPort = config('reverb-client.port');
 
-        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId', 'orderMode', 'printServerRunning'));
+        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId', 'orderMode', 'printServerRunning', 'reverbKey', 'reverbHost', 'reverbPort'));
     }
 
     public function modeIndex()
@@ -287,7 +291,9 @@ class RestaurantController extends Controller
             $order->table->update(['status' => 'AVAILABLE']);
         }
 
-        Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+        event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
+            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
+            Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
             Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
         return response()->json(['success' => true]);
@@ -320,6 +326,8 @@ class RestaurantController extends Controller
             $order->status = 'SENT_TO_KITCHEN';
             $order->save();
 
+            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
+            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
             Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
@@ -441,7 +449,9 @@ class RestaurantController extends Controller
             $order->save();
         }
 
-        Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+        event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
+            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
+            Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
             Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
         return response()->json(['success' => true]);
@@ -524,7 +534,9 @@ class RestaurantController extends Controller
             $order->table->update(['status' => 'AVAILABLE']);
         }
 
-        Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+        event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
+            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
+            Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
             Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
         return response()->json(['success' => true]);
@@ -546,7 +558,10 @@ class RestaurantController extends Controller
     public function kitchenIndex(Request $request)
     {
         $kds = $request->kds ?? 'cocina';
-        return view('restaurant.kds', compact('kds'));
+        $reverbKey = config('reverb-client.key');
+        $reverbHost = config('reverb-client.host');
+        $reverbPort = config('reverb-client.port');
+        return view('restaurant.kds', compact('kds', 'reverbKey', 'reverbHost', 'reverbPort'));
     }
 
     public function getKitchenOrders(Request $request)
@@ -701,6 +716,8 @@ class RestaurantController extends Controller
             $order->status = 'READY';
             $order->save();
 
+            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
+            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
             Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
@@ -723,6 +740,8 @@ class RestaurantController extends Controller
                 $order->save();
             }
 
+            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
+            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
             Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
@@ -866,6 +885,8 @@ class RestaurantController extends Controller
             
             $order->table->update(['status' => 'AVAILABLE']);
             
+            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
+            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
             Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
             

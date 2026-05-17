@@ -783,6 +783,13 @@
       ),
     ),
   ),
+  'reverb-client' => 
+  array (
+    'key' => 'ufvu5www7ez16owwcgqx',
+    'host' => 'localhost',
+    'port' => '8080',
+    'scheme' => 'http',
+  ),
   'sanctum' => 
   array (
     'stateful' => 
