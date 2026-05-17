@@ -270,13 +270,13 @@ class RestaurantController extends Controller
         $item->kitchen_status = 'CANCELLED';
         $item->save();
 
+        $cancelTicket = null;
         if (in_array($item->cancelled_from, ['SENT', 'READY', 'DELIVERED'])) {
             $company = Company::find($order->company_id);
             if ($company && ($company->order_mode ?? 'kds') === 'print') {
                 try {
                     $printService = app(PrintService::class);
-                    $order->load(['table', 'items']);
-                    $printService->printCancelNotification($order, $item);
+                    $cancelTicket = $printService->getCancelTickets($order, collect([$item]))[0] ?? null;
                 } catch (\Exception $e) {
                     \Log::error('Cancel print error: ' . $e->getMessage());
                 }
@@ -292,11 +292,13 @@ class RestaurantController extends Controller
         }
 
         event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
-            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
-            Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
-            Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
+        Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+        Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'cancel_ticket' => $cancelTicket,
+        ]);
     }
 
     public function sendToKitchen(Request $request, $orderId)
@@ -327,15 +329,15 @@ class RestaurantController extends Controller
             $order->save();
 
             event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
-            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
             Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
             $company = Company::find($order->company_id);
+            $tickets = [];
             if ($company && ($company->order_mode ?? 'kds') === 'print') {
                 try {
                     $printService = app(PrintService::class);
-                    $printService->printKitchenOrder($order->fresh(['table.floor', 'user']), $pendingItems);
+                    $tickets = $printService->getKitchenTickets($order->fresh(['table.floor', 'user']));
                 } catch (\Exception $e) {
                     \Log::error('Print error: ' . $e->getMessage());
                 }
@@ -344,7 +346,8 @@ class RestaurantController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Pedido enviado a cocina',
-                'items_sent' => $pendingItems->count()
+                'items_sent' => $pendingItems->count(),
+                'tickets' => $tickets,
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -383,13 +386,16 @@ class RestaurantController extends Controller
         $company = Company::getMainCompany();
 
         $companyRecord = Company::find($order->company_id);
-        if ($companyRecord && ($companyRecord->order_mode ?? 'kds') === 'print') {
+        if ($companyRecord && ($companyRecord->order_mode ?? 'kds') === 'print' && $request->ticket) {
             try {
                 $printService = app(PrintService::class);
                 $order->load(['table', 'items']);
-                $printService->printPrebill($order);
+                $ticket = $printService->getPrebillTicket($order);
+                if ($ticket) {
+                    return response()->json(['success' => true, 'ticket' => $ticket]);
+                }
             } catch (\Exception $e) {
-                \Log::error('Prebill print error: ' . $e->getMessage());
+                return response()->json(['success' => false, 'message' => $e->getMessage()]);
             }
         }
 
@@ -497,6 +503,7 @@ class RestaurantController extends Controller
 
         $company = Company::find($order->company_id);
         $isPrintMode = $company && ($company->order_mode ?? 'kds') === 'print';
+        $cancelTickets = [];
 
         if ($hasKitchenItems) {
             $adminPassword = $request->input('admin_password');
@@ -521,7 +528,7 @@ class RestaurantController extends Controller
             try {
                 $printService = app(PrintService::class);
                 $kitchenItems = $order->items->whereIn('kitchen_status', ['SENT', 'READY', 'DELIVERED']);
-                $printService->printCancelNotificationGrouped($order, $kitchenItems);
+                $cancelTickets = $printService->getCancelTickets($order, $kitchenItems);
             } catch (\Exception $e) {
                 \Log::error('Cancel print error: ' . $e->getMessage());
             }
@@ -535,11 +542,12 @@ class RestaurantController extends Controller
         }
 
         event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
-            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
-            Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
-            Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
+        Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'tickets' => $cancelTickets,
+        ]);
     }
 
     public function getActiveOrders(Request $request)
@@ -905,12 +913,13 @@ class RestaurantController extends Controller
             $cajaAbierta->$paymentField = ($cajaAbierta->$paymentField ?? 0) + round($total, 2);
             $cajaAbierta->save();
 
+            $invoiceTicket = null;
             try {
                 $printService = app(PrintService::class);
                 $invoice->load('items', 'customer');
-                $printService->printInvoice($invoice);
+                $invoiceTicket = $printService->getInvoiceTicket($invoice);
             } catch (\Exception $e) {
-                \Log::error('Invoice print error: ' . $e->getMessage());
+                \Log::error('Invoice ticket error: ' . $e->getMessage());
             }
 
             return response()->json([
@@ -919,6 +928,7 @@ class RestaurantController extends Controller
                 'full_number' => $fullNumber,
                 'total' => round($total, 2),
                 'document_type' => $documentType,
+                'invoice_ticket' => $invoiceTicket,
             ]);
         } catch (\Exception $e) {
             return response()->json([

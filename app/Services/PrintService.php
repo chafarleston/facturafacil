@@ -3,131 +3,93 @@
 namespace App\Services;
 
 use App\Models\Printer;
-use App\Models\PrintJob;
 
 class PrintService
 {
-    protected PrintServerService $printServer;
-
-    public function __construct(PrintServerService $printServer)
-    {
-        $this->printServer = $printServer;
-    }
-
     protected function getPrinter(string $assignedTo): ?Printer
     {
         return Printer::where('assigned_to', $assignedTo)->where('active', true)->first();
     }
 
-    protected function queuePrint(Printer $printer, string $data, string $jobType, ?string $refType = null, ?int $refId = null): void
+    public function getKitchenTickets($order): array
     {
-        PrintJob::create([
-            'printer_name' => $printer->printer_name,
-            'printer_ip' => $printer->ip_address,
-            'printer_port' => $printer->port,
-            'type' => $printer->type,
-            'job_type' => $jobType,
-            'reference_type' => $refType,
-            'reference_id' => $refId,
-            'data' => base64_encode($data),
-            'status' => 'pending',
-        ]);
-    }
-
-    public function printKitchenOrder($order, $items = null): void
-    {
-        $orderItems = $items ?? $order->items;
-        $refType = get_class($order);
         $groups = ['cocina' => [], 'cocina2' => [], 'bar' => []];
-        foreach ($orderItems as $item) {
+        foreach ($order->items as $item) {
             if ($item->kitchen_status === 'CANCELLED') continue;
             $dest = $item->kds_destination ?? 'cocina';
             if (isset($groups[$dest])) $groups[$dest][] = $item;
         }
+
+        $tickets = [];
         foreach ($groups as $dest => $items) {
             if (empty($items)) continue;
             $printer = $this->getPrinter($dest === 'cocina' ? 'cocina-1' : ($dest === 'cocina2' ? 'cocina-2' : 'bar-1'));
-            if (!$printer) continue;
+            $label = $dest === 'cocina' ? 'Cocina 1' : ($dest === 'cocina2' ? 'Cocina 2' : 'Bar 1');
             $order->setRelation('items', collect($items));
             $data = PlainTextTicket::kitchenTicket($order, 'escpos');
-            $this->queuePrint($printer, $data, 'kitchen', $refType, $order->id);
+            $tickets[] = [
+                'printer' => $printer ? $printer->printer_name : null,
+                'ip' => $printer ? $printer->ip_address : null,
+                'port' => $printer ? $printer->port : null,
+                'type' => $printer ? $printer->type : 'local',
+                'label' => $label,
+                'data' => base64_encode($data),
+            ];
         }
-        $this->processQueue();
+        return $tickets;
     }
 
-    public function printPrebill($order): void
+    public function getPrebillTicket($order): ?array
     {
         $printer = $this->getPrinter('precuenta');
-        if (!$printer) return;
+        if (!$printer) return null;
         $data = PlainTextTicket::prebillTicket($order, 'escpos');
-        $this->queuePrint($printer, $data, 'prebill', get_class($order), $order->id);
-        $this->processQueue();
+        return [
+            'printer' => $printer->printer_name,
+            'ip' => $printer->ip_address,
+            'port' => $printer->port,
+            'type' => $printer->type,
+            'data' => base64_encode($data),
+        ];
     }
 
-    public function printCancelNotificationGrouped($order, $items): void
+    public function getCancelTickets($order, $items): array
     {
         $groups = ['cocina' => [], 'cocina2' => [], 'bar' => []];
         foreach ($items as $item) {
             $dest = $item->kds_destination ?? 'cocina';
             if (isset($groups[$dest])) $groups[$dest][] = $item;
         }
+
+        $tickets = [];
         foreach ($groups as $dest => $groupItems) {
             if (empty($groupItems)) continue;
             $printerKey = $dest === 'cocina' ? 'cocina-1' : ($dest === 'cocina2' ? 'cocina-2' : 'bar-1');
             $printer = $this->getPrinter($printerKey);
-            if (!$printer) continue;
             $order->setRelation('items', collect($groupItems));
             $data = PlainTextTicket::cancelNotificationGrouped($order, 'escpos', $dest);
-            $this->queuePrint($printer, $data, 'cancel', get_class($order), $order->id);
+            $tickets[] = [
+                'printer' => $printer ? $printer->printer_name : null,
+                'ip' => $printer ? $printer->ip_address : null,
+                'port' => $printer ? $printer->port : null,
+                'type' => $printer ? $printer->type : 'local',
+                'data' => base64_encode($data),
+            ];
         }
-        $this->processQueue();
+        return $tickets;
     }
 
-    public function printCancelNotification($order, $item): void
-    {
-        $dest = $item->kds_destination ?? 'cocina';
-        $printerKey = $dest === 'cocina' ? 'cocina-1' : ($dest === 'cocina2' ? 'cocina-2' : 'bar-1');
-        $printer = $this->getPrinter($printerKey);
-        if (!$printer) return;
-        $data = PlainTextTicket::cancelNotification($order, $item, 'escpos', $dest);
-        $this->queuePrint($printer, $data, 'cancel', get_class($order), $order->id);
-        $this->processQueue();
-    }
-
-    public function printInvoice($invoice): void
+    public function getInvoiceTicket($invoice): ?array
     {
         $printer = $this->getPrinter('caja');
-        if (!$printer) return;
+        if (!$printer) return null;
         $data = PlainTextTicket::invoiceTicket($invoice, 'escpos');
-        $this->queuePrint($printer, $data, 'invoice', get_class($invoice), $invoice->id);
-        $this->processQueue();
-    }
-
-    public function processQueue(): void
-    {
-        if (!$this->printServer->isServerRunning()) return;
-
-        $jobs = PrintJob::where('status', 'pending')->orderBy('id')->get();
-        foreach ($jobs as $job) {
-            $job->update(['status' => 'processing', 'attempts' => $job->attempts + 1]);
-            try {
-                $payload = ['data' => $job->data, 'mode' => 'escpos', 'type' => $job->type];
-                if ($job->type === 'network') {
-                    $payload['ip'] = $job->printer_ip;
-                    $payload['port'] = $job->printer_port;
-                } else {
-                    $payload['printer'] = $job->printer_name;
-                }
-                $response = \Illuminate\Support\Facades\Http::timeout(5)
-                    ->post(config('print-server.url', 'http://127.0.0.1:9100') . '/print', $payload);
-                if ($response->successful()) {
-                    $job->update(['status' => 'completed', 'completed_at' => now()]);
-                } else {
-                    $job->update(['status' => 'failed', 'error_message' => $response->body()]);
-                }
-            } catch (\Exception $e) {
-                $job->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
-            }
-        }
+        return [
+            'printer' => $printer->printer_name,
+            'ip' => $printer->ip_address,
+            'port' => $printer->port,
+            'type' => $printer->type,
+            'data' => base64_encode($data),
+        ];
     }
 }

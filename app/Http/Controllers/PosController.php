@@ -178,9 +178,10 @@ class PosController extends Controller
         try {
             $printService = app(PrintService::class);
             $invoice->load('items', 'customer');
-            $printService->printInvoice($invoice);
+            $ticket = $printService->getInvoiceTicket($invoice);
+            \Log::info('Invoice ticket generated for POS', ['invoice_id' => $invoice->id, 'ticket_length' => strlen($ticket ?? '')]);
         } catch (\Exception $e) {
-            \Log::error('POS print error: ' . $e->getMessage());
+            \Log::error('POS ticket error: ' . $e->getMessage());
         }
 
         return redirect()->route('pos.success', $invoice->id);
