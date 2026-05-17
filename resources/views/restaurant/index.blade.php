@@ -1051,9 +1051,8 @@ function removeItem(itemId) {
         })
         .then(res => res.json())
         .then(data => {
-        if (data.success) {
-            if (data.cancel_ticket) printTicketsLocally([data.cancel_ticket]);
-            loadOrder(currentOrderId);
+            if (data.success) {
+                loadOrder(currentOrderId);
             } else {
                 showError(data.message);
             }
@@ -1131,30 +1130,12 @@ function sendToKitchen() {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                printTicketsLocally(data.tickets || []);
                 showToast('Pedido enviado a cocina');
                 closeModal();
             } else {
                 showAlert(data.message || 'Error');
             }
         });
-    });
-}
-
-function printTicketsLocally(tickets) {
-    tickets.forEach(t => {
-        const url = t.ip ? `http://${t.ip}:${t.port}` : 'http://localhost:9100';
-        const body = {
-            mode: 'escpos',
-            data: t.data
-        };
-        if (t.printer) body.printer = t.printer;
-        else if (t.ip) { body.ip = t.ip; body.port = t.port; }
-        fetch(url + '/print', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        }).catch(() => {});
     });
 }
 
@@ -1166,12 +1147,6 @@ function printKitchenTicket() {
 function printPrebill() {
     if (!currentOrderId) return;
     window.open('/restaurant/orders/' + currentOrderId + '/print-prebill', '_blank', 'width=400,height=600');
-    fetch('/restaurant/orders/' + currentOrderId + '/print-prebill?ticket=1')
-    .then(res => res.json())
-    .then(data => {
-        if (data.success && data.ticket) printTicketsLocally([data.ticket]);
-    })
-    .catch(() => {});
 }
 
 function closeTable() {
@@ -1237,7 +1212,6 @@ function cancelOrderRequest(password) {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            printTicketsLocally(data.tickets || []);
             showAlert('Pedido anulado');
             const tableCard = document.querySelector(`.table-card[data-table-id="${currentTableId}"]`);
             if (tableCard) {
@@ -1445,7 +1419,6 @@ function processCharge() {
     .then(data => {
         btn.disabled = false;
         if (data.success) {
-            if (data.invoice_ticket) printTicketsLocally([data.invoice_ticket]);
             closeChargeModal();
             window.open('/pos/print/' + data.invoice_id + '/80mm', '_blank', 'width=400,height=600');
             document.getElementById('chargeCustomerSearch').value = '';
