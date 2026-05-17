@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
         $this->call(\Database\Seeders\SeriesSeeder::class);
         $this->call(\Database\Seeders\SunatProductSeeder::class);
         $this->call(\Database\Seeders\PermissionsSeeder::class);
+        $this->call(\Database\Seeders\PrinterSeeder::class);
 		
     }
 }
