@@ -482,6 +482,53 @@ class RestaurantController extends Controller
         ]);
     }
 
+    public function moveTable(Request $request, $orderId)
+    {
+        $order = RestaurantOrder::findOrFail($orderId);
+        $newTableId = $request->input('table_id');
+
+        if (!$newTableId) {
+            return response()->json(['success' => false, 'message' => 'Seleccione una mesa destino']);
+        }
+
+        if ($order->table_id == $newTableId) {
+            return response()->json(['success' => false, 'message' => 'La mesa seleccionada es la misma']);
+        }
+
+        $newTable = RestaurantTable::findOrFail($newTableId);
+
+        if ($newTable->activeOrder()) {
+            return response()->json(['success' => false, 'message' => 'La mesa destino ya tiene un pedido activo']);
+        }
+
+        $oldTable = $order->table;
+
+        $order->update(['table_id' => $newTableId]);
+
+        if ($oldTable) {
+            $otherOrders = RestaurantOrder::where('table_id', $oldTable->id)
+                ->where('id', '!=', $orderId)
+                ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
+                ->count();
+            if ($otherOrders == 0) {
+                $oldTable->update(['status' => 'AVAILABLE']);
+            }
+        }
+
+        $newTable->update(['status' => 'OCCUPIED']);
+
+        event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
+        Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+        Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pedido movido a ' . $newTable->name,
+            'old_table_id' => $oldTable?->id,
+            'new_table_id' => $newTable->id,
+        ]);
+    }
+
     public function cancelOrder(Request $request, $orderId)
     {
         if (auth()->user()->isMozo()) {

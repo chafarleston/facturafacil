@@ -103,11 +103,17 @@ class PrintService
         $this->processQueue();
     }
 
+    const MAX_ATTEMPTS = 3;
+
     public function processQueue(): void
     {
         if (!$this->printServer->isServerRunning()) return;
 
-        $jobs = PrintJob::where('status', 'pending')->orderBy('id')->get();
+        $jobs = PrintJob::whereIn('status', ['pending', 'failed'])
+            ->where('attempts', '<', self::MAX_ATTEMPTS)
+            ->orderBy('id')
+            ->get();
+
         foreach ($jobs as $job) {
             $job->update(['status' => 'processing', 'attempts' => $job->attempts + 1]);
             try {

@@ -11,6 +11,9 @@ class Kernel extends ConsoleKernel
     {
         // Descargar padrón SUNAT cada semana
         $schedule->command('sunat:download-padron')->weekly()->sunday()->at('02:00');
+
+        // Reintentar impresiones fallidas cada minuto
+        $schedule->command('print:process-queue')->everyMinute();
     }
 
     protected function commands()
