@@ -137,6 +137,7 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     Route::post('/restaurant/orders/{orderId}/close', [RestaurantController::class, 'closeOrder'])->name('restaurant.orders.close');
     Route::post('/restaurant/orders/{orderId}/cancel', [RestaurantController::class, 'cancelOrder'])->name('restaurant.orders.cancel');
     Route::post('/restaurant/orders/{orderId}/charge', [RestaurantController::class, 'chargeOrder'])->name('restaurant.orders.charge');
+    Route::post('/restaurant/orders/{orderId}/move-table', [RestaurantController::class, 'moveTable'])->name('restaurant.orders.moveTable');
     Route::post('/restaurant/toggle-mode', [RestaurantController::class, 'toggleMode'])->name('restaurant.toggleMode');
     Route::get('/restaurant/print-status', [\App\Http\Controllers\Admin\PrinterController::class, 'status'])->name('restaurant.printStatus');
     Route::get('/restaurant/active-orders', [RestaurantController::class, 'getActiveOrders'])->name('restaurant.activeOrders');

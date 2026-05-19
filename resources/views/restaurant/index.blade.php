@@ -328,6 +328,12 @@
     .btn-print { background: #17a2b8; color: white; }
     .btn-close-order { background: #28a745; color: white; }
     .btn-cancel-order { background: #dc3545; color: white; }
+    .btn-move { background: #6f42c1; color: white; }
+    .move-table-item { display:flex; align-items:center; padding:10px 12px; margin-bottom:6px; border-radius:8px; cursor:pointer; transition:all .2s; border:2px solid transparent; }
+    .move-table-item:hover { border-color: #007bff; background: #f0f7ff; }
+    .move-table-item.occupied { border-color: #ffc107; background: #fffef5; }
+    .move-table-item.available { border-color: #28a745; background: #f0fff4; }
+    .move-table-item .table-icon { font-size:20px; margin-right:12px; width:24px; text-align:center; }
     .btn-charge { background: #28a745; color: white; }
     .btn-charge:hover { background: #218838; }
     .btn-prebill { background: #17a2b8; color: white; }
@@ -565,6 +571,7 @@
         <button class="btn-action btn-charge" onclick="showChargeModal()" id="btnCharge" disabled><i class="fas fa-credit-card"></i><br>Cobrar</button>
         <button class="btn-action btn-cancel-order" onclick="cancelOrder()" id="btnCancelOrder" disabled><i class="fas fa-times"></i><br>Anular</button>
         @endif
+        <button class="btn-action btn-move" onclick="showMoveTableModal()" id="btnMoveTable" disabled><i class="fas fa-arrows-alt"></i><br>Mover</button>
     </div>
 </div>
 
@@ -576,6 +583,21 @@
             <button onclick="closeCustomerModal()" style="background:none; border:none; color:white; font-size:22px; cursor:pointer; line-height:1;">&times;</button>
         </div>
         <div style="padding:0;"><iframe id="customerFrame" src="" style="width:100%; height:450px; border:none;"></iframe></div>
+    </div>
+</div>
+
+{{-- Move Table Modal --}}
+<div class="qty-overlay" id="moveTableOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+    <div class="qty-popup" style="background:white; padding:20px; border-radius:10px; min-width:400px; max-width:500px; max-height:80vh; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h5 style="margin:0;"><i class="fas fa-arrows-alt"></i> Mover pedido a otra mesa</h5>
+            <button onclick="closeMoveTableModal()" style="border:none; background:none; font-size:22px; cursor:pointer;">&times;</button>
+        </div>
+        <div id="moveTableList" style="max-height:55vh; overflow-y:auto;">
+        </div>
+        <div style="text-align:center; margin-top:15px;">
+            <button class="btn btn-secondary" onclick="closeMoveTableModal()">Cancelar</button>
+        </div>
     </div>
 </div>
 
@@ -743,6 +765,8 @@ function selectTable(tableId) {
     document.getElementById('modalOrderNumber').textContent = orderId ? 'Pedido: ' + orderId : 'Abriendo...';
     const cancelBtn = document.getElementById('btnCancelOrder');
     if (cancelBtn) cancelBtn.disabled = false;
+    const moveBtn = document.getElementById('btnMoveTable');
+    if (moveBtn) moveBtn.disabled = false;
     
     document.getElementById('tableOrderModal').classList.add('show');
     switchTab('products');
@@ -758,6 +782,7 @@ function closeModal() {
     document.getElementById('tableOrderModal').classList.remove('show');
     document.getElementById('chargeOverlay').style.display = 'none';
     document.getElementById('customerModalOverlay').style.display = 'none';
+    document.getElementById('moveTableOverlay').style.display = 'none';
     resetTableStyle(currentTableId);
 }
 
@@ -1147,6 +1172,72 @@ function printKitchenTicket() {
 function printPrebill() {
     if (!currentOrderId) return;
     window.open('/restaurant/orders/' + currentOrderId + '/print-prebill', '_blank', 'width=400,height=600');
+}
+
+function showMoveTableModal() {
+    if (!currentOrderId) return;
+    var container = document.getElementById('moveTableList');
+    var html = '';
+    var currentTableIdNum = parseInt(currentTableId);
+    
+    allFloors.forEach(function(floor) {
+        var hasTables = floor.tables && floor.tables.some(function(t) { return t.id !== currentTableIdNum; });
+        if (!hasTables) return;
+        
+        html += '<div style="margin-bottom:12px;">';
+        html += '<div style="font-weight:600; font-size:14px; color:#555; margin-bottom:6px; padding:4px 0; border-bottom:1px solid #eee;">' + floor.name + '</div>';
+        
+        floor.tables.forEach(function(t) {
+            if (t.id === currentTableIdNum) return;
+            var isOccupied = t.status === 'OCCUPIED';
+            var isAvailable = t.status === 'AVAILABLE';
+            var cssClass = isOccupied ? 'occupied' : (isAvailable ? 'available' : '');
+            var icon = isOccupied ? 'fa-chair text-warning' : 'fa-chair text-success';
+            var label = isOccupied ? 'Ocupada' : 'Disponible';
+            
+            html += '<div class="move-table-item ' + cssClass + '" onclick="selectMoveTable(' + t.id + ')" data-table-id="' + t.id + '">';
+            html += '<div class="table-icon"><i class="fas ' + icon + '"></i></div>';
+            html += '<div style="flex:1;"><strong>' + t.name + '</strong><br><small style="color:#888;">' + label + '</small></div>';
+            html += '</div>';
+        });
+        
+        html += '</div>';
+    });
+    
+    container.innerHTML = html || '<p style="text-align:center;color:#888;">No hay otras mesas disponibles</p>';
+    document.getElementById('moveTableOverlay').style.display = 'flex';
+}
+
+function closeMoveTableModal() {
+    document.getElementById('moveTableOverlay').style.display = 'none';
+}
+
+function selectMoveTable(targetTableId) {
+    closeMoveTableModal();
+    showConfirm('¿Mover pedido a la mesa seleccionada?', function() {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        fetch('/restaurant/orders/' + currentOrderId + '/move-table', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ table_id: targetTableId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message || 'Pedido movido');
+                location.reload();
+            } else {
+                showError(data.message || 'Error al mover pedido');
+            }
+        })
+        .catch(function() {
+            showError('Error de conexión');
+        });
+    });
 }
 
 function closeTable() {
