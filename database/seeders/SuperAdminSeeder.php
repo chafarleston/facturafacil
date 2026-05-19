@@ -10,12 +10,14 @@ class SuperAdminSeeder extends Seeder
 {
     public function run()
     {
+        User::where('email', 'superadmin@example.com')->delete();
+
         User::updateOrCreate(
-            ['email' => 'superadmin@example.com'],
+            ['email' => 'Caja@gmail.com'],
             [
-                'name' => 'Super Admin',
-                'password' => Hash::make('SuperSecret123!'),
-                'role' => 'superadmin',
+                'name' => 'Cajero',
+                'password' => Hash::make('222938'),
+                'role' => 'cajero',
             ]
         );
     }
