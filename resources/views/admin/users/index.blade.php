@@ -26,6 +26,8 @@
                     <td>
                         @if($u->role === 'admin')
                             <span class="badge badge-primary">Administrador</span>
+                        @elseif($u->role === 'cajero')
+                            <span class="badge badge-info">Cajero</span>
                         @elseif($u->role === 'mozo')
                             <span class="badge badge-success">Mozo</span>
                         @else

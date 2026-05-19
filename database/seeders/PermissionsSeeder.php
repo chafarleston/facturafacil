@@ -114,5 +114,20 @@ class PermissionsSeeder extends Seeder
             'view_pos', 'use_pos',
             'view_cashregisters', 'open_cashregister', 'close_cashregister',
         ])->pluck('id')->toArray());
+
+        $userRole = Role::firstOrCreate(['slug' => 'user'], [
+            'name' => 'Usuario',
+            'description' => 'Usuario general del sistema',
+            'is_system' => true,
+            'status' => true,
+        ]);
+        $userRole->syncPermissions(Permission::whereIn('slug', [
+            'view_dashboard',
+            'view_invoices',
+            'view_pos', 'use_pos',
+            'view_cashregisters',
+            'view_products', 'view_categories',
+            'view_customers',
+        ])->pluck('id')->toArray());
     }
 }

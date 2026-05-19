@@ -4,14 +4,22 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\User;
+use App\Models\Role;
 use Illuminate\Support\Facades\Hash;
 
 class TestUsersSeeder extends Seeder
 {
+    protected function syncRole(User $user, string $roleSlug): void
+    {
+        $role = Role::where('slug', $roleSlug)->first();
+        if ($role && !$user->roles()->where('role_id', $role->id)->exists()) {
+            $user->roles()->attach($role->id);
+        }
+    }
+
     public function run()
     {
         // Demo normal user
-        // Ensure a company exists to relate to (reuses the first company if already created)
         $company = \App\Models\Company::first();
         if (!$company) {
             $company = \App\Models\Company::firstOrCreate([
@@ -30,7 +38,8 @@ class TestUsersSeeder extends Seeder
                 'soap_type_id' => 1,
             ]);
         }
-        User::updateOrCreate(
+
+        $user = User::updateOrCreate(
             ['email' => 'demo@example.com'],
             [
                 'name' => 'Demo User',
@@ -39,9 +48,10 @@ class TestUsersSeeder extends Seeder
                 'company_id' => $company->id,
             ]
         );
+        $this->syncRole($user, 'user');
 
         // Demo admin user
-        User::updateOrCreate(
+        $admin = User::updateOrCreate(
             ['email' => 'manager@example.com'],
             [
                 'name' => 'Manager Admin',
@@ -49,9 +59,10 @@ class TestUsersSeeder extends Seeder
                 'role' => 'admin',
             ]
         );
+        $this->syncRole($admin, 'admin');
 
         // Demo mozo user
-        User::updateOrCreate(
+        $mozo = User::updateOrCreate(
             ['email' => 'mozo@gmail.com'],
             [
                 'name' => 'Mozo Restaurante',
@@ -60,5 +71,6 @@ class TestUsersSeeder extends Seeder
                 'company_id' => $company->id,
             ]
         );
+        $this->syncRole($mozo, 'mozo');
     }
 }

@@ -72,10 +72,16 @@ class User extends Authenticatable
         if ($this->isAdmin() || $this->isSuperAdmin()) {
             return true;
         }
-        
-        return $this->roles()->whereHas('permissions', function($q) use ($permissionSlug) {
+
+        if ($this->roles()->whereHas('permissions', function($q) use ($permissionSlug) {
             $q->where('slug', $permissionSlug);
-        })->exists();
+        })->exists()) {
+            return true;
+        }
+
+        return Role::where('slug', $this->role)
+            ->whereHas('permissions', fn($q) => $q->where('slug', $permissionSlug))
+            ->exists();
     }
     
     public function getMainCompany()
