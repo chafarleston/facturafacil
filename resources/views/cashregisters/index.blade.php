@@ -27,9 +27,11 @@
                         </div>
                     </div>
                 </div>
+                @can('permission', 'close_cashregister')
                 <button type="submit" class="btn btn-danger">
                     <i class="fas fa-lock"></i> Cerrar Caja
                 </button>
+                @endcan
             </form>
         </div>
         @else
@@ -52,7 +54,9 @@
                     </div>
                 </div>
                 <div class="card-footer">
+                    @can('permission', 'open_cashregister')
                     <button type="submit" class="btn btn-primary"><i class="fas fa-cash-register"></i> Abrir Caja</button>
+                    @endcan
                 </div>
             </form>
         </div>

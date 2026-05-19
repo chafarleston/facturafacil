@@ -40,7 +40,8 @@ class PermissionsSeeder extends Seeder
             ['name' => 'Ver Proveedores', 'slug' => 'view_suppliers', 'module' => 'suppliers', 'description' => 'Ver lista de proveedores'],
             ['name' => 'Crear Proveedores', 'slug' => 'create_suppliers', 'module' => 'suppliers', 'description' => 'Crear proveedores'],
             ['name' => 'Ver Caja', 'slug' => 'view_cashregisters', 'module' => 'cashregisters', 'description' => 'Ver caja'],
-            ['name' => 'Abrir/Cerrar Caja', 'slug' => 'manage_cashregisters', 'module' => 'cashregisters', 'description' => 'Abrir y cerrar caja'],
+            ['name' => 'Abrir Caja', 'slug' => 'open_cashregister', 'module' => 'cashregisters', 'description' => 'Abrir caja'],
+            ['name' => 'Cerrar Caja', 'slug' => 'close_cashregister', 'module' => 'cashregisters', 'description' => 'Cerrar caja'],
             ['name' => 'Ver POS', 'slug' => 'view_pos', 'module' => 'pos', 'description' => 'Ver punto de venta'],
             ['name' => 'Usar POS', 'slug' => 'use_pos', 'module' => 'pos', 'description' => 'Usar punto de venta'],
             ['name' => 'Ver Restaurante', 'slug' => 'view_restaurant', 'module' => 'restaurant', 'description' => 'Ver módulo restaurante'],
@@ -77,7 +78,7 @@ class PermissionsSeeder extends Seeder
             'view_invoices', 'create_invoices', 'send_sunat',
             'view_purchases', 'create_purchases',
             'view_suppliers', 'create_suppliers',
-            'view_cashregisters', 'manage_cashregisters',
+            'view_cashregisters', 'open_cashregister', 'close_cashregister',
             'view_pos', 'use_pos',
             'view_restaurant', 'manage_orders',
             'view_kitchen', 'manage_kitchen',
@@ -111,7 +112,7 @@ class PermissionsSeeder extends Seeder
             'view_dashboard',
             'view_invoices', 'create_invoices',
             'view_pos', 'use_pos',
-            'view_cashregisters', 'manage_cashregisters',
+            'view_cashregisters', 'open_cashregister', 'close_cashregister',
         ])->pluck('id')->toArray());
     }
 }
