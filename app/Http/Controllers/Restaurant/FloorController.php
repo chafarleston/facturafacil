@@ -46,7 +46,8 @@ class FloorController extends Controller
 
     public function edit(Floor $floor)
     {
-        return view('restaurant.floors.edit', compact('floor'));
+        $tables = $floor->tables()->orderBy('id')->get();
+        return view('restaurant.floors.edit', compact('floor', 'tables'));
     }
 
     public function update(Request $request, Floor $floor)

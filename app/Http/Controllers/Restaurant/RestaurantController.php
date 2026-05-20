@@ -401,6 +401,22 @@ class RestaurantController extends Controller
         return $pdf->stream('precuenta-' . $order->order_number . '.pdf');
     }
 
+    public function printPrebillTo(Request $request, $orderId, $printerKey)
+    {
+        $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($orderId);
+        $order->setRelation('items', $order->items->where('kitchen_status', '!=', 'CANCELLED'));
+
+        try {
+            $printService = app(PrintService::class);
+            $order->load(['table', 'items']);
+            $printService->printPrebill($order, $printerKey);
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            \Log::error('Prebill print error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
     public function restaurantStream(Request $request)
     {
         $companyId = $request->company_id ?? Company::first()->id;
