@@ -1,477 +1,236 @@
-# FacturaFácil - Sistema de Facturación Electrónica SUNAT
+# FacturaFácil — Sistema de Facturación Electrónica y Restaurante
 
-<p align="center">
-<a href="https://laravel.com" target="_blank">
-<img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="250" alt="Laravel Logo">
-</a>
-</p>
-
-<p align="center">
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo de restaurante, POS, impresión térmica ESC/POS y gestión multi-rol.
 
 ---
 
-## Descripción
+## Módulos del Sistema
 
-**FacturaFácil** es un sistema de facturación electrónica desarrollado en Laravel para Perú, que permite emitir comprobantes de pago electrónicos согласно a las disposiciones de SUNAT (Superintendencia Nacional de Aduanas y Administración Tributaria).
+### Facturación Electrónica SUNAT
+- Emisión de **Facturas** (01), **Boletas** (03), **Notas de Venta** (NV), **Notas de Crédito** (07), **Notas de Débito** (08)
+- Envío automático a SUNAT vía Greenter
+- Firma digital con certificado .p12
+- PDF en formato A4 y Ticket 80mm con código QR
+- Descarga de XML firmado y CDR
+- Series configurables por tipo de documento
 
-El sistema está integrado con la librería **Greenter**, la herramienta oficial desarrollada por SUNAT para la generación y envío de comprobantes electrónicos.
+### POS (Punto de Venta)
+- Interfaz simplificada para ventas rápidas
+- Búsqueda de productos por nombre o código de barras (detección automática: letras → descripción, números → código de barras)
+- Selección de cliente con búsqueda y creación rápida
+- Múltiples métodos de pago: Efectivo, Tarjeta, Yape, Plin, Transferencia, Mixto
+- Control de caja (apertura/cierre con arqueo)
+- Apertura de cajón de efectivo desde el POS
+
+### Restaurante
+- Gestión de **Pisos** y **Mesas** con estado visual (Disponible/Ocupada)
+- Pedidos con productos, cantidades, notas y precios
+- Envío a cocina (modo **KDS** en pantalla o **Impresión 80mm** a impresora térmica)
+- **KDS (Kitchen Display System)**: pantalla en tiempo real con alertas sonoras al recibir nuevos pedidos, colores por estado (Pendiente/Enviado/Listo/Entregado)
+- Precuenta con selección de impresora (Precuenta 1, 2 o 3)
+- Cobro con selección de cliente, tipo de documento y método de pago
+- **Mover pedido** entre mesas
+- Anulación de productos con autorización de administrador para items enviados a cocina
+- Notas por producto y por pedido
+
+### Impresión Térmica ESC/POS
+- **Arquitectura híbrida**: el servidor Laravel encola los trabajos, los envía vía HTTP al Print Server local
+- **Print Server Node.js** local en cada máquina cliente (Windows/Linux/Mac)
+- 8 slots fijos de impresora: Cocina 1, Cocina 2, Bar 1, Precuenta 1/2/3, Caja
+- Soporte para impresoras **locales** (USB/paralelo vía raw-print.ps1) y **red** (socket TCP puerto 9100)
+- Encoding CP850 con caracteres ñ, tildes, mayúsculas
+- **Cola de impresión** con reintentos automáticos (hasta 3 intentos)
+- Comando de apertura de cajón de efectivo
+
+### Roles y Permisos
+- Roles: **Administrador**, **Cajero**, **Mozo**, **Usuario**
+- Permisos granulares por módulo (ver/crear/editar/eliminar por cada entidad)
+- Control de acceso a funcionalidades del restaurante (Cobrar/Anular restrigido a no-mozos)
+- Gestión de permisos desde el panel de administración
+
+### Gestión de Empresas
+- Soporte multi-empresa con series separadas
+- Configuración de **IGV**: General (18%) o Reducido Restaurante (10.5%), ambos porcentajes editables
+- Certificado digital por empresa
+- Datos SUNAT: tipo contribuyente, ubigeo, etc.
+- Logotipo personalizado
+
+### Caja Registradora
+- Apertura y cierre con montos
+- Resumen de ventas por tipo de documento y método de pago
+- Reporte de líneas eliminadas (productos anulados en cocina)
+- Ticket 80mm y PDF A4
 
 ---
 
-## Características
+## Arquitectura de Impresión
 
-### Comprobantes Electrónicos
+```
+Navegador (cliente)
+  │
+  ├── POST /restaurant/orders/{id}/send-to-kitchen
+  │   └── Laravel: marca items como SENT, encola trabajo en DB
+  │       └── PrintService::processQueue()
+  │           └── HTTP POST → Print Server local (127.0.0.1:9100/print)
+  │
+  └── Clicks en "Abrir Caja"
+      └── POST /pos/open-drawer
+          └── Laravel: envía comando ESC/POS → Print Server local
+```
 
-| Tipo | Código SUNAT | Descripción |
-|------|-------------|--------------|
-| Factura | 01 | Comprobante de pago para clientes con RUC |
-| Boleta | 03 | Comprobante de pago para clientes con DNI o RUC |
-| Nota de Crédito | 07 | Rectificación de facturas/boletas |
-| Nota de Débito | 08 | Cargo adicional a facturas/boletas |
-| Nota de Venta | NV | Venta sin obligación electrónica |
+**Print Server** (Node.js en `print-server-node/server.js`):
+- Corre en la máquina local del cliente (Windows/Linux/Mac)
+- Recibe datos ESC/POS en base64 vía REST API
+- Envía a impresora local (raw-print.ps1) o a impresora de red (socket TCP)
+- Endpoints: `GET /status`, `GET /printers`, `POST /print`, `POST /print-escpos-text`
 
-### Funcionalidades Principales
-
-- Emisión de **Facturas** (requiere RUC de 11 dígitos)
-- Emisión de **Boletas** (acepta DNI o RUC)
-- Notas de Crédito y Débito
-- Notas de Venta para ventas locales
-- Envío automático a SUNAT
-- Generación de PDF (formato A4 y Ticket 80mm)
-- Código QR para consulta en portal SUNAT
-- Firma digital con certificado (.p12)
-- Descarga de XML firmado
-- Descarga de CDR (Constancia de Recepción)
-- Gestión de inventario y stock
-- Registro de caja (apertura/cierre)
-- Módulo de compras a proveedores
-- Dashboard con estadísticas
-- Soporte multi-empresa
-
-### Reglas de Validación
-
-- **Facturas**: Solo aceptan clientes con RUC de 11 dígitos
-- **Boletas**: Aceptan clientes con DNI (8 dígitos) o RUC (11 dígitos)
-- **Notas de Venta**: Sin restricción de documento
+**Reintentos automáticos**: el comando `php artisan print:process-queue` se ejecuta cada minuto vía Tarea Programada de Windows (`FacturaFacilScheduler`) para reintentar trabajos fallidos (hasta 3 intentos).
 
 ---
 
-## Requisitos del Servidor
+## Requisitos
 
-### Requisitos Mínimos
-
-- **PHP**: 8.2+
-- **Base de datos**: MySQL 8.0+ o MariaDB 10.4+
-- **Servidor web**: Apache o Nginx
-- **Composer**: Última versión
-
-### Extensiones PHP Requeridas
-
-- `openssl`
-- `xml`
-- `zip`
-- `mbstring`
-- `pdo_mysql`
-- `curl`
-
-### Requisitos Adicionales
-
-- Certificado digital (.p12) emitido por SUNAT
-- Acceso a internet para comunicación con servicios SUNAT
+- **PHP** 8.2+
+- **MySQL** 8.0+ / MariaDB 10.4+
+- **Composer**
+- **Node.js** 18+ (para Print Server)
+- Extensiones PHP: `openssl`, `xml`, `zip`, `mbstring`, `pdo_mysql`, `curl`
 
 ---
 
 ## Instalación
 
-### 1. Clonar el Proyecto
-
 ```bash
-git clone <repository-url> facturafacil
+# 1. Clonar
+git clone <repo-url> facturafacil
 cd facturafacil
-```
 
-### 2. Instalar Dependencias
-
-```bash
+# 2. Dependencias PHP
 composer install
-```
 
-### 3. Configurar variables de entorno
-
-```bash
+# 3. Configurar .env
 cp .env.example .env
-```
+# Editar DB_DATABASE, DB_USERNAME, DB_PASSWORD
 
-Edita el archivo `.env` con tu configuración de base de datos:
-
-```env
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=facturafacil
-DB_USERNAME=root
-DB_PASSWORD=tu_password
-```
-
-### 4. Generar clave de aplicación
-
-```bash
+# 4. Generar key
 php artisan key:generate
-```
 
-### 5. Ejecutar migraciones
-
-```bash
+# 5. Migrar y seedear
 php artisan migrate
-```
-
-### 6. Ejecutar seeders (datos iniciales)
-
-```bash
 php artisan db:seed
-```
 
-Esto creará:
-- Usuario administrador por defecto
-- Series preconfiguradas (F001, B001, NV01, etc.)
-- Empresa de demo
-
-### 7. Crear enlace simbólico para storage
-
-```bash
+# 6. Link storage
 php artisan storage:link
+
+# 7. Print Server (en cada máquina cliente)
+cd print-server-node
+npm install
+node server.js
 ```
 
-### 8. Iniciar servidor de desarrollo
+### Tarea Programada (Windows)
 
-```bash
-php artisan serve
-```
-
-Accede a: `http://localhost:8000`
+Se crea automáticamente al ejecutar el comando de activación. Ejecuta `php artisan schedule:run` cada minuto para procesar la cola de impresión.
 
 ---
 
-## Configuración del Certificado Digital
+## Configuración
 
-### Paso 1: Obtener Certificado
+### Impresoras
 
-1. Solicita tu certificado digital en SUNAT
-2. Descarga el archivo `.p12` (contiene clave privada)
-3. Anota la contraseña del certificado
+Los slots de impresora se configuran en `/printers`:
+- **Cocina 1** (cocina-1) — Cocina principal
+- **Cocina 2** (cocina-2) — Cocina secundaria
+- **Bar 1** (bar-1) — Barra
+- **Precuenta / Precuenta 2 / Precuenta 3** — Precuentas
+- **Caja** — Cajón registrador + apertura de efectivo
 
-### Paso 2: Subir Certificado
+Cada slot permite:
+- Tipo: `local` (USB) o `network` (IP+puerto)
+- Nombre de impresora Windows (para tipo local)
+- IP y puerto (para tipo network, ej: `192.168.1.100:9100`)
 
-1. Crea el directorio: `storage/app/certificates/`
-2. Copia tu archivo `.p12` al directorio
-3. Actualiza la configuración en el panel de empresa
+### IGV Configurable
 
-### Paso 3: Configurar en el Sistema
+En `/companies/{id}/edit`:
+- **General**: IGV 18% (por defecto)
+- **Restaurante**: IGV 10.5% (Ley MYPE)
+- Ambos porcentajes son editables
 
-1. Inicia sesión como administrador
-2. Ve a **Empresas** → Editar empresa
-3. Ingresa:
-   - Nombre del archivo certificado
-   - Contraseña del certificado
-   - Fecha de vencimiento (opcional)
-4. Selecciona el entorno:
-   - **Producción**: `https://e-factura.sunat.gob.pe`
-   - **Beta**: `https://e-beta.sunat.gob.pe` (pruebas)
+### Roles y Permisos
 
----
-
-## Series Preconfiguradas
-
-El sistema incluye las siguientes series por defecto:
-
-| Serie | Tipo Documento | Descripción | Uso |
-|-------|---------------|-------------|-----|
-| F001 | 01 | Factura | Comprobante electrónico |
-| B001 | 03 | Boleta | Comprobante electrónico |
-| NV01 | NV | Nota de Venta | Venta sin elektroniks |
-| FC01 | 07 | Nota de Crédito Factura | Rectificación |
-| BC01 | 07 | Nota de Crédito Boleta | Rectificación |
-| FD01 | 08 | Nota de Débito Factura | Cargo adicional |
-| BD01 | 08 | Nota de Débito Boleta | Cargo adicional |
-
-### Formato de Número
-
-- **Serie**: 4 caracteres (ej: F001, B001)
-- **Número**: 8 dígitos (ej: 00000001)
-- **Formato completo**: `F001-00000001`
+En `/roles` se gestionan los roles. Por defecto:
+- **Administrador**: acceso completo
+- **Cajero**: POS, facturación, caja
+- **Mozo**: restaurante, cocina
+- **Usuario**: POS, consultas, sin gestión de caja
 
 ---
 
-## Estructura del Proyecto
+## Uso
 
-```
-facturafacil/
-├── app/
-│   ├── Console/
-│   ├── Exceptions/
-│   ├── Http/
-│   │   ├── Controllers/    # Controladores
-│   │   ├── Middleware/    # Middlewares
-│   │   └── Requests/     # Validaciones
-│   ├── Models/           # Modelos Eloquent
-│   ├── Providers/        # Proveedores de servicios
-│   ├── Services/        # Servicios externos
-│   │   ├── GreenterService.php
-│   │   ├── SunatService.php
-│   │   ├── XmlSignerService.php
-│   │   └── SunatQrService.php
-│   └── CoreFacturalo/    # Nucleo de facturación
-├── database/
-│   ├── migrations/     # Migraciones
-│   ├── seeders/        # Seeders
-│   └── factories/       # Factories
-├── resources/
-│   ├── js/            # JavaScript
-│   ├── css/           # Estilos CSS
-│   └── views/         # Vistas Blade
-├── routes/
-│   ├── web.php       # Rutas web
-│   ├── api.php      # Rutas API
-│   └── auth.php    # Rutas de autenticación
-├── storage/
-│   ├── app/
-│   │   └── certificates/  # Certificados digitales
-│   └── sunat/              # XML y CDR de SUNAT
-├── vendor/
-├── artisan
-├── composer.json
-├── package.json
-├── vite.config.js
-└── README.md
-```
+### Restaurante
+1. `/restaurant` — Vista principal con pisos y mesas
+2. Seleccionar mesa → se abre el modal de pedido
+3. Agregar productos desde la lista filtrada por categoría o búsqueda
+4. Enviar a cocina (modo KDS o impresión)
+5. Precuenta → seleccionar impresora
+6. Cobrar → seleccionar cliente, documento, método de pago
+7. Cerrar mesa
 
----
+### POS
+1. `/pos` — Punto de venta
+2. Seleccionar categoría o buscar producto
+3. Agregar items al carrito
+4. Seleccionar cliente y método de pago
+5. Cobrar → emite comprobante, envía a SUNAT
 
-## Modelos del Sistema
-
-| Modelo | Tabla | Descripción |
-|--------|------|-------------|
-| Company | companies | Empresas/RUC |
-| User | users | Usuarios del sistema |
-| Customer | customers | Clientes |
-| Product | products | Productos/Servicios |
-| Category | categories | Categorías de productos |
-| Invoice | invoices | Comprobantes emitidos |
-| InvoiceItem | invoice_items | Ítems de comprobantes |
-| Serie | series | Series documentales |
-| Supplier | suppliers | Proveedores |
-| Purchase | purchases | Compras |
-| CashRegister | cash_registers | Registro de caja |
-
----
-
-## Rutas Principales
-
-| Ruta | Descripción |
-|------|-------------|
-| `/dashboard` | Panel principal |
-| `/invoices` | Lista de comprobantes |
-| `/invoices/create` | Nuevo comprobante |
-| `/products` | Gestión de productos |
-| `/customers` | Gestión de clientes |
-| `/suppliers` | Gestión de proveedores |
-| `/purchases` | Registro de compras |
-| `/cashregisters` | Registro de caja |
-| `/companies` | Gestión de empresas |
-| `/series` | Series documentales |
-| `/categories` | Categorías |
-
----
-
-## Guía: Emitir Primera Factura
-
-### 1. Configurar Empresa
-
-1. Ve a **Empresas** → **Editar**
-2. Ingresa los datos de tu empresa:
-   - RUC
-   - Razón Social
-   - Nombre Comercial
-   - Dirección
-   - Departamento, Provincia, Distrito
-3. Sube tu certificado digital y configura la contraseña
-
-### 2. Crear Serie (si no existe)
-
-1. Ve a **Series** → **Nueva Serie**
-2. Selecciona tipo: Factura (01)
-3. Ingresa serie: F001
-4. Guarda
-
-### 3. Crear Productos
-
-1. Ve a **Productos** → **Nuevo Producto**
-2. Ingresa:
-   - Código interno
-   - Descripción
-   - Código SUNAT (opcional)
-   - Unidad de medida
-   - Precio
-   - Tipo de afectación (Gravado/Exonerado/Inafecto)
-3. Guarda
-
-### 4. Emitir Factura
-
-1. Ve a **Comprobantes** → **Nuevo Comprobante**
-2. Selecciona tipo: Factura
-3. Selecciona serie: F001
-4. Ingresa datos del cliente:
-   - Tipo: RUC (6)
-   - Número: 11 dígitos
-   - Nombre/Razón Social
-   - Dirección
-5. Agrega productos
-6. Guarda
-
-### 5. Enviar a SUNAT
-
-1. En la vista del comprobante, click en **Enviar a SUNAT**
-2. Espera la respuesta (puede tomar unos segundos)
-3. Descarga el PDF y XMLfirmado
+### KDS (Cocina)
+- `/restaurant/kitchen` — Pantalla de cocina, actualiza automáticamente cada 5s
+- Botones: Marcar Listo / Entregar
+- Alerta sonora al recibir nuevos pedidos
 
 ---
 
 ## Credenciales por Defecto
 
-Después de ejecutar `php artisan db:seed`:
-
-| Campo | Valor |
-|------|-------|
-| Email | admin@local.com |
-| Contraseña | password |
-
-**Nota**: Cambia esta contraseña después del primer inicio de sesión.
-
----
-
-## Entornos de SUNAT
-
-### Entorno de Producción
-
-- **URL**: `https://e-factura.sunat.gob.pe`
-- **Uso**: Comprobantes oficiales
-- **Validación**: Requiere certificado válido
-
-### Entorno de Beta (Pruebas)
-
-- **URL**: `https://e-beta.sunat.gob.pe`
-- **Uso**: Pruebas y desarrollo
-- **Certificado**: Puede usar certificado de pruebas
-
----
-
-## API Externa
-
-### Búsqueda de Clientes
-
-```
-GET /decolecta/search?company_id=1&documento=12345678901
-```
-
-### Búsqueda de Productos SUNAT
-
-```
-GET /sunat-products/search?query=producto
-```
-
----
-
-## Solución de Problemas
-
-### Error: "No hay certificado configurado"
-
-**Solución**: Verifica que el certificado esté en `storage/app/certificates/` y la configuración en el panel de empresa.
-
-### Error: "Tiempo de conexión agotado"
-
-**Solución**: Verifica tu conexión a internet y que los puertos firewall estén abiertos (443/HTTPS).
-
-### Error: "XML mal formado"
-
-**Solución**: Verifica que los datos del cliente estén completos (RUC, dirección, etc.).
-
-### Error: "Certificado vencido"
-
-**Solución**: Renueva tu certificado digital en SUNAT y actualiza el archivo.
+| Email | Contraseña | Rol |
+|-------|-----------|-----|
+| manager@example.com | adminpass | Administrador |
+| Caja@gmail.com | 222938 | Cajero |
+| mozo@gmail.com | mozo123 | Mozo |
+| demo@example.com | password | Usuario |
 
 ---
 
 ## Comandos Útiles
 
 ```bash
-# Limpiar cache
+# Cache
 php artisan cache:clear
 php artisan view:clear
 php artisan config:clear
 
-# Regenerar клавиши
-php artisan key:generate
+# Seeders específicos
+php artisan db:seed --class=PrinterSeeder
+php artisan db:seed --class=PermissionsSeeder
+php artisan db:seed --class=UbigeoSeeder
+
+# Cola de impresión
+php artisan print:process-queue
+
+# Programar tareas (Windows)
+schtasks /run /tn "FacturaFacilScheduler"
 
 # Ver rutas
 php artisan route:list
 
-# Modo de producción
+# Optimizar
 php artisan optimize
-
-# Ver información de la app
-php artisan about
 ```
-
----
-
-## Tecnologías Utilizadas
-
-### Framework y Lenguaje
-
-- **Laravel** 13.x - Framework PHP
-- **PHP** 8.2+ - Lenguaje de programación
-
-### Librerías
-
-- **Greenter** - Librería oficial SUNAT
-- **TailwindCSS** - Framework de estilos
-- **Vite** - Build tool
-- **mpdf** - Generación de PDF
-- **endroid/qr-code** - Código QR
-
-### Base de Datos
-
-- **MySQL** 8.0+
-- **MariaDB** 10.4+
-
----
-
-## Contribuir
-
-1. Haz un **Fork** del proyecto
-2. Crea una rama (`git checkout -b feature/nueva-caracteristica`)
-3. Realiza tus cambios y haz **commit** (`git commit -am 'Agrega nueva característica'`)
-4. Haz **push** a la rama (`git push origin feature/nueva-caracteristica`)
-5. Abre un **Pull Request**
 
 ---
 
 ## Licencia
 
-Este proyecto está licenciado bajo la [MIT License](LICENSE).
-
----
-
-## Soporte
-
-- Documentación oficial SUNAT: [https://www.sunat.gob.pe](https://www.sunat.gob.pe)
-- Greenter: [GitHub](https://github.com/giankpo/greenter)
-- Laravel: [Documentación](https://laravel.com/docs)
-
----
-
-<p align="center">Desarrollado con ❤️ para Perú</p>
+MIT
