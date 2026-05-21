@@ -44,4 +44,55 @@
         </div>
     </form>
 </div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h3 class="card-title">Mesas del Piso</h3>
+        <div class="card-tools">
+            <a href="{{ route('restaurant.tables.create', ['company_id' => $floor->company_id, 'floor_id' => $floor->id]) }}" class="btn btn-success btn-sm">
+                <i class="fas fa-plus"></i> Nueva Mesa
+            </a>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        @if($tables->isEmpty())
+        <div class="alert alert-info m-3">No hay mesas en este piso.</div>
+        @else
+        <table class="table table-bordered mb-0">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Capacidad</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($tables as $table)
+                <tr>
+                    <td>{{ $table->name }}</td>
+                    <td>{{ $table->capacity }}</td>
+                    <td>
+                        @if($table->status === 'AVAILABLE')
+                        <span class="badge badge-success">Disponible</span>
+                        @elseif($table->status === 'OCCUPIED')
+                        <span class="badge badge-warning">Ocupada</span>
+                        @else
+                        <span class="badge badge-secondary">{{ $table->status }}</span>
+                        @endif
+                    </td>
+                    <td>
+                        <a href="{{ route('restaurant.tables.edit', $table) }}" class="btn btn-info btn-sm"><i class="fas fa-edit"></i></a>
+                        <form action="{{ route('restaurant.tables.destroy', $table) }}" method="POST" style="display:inline;">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Eliminar esta mesa?')"><i class="fas fa-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+        @endif
+    </div>
+</div>
 @endsection

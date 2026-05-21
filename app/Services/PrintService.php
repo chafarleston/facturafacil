@@ -55,9 +55,9 @@ class PrintService
         $this->processQueue();
     }
 
-    public function printPrebill($order): void
+    public function printPrebill($order, string $printerKey = 'precuenta'): void
     {
-        $printer = $this->getPrinter('precuenta');
+        $printer = $this->getPrinter($printerKey);
         if (!$printer) return;
         $data = PlainTextTicket::prebillTicket($order, 'escpos');
         $this->queuePrint($printer, $data, 'prebill', get_class($order), $order->id);

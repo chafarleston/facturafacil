@@ -337,6 +337,8 @@
     .btn-charge { background: #28a745; color: white; }
     .btn-charge:hover { background: #218838; }
     .btn-prebill { background: #17a2b8; color: white; }
+    .prebill-option { padding:8px 14px; cursor:pointer; font-size:13px; transition:background .15s; }
+    .prebill-option:hover { background: #e3f2fd; color: #007bff; }
     .btn-prebill:hover { background: #138496; }
     .customer-option { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee; }
     .customer-option:hover { background: #f0f9ff; }
@@ -500,11 +502,17 @@
 {{-- Table Order Modal --}}
 <div class="table-order-modal" id="tableOrderModal">
     <div class="modal-header-bar">
-        <div>
+        <div style="min-width:120px;">
             <h4 id="modalTableName">Mesa</h4>
             <small id="modalOrderNumber">Sin pedido</small>
         </div>
-        <button class="btn-close-modal" onclick="closeModal()">&#8592; Retornar a mesas</button>
+        <div style="flex:1; text-align:center; padding:0 10px;">
+            <div style="display:inline-block; position:relative; max-width:320px; width:100%;">
+                <i class="fas fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#999; font-size:12px;"></i>
+                <input type="text" id="productSearch" placeholder="Buscar producto..." oninput="searchProducts(this.value)" style="width:100%; padding:4px 10px 4px 26px; border:none; border-radius:15px; font-size:12px; outline:none; box-sizing:border-box; background:rgba(255,255,255,0.9);">
+            </div>
+        </div>
+        <button class="btn-close-modal" onclick="closeModal()">&#8592;</button>
     </div>
     
     <div class="modal-tabs">
@@ -560,11 +568,11 @@
     <div class="modal-actions">
         @if($orderMode === 'print')
         <button class="btn-action btn-print" onclick="sendToKitchen()"><i class="fas fa-print"></i><br>Imprimir</button>
-        <button class="btn-action btn-prebill" onclick="printPrebill()" id="btnPrebill" disabled><i class="fas fa-receipt"></i><br>Precuenta</button>
+        <button class="btn-action btn-prebill" onclick="showPrebillOptions(event)" id="btnPrebill" disabled><i class="fas fa-receipt"></i><br>Precuenta</button>
         @else
         <button class="btn-action btn-kitchen" onclick="sendToKitchen()"><i class="fas fa-paper-plane"></i><br>Cocina</button>
         <button class="btn-action btn-print" onclick="printKitchenTicket()"><i class="fas fa-print"></i><br>Imprimir</button>
-        <button class="btn-action btn-prebill" onclick="printPrebill()" id="btnPrebill" disabled><i class="fas fa-receipt"></i><br>Precuenta</button>
+        <button class="btn-action btn-prebill" onclick="showPrebillOptions(event)" id="btnPrebill" disabled><i class="fas fa-receipt"></i><br>Precuenta</button>
         <button class="btn-action btn-close-order" onclick="closeTable()"><i class="fas fa-check"></i><br>Cerrar</button>
         @endif
         @if(!auth()->user()->isMozo())
@@ -572,6 +580,20 @@
         <button class="btn-action btn-cancel-order" onclick="cancelOrder()" id="btnCancelOrder" disabled><i class="fas fa-times"></i><br>Anular</button>
         @endif
         <button class="btn-action btn-move" onclick="showMoveTableModal()" id="btnMoveTable" disabled><i class="fas fa-arrows-alt"></i><br>Mover</button>
+    </div>
+</div>
+
+<div class="qty-overlay" id="prebillOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.3); z-index:99999; align-items:center; justify-content:center;">
+    <div class="qty-popup" style="background:white; padding:0; border-radius:10px; min-width:220px; max-width:90%; overflow:hidden;">
+        <div style="padding:12px 15px; background:linear-gradient(135deg, #17a2b8, #138496); color:white; display:flex; justify-content:space-between; align-items:center;">
+            <h5 style="margin:0; font-size:14px;"><i class="fas fa-receipt"></i> Precuenta</h5>
+            <button onclick="closePrebillOptions()" style="background:none; border:none; color:white; font-size:20px; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+        <div style="padding:8px 0;">
+            <div class="prebill-option" onclick="printPrebillTo('precuenta')"><i class="fas fa-print" style="width:20px; color:#17a2b8;"></i> Precuenta</div>
+            <div class="prebill-option" onclick="printPrebillTo('precuenta2')"><i class="fas fa-print" style="width:20px; color:#17a2b8;"></i> Precuenta 2</div>
+            <div class="prebill-option" onclick="printPrebillTo('precuenta3')"><i class="fas fa-print" style="width:20px; color:#17a2b8;"></i> Precuenta 3</div>
+        </div>
     </div>
 </div>
 
@@ -783,6 +805,7 @@ function closeModal() {
     document.getElementById('chargeOverlay').style.display = 'none';
     document.getElementById('customerModalOverlay').style.display = 'none';
     document.getElementById('moveTableOverlay').style.display = 'none';
+    document.getElementById('prebillOverlay').style.display = 'none';
     resetTableStyle(currentTableId);
 }
 
@@ -914,17 +937,28 @@ function renderOrder(order) {
     document.getElementById('itemsCount').style.display = 'inline';
 }
 
+let activeCategory = 'all';
+window._searchQuery = '';
+
 function filterProducts(categoryId) {
+    activeCategory = categoryId;
     document.querySelectorAll('.category-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.category == categoryId);
     });
-    
+    applyFilters();
+}
+
+function searchProducts(query) {
+    window._searchQuery = query.toLowerCase().trim();
+    applyFilters();
+}
+
+function applyFilters() {
+    const q = window._searchQuery || '';
     document.querySelectorAll('.product-card').forEach(card => {
-        if (categoryId === 'all' || card.dataset.categoryId == categoryId) {
-            card.style.display = '';
-        } else {
-            card.style.display = 'none';
-        }
+        const catMatch = activeCategory === 'all' || card.dataset.categoryId == activeCategory;
+        const nameMatch = !q || card.dataset.productName.toLowerCase().includes(q);
+        card.style.display = (catMatch && nameMatch) ? '' : 'none';
     });
 }
 
@@ -1172,6 +1206,29 @@ function printKitchenTicket() {
 function printPrebill() {
     if (!currentOrderId) return;
     window.open('/restaurant/orders/' + currentOrderId + '/print-prebill', '_blank', 'width=400,height=600');
+}
+
+function showPrebillOptions(event) {
+    if (!currentOrderId) return;
+    document.getElementById('prebillOverlay').style.display = 'flex';
+}
+
+function closePrebillOptions() {
+    document.getElementById('prebillOverlay').style.display = 'none';
+}
+
+function printPrebillTo(printerKey) {
+    closePrebillOptions();
+    if (!currentOrderId) return;
+
+    var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    fetch('/restaurant/orders/' + currentOrderId + '/print-prebill/' + printerKey, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json'
+        }
+    }).catch(function() {});
 }
 
 function showMoveTableModal() {

@@ -94,6 +94,13 @@ class PlainTextTicket
         $first = true;
         foreach ($this->lines as $line) {
             $trimmed = trim($line);
+
+            if (str_contains($trimmed, self::BOLD_ON) || str_contains($trimmed, self::DOUBLE_ON)) {
+                $out .= self::ALIGN_CENTER . $trimmed . self::LF;
+                $first = false;
+                continue;
+            }
+
             if ($first) {
                 $out .= self::BOLD_ON . strtoupper($trimmed) . self::BOLD_OFF . self::LF;
                 $first = false;
@@ -230,7 +237,7 @@ class PlainTextTicket
     public static function cancelNotification($order, $item, string $format = 'text', string $dest = 'cocina'): string
     {
         $t = new self();
-        $t->buildKitchenHeader($order, $dest);
+        $t->buildCancelHeader($order, $dest);
         $t->center('*** ANULADO ***');
         $t->separator();
         $t->itemLine("{$item->quantity}x", $item->product_name, '');
@@ -241,14 +248,30 @@ class PlainTextTicket
     public static function cancelNotificationGrouped($order, string $format = 'text', string $dest = 'cocina'): string
     {
         $t = new self();
-        $t->buildKitchenHeader($order, $dest);
-        $t->center('*** PRODUCTOS ANULADOS ***');
+        $t->buildCancelHeader($order, $dest);
         $t->separator();
         foreach ($order->items as $item) {
             $t->itemLine("{$item->quantity}x", $item->product_name, '');
         }
         $t->separator('=');
         return $format === 'escpos' ? $t->getEscPos() : $t->getText();
+    }
+
+    protected function buildCancelHeader($order, string $dest = 'cocina'): void
+    {
+        $label = match($dest) {
+            'cocina2' => 'COCINA 2',
+            'bar' => 'BAR',
+            default => 'COCINA 1',
+        };
+        $this->lines[] = self::DOUBLE_ON . self::BOLD_ON . '   ANULACION ' . $label . '   ' . self::BOLD_OFF . self::DOUBLE_OFF;
+        $this->separator();
+        $this->twoColumns('Pedido:', $order->order_number);
+        $this->twoColumns('Mesa:', ($order->table->name ?? 'N/A') . ($order->table && $order->table->floor ? ' (' . $order->table->floor->name . ')' : ''));
+        $this->twoColumns('Hora:', now()->format('H:i'));
+        if ($order->user) $this->twoColumns('Mozo:', $order->user->name);
+        if ($order->notes) $this->text('NOTA: ' . $order->notes);
+        $this->separator();
     }
 
     public static function cashRegisterSummary($cashregister, array $data, string $format = 'text'): string

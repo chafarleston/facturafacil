@@ -134,6 +134,7 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     Route::post('/restaurant/orders/{orderId}/notes', [RestaurantController::class, 'saveOrderNotes'])->name('restaurant.orders.notes');
     Route::get('/restaurant/orders/{orderId}/print-kitchen', [RestaurantController::class, 'printKitchenTicket'])->name('restaurant.orders.printKitchen');
     Route::get('/restaurant/orders/{orderId}/print-prebill', [RestaurantController::class, 'printPrebill'])->name('restaurant.orders.printPrebill');
+    Route::post('/restaurant/orders/{orderId}/print-prebill/{printerKey}', [RestaurantController::class, 'printPrebillTo'])->name('restaurant.orders.printPrebillTo');
     Route::post('/restaurant/orders/{orderId}/close', [RestaurantController::class, 'closeOrder'])->name('restaurant.orders.close');
     Route::post('/restaurant/orders/{orderId}/cancel', [RestaurantController::class, 'cancelOrder'])->name('restaurant.orders.cancel');
     Route::post('/restaurant/orders/{orderId}/charge', [RestaurantController::class, 'chargeOrder'])->name('restaurant.orders.charge');
