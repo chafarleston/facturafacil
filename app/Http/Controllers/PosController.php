@@ -260,4 +260,34 @@ class PosController extends Controller
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'inline; filename="factura-' . $invoice->full_number . '.pdf"');
     }
+
+    public function openDrawer(Request $request)
+    {
+        $printer = \App\Models\Printer::where('assigned_to', 'caja')->where('active', true)->first();
+        if (!$printer) {
+            return response()->json(['success' => false, 'message' => 'No hay impresora de caja configurada']);
+        }
+
+        $drawerCommand = base64_encode("\x1B\x70\x00\x00\xFF");
+
+        try {
+            $payload = ['data' => $drawerCommand, 'mode' => 'escpos'];
+            if ($printer->type === 'network' && $printer->ip_address) {
+                $payload['ip'] = $printer->ip_address;
+                $payload['port'] = $printer->port;
+            } else {
+                $payload['printer'] = $printer->printer_name;
+            }
+
+            $response = \Illuminate\Support\Facades\Http::timeout(5)
+                ->post(config('print-server.url', 'http://127.0.0.1:9100') . '/print', $payload);
+
+            if ($response->successful()) {
+                return response()->json(['success' => true]);
+            }
+            return response()->json(['success' => false, 'message' => $response->body()]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
 }

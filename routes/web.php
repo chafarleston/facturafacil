@@ -112,6 +112,7 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     Route::get('/pos/success/{id}', [PosController::class, 'success'])->name('pos.success');
     Route::post('/pos/sunat/{id}', [PosController::class, 'sendToSunat'])->name('pos.sunat');
     Route::get('/pos/print/{id}/{format}', [PosController::class, 'printInvoice'])->name('pos.print');
+    Route::post('/pos/open-drawer', [PosController::class, 'openDrawer'])->name('pos.openDrawer');
 
     // Restaurant Routes
     Route::get('/restaurant', [RestaurantController::class, 'index'])->name('restaurant.index');

@@ -816,5 +816,6 @@ function onCustomerCreated(customer) {
     $('#customerModal').modal('hide');
     selectCustomer(customer.id, customer.nombre);
 }
+
 </script>
 @endpush

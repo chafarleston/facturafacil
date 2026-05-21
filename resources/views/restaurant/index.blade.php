@@ -329,6 +329,7 @@
     .btn-close-order { background: #28a745; color: white; }
     .btn-cancel-order { background: #dc3545; color: white; }
     .btn-move { background: #6f42c1; color: white; }
+    .btn-cash-drawer { background: #fd7e14; color: white; }
     .move-table-item { display:flex; align-items:center; padding:10px 12px; margin-bottom:6px; border-radius:8px; cursor:pointer; transition:all .2s; border:2px solid transparent; }
     .move-table-item:hover { border-color: #007bff; background: #f0f7ff; }
     .move-table-item.occupied { border-color: #ffc107; background: #fffef5; }
@@ -580,6 +581,9 @@
         <button class="btn-action btn-cancel-order" onclick="cancelOrder()" id="btnCancelOrder" disabled><i class="fas fa-times"></i><br>Anular</button>
         @endif
         <button class="btn-action btn-move" onclick="showMoveTableModal()" id="btnMoveTable" disabled><i class="fas fa-arrows-alt"></i><br>Mover</button>
+        @if(!auth()->user()->isMozo())
+        <button class="btn-action btn-cash-drawer" onclick="openCashDrawer()" id="btnCashDrawer" disabled><i class="fas fa-cash-register"></i><br>Caja</button>
+        @endif
     </div>
 </div>
 
@@ -790,6 +794,8 @@ function selectTable(tableId) {
     if (cancelBtn) cancelBtn.disabled = false;
     const moveBtn = document.getElementById('btnMoveTable');
     if (moveBtn) moveBtn.disabled = false;
+    const drawerBtn = document.getElementById('btnCashDrawer');
+    if (drawerBtn) drawerBtn.disabled = false;
     
     document.getElementById('tableOrderModal').classList.add('show');
     switchTab('products');
@@ -1295,6 +1301,27 @@ function selectMoveTable(targetTableId) {
         .catch(function() {
             showError('Error de conexión');
         });
+    });
+}
+
+function openCashDrawer() {
+    fetch('/pos/open-drawer', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+            'Accept': 'application/json'
+        }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            showToast('Cajón abierto');
+        } else {
+            showError(data.message || 'Error');
+        }
+    })
+    .catch(function() {
+        showError('Error de conexión');
     });
 }
 
