@@ -122,6 +122,34 @@
                     </div>
                 </div>
             </div>
+
+            <div class="card mt-3">
+                <div class="card-header"><h3 class="card-title">Configuración de IGV</h3></div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Tipo de Impuesto</label>
+                        <select name="tax_type" class="form-control" id="taxType">
+                            <option value="general" {{ $company->tax_type === 'general' ? 'selected' : '' }}>General (IGV 18%)</option>
+                            <option value="restaurant" {{ $company->tax_type === 'restaurant' ? 'selected' : '' }}>Restaurante (IGV 10.5%)</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>IGV General (%)</label>
+                                <input type="number" name="igv_percent" class="form-control" step="0.01" min="0" max="100" value="{{ $company->igv_percent ?? 18 }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>IGV Reducido Restaurante (%)</label>
+                                <input type="number" name="reduced_igv_percent" class="form-control" step="0.01" min="0" max="100" value="{{ $company->reduced_igv_percent ?? 10.50 }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="form-group">
                 <label>Logo de la Empresa</label>
                 <div class="input-group">

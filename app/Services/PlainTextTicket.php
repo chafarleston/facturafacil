@@ -186,10 +186,13 @@ class PlainTextTicket
         }
         $t->separator();
         $total = $activeItems->sum('total');
-        $subtotal = $total / 1.18;
+        $company = \App\Models\Company::find($order->company_id);
+        $igvPct = $company ? $company->getActiveIgvPercent() : 18;
+        $igvRate = $igvPct / 100;
+        $subtotal = $total / (1 + $igvRate);
         $igv = $total - $subtotal;
         $t->twoColumns('Subtotal:', 'S/ ' . number_format($subtotal, 2));
-        $t->twoColumns('IGV (18%):', 'S/ ' . number_format($igv, 2));
+        $t->twoColumns('IGV (' . $igvPct . '%):', 'S/ ' . number_format($igv, 2));
         $t->separator('=');
         $t->twoColumns('TOTAL:', 'S/ ' . number_format($total, 2));
         $t->separator();

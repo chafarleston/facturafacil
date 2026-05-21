@@ -561,7 +561,7 @@
     
     <div class="order-totals-box" id="orderTotals" style="display: none;">
         <div class="order-total-row"><span>Subtotal:</span><span id="orderSubtotal">S/ 0.00</span></div>
-        <div class="order-total-row"><span>IGV (18%):</span><span id="orderIgv">S/ 0.00</span></div>
+        <div class="order-total-row"><span>IGV ({{ $igvPercent ?? 18 }}%):</span><span id="orderIgv">S/ 0.00</span></div>
         <div class="order-total-row grand"><span>TOTAL:</span><span id="orderTotal">S/ 0.00</span></div>
     </div>
     
@@ -651,7 +651,7 @@
         </div>
         <div style="border-top:2px solid #eee; padding-top:12px; margin-bottom:15px;">
             <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;"><span>Subtotal:</span><span id="chargeSubtotal">S/ 0.00</span></div>
-            <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;"><span>IGV (18%):</span><span id="chargeIgv">S/ 0.00</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;"><span>IGV ({{ $igvPercent ?? 18 }}%):</span><span id="chargeIgv">S/ 0.00</span></div>
             <div style="display:flex; justify-content:space-between; font-size:18px; font-weight:bold; margin-top:8px;"><span>TOTAL:</span><span id="chargeTotal">S/ 0.00</span></div>
         </div>
         <div style="display:flex; gap:8px;">
@@ -729,6 +729,7 @@ let productsData = @json($products);
 let customersData = @json($customers);
 let seriesData = @json($series);
 let allFloors = @json($floors);
+let igvPercent = {{ $igvPercent ?? 18 }};
 let pendingProductId = null;
 let previousTableBorderColor = {};
 let currentFloorId = null;
@@ -1476,8 +1477,8 @@ function showChargeModal() {
     if (order.status === 'OPEN') { showError('Debe enviar el pedido a cocina antes de cobrar'); return; }
     const total = parseFloat(order.total) || 0;
     document.getElementById('chargeOrderNumber').textContent = '#' + (order.order_number || order.id);
-    document.getElementById('chargeSubtotal').textContent = 'S/ ' + (parseFloat(order.subtotal) || total / 1.18).toFixed(2);
-    document.getElementById('chargeIgv').textContent = 'S/ ' + (parseFloat(order.igv) || total - total / 1.18).toFixed(2);
+    document.getElementById('chargeSubtotal').textContent = 'S/ ' + (parseFloat(order.subtotal) || total / (1 + igvPercent / 100)).toFixed(2);
+    document.getElementById('chargeIgv').textContent = 'S/ ' + (parseFloat(order.igv) || total - total / (1 + igvPercent / 100)).toFixed(2);
     document.getElementById('chargeTotal').textContent = 'S/ ' + total.toFixed(2);
     document.getElementById('btnProcessCharge').innerHTML = '<i class="fas fa-credit-card"></i> COBRAR S/ ' + total.toFixed(2);
     document.getElementById('chargeOverlay').style.display = 'flex';

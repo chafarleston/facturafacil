@@ -73,8 +73,9 @@ class RestaurantController extends Controller
         $company = Company::find($companyId);
         $orderMode = $company->order_mode ?? 'kds';
         $printServerRunning = $printServer->isServerRunning();
+        $igvPercent = $company ? $company->getActiveIgvPercent() : 18;
 
-        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId', 'orderMode', 'printServerRunning'));
+        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId', 'orderMode', 'printServerRunning', 'igvPercent'));
     }
 
     public function modeIndex()
@@ -886,7 +887,9 @@ class RestaurantController extends Controller
             
             $items = $order->items;
             $total = $items->sum('total');
-            $subtotal = $total / 1.18;
+            $company = Company::find($companyId);
+            $igvRate = $company ? $company->getIgvRate() : 0.18;
+            $subtotal = $total / (1 + $igvRate);
             $igv = $total - $subtotal;
             
             $invoice = Invoice::create([
@@ -912,7 +915,7 @@ class RestaurantController extends Controller
             ]);
             
             foreach ($items as $item) {
-                $unitBase = $item->unit_price / 1.18;
+                $unitBase = $item->unit_price / (1 + $igvRate);
                 $itemIgv = $item->unit_price - $unitBase;
                 
                 InvoiceItem::create([
@@ -926,7 +929,7 @@ class RestaurantController extends Controller
                     'precio_venta' => $item->unit_price,
                     'igv' => round($itemIgv, 2),
                     'tipo_afectacion' => '10',
-                    'igv_percent' => 18,
+                    'igv_percent' => round($igvRate * 100),
                 ]);
                 
                 $product = Product::find($item->product_id);
@@ -989,8 +992,10 @@ class RestaurantController extends Controller
 private function updateOrderTotals(RestaurantOrder $order)
     {
         $items = $order->items->where('kitchen_status', '!=', 'CANCELLED');
+        $company = Company::find($order->company_id);
+        $igvRate = $company ? $company->getIgvRate() : 0.18;
         
-        $subtotal = $items->sum('total') / 1.18;
+        $subtotal = $items->sum('total') / (1 + $igvRate);
         $igv = $items->sum('total') - $subtotal;
         $total = $items->sum('total');
 

@@ -48,7 +48,7 @@ class PosController extends Controller
             ->whereIn('tipo_documento', ['01', '03', 'NV'])
             ->get();
         
-        return view('pos.index', compact('categories', 'products', 'customers', 'series', 'cajaAbierta'));
+        return view('pos.index', compact('categories', 'products', 'customers', 'series', 'cajaAbierta', 'mainCompany'));
     }
     
     public function store(Request $request)
@@ -118,10 +118,11 @@ class PosController extends Controller
         
         $subtotal = 0;
         $igv = 0;
+        $igvRate = $mainCompany->getIgvRate();
         
         foreach ($items as $item) {
             $priceWithIgv = $item['price'] * $item['quantity'];
-            $base = $priceWithIgv / 1.18;
+            $base = $priceWithIgv / (1 + $igvRate);
             $igvItem = $priceWithIgv - $base;
             
             $subtotal += $base;
@@ -156,7 +157,7 @@ class PosController extends Controller
             $producto = Product::find($item['id']);
             
             $priceWithIgv = $item['price'] * $item['quantity'];
-            $baseItem = $priceWithIgv / 1.18;
+            $baseItem = $priceWithIgv / (1 + $igvRate);
             $igvItem = $priceWithIgv - $baseItem;
             
             $invoice->items()->create([

@@ -308,6 +308,13 @@
         <div class="categories-header">
             <h5 class="panel-title" style="margin:0;"><i class="fas fa-th-large"></i> Seleccionar Categoria</h5>
         </div>
+
+        <div style="padding:8px 12px;">
+            <div style="position:relative;">
+                <i class="fas fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#999; font-size:13px;"></i>
+                <input type="text" id="posSearch" placeholder="Buscar producto por nombre o código de barras..." oninput="searchPOSProducts(this.value)" style="width:100%; padding:7px 10px 7px 30px; border:1px solid #ddd; border-radius:6px; font-size:13px; outline:none; box-sizing:border-box;">
+            </div>
+        </div>
         
         <div class="categories-grid" id="categoriesGrid">
             @foreach($categories as $category)
@@ -396,7 +403,7 @@
                     <span id="subtotal">S/ 0.00</span>
                 </div>
                 <div class="sale-total-row">
-                    <span>IGV (18%):</span>
+                    <span>IGV ({{ $mainCompany->getActiveIgvPercent() }}%):</span>
                     <span id="igv">S/ 0.00</span>
                 </div>
                 <div class="sale-total-row grand-total">
@@ -488,6 +495,7 @@
 @push('scripts')
 <script>
 let saleItems = [];
+const igvPercent = {{ $mainCompany->getActiveIgvPercent() }};
 const productsData = @json($products->where('estado', 'ACTIVO'));
 const categoriesData = @json($categories);
 const customersData = @json($customers);
@@ -567,6 +575,50 @@ function showProducts(categoryId, categoryName) {
         '</div>';
     });
     document.getElementById('productsGrid').innerHTML = html;
+}
+
+function searchPOSProducts(query) {
+    query = query.trim();
+    var categoriesGrid = document.getElementById('categoriesGrid');
+    var productsSection = document.getElementById('productsSection');
+    var categoryTitle = document.getElementById('categoryTitle');
+
+    if (!query) {
+        categoriesGrid.style.display = 'grid';
+        productsSection.style.display = 'none';
+        return;
+    }
+
+    var isNumeric = /^\d+$/.test(query);
+    var q = query.toLowerCase();
+
+    var results = productsData.filter(function(p) {
+        if (isNumeric) {
+            return (p.codigo_barras && p.codigo_barras.includes(q)) ||
+                   (p.codigo && p.codigo.toLowerCase().includes(q));
+        }
+        return p.descripcion && p.descripcion.toLowerCase().includes(q);
+    });
+
+    categoriesGrid.style.display = 'none';
+    productsSection.style.display = 'flex';
+    categoryTitle.textContent = 'Resultados: ' + results.length;
+
+    var grid = document.getElementById('productsGrid');
+    if (results.length === 0) {
+        grid.innerHTML = '<div class="empty-sale"><i class="fas fa-box-open"></i><p>Sin resultados</p></div>';
+        return;
+    }
+
+    var html = '';
+    results.forEach(function(product) {
+        html += '<div class="product-card" onclick="addToSale(' + product.id + ')">' +
+            '<div class="product-name">' + product.descripcion + '</div>' +
+            '<div class="product-price">S/ ' + parseFloat(product.precio).toFixed(2) + '</div>' +
+            '<div class="product-stock">Stock: ' + product.stock + '</div>' +
+        '</div>';
+    });
+    grid.innerHTML = html;
 }
 
 function backToCategories() {
@@ -672,7 +724,7 @@ function calculateTotals() {
         total += item.price * item.quantity;
     });
     
-    const base = total / 1.18;
+    const base = total / (1 + igvPercent / 100);
     const igv = total - base;
     
     document.getElementById('subtotal').textContent = 'S/ ' + base.toFixed(2);

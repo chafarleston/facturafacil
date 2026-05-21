@@ -95,7 +95,7 @@
                 <span>S/ {{ number_format($order->subtotal, 2) }}</span>
             </div>
             <div class="total-row">
-                <span>IGV (18%):</span>
+                <span>IGV ({{ $company->getActiveIgvPercent() }}%):</span>
                 <span>S/ {{ number_format($order->igv, 2) }}</span>
             </div>
             <div class="total-row grand">

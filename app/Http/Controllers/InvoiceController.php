@@ -160,7 +160,8 @@ class InvoiceController extends Controller
             // El precio que ingresa el usuario puede venir como Con IGV o Sin IGV. Preferimos Con IGV si proviene.
             $precioConIgv = $item['precio_con_igv'] ?? $item['precio'] ?? 0;
             $precioVenta = round($item['cantidad'] * $precioConIgv, 2);
-            $base = round($precioVenta / 1.18, 2); // Separar IGV del subtotal
+            $igvRate = $company->getIgvRate();
+            $base = round($precioVenta / (1 + $igvRate), 2);
             $igv = round($precioVenta - $base, 2);
             
             $subtotal += $base;

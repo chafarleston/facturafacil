@@ -69,6 +69,9 @@ public function store(Request $request)
             'distrito' => 'nullable',
             'tipo_contribuyente' => 'nullable',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'tax_type' => 'nullable|in:general,restaurant',
+            'igv_percent' => 'nullable|numeric|min:0|max:100',
+            'reduced_igv_percent' => 'nullable|numeric|min:0|max:100',
         ]);
 
         $data = $validated;

@@ -89,14 +89,16 @@ class GreenterService
                 $line->setCodProducto($item->codigo ?? '');
                 $line->setDescripcion($item->descripcion);
                 $line->setCantidad($item->cantidad);
-                $valorUnitario = round($item->precio_unitario / 1.18, 2);
+                $rate = $company->getIgvRate();
+                $igvPct = $company->getActiveIgvPercent();
+                $valorUnitario = round($item->precio_unitario / (1 + $rate), 2);
                 $baseIgv = round($valorUnitario * $item->cantidad, 2);
-                $igvItem = round($baseIgv * 0.18, 2);
+                $igvItem = round($baseIgv * $rate, 2);
                 $line->setMtoValorUnitario($valorUnitario);
                 $line->setMtoPrecioUnitario($item->precio_unitario);
                 $line->setTipAfeIgv('10');
                 $line->setMtoBaseIgv($baseIgv);
-                $line->setPorcentajeIgv(18);
+                $line->setPorcentajeIgv($igvPct);
                 $line->setIgv($igvItem);
                 $line->setMtoValorVenta($baseIgv);
                 $line->setTotalImpuestos($igvItem);
@@ -408,7 +410,7 @@ class GreenterService
                     <td class="text-right">S/ ' . number_format($invoice->subtotal, 2) . '</td>
                 </tr>
                 <tr>
-                    <td>IGV (18%):</td>
+                    <td>IGV (' . $company->getActiveIgvPercent() . '%):</td>
                     <td class="text-right">S/ ' . number_format($invoice->igv, 2) . '</td>
                 </tr>
                 <tr class="bold">
@@ -727,7 +729,7 @@ class GreenterService
                     <td class="value">S/ ' . number_format($invoice->subtotal, 2) . '</td>
                 </tr>
                 <tr>
-                    <td class="label">IGV (18%):</td>
+                    <td class="label">IGV (' . $company->getActiveIgvPercent() . '%):</td>
                     <td class="value">S/ ' . number_format($invoice->igv, 2) . '</td>
                 </tr>
                 <tr class="total-row">
@@ -954,9 +956,11 @@ class GreenterService
         foreach ($invoice->items as $idx => $item) {
             $line = new SaleDetail();
             
-            $valorUnitario = round($item->precio_unitario / 1.18, 2);
+            $rate = $company->getIgvRate();
+            $igvPct = $company->getActiveIgvPercent();
+            $valorUnitario = round($item->precio_unitario / (1 + $rate), 2);
             $baseIgv = round($valorUnitario * $item->cantidad, 2);
-            $igvItem = round($baseIgv * 0.18, 2);
+            $igvItem = round($baseIgv * $rate, 2);
             
             $line->setUnidad('NIU');
             $line->setCodProducto($item->codigo ?? '');
@@ -966,7 +970,7 @@ class GreenterService
             $line->setMtoPrecioUnitario($item->precio_unitario);
             $line->setTipAfeIgv('10');
             $line->setMtoBaseIgv($baseIgv);
-            $line->setPorcentajeIgv(18);
+            $line->setPorcentajeIgv($igvPct);
             $line->setIgv($igvItem);
             $line->setMtoValorVenta($baseIgv);
             $line->setTotalImpuestos($igvItem);

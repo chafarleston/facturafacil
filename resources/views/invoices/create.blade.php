@@ -217,7 +217,7 @@
                             <td class="text-right" id="subtotal">0.00</td>
                         </tr>
                         <tr>
-                            <td class="text-right"><strong>IGV (18%):</strong></td>
+                            <td class="text-right"><strong>IGV ({{ $company->getActiveIgvPercent() }}%):</strong></td>
                             <td class="text-right" id="igv">0.00</td>
                         </tr>
                         <tr>
@@ -362,6 +362,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 let items = [];
 const companyId = {{ $company->id }};
+const igvPercent = {{ $company->getActiveIgvPercent() }};
 
 function submitInvoiceForm() {
     const tipoDoc = document.getElementById('tipo_documento').value;
@@ -693,7 +694,7 @@ function renderItems() {
         tbody.appendChild(row);
         totalConIgv += itemTotal;
     });
-    const subtotal = Math.round(totalConIgv / 1.18 * 100) / 100;
+    const subtotal = Math.round(totalConIgv / (1 + igvPercent / 100) * 100) / 100;
     const igv = Math.round((totalConIgv - subtotal) * 100) / 100;
     const total = Math.round((subtotal + igv) * 100) / 100;
     document.getElementById('subtotal').textContent = subtotal.toFixed(2);
