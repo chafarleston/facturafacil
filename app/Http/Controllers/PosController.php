@@ -34,7 +34,9 @@ class PosController extends Controller
                 ->with('error', 'No se puede acceder al punto de venta sin tener una caja abierta');
         }
         
-        $categories = Category::where('estado', 'ACTIVO')->get();
+        $categories = Category::whereIn('estado', ['ACTIVO', 'ACT'])
+            ->withCount(['products' => fn($q) => $q->where('estado', 'ACTIVO')])
+            ->get();
         $products = Product::where('estado', 'ACTIVO')
             ->with('category')
             ->get();

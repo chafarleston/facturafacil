@@ -315,7 +315,7 @@
                  onclick="showProducts({{ $category->id }}, '{{ $category->nombre }}')">
                 <i class="{{ $category->icon ?? 'fas fa-tag' }}" style="color: {{ $category->color ?? '#007bff' }};"></i>
                 <h5 style="color: #333;">{{ $category->nombre }}</h5>
-                <small>{{ $category->products->where('estado', 'ACTIVO')->count() }} productos</small>
+                <small>{{ $category->products_count ?? 0 }} productos</small>
             </div>
             @endforeach
         </div>
