@@ -1,0 +1,19 @@
+{
+  "name": "facturafacil-print-server",
+  "version": "2.0.0",
+  "description": "Print server for FacturaFacil - Node.js edition with ESC/POS encoding fix",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "cors": "^2.8.5",
+    "iconv-lite": "^0.6.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "ISC"
+}
