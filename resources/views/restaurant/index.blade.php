@@ -1313,15 +1313,33 @@ function openCashDrawer() {
         }
     })
     .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.success) {
-            showToast('Cajón abierto');
-        } else {
-            showError(data.message || 'Error');
+    .then(function(config) {
+        if (!config.success) {
+            showError(config.message || 'Error');
+            return;
         }
+        var body = {
+            mode: 'escpos',
+            data: config.data
+        };
+        if (config.printer) body.printer = config.printer;
+        else if (config.ip) { body.ip = config.ip; body.port = config.port; }
+        fetch('http://localhost:9100/print', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(result) {
+            if (result.success) showToast('Cajón abierto');
+            else showError(result.message || 'Error');
+        })
+        .catch(function() {
+            showError('No se pudo conectar al Print Server local');
+        });
     })
     .catch(function() {
-        showError('Error de conexión');
+        showError('Error al obtener configuración');
     });
 }
 

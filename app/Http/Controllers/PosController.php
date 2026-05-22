@@ -270,24 +270,13 @@ class PosController extends Controller
 
         $drawerCommand = base64_encode("\x1B\x70\x00\x00\xFF");
 
-        try {
-            $payload = ['data' => $drawerCommand, 'mode' => 'escpos'];
-            if ($printer->type === 'network' && $printer->ip_address) {
-                $payload['ip'] = $printer->ip_address;
-                $payload['port'] = $printer->port;
-            } else {
-                $payload['printer'] = $printer->printer_name;
-            }
-
-            $response = \Illuminate\Support\Facades\Http::timeout(5)
-                ->post(config('print-server.url', 'http://127.0.0.1:9100') . '/print', $payload);
-
-            if ($response->successful()) {
-                return response()->json(['success' => true]);
-            }
-            return response()->json(['success' => false, 'message' => $response->body()]);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()]);
-        }
+        return response()->json([
+            'success' => true,
+            'data' => $drawerCommand,
+            'printer' => $printer->printer_name,
+            'ip' => $printer->ip_address,
+            'port' => $printer->port,
+            'type' => $printer->type,
+        ]);
     }
 }
