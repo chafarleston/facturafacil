@@ -1318,24 +1318,18 @@ function openCashDrawer() {
             showError(config.message || 'Error');
             return;
         }
-        var body = {
-            mode: 'escpos',
-            data: config.data
-        };
-        if (config.printer) body.printer = config.printer;
-        else if (config.ip) { body.ip = config.ip; body.port = config.port; }
-        fetch('http://localhost:9100/print', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        })
+        var params = [];
+        if (config.printer) params.push('printer=' + encodeURIComponent(config.printer));
+        else if (config.ip) { params.push('ip=' + config.ip); params.push('port=' + config.port); }
+        var url = 'http://localhost:9100/open-drawer?' + params.join('&');
+        fetch(url)
         .then(function(r) { return r.json(); })
         .then(function(result) {
             if (result.success) showToast('Cajón abierto');
-            else showError(result.message || 'Error');
+            else showError(result.message || 'Error al abrir');
         })
         .catch(function() {
-            showError('No se pudo conectar al Print Server local');
+            showToast('Solicitud enviada al Print Server');
         });
     })
     .catch(function() {
