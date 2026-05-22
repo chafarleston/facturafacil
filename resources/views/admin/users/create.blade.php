@@ -32,9 +32,10 @@
                 <div class="col-md-6">
                     <div class="form-group">
                         <label>Rol Principal</label>
-                        <select name="role" class="form-control" required>
+                        <select name="role" class="form-control" id="mainRole" required>
                             <option value="user">Usuario</option>
                             <option value="admin">Administrador</option>
+                            <option value="cajero">Cajero</option>
                             <option value="mozo">Mozo</option>
                         </select>
                     </div>
@@ -43,7 +44,7 @@
                         <div style="max-height: 250px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
                             @forelse($roles as $r)
                             <div class="custom-control custom-checkbox">
-                                <input type="checkbox" name="roles[]" class="custom-control-input" id="role_{{ $r->id }}" value="{{ $r->id }}">
+                                <input type="checkbox" name="roles[]" class="custom-control-input role-checkbox" id="role_{{ $r->id }}" value="{{ $r->id }}" data-slug="{{ $r->slug }}">
                                 <label class="custom-control-label" for="role_{{ $r->id }}">{{ $r->name }}</label>
                             </div>
                             @empty
@@ -60,4 +61,16 @@
         </div>
     </form>
 </div>
+
+@push('scripts')
+<script>
+document.getElementById('mainRole').addEventListener('change', function() {
+    var slug = this.value;
+    document.querySelectorAll('.role-checkbox').forEach(function(cb) {
+        cb.checked = cb.dataset.slug === slug;
+    });
+});
+document.getElementById('mainRole').dispatchEvent(new Event('change'));
+</script>
+@endpush
 @endsection

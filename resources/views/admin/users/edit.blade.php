@@ -22,9 +22,10 @@
                     </div>
                     <div class="form-group">
                         <label>Rol Principal</label>
-                        <select name="role" class="form-control" required>
+                        <select name="role" class="form-control" id="mainRole" required>
                             <option value="user" {{ $user->role === 'user' ? 'selected' : '' }}>Usuario</option>
                             <option value="admin" {{ $user->role === 'admin' ? 'selected' : '' }}>Administrador</option>
+                            <option value="cajero" {{ $user->role === 'cajero' ? 'selected' : '' }}>Cajero</option>
                             <option value="mozo" {{ $user->role === 'mozo' ? 'selected' : '' }}>Mozo</option>
                         </select>
                     </div>
@@ -35,7 +36,7 @@
                         <div style="max-height: 250px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
                             @forelse($roles as $r)
                             <div class="custom-control custom-checkbox">
-                                <input type="checkbox" name="roles[]" class="custom-control-input" id="role_{{ $r->id }}" value="{{ $r->id }}" {{ in_array($r->id, $userRoles) ? 'checked' : '' }}>
+                                <input type="checkbox" name="roles[]" class="custom-control-input role-checkbox" id="role_{{ $r->id }}" value="{{ $r->id }}" data-slug="{{ $r->slug }}" {{ in_array($r->id, $userRoles) ? 'checked' : '' }}>
                                 <label class="custom-control-label" for="role_{{ $r->id }}">{{ $r->name }}</label>
                             </div>
                             @empty
@@ -52,4 +53,15 @@
         </div>
     </form>
 </div>
+
+@push('scripts')
+<script>
+document.getElementById('mainRole').addEventListener('change', function() {
+    var slug = this.value;
+    document.querySelectorAll('.role-checkbox').forEach(function(cb) {
+        cb.checked = cb.dataset.slug === slug;
+    });
+});
+</script>
+@endpush
 @endsection

@@ -29,7 +29,7 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'min:8', 'confirmed'],
-            'role' => ['required', 'in:admin,user,mozo'],
+            'role' => ['required', 'in:admin,user,mozo,cajero'],
             'roles' => ['array'],
         ]);
 
@@ -60,7 +60,7 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 
                 \Illuminate\Validation\Rule::unique('users')->ignore($user->id)],
-            'role' => ['required', 'in:admin,user,mozo'],
+            'role' => ['required', 'in:admin,user,mozo,cajero'],
             'roles' => ['array'],
         ]);
 
