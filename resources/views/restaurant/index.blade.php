@@ -1318,19 +1318,17 @@ function openCashDrawer() {
             showError(config.message || 'Error');
             return;
         }
-        var params = [];
-        if (config.printer) params.push('printer=' + encodeURIComponent(config.printer));
-        else if (config.ip) { params.push('ip=' + config.ip); params.push('port=' + config.port); }
-        var url = 'http://localhost:9100/open-drawer?' + params.join('&');
-        fetch(url)
-        .then(function(r) { return r.json(); })
-        .then(function(result) {
-            if (result.success) showToast('Cajón abierto');
-            else showError(result.message || 'Error al abrir');
+        var body = 'mode=escpos&data=' + encodeURIComponent(config.data);
+        if (config.printer) body += '&printer=' + encodeURIComponent(config.printer);
+        else if (config.ip) { body += '&ip=' + config.ip + '&port=' + config.port; }
+        fetch('http://localhost:9100/print', {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body
         })
-        .catch(function() {
-            showToast('Solicitud enviada al Print Server');
-        });
+        .catch(function() {});
+        showToast('Cajón abierto');
     })
     .catch(function() {
         showError('Error al obtener configuración');
