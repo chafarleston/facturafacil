@@ -39,7 +39,7 @@
 
 <div class="row">
     <div class="col-12 mb-3">
-        <h4><i class="fas fa-calendar-day"></i> Resumen del Día</h4>
+        <h4><i class="fas fa-calendar-alt"></i> Resumen del Mes</h4>
     </div>
 </div>
 
@@ -52,8 +52,8 @@
                         <i class="fas fa-dollar-sign"></i>
                     </div>
                     <div class="ml-3">
-                        <h5 class="mb-0">S/ {{ number_format($stats['ventas_hoy'], 2) }}</h5>
-                        <small class="text-muted">Ventas de Hoy</small>
+                        <h5 class="mb-0">S/ {{ number_format($stats['ventas_mes'], 2) }}</h5>
+                        <small class="text-muted">Ventas del Mes</small>
                         @if($stats['crecimiento'] != 0)
                             <span class="growth-badge ml-2 {{ $stats['crecimiento'] >= 0 ? 'growth-up' : 'growth-down' }}">
                                 <i class="fas fa-arrow-{{ $stats['crecimiento'] >= 0 ? 'up' : 'down' }}"></i>
@@ -120,8 +120,8 @@
         <div class="card dashboard-card">
             <div class="card-header bg-white">
                 <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-chart-line text-primary"></i> Ventas de los Últimos 7 Días</h5>
-                    <span class="text-muted">Total: <strong>S/ {{ number_format(collect($ventasPorDia)->sum('monto'), 2) }}</strong></span>
+                    <h5 class="mb-0"><i class="fas fa-chart-line text-primary"></i> Ventas de los Últimos 30 Días</h5>
+                    <span class="text-muted">Total: <strong>S/ {{ number_format(collect($monthlySales)->sum('monto'), 2) }}</strong></span>
                 </div>
             </div>
             <div class="card-body">
@@ -256,10 +256,10 @@ const salesCtx = document.getElementById('salesChart').getContext('2d');
 new Chart(salesCtx, {
   type: 'bar',
   data: {
-    labels: {!! json_encode(collect($ventasPorDia)->pluck('dia')) !!},
+    labels: {!! json_encode(collect($monthlySales)->pluck('dia')) !!},
     datasets: [{
       label: 'Ventas',
-      data: {!! json_encode(collect($ventasPorDia)->pluck('monto')) !!},
+      data: {!! json_encode(collect($monthlySales)->pluck('monto')) !!},
       backgroundColor: 'rgba(0, 102, 204, 0.8)',
       borderColor: 'rgba(0, 102, 204, 1)',
       borderWidth: 1,

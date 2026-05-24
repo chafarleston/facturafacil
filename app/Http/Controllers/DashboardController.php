@@ -75,23 +75,60 @@ class DashboardController extends Controller
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
-        
-        $todaySales = Invoice::where('company_id', $companyId)
-            ->whereDate('fecha_emision', Carbon::today())
+
+        $startOfMonth = Carbon::now()->startOfMonth();
+        $endOfMonth = Carbon::now()->endOfMonth();
+        $startOfPrevMonth = Carbon::now()->subMonth()->startOfMonth();
+        $endOfPrevMonth = Carbon::now()->subMonth()->endOfMonth();
+
+        $currentMonthSales = Invoice::where('company_id', $companyId)
+            ->whereBetween('fecha_emision', [$startOfMonth, $endOfMonth])
             ->where('tipo_documento', '!=', 'NV')
             ->where('sunat_estado', '!=', 'ANULADO')
             ->sum('total');
-        
-        $yesterdaySales = Invoice::where('company_id', $companyId)
-            ->whereDate('fecha_emision', Carbon::yesterday())
+
+        $prevMonthSales = Invoice::where('company_id', $companyId)
+            ->whereBetween('fecha_emision', [$startOfPrevMonth, $endOfPrevMonth])
             ->where('tipo_documento', '!=', 'NV')
             ->where('sunat_estado', '!=', 'ANULADO')
             ->sum('total');
-        
-        $stats['ventas_hoy'] = $todaySales;
-        $stats['ventas_ayer'] = $yesterdaySales;
-        $stats['crecimiento'] = $yesterdaySales > 0 ? (($todaySales - $yesterdaySales) / $yesterdaySales) * 100 : ($todaySales > 0 ? 100 : 0);
-        
+
+        $stats['ventas_mes'] = $currentMonthSales;
+        $stats['ventas_mes_anterior'] = $prevMonthSales;
+        $stats['crecimiento'] = $prevMonthSales > 0 ? (($currentMonthSales - $prevMonthSales) / $prevMonthSales) * 100 : ($currentMonthSales > 0 ? 100 : 0);
+
+        $stats['total'] = Invoice::where('company_id', $companyId)
+            ->whereBetween('fecha_emision', [$startOfMonth, $endOfMonth])
+            ->where('tipo_documento', '!=', 'NV')
+            ->count();
+
+        $stats['aceptados'] = Invoice::where('company_id', $companyId)
+            ->whereBetween('fecha_emision', [$startOfMonth, $endOfMonth])
+            ->where('tipo_documento', '!=', 'NV')
+            ->where('sunat_estado', 'ACEPTADO')
+            ->count();
+
+        $stats['pendientes'] = Invoice::where('company_id', $companyId)
+            ->whereBetween('fecha_emision', [$startOfMonth, $endOfMonth])
+            ->where('tipo_documento', '!=', 'NV')
+            ->whereIn('sunat_estado', ['PENDIENTE', 'ENVIADO'])
+            ->count();
+
+        $stats['facturas'] = Invoice::where('company_id', $companyId)
+            ->whereBetween('fecha_emision', [$startOfMonth, $endOfMonth])
+            ->where('tipo_documento', '01')
+            ->count();
+
+        $stats['boletas'] = Invoice::where('company_id', $companyId)
+            ->whereBetween('fecha_emision', [$startOfMonth, $endOfMonth])
+            ->where('tipo_documento', '03')
+            ->count();
+
+        $stats['notas_venta'] = Invoice::where('company_id', $companyId)
+            ->whereBetween('fecha_emision', [$startOfMonth, $endOfMonth])
+            ->where('tipo_documento', 'NV')
+            ->count();
+
         return view('dashboard', compact('stats', 'ventasPorDia', 'recentInvoices', 'topProducts', 'monthlySales'));
     }
 }
