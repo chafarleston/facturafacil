@@ -50,12 +50,12 @@
                 <div class="col-md-4">
                     <div class="form-group mb-0">
                         <label>Producto</label>
-                        <select id="productSelect" class="form-control">
-                            <option value="">Seleccionar...</option>
-                            @foreach($products as $p)
-                                <option value="{{ $p->id }}" data-price="{{ $p->precio }}" data-stock="{{ $p->stock }}">{{ $p->codigo }} - {{ $p->descripcion }} (Stock: {{ $p->stock }})</option>
-                            @endforeach
-                        </select>
+                        <div style="position:relative;">
+                            <input type="text" id="productSearch" class="form-control" placeholder="Buscar producto por código o nombre..." autocomplete="off" oninput="searchProducts(this.value)">
+                            <input type="hidden" id="selectedProductId" value="">
+                            <input type="hidden" id="selectedProductName" value="">
+                            <div id="productDropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid #ddd; border-radius:4px; max-height:200px; overflow-y:auto; z-index:999;"></div>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-2">
@@ -108,32 +108,83 @@
 @endsection
 
 @push('scripts')
+<style>
+.product-option:hover { background: #e3f2fd; }
+.product-option:last-child { border-bottom: none !important; }
+</style>
 <script>
 let items = [];
+const productsData = @json($products);
 
-document.getElementById('productSelect').addEventListener('change', function() {
-    const opt = this.options[this.selectedIndex];
-    document.getElementById('itemPrice').value = opt.dataset.price || 0;
+document.addEventListener('click', function(e) {
+    var dd = document.getElementById('productDropdown');
+    if (dd && !e.target.closest('#productSearch') && !e.target.closest('#productDropdown')) {
+        dd.style.display = 'none';
+    }
+});
+
+function searchProducts(query) {
+    query = query.trim();
+    var dd = document.getElementById('productDropdown');
+    if (!query) { dd.style.display = 'none'; return; }
+
+    var q = query.toLowerCase();
+    var isNumeric = /^\d+$/.test(query);
+    var results = productsData.filter(function(p) {
+        if (isNumeric) return p.codigo && p.codigo.toLowerCase().includes(q);
+        return (p.descripcion && p.descripcion.toLowerCase().includes(q)) ||
+               (p.codigo && p.codigo.toLowerCase().includes(q));
+    });
+
+    if (results.length === 0) {
+        dd.innerHTML = '<div style="padding:8px 12px; color:#888; font-size:13px;">Sin resultados</div>';
+        dd.style.display = 'block';
+        return;
+    }
+
+    var html = '';
+    results.slice(0, 15).forEach(function(p) {
+        html += '<div class="product-option" onclick="selectProduct(' + p.id + ',\'' + p.descripcion.replace(/'/g, "\\'") + '\',' + p.precio + ')" style="padding:8px 12px; cursor:pointer; font-size:13px; border-bottom:1px solid #eee;">' +
+            '<strong>' + p.descripcion + '</strong><br>' +
+            '<small style="color:#888;">' + p.codigo + ' &mdash; S/ ' + parseFloat(p.precio).toFixed(2) + ' &mdash; Stock: ' + p.stock + '</small>' +
+        '</div>';
+    });
+    dd.innerHTML = html;
+    dd.style.display = 'block';
+}
+
+function selectProduct(id, name, price) {
+    document.getElementById('selectedProductId').value = id;
+    document.getElementById('selectedProductName').value = name;
+    document.getElementById('productSearch').value = name;
+    document.getElementById('productDropdown').style.display = 'none';
+    document.getElementById('itemPrice').value = price;
+}
+
+document.getElementById('productSearch').addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') document.getElementById('productDropdown').style.display = 'none';
 });
 
 function addItem() {
-    const select = document.getElementById('productSelect');
-    const opt = select.options[select.selectedIndex];
-    if (!opt.value) { alert('Seleccione un producto'); return; }
-    
-    const qty = parseInt(document.getElementById('itemQty').value) || 0;
-    const price = parseFloat(document.getElementById('itemPrice').value) || 0;
+    var id = document.getElementById('selectedProductId').value;
+    var name = document.getElementById('selectedProductName').value;
+    if (!id) { alert('Seleccione un producto'); return; }
+
+    var qty = parseInt(document.getElementById('itemQty').value) || 0;
+    var price = parseFloat(document.getElementById('itemPrice').value) || 0;
     if (qty <= 0 || price < 0) { alert('Ingrese cantidad y precio válidos'); return; }
-    
+
     items.push({
-        product_id: opt.value,
-        nombre: opt.text,
+        product_id: id,
+        nombre: name,
         cantidad: qty,
         precio: price
     });
-    
+
     renderItems();
-    select.value = '';
+    document.getElementById('selectedProductId').value = '';
+    document.getElementById('selectedProductName').value = '';
+    document.getElementById('productSearch').value = '';
     document.getElementById('itemQty').value = 1;
     document.getElementById('itemPrice').value = '';
 }
@@ -144,18 +195,18 @@ function removeItem(idx) {
 }
 
 function renderItems() {
-    const tbody = document.getElementById('purchase-items');
+    var tbody = document.getElementById('purchase-items');
     tbody.innerHTML = '';
-    let total = 0;
-    
-    items.forEach((item, idx) => {
-        const subtotal = item.cantidad * item.precio;
+    var total = 0;
+
+    items.forEach(function(item, idx) {
+        var subtotal = item.cantidad * item.precio;
         total += subtotal;
-        const row = document.createElement('tr');
+        var row = document.createElement('tr');
         row.innerHTML = '<td>' + item.nombre + '</td><td class="text-right">' + item.cantidad + '</td><td class="text-right">' + item.precio.toFixed(2) + '</td><td class="text-right">' + subtotal.toFixed(2) + '</td><td><button type="button" onclick="removeItem(' + idx + ')" class="btn btn-danger btn-sm"><i class="fas fa-times"></i></button></td><input type="hidden" name="items[' + idx + '][product_id]" value="' + item.product_id + '"><input type="hidden" name="items[' + idx + '][cantidad]" value="' + item.cantidad + '"><input type="hidden" name="items[' + idx + '][precio]" value="' + item.precio + '">';
         tbody.appendChild(row);
     });
-    
+
     document.getElementById('purchase-total').textContent = total.toFixed(2);
     document.getElementById('saveBtn').disabled = items.length === 0;
 }
