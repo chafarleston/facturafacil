@@ -20,12 +20,6 @@
                             <input type="number" name="monto_cierre" class="form-control" step="0.01" placeholder="S/ total en caja" required>
                         </div>
                     </div>
-                    <div class="col-md-8">
-                        <div class="form-group">
-                            <label>Observaciones</label>
-                            <textarea name="observaciones" class="form-control" rows="1" placeholder="Notas adicionales"></textarea>
-                        </div>
-                    </div>
                 </div>
                 @can('permission', 'close_cashregister')
                 <button type="submit" class="btn btn-danger">
@@ -52,6 +46,10 @@
                             <input type="number" name="monto_apertura" class="form-control" step="0.01" min="0" value="0" required>
                         </div>
                     </div>
+                    <div class="form-group">
+                        <label>Nombre de referencia</label>
+                        <input type="text" name="referencia" class="form-control" placeholder="Ej: 25-05-mañana">
+                    </div>
                 </div>
                 <div class="card-footer">
                     @can('permission', 'open_cashregister')
@@ -71,23 +69,25 @@
                 <h3 class="card-title">Historial de Cajas</h3>
             </div>
             <div class="card-body table-responsive p-0">
-                <table class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Usuario</th>
-                            <th>Apertura</th>
-                            <th>Cierre</th>
-                            <th>Ventas</th>
-                            <th>Total</th>
-                            <th>Estado</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($cajas as $caja)
-                        <tr>
-                            <td>{{ $caja->fecha_apertura ? $caja->fecha_apertura->format('d/m/Y') : '-' }}</td>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Ref.</th>
+                                <th>Fecha</th>
+                                <th>Usuario</th>
+                                <th>Apertura</th>
+                                <th>Cierre</th>
+                                <th>Ventas</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($cajas as $caja)
+                            <tr>
+                                <td><span class="badge badge-secondary">{{ $caja->referencia ?? '-' }}</span></td>
+                                <td>{{ $caja->fecha_apertura ? $caja->fecha_apertura->format('d/m/Y') : '-' }}</td>
                             <td>{{ $caja->user->name }}</td>
                             <td>S/ {{ number_format($caja->monto_apertura, 2) }}</td>
                             <td>{{ $caja->monto_cierre ? 'S/ ' . number_format($caja->monto_cierre, 2) : '-' }}</td>

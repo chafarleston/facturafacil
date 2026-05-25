@@ -22,6 +22,7 @@ class RestaurantOrderItem extends Model
         'notes',
         'cancelled_from',
         'cancelled_at',
+        'cancelled_by',
         'kds_destination',
     ];
 
@@ -41,6 +42,11 @@ class RestaurantOrderItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 
     public function scopePending($query)

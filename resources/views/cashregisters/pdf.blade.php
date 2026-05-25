@@ -166,18 +166,18 @@
     <div style="margin-bottom:4px; font-size:10px;">Hay {{ count($lineasEliminadas) }} línea(s) eliminada(s) en el Sistema</div>
     <table>
         <tr class="bold border-bottom">
+            <td style="text-align:center;">Cant.</td>
             <td>Producto</td>
-            <td class="text-right">Cant.</td>
-            <td>Estado anterior</td>
-            <td>Eliminado</td>
+            <td>Eliminado por</td>
+            <td>Hora</td>
         </tr>
         @foreach($lineasEliminadas as $item)
-        <tr>
-            <td>{{ $item->product_name }}</td>
-            <td class="text-right">{{ number_format($item->quantity, 0) }}</td>
-            <td>{{ $item->cancelled_from }}</td>
-            <td>{{ $item->cancelled_at ? $item->cancelled_at->format('d/m/Y H:i') : '-' }}</td>
-        </tr>
+            <tr>
+                <td style="text-align:center; padding:3px; font-size:10px;">x{{ number_format($item->quantity, 0) }}</td>
+                <td style="padding:3px; font-size:10px;">{{ $item->product_name }}</td>
+                <td style="padding:3px; font-size:10px;">{{ $item->cancelledBy->name ?? '-' }}</td>
+                <td style="text-align:center; padding:3px; font-size:10px;">{{ $item->cancelled_at ? $item->cancelled_at->format('H:i') : '-' }}</td>
+            </tr>
         @endforeach
     </table>
     @endif

@@ -14,7 +14,7 @@ class CashRegister extends Model
     protected $fillable = [
         'company_id', 'user_id', 'monto_apertura', 'monto_cierre',
         'ventas_efectivo', 'ventas_tarjeta', 'ventas_yape', 'ventas_plin', 'ventas_otro',
-        'cantidad_ventas', 'total_ventas', 'estado', 'fecha_apertura', 'fecha_cierre', 'observaciones'
+        'cantidad_ventas', 'total_ventas', 'estado', 'fecha_apertura', 'fecha_cierre', 'observaciones', 'referencia'
     ];
 
     protected $casts = [

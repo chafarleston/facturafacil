@@ -64,15 +64,33 @@
 
     @if(count($categoriasVentas) > 0)
     <div class="border-top py-1 mt-1 mb-1 bold">POR CATEGORÍA</div>
+    <div style="font-size:8px; border-bottom:1px dashed #000; padding-bottom:2px; margin-bottom:2px; display:flex;">
+        <span style="min-width:20px;">Cant.</span>
+        <span style="flex:1; padding:0 4px;">Categoría</span>
+        <span style="text-align:right;">Precio</span>
+    </div>
     @foreach($categoriasVentas as $categoria => $data)
-    <div style="font-size:8px;">{{ $categoria }}: {{ $data['cantidad'] }} und - S/ {{ number_format($data['total'], 2) }}</div>
+    <div style="font-size:8px; display:flex;">
+        <span style="min-width:20px;">{{ $data['cantidad'] }}</span>
+        <span style="flex:1; padding:0 4px;">{{ $categoria }}</span>
+        <span style="text-align:right;">S/ {{ number_format($data['total'], 2) }}</span>
+    </div>
     @endforeach
     @endif
 
     @if(count($productosVendidos) > 0)
     <div class="border-top py-1 mt-1 mb-1 bold">PRODUCTOS VENDIDOS</div>
+    <div style="font-size:8px; border-bottom:1px dashed #000; padding-bottom:2px; margin-bottom:2px; display:flex;">
+        <span style="min-width:20px;">Cant.</span>
+        <span style="flex:1; padding:0 4px;">Producto</span>
+        <span style="text-align:right;">Precio</span>
+    </div>
     @foreach($productosVendidos as $producto => $data)
-    <div style="font-size:8px;">{{ Str::limit($producto, 20) }}: {{ number_format($data['cantidad'], 0) }} und - S/ {{ number_format($data['total'], 2) }}</div>
+    <div style="font-size:8px; display:flex;">
+        <span style="min-width:20px;">{{ $data['cantidad'] }}</span>
+        <span style="flex:1; padding:0 4px;">{{ $producto }}</span>
+        <span style="text-align:right;">S/ {{ number_format($data['total'], 2) }}</span>
+    </div>
     @endforeach
     @endif
 
@@ -81,10 +99,10 @@
     <div class="border-bottom py-1 mb-1 bold text-center">REPORTE DE LÍNEAS ELIMINADAS</div>
     <div style="font-size:8px; margin-bottom:3px;">Hay {{ count($lineasEliminadas) }} línea(s) eliminada(s) en el Sistema</div>
     @foreach($lineasEliminadas as $item)
-    <div style="font-size:8px; display:flex; justify-content:space-between;">
-        <span>{{ Str::limit($item->product_name, 22) }} x{{ number_format($item->quantity, 0) }} - {{ $item->cancelled_from }}</span>
-        <span>{{ $item->cancelled_at ? $item->cancelled_at->format('H:i') : '' }}</span>
-    </div>
+        <div style="font-size:7px; margin-bottom:2px;">
+            <span>x{{ number_format($item->quantity, 0) }} - {{ Str::limit($item->product_name, 16) }} - {{ $item->cancelledBy->name ?? '' }}</span>
+            <span>{{ $item->cancelled_at ? $item->cancelled_at->format('H:i') : '' }}</span>
+        </div>
     @endforeach
     <div class="border-top py-1 mt-1"></div>
     @endif

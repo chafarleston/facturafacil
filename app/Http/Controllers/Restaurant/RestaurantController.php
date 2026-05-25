@@ -265,6 +265,7 @@ class RestaurantController extends Controller
 
         $item->cancelled_from = $item->kitchen_status;
         $item->cancelled_at = now();
+        $item->cancelled_by = auth()->id();
         $item->kitchen_status = 'CANCELLED';
         $item->save();
 

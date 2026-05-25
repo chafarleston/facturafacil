@@ -6,8 +6,12 @@
 <div class="row">
     <div class="col-md-12">
         <div class="card card-primary">
-            <div class="card-header">
-                <h3 class="card-title">Resumen de Caja #{{ $cashregister->id }}</h3>
+                <div class="card-header">
+                    <h3 class="card-title">Resumen de Caja #{{ $cashregister->id }}
+                        @if($cashregister->referencia)
+                            <span class="badge badge-info ml-2">{{ $cashregister->referencia }}</span>
+                        @endif
+                    </h3>
                 <div class="card-tools float-right">
                     <a href="{{ route('cashregisters.pdf', $cashregister) }}" class="btn btn-primary btn-sm" target="_blank">
                         <i class="fas fa-file-pdf"></i> PDF A4
@@ -235,24 +239,24 @@
 <div class="mt-4">
     <h4>Reporte de Líneas Eliminadas</h4>
     <div class="table-responsive">
-        <table class="table table-sm table-bordered">
-            <thead class="thead-dark">
-                <tr>
-                    <th>Producto</th>
-                    <th>Cant.</th>
-                    <th>Estado anterior</th>
-                    <th>Eliminado</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($lineasEliminadas as $item)
-                <tr>
-                    <td>{{ $item->product_name }}</td>
-                    <td>{{ number_format($item->quantity, 0) }}</td>
-                    <td>{{ $item->cancelled_from }}</td>
-                    <td>{{ $item->cancelled_at ? $item->cancelled_at->format('d/m/Y H:i') : '-' }}</td>
-                </tr>
-                @endforeach
+                    <table class="table table-sm table-bordered">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>Cant.</th>
+                                <th>Producto</th>
+                                <th>Eliminado por</th>
+                                <th>Hora</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($lineasEliminadas as $item)
+                            <tr>
+                                <td>x{{ number_format($item->quantity, 0) }}</td>
+                                <td>{{ $item->product_name }}</td>
+                                <td>{{ $item->cancelledBy->name ?? '-' }}</td>
+                                <td>{{ $item->cancelled_at ? $item->cancelled_at->format('H:i') : '-' }}</td>
+                            </tr>
+                            @endforeach
             </tbody>
         </table>
     </div>

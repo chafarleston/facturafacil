@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CashRegister;
 use App\Models\Invoice;
+use App\Models\RestaurantOrder;
 use App\Models\RestaurantOrderItem;
 use App\Services\PrintService;
 use Illuminate\Http\Request;
@@ -49,6 +50,7 @@ class CashRegisterController extends Controller
             'monto_apertura' => $request->monto_apertura,
             'fecha_apertura' => now(),
             'estado' => 'ABIERTA',
+            'referencia' => $request->referencia,
         ]);
 
         return redirect()->route('cashregisters.index')
@@ -70,8 +72,16 @@ class CashRegisterController extends Controller
         }
 
         $companyId = $caja->company_id;
-        
-        $fechaApertura = $caja->fecha_apertura instanceof \Carbon\Carbon 
+
+        $openTables = RestaurantOrder::where('company_id', $companyId)
+            ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
+            ->count();
+
+        if ($openTables > 0) {
+            return back()->with('error', "No se puede cerrar caja: hay {$openTables} mesa(s) con pedidos abiertos. Cierre o facture todos los pedidos antes de cerrar caja.");
+        }
+
+        $fechaApertura = $caja->fecha_apertura instanceof \Carbon\Carbon
             ? $caja->fecha_apertura 
             : \Carbon\Carbon::parse($caja->fecha_apertura);
         $fechaCierre = now();
@@ -130,6 +140,7 @@ class CashRegisterController extends Controller
             'estado' => 'CERRADA',
             'fecha_cierre' => $fechaCierre,
             'observaciones' => $request->observaciones,
+            'referencia' => $request->referencia,
         ]);
 
         return redirect()->route('cashregisters.show', $caja)
@@ -211,7 +222,8 @@ class CashRegisterController extends Controller
         arsort($categoriasVentas);
         arsort($productosVendidos);
 
-        $lineasEliminadas = RestaurantOrderItem::where('kitchen_status', 'CANCELLED')
+        $lineasEliminadas = RestaurantOrderItem::with('cancelledBy')
+            ->where('kitchen_status', 'CANCELLED')
             ->whereNotNull('cancelled_from')
             ->whereIn('cancelled_from', ['SENT', 'READY', 'DELIVERED'])
             ->where('cancelled_at', '>=', $fechaApertura)
@@ -247,7 +259,8 @@ class CashRegisterController extends Controller
             ->with(['items.product.category', 'customer'])
             ->get();
 
-        $lineasEliminadas = RestaurantOrderItem::where('kitchen_status', 'CANCELLED')
+        $lineasEliminadas = RestaurantOrderItem::with('cancelledBy')
+            ->where('kitchen_status', 'CANCELLED')
             ->whereNotNull('cancelled_from')
             ->whereIn('cancelled_from', ['SENT', 'READY', 'DELIVERED'])
             ->where('cancelled_at', '>=', $fechaApertura)
