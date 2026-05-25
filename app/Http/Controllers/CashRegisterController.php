@@ -77,16 +77,12 @@ class CashRegisterController extends Controller
         $fechaCierre = now();
         
         $ventas = Invoice::where('company_id', $companyId)
-            ->where('fecha_emision', '>=', $fechaApertura->format('Y-m-d'))
-            ->where('fecha_emision', '<=', $fechaCierre->format('Y-m-d'))
+            ->whereRaw("CONCAT(fecha_emision, ' ', COALESCE(hora_emision, '00:00:00')) BETWEEN ? AND ?", [
+                $fechaApertura->format('Y-m-d H:i:s'),
+                $fechaCierre->format('Y-m-d H:i:s')
+            ])
             ->where('sunat_estado', '!=', 'ANULADO')
             ->get();
-
-        $ventas = $ventas->filter(function($venta) use ($fechaApertura, $fechaCierre) {
-            $horaVenta = !empty($venta->hora_emision) ? $venta->hora_emision : '00:00:00';
-            $fechaVenta = \Carbon\Carbon::parse($venta->fecha_emision . ' ' . $horaVenta);
-            return $fechaVenta->gte($fechaApertura) && $fechaVenta->lte($fechaCierre);
-        });
 
         $efectivo = 0;
         $tarjeta = 0;
@@ -243,17 +239,13 @@ class CashRegisterController extends Controller
             : \Carbon\Carbon::parse($cashregister->fecha_cierre);
 
         $ventas = Invoice::where('company_id', $cashregister->company_id)
-            ->where('fecha_emision', '>=', $fechaApertura->format('Y-m-d'))
-            ->where('fecha_emision', '<=', $fechaCierre->format('Y-m-d'))
+            ->whereRaw("CONCAT(fecha_emision, ' ', COALESCE(hora_emision, '00:00:00')) BETWEEN ? AND ?", [
+                $fechaApertura->format('Y-m-d H:i:s'),
+                $fechaCierre->format('Y-m-d H:i:s')
+            ])
             ->where('sunat_estado', '!=', 'ANULADO')
             ->with(['items.product.category', 'customer'])
             ->get();
-
-        $ventas = $ventas->filter(function($venta) use ($fechaApertura, $fechaCierre) {
-            $horaVenta = !empty($venta->hora_emision) ? $venta->hora_emision : '00:00:00';
-            $fechaVenta = \Carbon\Carbon::parse($venta->fecha_emision . ' ' . $horaVenta);
-            return $fechaVenta->gte($fechaApertura) && $fechaVenta->lte($fechaCierre);
-        });
 
         $lineasEliminadas = RestaurantOrderItem::where('kitchen_status', 'CANCELLED')
             ->whereNotNull('cancelled_from')
