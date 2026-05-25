@@ -402,6 +402,33 @@ app.post('/print-escpos-text', async (req, res) => {
   }
 });
 
+// Open cash drawer via GET (no CORS preflight needed)
+app.get('/open-drawer', async (req, res) => {
+  try {
+    const printer = req.query.printer;
+    const ip = req.query.ip;
+    const port = req.query.port ? parseInt(req.query.port) : null;
+
+    const drawerCmd = Buffer.concat([
+      Buffer.from([0x1B, 0x40]),           // INIT
+      Buffer.from([0x1B, 0x70, 0x00, 0x32, 0xFF])  // Open drawer pin 2
+    ]);
+
+    if (ip && port) {
+      await printToNetwork(ip, port, drawerCmd);
+      res.json({ success: true, message: 'Drawer opened via network' });
+    } else if (printer) {
+      await printLocalRaw(printer, drawerCmd);
+      res.json({ success: true, message: 'Drawer opened via local printer' });
+    } else {
+      res.status(400).json({ success: false, message: 'Specify ?printer=NAME or ?ip=IP&port=PORT' });
+    }
+  } catch (err) {
+    log(`Open drawer failed: ${err.message}`);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // 404
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Not found' });

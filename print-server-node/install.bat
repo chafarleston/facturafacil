@@ -17,7 +17,6 @@ set "OLD_FOUND=0"
 
 if exist "%DESKTOP%\FacturaFacil Print Server.lnk" (
     echo   - Encontrado acceso directo en escritorio
-echo   - Encontrado acceso directo en escritorio
     set OLD_FOUND=1
 )
 if exist "%DESKTOP%\Start Print Server.lnk" (
@@ -37,7 +36,7 @@ if %OLD_FOUND%==1 (
     echo.
     echo Se detecto una instalacion anterior.
     set /p REPLACE="Deseas reemplazarla? (S/N): "
-    if /I not "%REPLACE%"=="S" goto CANCEL_REPLACE
+    if /I "%REPLACE%" NEQ "S" goto CANCEL_REPLACE
 
     echo.
     echo [INFO] Eliminando archivos antiguos...
@@ -163,9 +162,10 @@ exit
 
 :SHORTCUTFAIL
 echo [AVISO] No se pudo crear el acceso directo automaticamente.
-echo Puedes crearlo manualmente: clic derecho en start-minimized.vbs -
-> Enviar a -
-> Escritorio (crear acceso directo).
+echo Puedes crearlo manualmente:
+echo   1. Clic derecho en start-minimized.vbs
+echo   2. Enviar a -^> Escritorio (crear acceso directo)
+echo.
 
 :FINISH
 echo.
@@ -184,6 +184,10 @@ echo   - O ejecuta start-hidden.vbs para oculto total
 echo.
 echo URL del servidor: http://localhost:9100
 echo.
+
+REM --- Esperar tecla antes de salir ---
+pause
+goto :EOF
 
 :CANCEL_REPLACE
 echo.
