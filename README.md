@@ -1,6 +1,6 @@
 # FacturaFácil — Sistema de Facturación Electrónica y Restaurante
 
-Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo de restaurante, POS, impresión térmica ESC/POS y gestión multi-rol.
+Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo de restaurante, POS, impresión térmica ESC/POS, gestión multi-rol y caja registradora.
 
 ---
 
@@ -20,18 +20,27 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 - Selección de cliente con búsqueda y creación rápida
 - Múltiples métodos de pago: Efectivo, Tarjeta, Yape, Plin, Transferencia, Mixto
 - Control de caja (apertura/cierre con arqueo)
-- Apertura de cajón de efectivo desde el POS
+- Apertura de cajón de efectivo desde el POS y Restaurante
 
 ### Restaurante
 - Gestión de **Pisos** y **Mesas** con estado visual (Disponible/Ocupada)
 - Pedidos con productos, cantidades, notas y precios
+- **Búsqueda de productos** en tiempo real (letras → descripción, números → código)
 - Envío a cocina (modo **KDS** en pantalla o **Impresión 80mm** a impresora térmica)
-- **KDS (Kitchen Display System)**: pantalla en tiempo real con alertas sonoras al recibir nuevos pedidos, colores por estado (Pendiente/Enviado/Listo/Entregado)
+- **KDS (Kitchen Display System)**: pantalla en tiempo real con alertas sonoras al recibir nuevos pedidos, colores por estado
 - Precuenta con selección de impresora (Precuenta 1, 2 o 3)
-- Cobro con selección de cliente, tipo de documento y método de pago
+- Cobro con **cliente por defecto** (Cliente Varios DNI 88888888) y **confirmación de impresión**
 - **Mover pedido** entre mesas
 - Anulación de productos con autorización de administrador para items enviados a cocina
 - Notas por producto y por pedido
+
+### Caja Registradora
+- Apertura y cierre con **Nombre de referencia** (ej: "25-05-mañana", "25-05-tarde")
+- Resumen de ventas por tipo de documento y método de pago en formato tabular
+- Reporte de **líneas eliminadas** con cantidad, producto, usuario que canceló y hora
+- Ticket 80mm y PDF A4 con formato columnas (Cant. | Producto | Precio)
+- **Bloqueo de cierre** si hay mesas abiertas en restaurante
+- Dashboard con **resumen mensual** (ventas del mes vs mes anterior)
 
 ### Impresión Térmica ESC/POS
 - **Arquitectura híbrida**: el servidor Laravel encola los trabajos, los envía vía HTTP al Print Server local
@@ -40,13 +49,16 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 - Soporte para impresoras **locales** (USB/paralelo vía raw-print.ps1) y **red** (socket TCP puerto 9100)
 - Encoding CP850 con caracteres ñ, tildes, mayúsculas
 - **Cola de impresión** con reintentos automáticos (hasta 3 intentos)
+- **Auto-reinicio** del servidor si se detiene (loop en start.bat)
+- **Quick Edit Mode deshabilitado** — la ventana no se congela al hacer clic
+- **start-hidden.vbs** — servidor oculto en segundo plano (sin ventana visible)
 - Comando de apertura de cajón de efectivo
 
 ### Roles y Permisos
 - Roles: **Administrador**, **Cajero**, **Mozo**, **Usuario**
-- Permisos granulares por módulo (ver/crear/editar/eliminar por cada entidad)
-- Control de acceso a funcionalidades del restaurante (Cobrar/Anular restrigido a no-mozos)
-- Gestión de permisos desde el panel de administración
+- Permisos granulares: Abrir Caja y Cerrar Caja como permisos separados
+- Control de acceso a funcionalidades del restaurante (Cobrar/Anular restringido a no-mozos)
+- **Auto-check de permisos** al seleccionar rol principal en creación de usuarios
 
 ### Gestión de Empresas
 - Soporte multi-empresa con series separadas
@@ -55,11 +67,9 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 - Datos SUNAT: tipo contribuyente, ubigeo, etc.
 - Logotipo personalizado
 
-### Caja Registradora
-- Apertura y cierre con montos
-- Resumen de ventas por tipo de documento y método de pago
-- Reporte de líneas eliminadas (productos anulados en cocina)
-- Ticket 80mm y PDF A4
+### Compras
+- Búsqueda de productos en **tiempo real** al agregar items (letras → descripción, números → código)
+- Gestión de proveedores
 
 ---
 
@@ -73,16 +83,22 @@ Navegador (cliente)
   │       └── PrintService::processQueue()
   │           └── HTTP POST → Print Server local (127.0.0.1:9100/print)
   │
-  └── Clicks en "Abrir Caja"
-      └── POST /pos/open-drawer
-          └── Laravel: envía comando ESC/POS → Print Server local
+  ├── Clic en "Caja" (abrir cajón)
+  │   └── POST /pos/open-drawer → devuelve config
+  │       └── fetch POST → localhost:9100/print (no-cors, form-urlencoded)
+  │
+  └── Clic en "Cobrar" → confirmación de impresión
+      └── Sí → window.open /pos/print/{invoice}/80mm
 ```
 
 **Print Server** (Node.js en `print-server-node/server.js`):
 - Corre en la máquina local del cliente (Windows/Linux/Mac)
 - Recibe datos ESC/POS en base64 vía REST API
 - Envía a impresora local (raw-print.ps1) o a impresora de red (socket TCP)
-- Endpoints: `GET /status`, `GET /printers`, `POST /print`, `POST /print-escpos-text`
+- Endpoints: `GET /status`, `GET /printers`, `POST /print`, `POST /print-escpos-text`, `GET /open-drawer`
+- **Auto-reinicio** en caso de fallo (loop infinito en start.bat)
+- **Quick Edit Mode desactivado** para evitar congelamiento por clic
+- **start-hidden.vbs** para ejecución en segundo plano sin ventana
 
 **Reintentos automáticos**: el comando `php artisan print:process-queue` se ejecuta cada minuto vía Tarea Programada de Windows (`FacturaFacilScheduler`) para reintentar trabajos fallidos (hasta 3 intentos).
 
@@ -111,21 +127,41 @@ composer install
 # 3. Configurar .env
 cp .env.example .env
 # Editar DB_DATABASE, DB_USERNAME, DB_PASSWORD
-
-# 4. Generar key
+# Generar key
 php artisan key:generate
 
-# 5. Migrar y seedear
+# 4. Migrar y seedear
 php artisan migrate
 php artisan db:seed
 
-# 6. Link storage
+# 5. Link storage
 php artisan storage:link
 
-# 7. Print Server (en cada máquina cliente)
+# 6. Print Server (en cada máquina cliente)
 cd print-server-node
 npm install
-node server.js
+```
+
+### Iniciar Print Server (Windows)
+
+**Opción recomendada — oculto en segundo plano:**
+```bash
+start-hidden.vbs
+```
+
+**Opción con ventana visible (con autoreinicio):**
+```bash
+start.bat
+```
+
+**Opción con ventana minimizada:**
+```bash
+start-minimized.vbs
+```
+
+**Instalación definitiva (acceso directo + inicio automático):**
+```bash
+install.bat
 ```
 
 ### Tarea Programada (Windows)
@@ -161,7 +197,7 @@ En `/companies/{id}/edit`:
 
 En `/roles` se gestionan los roles. Por defecto:
 - **Administrador**: acceso completo
-- **Cajero**: POS, facturación, caja
+- **Cajero**: POS, facturación, caja (abrir + cerrar como permisos separados)
 - **Mozo**: restaurante, cocina
 - **Usuario**: POS, consultas, sin gestión de caja
 
@@ -172,15 +208,15 @@ En `/roles` se gestionan los roles. Por defecto:
 ### Restaurante
 1. `/restaurant` — Vista principal con pisos y mesas
 2. Seleccionar mesa → se abre el modal de pedido
-3. Agregar productos desde la lista filtrada por categoría o búsqueda
+3. Agregar productos usando el **buscador** en el encabezado o filtro por categoría
 4. Enviar a cocina (modo KDS o impresión)
-5. Precuenta → seleccionar impresora
-6. Cobrar → seleccionar cliente, documento, método de pago
-7. Cerrar mesa
+5. Precuenta → seleccionar impresora (Precuenta 1/2/3)
+6. Cobrar → se selecciona automáticamente "Clientes Varios", confirma si desea imprimir
+7. Mover pedido a otra mesa si es necesario
 
 ### POS
 1. `/pos` — Punto de venta
-2. Seleccionar categoría o buscar producto
+2. Seleccionar categoría o buscar producto por nombre/código
 3. Agregar items al carrito
 4. Seleccionar cliente y método de pago
 5. Cobrar → emite comprobante, envía a SUNAT
@@ -189,6 +225,13 @@ En `/roles` se gestionan los roles. Por defecto:
 - `/restaurant/kitchen` — Pantalla de cocina, actualiza automáticamente cada 5s
 - Botones: Marcar Listo / Entregar
 - Alerta sonora al recibir nuevos pedidos
+
+### Caja Registradora
+1. `/cashregisters` — Abrir caja con "Nombre de referencia" (ej: "25-05-mañana")
+2. Durante el turno se registran todas las ventas y anulaciones
+3. Al cerrar: verifica que no haya mesas abiertas en el restaurante
+4. Muestra resumen en web, ticket 80mm y PDF A4
+5. Las **líneas eliminadas** muestran: cantidad, producto, usuario que canceló y hora
 
 ---
 
@@ -227,6 +270,9 @@ php artisan route:list
 
 # Optimizar
 php artisan optimize
+
+# Logs
+tail -50 storage/logs/laravel.log
 ```
 
 ---
