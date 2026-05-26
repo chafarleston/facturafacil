@@ -941,7 +941,7 @@ class RestaurantController extends Controller
                 ]);
                 
                 $product = Product::find($item->product_id);
-                if ($product && $product->stock > 0) {
+                if ($product) {
                     $product->decrement('stock', $item->quantity);
                 }
             }
