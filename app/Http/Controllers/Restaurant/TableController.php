@@ -7,6 +7,7 @@ use App\Models\RestaurantTable;
 use App\Models\Floor;
 use App\Models\Company;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class TableController extends Controller
 {
@@ -34,7 +35,7 @@ class TableController extends Controller
         $validated = $request->validate([
             'company_id' => 'required|exists:companies,id',
             'floor_id' => 'required|exists:floors,id',
-            'name' => 'required|max:50',
+            'name' => ['required', 'max:50', Rule::unique('restaurant_tables')->where(fn($q) => $q->where('floor_id', $request->floor_id))],
             'capacity' => 'nullable|integer|min:1',
             'color' => 'nullable|max:20',
         ]);
@@ -58,7 +59,7 @@ class TableController extends Controller
     {
         $validated = $request->validate([
             'floor_id' => 'required|exists:floors,id',
-            'name' => 'required|max:50',
+            'name' => ['required', 'max:50', Rule::unique('restaurant_tables')->where(fn($q) => $q->where('floor_id', $request->floor_id))->ignore($restaurantTable->id)],
             'capacity' => 'nullable|integer|min:1',
             'color' => 'nullable|max:20',
             'status' => 'nullable|in:AVAILABLE,OCCUPIED,RESERVED',
