@@ -1,236 +1,207 @@
-# FacturaFácil — Sistema de Facturación Electrónica y Restaurante
+# FacturaFacil Print Server (Node.js)
 
-Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo de restaurante, POS, impresión térmica ESC/POS y gestión multi-rol.
-
----
-
-## Módulos del Sistema
-
-### Facturación Electrónica SUNAT
-- Emisión de **Facturas** (01), **Boletas** (03), **Notas de Venta** (NV), **Notas de Crédito** (07), **Notas de Débito** (08)
-- Envío automático a SUNAT vía Greenter
-- Firma digital con certificado .p12
-- PDF en formato A4 y Ticket 80mm con código QR
-- Descarga de XML firmado y CDR
-- Series configurables por tipo de documento
-
-### POS (Punto de Venta)
-- Interfaz simplificada para ventas rápidas
-- Búsqueda de productos por nombre o código de barras (detección automática: letras → descripción, números → código de barras)
-- Selección de cliente con búsqueda y creación rápida
-- Múltiples métodos de pago: Efectivo, Tarjeta, Yape, Plin, Transferencia, Mixto
-- Control de caja (apertura/cierre con arqueo)
-- Apertura de cajón de efectivo desde el POS
-
-### Restaurante
-- Gestión de **Pisos** y **Mesas** con estado visual (Disponible/Ocupada)
-- Pedidos con productos, cantidades, notas y precios
-- Envío a cocina (modo **KDS** en pantalla o **Impresión 80mm** a impresora térmica)
-- **KDS (Kitchen Display System)**: pantalla en tiempo real con alertas sonoras al recibir nuevos pedidos, colores por estado (Pendiente/Enviado/Listo/Entregado)
-- Precuenta con selección de impresora (Precuenta 1, 2 o 3)
-- Cobro con selección de cliente, tipo de documento y método de pago
-- **Mover pedido** entre mesas
-- Anulación de productos con autorización de administrador para items enviados a cocina
-- Notas por producto y por pedido
-
-### Impresión Térmica ESC/POS
-- **Arquitectura híbrida**: el servidor Laravel encola los trabajos, los envía vía HTTP al Print Server local
-- **Print Server Node.js** local en cada máquina cliente (Windows/Linux/Mac)
-- 8 slots fijos de impresora: Cocina 1, Cocina 2, Bar 1, Precuenta 1/2/3, Caja
-- Soporte para impresoras **locales** (USB/paralelo vía raw-print.ps1) y **red** (socket TCP puerto 9100)
-- Encoding CP850 con caracteres ñ, tildes, mayúsculas
-- **Cola de impresión** con reintentos automáticos (hasta 3 intentos)
-- Comando de apertura de cajón de efectivo
-
-### Roles y Permisos
-- Roles: **Administrador**, **Cajero**, **Mozo**, **Usuario**
-- Permisos granulares por módulo (ver/crear/editar/eliminar por cada entidad)
-- Control de acceso a funcionalidades del restaurante (Cobrar/Anular restrigido a no-mozos)
-- Gestión de permisos desde el panel de administración
-
-### Gestión de Empresas
-- Soporte multi-empresa con series separadas
-- Configuración de **IGV**: General (18%) o Reducido Restaurante (10.5%), ambos porcentajes editables
-- Certificado digital por empresa
-- Datos SUNAT: tipo contribuyente, ubigeo, etc.
-- Logotipo personalizado
-
-### Caja Registradora
-- Apertura y cierre con montos
-- Resumen de ventas por tipo de documento y método de pago
-- Reporte de líneas eliminadas (productos anulados en cocina)
-- Ticket 80mm y PDF A4
+Servidor REST de impresión para impresoras térmicas ESC/POS. Recibe trabajos desde el navegador o el servidor Laravel y los envía a impresoras locales (USB/paralelo) o de red (socket TCP).
 
 ---
 
-## Arquitectura de Impresión
+## Arquitectura
 
 ```
-Navegador (cliente)
-  │
-  ├── POST /restaurant/orders/{id}/send-to-kitchen
-  │   └── Laravel: marca items como SENT, encola trabajo en DB
-  │       └── PrintService::processQueue()
-  │           └── HTTP POST → Print Server local (127.0.0.1:9100/print)
-  │
-  └── Clicks en "Abrir Caja"
-      └── POST /pos/open-drawer
-          └── Laravel: envía comando ESC/POS → Print Server local
+Laravel Server (HTTP POST /print) ──┐
+                                    ├──→ Print Server (localhost:9100) ──→ Impresora Local
+Browser (fetch localhost:9100) ─────┘       o
+                                           └──→ Impresora de Red (IP:9100)
 ```
 
-**Print Server** (Node.js en `print-server-node/server.js`):
-- Corre en la máquina local del cliente (Windows/Linux/Mac)
-- Recibe datos ESC/POS en base64 vía REST API
-- Envía a impresora local (raw-print.ps1) o a impresora de red (socket TCP)
-- Endpoints: `GET /status`, `GET /printers`, `POST /print`, `POST /print-escpos-text`
-
-**Reintentos automáticos**: el comando `php artisan print:process-queue` se ejecuta cada minuto vía Tarea Programada de Windows (`FacturaFacilScheduler`) para reintentar trabajos fallidos (hasta 3 intentos).
-
----
-
-## Requisitos
-
-- **PHP** 8.2+
-- **MySQL** 8.0+ / MariaDB 10.4+
-- **Composer**
-- **Node.js** 18+ (para Print Server)
-- Extensiones PHP: `openssl`, `xml`, `zip`, `mbstring`, `pdo_mysql`, `curl`
+El Print Server corre en cada máquina cliente (Windows/Linux/Mac). Recibe datos ESC/POS en base64 y los envía a la impresora.
 
 ---
 
 ## Instalación
 
 ```bash
-# 1. Clonar
-git clone <repo-url> facturafacil
-cd facturafacil
-
-# 2. Dependencias PHP
-composer install
-
-# 3. Configurar .env
-cp .env.example .env
-# Editar DB_DATABASE, DB_USERNAME, DB_PASSWORD
-
-# 4. Generar key
-php artisan key:generate
-
-# 5. Migrar y seedear
-php artisan migrate
-php artisan db:seed
-
-# 6. Link storage
-php artisan storage:link
-
-# 7. Print Server (en cada máquina cliente)
 cd print-server-node
 npm install
-node server.js
 ```
 
-### Tarea Programada (Windows)
+### Windows
 
-Se crea automáticamente al ejecutar el comando de activación. Ejecuta `php artisan schedule:run` cada minuto para procesar la cola de impresión.
+Colocar `raw-print.ps1` en la misma carpeta que `server.js`. Requiere PowerShell disponible.
 
----
+### Linux / Mac
 
-## Configuración
-
-### Impresoras
-
-Los slots de impresora se configuran en `/printers`:
-- **Cocina 1** (cocina-1) — Cocina principal
-- **Cocina 2** (cocina-2) — Cocina secundaria
-- **Bar 1** (bar-1) — Barra
-- **Precuenta / Precuenta 2 / Precuenta 3** — Precuentas
-- **Caja** — Cajón registrador + apertura de efectivo
-
-Cada slot permite:
-- Tipo: `local` (USB) o `network` (IP+puerto)
-- Nombre de impresora Windows (para tipo local)
-- IP y puerto (para tipo network, ej: `192.168.1.100:9100`)
-
-### IGV Configurable
-
-En `/companies/{id}/edit`:
-- **General**: IGV 18% (por defecto)
-- **Restaurante**: IGV 10.5% (Ley MYPE)
-- Ambos porcentajes son editables
-
-### Roles y Permisos
-
-En `/roles` se gestionan los roles. Por defecto:
-- **Administrador**: acceso completo
-- **Cajero**: POS, facturación, caja
-- **Mozo**: restaurante, cocina
-- **Usuario**: POS, consultas, sin gestión de caja
+Requiere `lp` o `lpr` instalados (CUPS).
 
 ---
 
 ## Uso
 
-### Restaurante
-1. `/restaurant` — Vista principal con pisos y mesas
-2. Seleccionar mesa → se abre el modal de pedido
-3. Agregar productos desde la lista filtrada por categoría o búsqueda
-4. Enviar a cocina (modo KDS o impresión)
-5. Precuenta → seleccionar impresora
-6. Cobrar → seleccionar cliente, documento, método de pago
-7. Cerrar mesa
-
-### POS
-1. `/pos` — Punto de venta
-2. Seleccionar categoría o buscar producto
-3. Agregar items al carrito
-4. Seleccionar cliente y método de pago
-5. Cobrar → emite comprobante, envía a SUNAT
-
-### KDS (Cocina)
-- `/restaurant/kitchen` — Pantalla de cocina, actualiza automáticamente cada 5s
-- Botones: Marcar Listo / Entregar
-- Alerta sonora al recibir nuevos pedidos
-
----
-
-## Credenciales por Defecto
-
-| Email | Contraseña | Rol |
-|-------|-----------|-----|
-| manager@example.com | adminpass | Administrador |
-| Caja@gmail.com | 222938 | Cajero |
-| mozo@gmail.com | mozo123 | Mozo |
-| demo@example.com | password | Usuario |
-
----
-
-## Comandos Útiles
-
 ```bash
-# Cache
-php artisan cache:clear
-php artisan view:clear
-php artisan config:clear
-
-# Seeders específicos
-php artisan db:seed --class=PrinterSeeder
-php artisan db:seed --class=PermissionsSeeder
-php artisan db:seed --class=UbigeoSeeder
-
-# Cola de impresión
-php artisan print:process-queue
-
-# Programar tareas (Windows)
-schtasks /run /tn "FacturaFacilScheduler"
-
-# Ver rutas
-php artisan route:list
-
-# Optimizar
-php artisan optimize
+node server.js
 ```
 
+Por defecto escucha en `http://0.0.0.0:9100`. Se puede configurar con variables de entorno:
+
+```env
+PORT=9100
+HOST=0.0.0.0
+```
+
+Para producción en Windows, usar `start.bat` (detecta Node, instala dependencias e inicia).
+
 ---
 
-## Licencia
+## Endpoints
 
-MIT
+### `GET /status`
+
+Health check del servidor.
+
+```json
+{
+  "status": "ok",
+  "hostname": "PC-CAJA",
+  "platform": "win32",
+  "node_version": "v18.17.0",
+  "uptime": 3600
+}
+```
+
+### `GET /printers`
+
+Lista impresoras disponibles en el sistema operativo.
+
+```json
+{
+  "success": true,
+  "printers": [
+    { "name": "CocinaLocal", "isDefault": true, "status": "unknown" },
+    { "name": "EPSON TM-T20", "isDefault": false, "status": "unknown" }
+  ]
+}
+```
+
+### `POST /print`
+
+Imprime datos ESC/POS en base64.
+
+**Body:**
+
+```json
+{
+  "printer": "CocinaLocal",
+  "data": "BASE64_DEL_PAYLOAD_ESC_POS",
+  "mode": "escpos",
+  "encoding": "cp850"
+}
+```
+
+- `printer` — nombre de la impresora local (para impresión local)
+- `ip` + `port` — IP y puerto (para impresión de red, ej: `192.168.1.100:9100`)
+- `data` — payload ESC/POS en base64
+- `mode` — `escpos` (por defecto). Activa auto-detección de encoding
+- `encoding` — `cp850` (por defecto)
+
+El servidor detecta si el payload necesita el comando de code page CP850 y lo inserta automáticamente.
+
+### `POST /print-raw`
+
+Imprime texto plano con encoding configurable.
+
+```json
+{
+  "printer": "CocinaLocal",
+  "text": "Señor José\nCafé: $2.50",
+  "encoding": "latin1"
+}
+```
+
+### `POST /print-escpos-text`
+
+El servidor genera el ticket ESC/POS completo desde texto UTF-8.
+
+```json
+{
+  "printer": "CocinaLocal",
+  "text": "Ticket de Venta\nTotal: S/ 25.00",
+  "bold": false,
+  "align": "left",
+  "cut": true,
+  "codePage": "cp850"
+}
+```
+
+Recomendado si solo manejás texto y no querés construir comandos ESC/POS manualmente.
+
+---
+
+## Tipos de Impresión
+
+### Local (USB/Paralelo)
+
+Usa `raw-print.ps1` en Windows para enviar datos RAW directamente al puerto de la impresora.
+
+**Requisito:** `raw-print.ps1` debe estar en la misma carpeta que `server.js`.
+
+### Red (Socket TCP)
+
+Envía datos ESC/POS directamente al puerto 9100 de la impresora de red. Compatible con impresoras Epson, Star, Bixolon, etc. que soporten ESC/POS over TCP.
+
+---
+
+## Encoding: CP850 y Tildes
+
+El servidor maneja automáticamente la codificación CP850 necesaria para impresoras térmicas:
+
+1. Al recibir datos ESC/POS, verifica si falta el comando `ESC t 0x02` (seleccionar code page PC850)
+2. Si falta, lo inserta al inicio
+3. Convierte el texto UTF-8 a CP850 usando `iconv-lite`
+
+Esto asegura que **ñ, tildes y mayúsculas acentuadas** se impriman correctamente en cualquier impresora térmica.
+
+---
+
+## CORS
+
+El servidor incluye CORS habilitado para todos los orígenes, permitiendo que el navegador envíe trabajos de impresión directamente desde una página web servida en otro dominio/IP. Incluye soporte para **Private Network Access** (Chrome 130+) con el header `Access-Control-Allow-Private-Network: true`.
+
+---
+
+## Logging
+
+Los logs se escriben en `print-server.log` en la misma carpeta. Rotación automática cuando supera los 5 MB (se renombra con timestamp).
+
+---
+
+## Scripts Auxiliares
+
+### `raw-print.ps1`
+
+Script PowerShell para impresión RAW en Windows. Envía datos directamente a la impresora usando la API Win32 Raw Printer.
+
+### `start.bat`
+
+Script de inicio para Windows. Detecta Node.js, instala dependencias si es necesario (`npm install`) e inicia el servidor.
+
+---
+
+## Solución de Problemas
+
+| Problema | Causa | Solución |
+|----------|-------|----------|
+| `raw-print.ps1 not found` | El script no está en la carpeta | Copiar `raw-print.ps1` junto a `server.js` |
+| `Connection timeout` | Impresora de red no responde | Verificar IP, puerto y que la impresora esté encendida |
+| Caracteres extraños en ticket | Encoding incorrecto | Usar `mode: "escpos"` para auto-detección |
+| No imprime desde navegador | CORS bloqueado | El servidor ya maneja CORS; verificar que se use `localhost:9100` |
+| OPTIONS request sin POST | Private Network Access | El servidor responde con `Access-Control-Allow-Private-Network: true` |
+
+---
+
+## Puertos
+
+| Puerto | Uso |
+|--------|-----|
+| 9100 | HTTP API del Print Server |
+| 9100+ | Impresoras de red (socket TCP directo) |
+
+---
