@@ -32,36 +32,39 @@ if exist "%STARTUP%\Start Print Server.lnk" (
     set OLD_FOUND=1
 )
 
-if %OLD_FOUND%==1 (
-    echo.
-    echo Se detecto una instalacion anterior.
-    set /p REPLACE="Deseas reemplazarla? (S/N): "
-    if /I "%REPLACE%" NEQ "S" goto CANCEL_REPLACE
+if %OLD_FOUND%==1 goto ASK_REPLACE
+goto CHECK_NODE
 
-    echo.
-    echo [INFO] Eliminando archivos antiguos...
+:ASK_REPLACE
+echo.
+echo Se detecto una instalacion anterior.
+set /p REPLACE="Deseas reemplazarla? (S/N): "
+if /I "%REPLACE%" NEQ "S" goto CANCEL_REPLACE
 
-    if exist "%DESKTOP%\FacturaFacil Print Server.lnk" (
-        del "%DESKTOP%\FacturaFacil Print Server.lnk" >nul 2>nul
-        echo   [OK] Acceso directo nuevo eliminado
-    )
-    if exist "%DESKTOP%\Start Print Server.lnk" (
-        del "%DESKTOP%\Start Print Server.lnk" >nul 2>nul
-        echo   [OK] Acceso directo antiguo eliminado
-    )
-    if exist "%STARTUP%\FacturaFacil Print Server.lnk" (
-        del "%STARTUP%\FacturaFacil Print Server.lnk" >nul 2>nul
-        echo   [OK] Inicio automatico nuevo eliminado
-    )
-    if exist "%STARTUP%\Start Print Server.lnk" (
-        del "%STARTUP%\Start Print Server.lnk" >nul 2>nul
-        echo   [OK] Inicio automatico antiguo eliminado
-    )
+echo.
+echo [INFO] Eliminando archivos antiguos...
 
-    echo [OK] Limpieza completada.
-    echo.
+if exist "%DESKTOP%\FacturaFacil Print Server.lnk" (
+    del "%DESKTOP%\FacturaFacil Print Server.lnk" >nul 2>nul
+    echo   [OK] Acceso directo nuevo eliminado
+)
+if exist "%DESKTOP%\Start Print Server.lnk" (
+    del "%DESKTOP%\Start Print Server.lnk" >nul 2>nul
+    echo   [OK] Acceso directo antiguo eliminado
+)
+if exist "%STARTUP%\FacturaFacil Print Server.lnk" (
+    del "%STARTUP%\FacturaFacil Print Server.lnk" >nul 2>nul
+    echo   [OK] Inicio automatico nuevo eliminado
+)
+if exist "%STARTUP%\Start Print Server.lnk" (
+    del "%STARTUP%\Start Print Server.lnk" >nul 2>nul
+    echo   [OK] Inicio automatico antiguo eliminado
 )
 
+echo [OK] Limpieza completada.
+echo.
+
+:CHECK_NODE
 REM --- Verificar Node.js ---
 node --version >nul 2>nul
 if errorlevel 1 goto NONODE
@@ -87,29 +90,16 @@ exit
 echo [OK] npm encontrado.
 
 REM --- Verificar node_modules ---
-if exist "node_modules" goto CHECK_DEPS
+if not exist "node_modules" goto INSTALL_DEPS
+echo [OK] Dependencias ya instaladas.
+goto CHECK_PS1
+
+:INSTALL_DEPS
 echo.
-echo [INFO] Instalando dependencias por primera vez...
+echo [INFO] Instalando dependencias...
 call npm install
 if errorlevel 1 goto NPMFAIL
 echo [OK] Dependencias instaladas correctamente.
-goto CHECK_PS1
-
-:CHECK_DEPS
-echo.
-echo [INFO] Verificando dependencias instaladas...
-node -e "require('express'); require('cors'); require('iconv-lite');" >nul 2>nul
-if errorlevel 1 (
-    echo [AVISO] Dependencias incompletas o desactualizadas.
-    echo [INFO] Reinstalando...
-    rmdir /s /q "node_modules" >nul 2>nul
-    del "package-lock.json" >nul 2>nul
-    call npm install
-    if errorlevel 1 goto NPMFAIL
-    echo [OK] Dependencias reinstaladas.
-) else (
-    echo [OK] Todas las dependencias estan correctas.
-)
 
 :CHECK_PS1
 echo.
@@ -147,7 +137,7 @@ goto FINISH
 
 :AUTOSTART_YES
 echo [INFO] Configurando inicio automatico minimizado...
-powershell -NoProfile -Command "$s = [Environment]::GetFolderPath('Startup'); $t = Join-Path $s 'FacturaFacil Print Server.lnk'; if (-not (Test-Path $t)) { $WshShell = New-Object -ComObject WScript.Shell; $shortcut = $WshShell.CreateShortcut($t); $shortcut.TargetPath = '%CD%\start-minimized.vbs'; $shortcut.WorkingDirectory = '%CD%'; $shortcut.IconLocation = 'shell32.dll,14'; $shortcut.WindowStyle = 7; $shortcut.Save(); Write-Host '[OK] Inicio automatico configurado (minimizado).' } else { Write-Host '[OK] Ya estaba configurado.' }"
+powershell -NoProfile -Command "$s = [Environment]::GetFolderPath('Startup'); $t = Join-Path $s 'FacturaFacil Print Server.lnk'; if (-not (Test-Path $t)) { $WshShell = New-Object -ComObject WScript.Shell; $shortcut = $WshShell.CreateShortcut($t); $shortcut.TargetPath = '%CD%\start-hidden.vbs'; $shortcut.WorkingDirectory = '%CD%'; $shortcut.IconLocation = 'shell32.dll,14'; $shortcut.WindowStyle = 0; $shortcut.Save(); Write-Host '[OK] Inicio automatico configurado (oculto).' } else { Write-Host '[OK] Ya estaba configurado.' }"
 goto FINISH
 
 :AUTOSTART_NO

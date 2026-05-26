@@ -9,11 +9,11 @@ if (Test-Path $shortcutPath) {
 
 $WshShell = New-Object -ComObject WScript.Shell
 $shortcut = $WshShell.CreateShortcut($shortcutPath)
-$shortcut.TargetPath = Join-Path $scriptDir 'start-minimized.vbs'
+$shortcut.TargetPath = Join-Path $scriptDir 'start-hidden.vbs'
 $shortcut.WorkingDirectory = $scriptDir
 $shortcut.IconLocation = 'shell32.dll,14'
-$shortcut.WindowStyle = 7
-$shortcut.Description = 'FacturaFacil Print Server (minimizado)'
+$shortcut.WindowStyle = 0
+$shortcut.Description = 'FacturaFacil Print Server (oculto, siempre activo)'
 $shortcut.Save()
 
 Write-Host '[OK] Acceso directo creado en el escritorio.'
