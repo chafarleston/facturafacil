@@ -75,44 +75,4 @@
             </div>
         </div>
     </div>
-</div>
-
-<div class="row mt-3">
-    <div class="col-md-12">
-        <div class="card card-secondary">
-            <div class="card-header">
-                <h3 class="card-title">Certificado Digital SUNAT</h3>
-            </div>
-            <div class="card-body">
-                @if($company->certificado_path)
-                <div class="alert alert-success">
-                    <i class="fas fa-check-circle"></i> Certificado cargado: {{ $company->certificado_path }}
-                    @if($company->certificado_vence)
-                    <br><small>Vence: {{ $company->certificado_vence }}</small>
-                    @endif
-                </div>
-                @endif
-
-                <form method="POST" action="{{ route('companies.certificate', $company) }}" enctype="multipart/form-data">
-                    @csrf
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Archivo Certificate (.pfx)</label>
-                                <input type="file" name="certificado" accept=".p12,.pfx" class="form-control">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label>Contraseña del Certificate</label>
-                                <input type="password" name="certificado_password" class="form-control" placeholder="Contraseña">
-                            </div>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> Subir Certificate</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
 @endsection

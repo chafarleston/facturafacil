@@ -87,6 +87,27 @@ public function store(Request $request)
             $data['logo'] = $logoPath;
         }
 
+        if ($request->hasFile('certificado')) {
+            $certPassword = $request->certificado_password;
+            if (!$certPassword) {
+                return back()->withErrors(['certificado_password' => 'Debe ingresar la contraseña del certificado'])->withInput();
+            }
+            try {
+                $certContent = file_get_contents($request->file('certificado')->getRealPath());
+                $certInfo = [];
+                $readResult = @openssl_pkcs12_read($certContent, $certInfo, $certPassword);
+                if (!$readResult) {
+                    return back()->withErrors(['certificado_password' => 'La contraseña del certificado no es correcta'])->withInput();
+                }
+                $filename = $company->ruc . '_certificate.pfx';
+                $path = $request->file('certificado')->storeAs('certificates', $filename);
+                $data['certificado_path'] = 'certificates/' . $filename;
+                $data['certificado_password'] = $certPassword;
+            } catch (\Exception $e) {
+                return back()->withErrors(['certificado' => 'Error al procesar el certificado: ' . $e->getMessage()])->withInput();
+            }
+        }
+
         $company->update($data);
 
         return redirect()->route('companies.show', $company)->with('success', 'Empresa actualizada');

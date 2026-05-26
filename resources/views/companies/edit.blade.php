@@ -175,6 +175,26 @@
                             </div>
                         </div>
                     </div>
+                    <hr>
+                    <div class="form-group">
+                        <label>Certificado Digital SUNAT (.p12 / .pfx)</label>
+                        @if($company->certificado_path)
+                        <div class="alert alert-success py-2 px-3 mb-2">
+                            <i class="fas fa-check-circle"></i> {{ $company->certificado_path }}
+                            @if($company->certificado_vence)
+                            <br><small>Vence: {{ $company->certificado_vence }}</small>
+                            @endif
+                        </div>
+                        @endif
+                        <div class="custom-file">
+                            <input type="file" name="certificado" class="custom-file-input" id="certificadoInput" accept=".p12,.pfx">
+                            <label class="custom-file-label" for="certificadoInput">Seleccionar archivo</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Contraseña del Certificado</label>
+                        <input type="password" name="certificado_password" class="form-control" placeholder="Contraseña del certificado digital">
+                    </div>
                 </div>
             </div>
 
