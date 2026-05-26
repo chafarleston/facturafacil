@@ -163,3 +163,9 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
 require __DIR__.'/auth.php';
 
 Route::post('/logout', [LogoutController::class, 'logout'])->name('logout');
+Route::get('/logout', function () {
+    Auth::logout();
+    request()->session()->invalidate();
+    request()->session()->regenerateToken();
+    return redirect('/');
+})->name('logout.get');
