@@ -38,6 +38,8 @@ class TableController extends Controller
             'name' => ['required', 'max:50', Rule::unique('restaurant_tables')->where(fn($q) => $q->where('floor_id', $request->floor_id))],
             'capacity' => 'nullable|integer|min:1',
             'color' => 'nullable|max:20',
+        ], [
+            'name.unique' => 'Ya existe una mesa con ese nombre en este piso.',
         ]);
 
         $validated['capacity'] = $request->capacity ?? 4;
@@ -63,6 +65,8 @@ class TableController extends Controller
             'capacity' => 'nullable|integer|min:1',
             'color' => 'nullable|max:20',
             'status' => 'nullable|in:AVAILABLE,OCCUPIED,RESERVED',
+        ], [
+            'name.unique' => 'Ya existe una mesa con ese nombre en este piso.',
         ]);
 
         $restaurantTable->update($validated);

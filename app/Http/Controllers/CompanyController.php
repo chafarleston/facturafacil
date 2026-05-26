@@ -72,6 +72,9 @@ public function store(Request $request)
             'tax_type' => 'nullable|in:general,restaurant',
             'igv_percent' => 'nullable|numeric|min:0|max:100',
             'reduced_igv_percent' => 'nullable|numeric|min:0|max:100',
+            'soap_type_id' => 'nullable|in:01,02',
+            'soap_username' => 'nullable|string|max:255',
+            'soap_password' => 'nullable|string|max:255',
         ]);
 
         $data = $validated;

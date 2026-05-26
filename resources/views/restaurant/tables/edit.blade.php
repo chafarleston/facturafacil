@@ -7,6 +7,15 @@
     <div class="card-header">
         <h3 class="card-title">Editar Mesa</h3>
     </div>
+    @if($errors->any())
+    <div class="alert alert-danger m-3">
+        <ul class="mb-0">
+            @foreach($errors->all() as $error)
+            <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+    @endif
     <form action="{{ route('restaurant.tables.update', $restaurantTable) }}" method="POST">
         @csrf @method('PUT')
         <div class="card-body">

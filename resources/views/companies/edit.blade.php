@@ -150,6 +150,34 @@
                 </div>
             </div>
 
+            <div class="card mt-3">
+                <div class="card-header"><h3 class="card-title">Configuración SUNAT</h3></div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Entorno SUNAT</label>
+                        <select name="soap_type_id" class="form-control">
+                            <option value="01" {{ $company->soap_type_id == '01' ? 'selected' : '' }}>Beta (Demo / Pruebas)</option>
+                            <option value="02" {{ $company->soap_type_id == '02' ? 'selected' : '' }}>Producción</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>SOAP Usuario</label>
+                                <input type="text" name="soap_username" class="form-control" value="{{ $company->soap_username }}" placeholder="Ej: 20000000001MODDATOS">
+                                <small class="text-muted">Usuario secundario SUNAT (RUC + nombre de usuario)</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>SOAP Contraseña</label>
+                                <input type="password" name="soap_password" class="form-control" value="{{ $company->soap_password }}" placeholder="Contraseña del usuario secundario">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="form-group">
                 <label>Logo de la Empresa</label>
                 <div class="input-group">
