@@ -589,7 +589,14 @@ class RestaurantController extends Controller
             }
         }
 
-        $order->items()->delete();
+        $items = $order->items;
+        foreach ($items as $item) {
+            $item->cancelled_from = $item->kitchen_status;
+            $item->cancelled_at = now();
+            $item->cancelled_by = auth()->id();
+            $item->kitchen_status = 'CANCELLED';
+            $item->save();
+        }
         $order->update(['status' => 'CANCELLED']);
 
         if ($order->table) {

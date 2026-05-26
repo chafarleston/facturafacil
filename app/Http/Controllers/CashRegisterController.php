@@ -140,7 +140,6 @@ class CashRegisterController extends Controller
             'estado' => 'CERRADA',
             'fecha_cierre' => $fechaCierre,
             'observaciones' => $request->observaciones,
-            'referencia' => $request->referencia,
         ]);
 
         return redirect()->route('cashregisters.show', $caja)
