@@ -1518,6 +1518,11 @@ function showChargeModal() {
     document.getElementById('chargeIgv').textContent = 'S/ ' + (parseFloat(order.igv) || total - total / (1 + igvPercent / 100)).toFixed(2);
     document.getElementById('chargeTotal').textContent = 'S/ ' + total.toFixed(2);
     document.getElementById('btnProcessCharge').innerHTML = '<i class="fas fa-credit-card"></i> COBRAR S/ ' + total.toFixed(2);
+    var defaultCustomer = customersData.find(function(c) { return c.documento_numero === '88888888'; });
+    if (defaultCustomer) {
+        document.getElementById('chargeCustomerId').value = defaultCustomer.id;
+        document.getElementById('chargeCustomerSearch').value = defaultCustomer.nombre;
+    }
     document.getElementById('chargeOverlay').style.display = 'flex';
     updateChargeSerie();
 }
@@ -1606,10 +1611,18 @@ function processCharge() {
         btn.disabled = false;
         if (data.success) {
             closeChargeModal();
-            window.open('/pos/print/' + data.invoice_id + '/80mm', '_blank', 'width=400,height=600');
             document.getElementById('chargeCustomerSearch').value = '';
             document.getElementById('chargeCustomerId').value = '';
-            location.reload();
+            var invoiceId = data.invoice_id;
+            showConfirm('¿Desea imprimir el comprobante?', function() {
+                window.open('/pos/print/' + invoiceId + '/80mm', '_blank', 'width=400,height=600');
+                location.reload();
+            });
+            document.getElementById('confirmCancelBtn').onclick = function() {
+                document.getElementById('confirmOverlay').style.display = 'none';
+                confirmCallback = null;
+                location.reload();
+            };
         } else {
             btn.innerHTML = '<i class="fas fa-credit-card"></i> COBRAR';
             showError(data.message || 'Error al procesar');
