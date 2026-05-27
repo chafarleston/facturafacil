@@ -38,6 +38,7 @@ class UserController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => $validated['role'],
+            'company_id' => \App\Models\Company::getMainCompany()->id ?? \App\Models\Company::first()->id,
         ]);
 
         if (!empty($validated['roles'])) {

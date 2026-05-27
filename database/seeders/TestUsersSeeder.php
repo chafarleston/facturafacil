@@ -57,6 +57,7 @@ class TestUsersSeeder extends Seeder
                 'name' => 'Manager Admin',
                 'password' => Hash::make('adminpass'),
                 'role' => 'admin',
+                'company_id' => $company->id,
             ]
         );
         $this->syncRole($admin, 'admin');
