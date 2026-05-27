@@ -127,7 +127,7 @@ class Company extends Model
     {
         $company = self::where('is_main', true)->first();
         if (!$company) {
-            $company = self::where('estado', 'ACTIVO')->first();
+            $company = self::whereIn('estado', ['ACTIVO', 1])->first();
         }
         return $company;
     }

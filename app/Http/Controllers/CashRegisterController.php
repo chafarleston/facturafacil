@@ -18,7 +18,6 @@ class CashRegisterController extends Controller
         
         $cajaAbierta = CashRegister::where('company_id', $companyId)
             ->where('estado', 'ABIERTA')
-            ->where('user_id', Auth::id())
             ->first();
             
         $cajas = CashRegister::where('company_id', $companyId)
@@ -30,11 +29,17 @@ class CashRegisterController extends Controller
 
     public function open(Request $request)
     {
+        $this->authorize('permission', 'open_cashregister');
+
         $request->validate([
             'monto_apertura' => 'required|numeric|min:0'
         ]);
 
-        $companyId = $request->get('company_id', Auth::user()->company_id ?? \App\Models\Company::getMainCompany()->id);
+        $companyId = $request->get('company_id', Auth::user()->company_id);
+        if (!$companyId) {
+            $mainCompany = \App\Models\Company::where('estado', 'ACTIVO')->orWhere('estado', 1)->first();
+            $companyId = $mainCompany ? $mainCompany->id : \App\Models\Company::first()->id;
+        }
         
         $cajaExistente = CashRegister::where('company_id', $companyId)
             ->where('estado', 'ABIERTA')
@@ -59,6 +64,8 @@ class CashRegisterController extends Controller
 
     public function close(Request $request)
     {
+        $this->authorize('permission', 'close_cashregister');
+
         $request->validate([
             'cashregister_id' => 'required|exists:cashregisters,id',
             'monto_cierre' => 'required|numeric|min:0',

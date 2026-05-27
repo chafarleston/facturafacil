@@ -26,7 +26,6 @@ class PosController extends Controller
         
         $cajaAbierta = CashRegister::where('company_id', $companyId)
             ->where('estado', 'ABIERTA')
-            ->where('user_id', auth()->id())
             ->first();
             
         if (!$cajaAbierta) {
@@ -58,7 +57,6 @@ class PosController extends Controller
         
         $cajaAbierta = CashRegister::where('company_id', $companyId)
             ->where('estado', 'ABIERTA')
-            ->where('user_id', auth()->id())
             ->first();
             
         if (!$cajaAbierta) {
