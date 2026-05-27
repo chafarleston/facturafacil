@@ -303,11 +303,38 @@ class PlainTextTicket
         $t->twoColumns('Yape:', 'S/ ' . number_format($cashregister->ventas_yape, 2));
         $t->twoColumns('Plin:', 'S/ ' . number_format($cashregister->ventas_plin, 2));
         $t->twoColumns('Otro:', 'S/ ' . number_format($cashregister->ventas_otro, 2));
+        if (isset($data['ventasPorMetodo']) && count($data['ventasPorMetodo']) > 0) {
+            $t->separator();
+            $t->center('COMPROBANTES POR MÉTODO PAGO');
+            foreach ($data['ventasPorMetodo'] as $metodo => $docs) {
+                $totalMetodo = collect($docs)->sum('total');
+                $t->twoColumns($metodo . ' (' . count($docs) . ')', 'S/ ' . number_format($totalMetodo, 2));
+                foreach ($docs as $venta) {
+                    $cliente = $venta->customer->nombre ?? 'Varios';
+                    $t->text('  ' . $venta->full_number . ' - ' . $cliente . ' - S/ ' . number_format($venta->total, 2));
+                }
+            }
+        }
+        if (isset($data['categoriasVentas']) && count($data['categoriasVentas']) > 0) {
+            $t->separator();
+            $t->center('POR CATEGORÍA');
+            foreach ($data['categoriasVentas'] as $categoria => $info) {
+                $t->itemLine((string)$info['cantidad'], $categoria, 'S/ ' . number_format($info['total'], 2));
+            }
+        }
+        if (isset($data['productosVendidos']) && count($data['productosVendidos']) > 0) {
+            $t->separator();
+            $t->center('PRODUCTOS VENDIDOS');
+            foreach ($data['productosVendidos'] as $producto => $info) {
+                $t->itemLine((string)$info['cantidad'], $producto, 'S/ ' . number_format($info['total'], 2));
+            }
+        }
         if (isset($data['lineasEliminadas']) && count($data['lineasEliminadas']) > 0) {
             $t->separator();
             $t->center('LÍNEAS ELIMINADAS');
             foreach ($data['lineasEliminadas'] as $item) {
-                $t->text($item->product_name . ' x' . number_format($item->quantity, 0) . ' - ' . ($item->cancelled_at ? $item->cancelled_at->format('H:i') : ''));
+                $user = $item->cancelledBy->name ?? '';
+                $t->text('x' . number_format($item->quantity, 0) . ' - ' . $item->product_name . ' - ' . $user . ' ' . ($item->cancelled_at ? $item->cancelled_at->format('H:i') : ''));
             }
         }
         $t->separator();
