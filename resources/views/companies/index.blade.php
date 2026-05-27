@@ -9,9 +9,6 @@
       <div class="card-header">
         <h3 class="card-title">Lista de Empresas</h3>
         <div class="card-tools">
-          <a href="{{ route('companies.create') }}" class="btn btn-primary btn-sm">
-            <i class="fas fa-plus"></i> Nueva Empresa
-          </a>
           <form action="{{ route('sunat.padron.download') }}" method="POST" style="display:inline;">
             @csrf
             <button type="submit" class="btn btn-info btn-sm" title="Descargar padrón SUNAT">
@@ -51,21 +48,6 @@
                 <a href="{{ route('companies.edit', $company) }}" class="btn btn-warning btn-xs" title="Editar">
                   <i class="fas fa-edit"></i>
                 </a>
-                @if(!$company->is_main)
-                <form action="{{ route('companies.setMain', $company) }}" method="POST" style="display:inline;">
-                  @csrf
-                  <button type="submit" class="btn btn-primary btn-xs" title="Establecer principal" onclick="return confirm('¿Establecer como empresa principal?')">
-                    <i class="fas fa-star"></i>
-                  </button>
-                </form>
-                @endif
-                <form action="{{ route('companies.destroy', $company) }}" method="POST" style="display:inline;">
-                  @csrf
-                  @method('DELETE')
-                  <button type="submit" class="btn btn-danger btn-xs" title="Eliminar" onclick="return confirm('¿Eliminar empresa?')">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </form>
               </td>
             </tr>
             @empty
