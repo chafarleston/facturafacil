@@ -34,7 +34,7 @@ class CashRegisterController extends Controller
             'monto_apertura' => 'required|numeric|min:0'
         ]);
 
-        $companyId = $request->get('company_id', Auth::user()->company_id);
+        $companyId = $request->get('company_id', Auth::user()->company_id ?? \App\Models\Company::getMainCompany()->id);
         
         $cajaExistente = CashRegister::where('company_id', $companyId)
             ->where('estado', 'ABIERTA')
