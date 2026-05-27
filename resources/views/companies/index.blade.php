@@ -1,13 +1,13 @@
 @extends('layouts.admin')
-@section('title', 'Empresas')
-@section('page_title', 'Empresas')
+@section('title', 'Empresa')
+@section('page_title', 'Empresa')
 
 @section('content')
 <div class="row">
   <div class="col-12">
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title">Lista de Empresas</h3>
+        <h3 class="card-title">&nbsp;</h3>
         <div class="card-tools">
           <form action="{{ route('sunat.padron.download') }}" method="POST" style="display:inline;">
             @csrf

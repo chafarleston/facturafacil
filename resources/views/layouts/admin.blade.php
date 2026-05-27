@@ -84,7 +84,7 @@
             <li class="nav-item">
               <a href="#" class="nav-link {{ request()->routeIs('companies.*') || request()->routeIs('series.*') || request()->routeIs('users.*') || request()->routeIs('roles.*') || request()->routeIs('permissions.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-building"></i>
-                <p>Empresas<i class="fas fa-angle-left right"></i></p>
+                <p>Empresa<i class="fas fa-angle-left right"></i></p>
               </a>
               <ul class="nav nav-treeview">
                 <li class="nav-item">
