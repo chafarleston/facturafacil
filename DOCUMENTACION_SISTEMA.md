@@ -185,7 +185,7 @@ codigo_hash (para QR)
 company_id, table_id → tables
 user_id → users
 order_number
-status: OPEN (ABIERTO) | SENT_TO_KITCHEN (ENVIADO A COCINA) | READY (LISTO) | DELIVERED (ENTREGADO) | COMPLETED (COMPLETADO) | CANCELLED (ANULADO)
+status: ABIERTO | ENVIADO A COCINA | LISTO | ENTREGADO | COMPLETADO | ANULADO
 subtotal, igv, total, notes
 ```
 
@@ -195,7 +195,7 @@ subtotal, igv, total, notes
 restaurant_order_id → orders
 product_id → products
 product_name, quantity (decimal), unit_price, total
-kitchen_status: PENDING (PENDIENTE) | SENT (ENVIADO) | READY (LISTO) | DELIVERED (ENTREGADO) | CANCELLED (ANULADO)
+kitchen_status: PENDIENTE | ENVIADO | LISTO | ENTREGADO | ANULADO
 notes, kds_destination
 cancelled_from, cancelled_at, cancelled_by → users
 sent_to_kitchen_at

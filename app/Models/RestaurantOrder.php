@@ -105,4 +105,17 @@ class RestaurantOrder extends Model
         
         return 'P-' . $date . '-' . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
+
+    public function statusLabel(): string
+    {
+        return match($this->status) {
+            'OPEN'              => 'ABIERTO',
+            'SENT_TO_KITCHEN'   => 'ENVIADO A COCINA',
+            'READY'             => 'LISTO',
+            'DELIVERED'         => 'ENTREGADO',
+            'COMPLETED'         => 'COMPLETADO',
+            'CANCELLED'         => 'ANULADO',
+            default             => $this->status,
+        };
+    }
 }

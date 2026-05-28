@@ -74,4 +74,16 @@ class RestaurantOrderItem extends Model
     {
         return $query->where('kitchen_status', 'DELIVERED');
     }
+
+    public function kitchenStatusLabel(): string
+    {
+        return match($this->kitchen_status) {
+            'PENDING'   => 'PENDIENTE',
+            'SENT'      => 'ENVIADO',
+            'READY'     => 'LISTO',
+            'DELIVERED' => 'ENTREGADO',
+            'CANCELLED' => 'ANULADO',
+            default     => $this->kitchen_status,
+        };
+    }
 }
