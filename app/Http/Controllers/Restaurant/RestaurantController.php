@@ -168,6 +168,7 @@ class RestaurantController extends Controller
             $existingItem = RestaurantOrderItem::where('restaurant_order_id', $order->id)
                 ->where('product_id', $product->id)
                 ->where('kitchen_status', 'PENDING')
+                ->where('notes', $validated['notes'] ?? null)
                 ->first();
 
             if ($existingItem) {
