@@ -70,6 +70,12 @@
               <td>
                 <a href="{{ route('products.show', $product) }}" class="btn btn-info btn-xs"><i class="fas fa-eye"></i></a>
                 <a href="{{ route('products.edit', $product) }}" class="btn btn-warning btn-xs"><i class="fas fa-edit"></i></a>
+                <form action="{{ route('products.duplicate', $product) }}" method="POST" style="display:inline;">
+                    @csrf
+                    <button type="submit" class="btn btn-secondary btn-xs" title="Duplicar producto" onclick="return confirm('¿Duplicar este producto?')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </form>
               </td>
             </tr>
             @empty

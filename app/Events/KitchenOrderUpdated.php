@@ -2,15 +2,11 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\Channel;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
 
-class KitchenOrderUpdated implements ShouldBroadcast
+class KitchenOrderUpdated
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable;
 
     public int $companyId;
     public string $type;
@@ -19,17 +15,5 @@ class KitchenOrderUpdated implements ShouldBroadcast
     {
         $this->companyId = $companyId;
         $this->type = $type;
-    }
-
-    public function broadcastOn(): array
-    {
-        return [
-            new Channel('kitchen.' . $this->companyId),
-        ];
-    }
-
-    public function broadcastAs(): string
-    {
-        return 'order.updated';
     }
 }

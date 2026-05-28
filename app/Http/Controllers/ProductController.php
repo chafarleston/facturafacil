@@ -140,6 +140,34 @@ class ProductController extends Controller
         return back()->with('success', 'Producto desactivado');
     }
 
+    public function duplicate(Request $request, Product $product)
+    {
+        $companyId = $product->company_id;
+        $lastProduct = Product::where('company_id', $companyId)->orderBy('id', 'desc')->first();
+        $nextNumber = $lastProduct ? (int)substr($lastProduct->codigo, -5) + 1 : 1;
+        $newCodigo = 'PROD' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
+
+        $duplicate = Product::create([
+            'company_id' => $companyId,
+            'codigo' => $newCodigo,
+            'codigo_barras' => $product->codigo_barras,
+            'descripcion' => $product->descripcion . ' (Duplicado)',
+            'codigo_sunat' => $product->codigo_sunat,
+            'umedida_codigo' => $product->umedida_codigo,
+            'precio' => $product->precio,
+            'precio_minimo' => $product->precio_minimo,
+            'tipo_afectacion' => $product->tipo_afectacion,
+            'igv_percent' => $product->igv_percent,
+            'estado' => 'ACTIVO',
+            'category_id' => $product->category_id,
+            'stock' => 0,
+            'kds_destination' => $product->kds_destination,
+        ]);
+
+        return redirect()->route('products.edit', $duplicate)
+            ->with('success', 'Producto duplicado correctamente. Revise los datos.');
+    }
+
     public function importForm(Request $request)
     {
         $companyId = $request->company_id ?? Company::first()->id;
