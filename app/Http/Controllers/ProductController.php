@@ -35,7 +35,7 @@ class ProductController extends Controller
     {
         $companyId = $request->company_id;
         $lastProduct = Product::where('company_id', $companyId)->orderBy('id', 'desc')->first();
-        $nextNumber = $lastProduct ? (int)substr($lastProduct->codigo, -5) + 1 : 1;
+        $nextNumber = $this->getNextProductCode($companyId);
         $codigo = 'PROD' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
         
         $categories = Category::where('company_id', $companyId)->whereIn('estado', ['ACTIVO', 'ACT'])->get();
@@ -143,8 +143,7 @@ class ProductController extends Controller
     public function duplicate(Request $request, Product $product)
     {
         $companyId = $product->company_id;
-        $lastProduct = Product::where('company_id', $companyId)->orderBy('id', 'desc')->first();
-        $nextNumber = $lastProduct ? (int)substr($lastProduct->codigo, -5) + 1 : 1;
+        $nextNumber = $this->getNextProductCode($companyId);
         $newCodigo = 'PROD' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
 
         $duplicate = Product::create([
@@ -225,9 +224,11 @@ class ProductController extends Controller
             try {
                 $codigo = $colCodigo !== null ? trim($row[$colCodigo] ?? '') : '';
                 if (empty($codigo)) {
-                    $lastProduct = Product::where('company_id', $request->company_id)->orderBy('id', 'desc')->first();
-                    $nextNumber = $lastProduct ? (int)substr($lastProduct->codigo, -5) + 1 : 1;
-                    $codigo = 'PROD' . str_pad($nextNumber + $i, 5, '0', STR_PAD_LEFT);
+                    static $autoCodeStart = null;
+                    if ($autoCodeStart === null) {
+                        $autoCodeStart = $this->getNextProductCode($request->company_id);
+                    }
+                    $codigo = 'PROD' . str_pad($autoCodeStart + $i, 5, '0', STR_PAD_LEFT);
                 }
 
                 $descripcion = trim($row[$colDescripcion] ?? '');
@@ -369,5 +370,14 @@ class ProductController extends Controller
         $writer->save($tempFile);
         
         return response()->download($tempFile, 'plantilla_productos.xlsx')->deleteFileAfterSend(true);
+    }
+
+    private function getNextProductCode(int $companyId): int
+    {
+        $maxCodigo = Product::where('company_id', $companyId)
+            ->where('codigo', 'like', 'PROD%')
+            ->orderByRaw('CAST(SUBSTRING(codigo, 5) AS UNSIGNED) DESC')
+            ->value('codigo');
+        return $maxCodigo ? (int)substr($maxCodigo, -5) + 1 : 1;
     }
 }
