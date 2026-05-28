@@ -10,6 +10,12 @@ class RestaurantOrderItem extends Model
 {
     use HasFactory;
 
+    const PENDING = 'PENDING';       // PENDIENTE
+    const SENT = 'SENT';             // ENVIADO
+    const READY = 'READY';           // LISTO
+    const DELIVERED = 'DELIVERED';   // ENTREGADO
+    const CANCELLED = 'CANCELLED';   // ANULADO
+
     protected $fillable = [
         'restaurant_order_id',
         'product_id',

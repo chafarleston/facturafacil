@@ -11,6 +11,21 @@ class RestaurantOrder extends Model
 {
     use HasFactory;
 
+    // Estados del pedido
+    const STATUS_OPEN = 'OPEN';               // ABIERTO
+    const STATUS_SENT_TO_KITCHEN = 'SENT_TO_KITCHEN'; // ENVIADO A COCINA
+    const STATUS_READY = 'READY';             // LISTO
+    const STATUS_DELIVERED = 'DELIVERED';     // ENTREGADO
+    const STATUS_COMPLETED = 'COMPLETED';     // COMPLETADO
+    const STATUS_CANCELLED = 'CANCELLED';     // ANULADO
+
+    // Estados de items en cocina
+    const ITEM_PENDING = 'PENDING';           // PENDIENTE
+    const ITEM_SENT = 'SENT';                 // ENVIADO
+    const ITEM_READY = 'READY';               // LISTO
+    const ITEM_DELIVERED = 'DELIVERED';       // ENTREGADO
+    const ITEM_CANCELLED = 'CANCELLED';       // ANULADO
+
     protected $fillable = [
         'company_id',
         'table_id',
