@@ -935,10 +935,10 @@ class RestaurantController extends Controller
                     'cantidad' => $item->quantity,
                     'umedida' => 'NIU',
                     'precio_unitario' => round($unitBase, 2),
-                    'precio_venta' => $item->unit_price,
+                    'precio_venta' => $item->unit_price * $item->quantity,
                     'igv' => round($itemIgv, 2),
                     'tipo_afectacion' => '10',
-                    'igv_percent' => round($igvRate * 100),
+                    'igv_percent' => round($igvRate * 100, 2),
                 ]);
                 
                 $product = Product::find($item->product_id);
