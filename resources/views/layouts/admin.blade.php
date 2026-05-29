@@ -89,6 +89,7 @@
               <ul class="nav nav-treeview">
                 <li class="nav-item">
                   <a href="{{ route('companies.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Datos de Empresa</p></a>
+                  <a href="{{ route('backup.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Backup DB</p></a>
                 </li>
                 @can('permission', 'view_series')
                 <li class="nav-item">
