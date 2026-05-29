@@ -849,3 +849,457 @@ curl "http://localhost:9100/open-drawer?ip=192.168.1.100&port=9100"
 | Quick Edit Mode | Modo de consola Windows que congela procesos al hacer clic |
 | Raw Printing | Envío de datos directamente al puerto de la impresora |
 | Drawer Kick | Comando ESC/POS para abrir cajón de efectivo |
+
+---
+
+## 19. Procedimientos Detallados
+
+### 19.1 Instalación del Sistema
+
+```bash
+git clone <repo> facturafacil
+cd facturafacil
+composer install
+cp .env.example .env   # configurar DB
+php artisan key:generate
+php artisan migrate
+php artisan db:seed
+php artisan storage:link
+cd print-server-node
+npm install
+```
+
+En el cliente: `git pull` para actualizar. Los seeders crean empresa demo, usuarios, productos, series, impresoras, ubigeos y cliente por defecto.
+
+---
+
+### 19.2 Ciclo Completo del Pedido (Restaurante)
+
+#### 19.2.1 Abrir Mesa
+
+```
+POST /restaurant/tables/{id}/open
+→ RestaurantController::openTable()
+   1. Busca orden activa para la mesa
+   2. Si existe: la retorna (no duplica)
+   3. Si no: crea RestaurantOrder con order_number (P-YYYYMMDD-NNNN), status OPEN
+   4. Marca mesa como OCCUPIED
+```
+
+#### 19.2.2 Seleccionar Mesa (Frontend)
+
+```
+selectTable(tableId) [JS]:
+   1. Lee data-order-id de la tarjeta de mesa
+   2. Si tiene orden: loadOrder(orderId)
+   3. Si no: openTable(tableId)
+   4. Muestra modal lateral con tabs: Productos | Pedido
+```
+
+#### 19.2.3 Buscar Productos
+
+```
+searchProducts(query) [JS] — filtra productsData en tiempo real:
+   - Letras: busca en descripcion
+   - Números: busca en codigo (código interno)
+   - Compatible con filtro por categoría (ambos se aplican simultáneamente)
+
+filterProducts(categoryId) [JS] — muestra/oculta productos por categoría
+```
+
+#### 19.2.4 Agregar Producto al Pedido
+
+```
+addProductToOrder(productId) [JS] → modal de cantidad + notas
+confirmAddItem() [JS] → POST /restaurant/orders/{id}/items
+→ addItem() [PHP]:
+   1. Valida: product_id existe, quantity ≥ 0.01, notes ≤ 500 chars
+   2. Busca producto y orden
+   3. Busca item existente PENDING con mismo product_id Y misma nota
+   4. Si existe: suma cantidad
+   5. Si no: crea nuevo item con product_name, quantity, unit_price (=product.precio),
+      total = unit_price × quantity, kitchen_status = PENDING, kds_destination
+   6. Recalcula totales vía updateOrderTotals()
+```
+
+#### 19.2.5 Modificar Item
+
+```
+PUT /restaurant/orders/items/{id}
+→ updateItem() [PHP]:
+   1. Si quantity_delta: suma/resta (mínimo 0.1)
+   2. Si quantity: establece cantidad exacta
+   3. Si notes: actualiza notas
+   4. Recalcula total = quantity × unit_price
+   5. Recalcula totales de la orden
+```
+
+#### 19.2.6 Eliminar Item (Anular)
+
+```
+DELETE /restaurant/orders/items/{id}
+→ removeItem() [PHP]:
+   1. Si el item está SENT/READY/DELIVERED: requiere admin_password
+   2. Verifica contraseña con Hash::check()
+   3. cancelled_from = estado actual (ej: SENT)
+   4. cancelled_at = now()
+   5. cancelled_by = auth()->id()
+   6. kitchen_status = CANCELLED
+   7. Si modo impresión: genera ticket de anulación
+   8. Si todos los items cancelados: orden → CANCELLED, mesa → AVAILABLE
+```
+
+#### 19.2.7 Enviar a Cocina
+
+```
+sendToKitchen() [JS] → confirmación → POST
+→ sendToKitchen() [PHP]:
+   1. Obtiene items PENDING
+   2. Cada item: kitchen_status = SENT, sent_to_kitchen_at = now()
+   3. Asigna kds_destination desde producto
+   4. Orden: status = SENT_TO_KITCHEN
+   5. Si modo impresión: genera tickets ESC/POS agrupados por destino
+      (cocina-1, cocina-2, bar-1) con: *** COCINA *** + pedido, mesa, hora, items
+   6. Cache: marca actualización para polling
+```
+
+#### 19.2.8 KDS (Kitchen Display System)
+
+```
+Vista: GET /restaurant/kitchen
+Polling: setInterval(loadKitchenOrders, 5000)
+
+loadKitchenOrders() [JS]:
+   1. GET /restaurant/kitchen-orders?_=timestamp&kds={cocina|cocina2|bar}
+   2. Agrupa órdenes: OPEN (Pendientes), SENT_TO_KITCHEN (Enviados), READY (Listos)
+   3. Renderiza tarjetas con pedido, mesa, hora, mozo e items
+   4. Alerta sonora si hay nuevos pedidos
+
+Marcar LISTO:
+POST /restaurant/kitchen/{orderId}/ready → markKitchenReady()
+   → Todos los items SENT/PENDING → READY, orden → READY
+
+Marcar ENTREGADO:
+POST /restaurant/kitchen/{orderId}/deliver → deliverKitchenOrder()
+   → Todos los items SENT/READY → DELIVERED, orden → DELIVERED
+```
+
+#### 19.2.9 Cobrar Pedido
+
+```
+showChargeModal() [JS]:
+   - Cliente por defecto: "Clientes Varios" (DNI 88888888)
+   - Totales con IGV dinámico
+   - Botón: "COBRAR S/ xxx.xx"
+
+processCharge() [JS] → POST /restaurant/orders/{id}/charge
+→ chargeOrder() [PHP]:
+   1. Verifica: usuario no mozo
+   2. Verifica: caja abierta en la empresa
+   3. Verifica: orden no OPEN, tiene items
+   4. Obtiene IGV rate: $company->getIgvRate()
+   5. Busca/crea Serie para el tipo de documento
+   6. Calcula: subtotal = total / (1 + igvRate), igv = total - subtotal
+   7. Crea Invoice con tipo_documento, serie, número, fechas, montos
+   8. Por cada item del pedido crea InvoiceItem:
+      - precio_unitario = round(unit_price / (1 + igvRate), 2)  ← sin IGV
+      - precio_venta = unit_price × quantity  ← con IGV × cantidad
+      - igv_percent = round(igvRate × 100, 2)  ← con 2 decimales
+   9. Descuenta stock (permite negativo)
+   10. Incrementa serie
+   11. Orden → COMPLETED, mesa → AVAILABLE
+   12. Actualiza caja registradora
+   13. Responde: { success, invoice_id, full_number, total }
+
+Respuesta [JS]:
+   showConfirm("¿Desea imprimir el comprobante?")
+   - Sí: window.open /pos/print/{invoice_id}/80mm → recarga
+   - No: solo recarga
+```
+
+#### 19.2.10 Precuenta
+
+```
+showPrebillOptions(event) [JS] → overlay modal con 3 opciones:
+   - Precuenta (precuenta)
+   - Precuenta 2 (precuenta2)
+   - Precuenta 3 (precuenta3)
+
+printPrebillTo(printerKey) [JS]:
+   POST /restaurant/orders/{id}/print-prebill/{key}
+   → printPrebillTo() [PHP]: genera ticket ESC/POS con cabecera + items + IGV dinámico
+```
+
+#### 19.2.11 Anular Pedido Completo
+
+```
+cancelOrder() [JS] → confirmación → POST /restaurant/orders/{id}/cancel
+→ cancelOrder() [PHP]:
+   1. Verifica: usuario no mozo
+   2. Si tiene items SENT/READY/DELIVERED: requiere admin_password
+   3. Por cada item:
+      - cancelled_from = kitchen_status actual
+      - cancelled_at = now(), cancelled_by = auth()->id()
+      - kitchen_status = CANCELLED
+   4. Orden → CANCELLED, mesa → AVAILABLE
+   5. Los items aparecen en "Líneas Eliminadas" del reporte de caja
+```
+
+#### 19.2.12 Mover Mesa
+
+```
+showMoveTableModal() [JS]:
+   - Lista todas las mesas de todos los pisos (excluye actual)
+   - Muestra estado: Disponible (verde) / Ocupada (amarillo)
+   - Clic en mesa destino → confirmación
+
+selectMoveTable(targetTableId) [JS]:
+   POST /restaurant/orders/{id}/move-table
+   → moveTable() [PHP]:
+   1. Valida: mesa destino sin pedido activo
+   2. Cambia table_id de la orden
+   3. Mesa anterior → AVAILABLE (si no tiene otras órdenes activas)
+   4. Mesa nueva → OCCUPIED
+```
+
+---
+
+### 19.3 POS (Punto de Venta)
+
+```
+Vista: GET /pos → verifica caja abierta (sin filtrar por usuario)
+   - Búsqueda por nombre o código de barras (letras→descripción, números→código_barras)
+   - Carrito de compras
+   - Selector: cliente, tipo documento (Boleta/Factura/NV), método de pago
+
+Procesar venta:
+POST /pos → PosController::store()
+   1. Verifica caja abierta
+   2. Obtiene: customer_id, document_type, payment_method, items del JSON
+   3. Busca/crea serie + número correlativo
+   4. Calcula IGV dinámico
+   5. Crea Invoice + InvoiceItems
+   6. Descuenta stock
+   7. Actualiza caja registradora
+   8. Redirige a página de éxito
+
+Abrir cajón de efectivo:
+POST /pos/open-drawer → devuelve { data: base64, printer, ip, port, type }
+   JS envía fetch a http://localhost:9100/print (mode: no-cors, form-urlencoded)
+```
+
+---
+
+### 19.4 Caja Registradora
+
+#### 19.4.1 Abrir Caja
+
+```
+POST /cashregister/open
+→ open() [PHP]:
+   1. Autoriza: permiso open_cashregister
+   2. Obtiene company_id (request > user > empresa principal)
+   3. Verifica que no haya otra caja abierta en la empresa
+   4. Crea registro con: monto_apertura, referencia, user_id, fecha_apertura, estado=ABIERTA
+```
+
+#### 19.4.2 Cerrar Caja
+
+```
+POST /cashregister/close
+→ close() [PHP]:
+   1. Autoriza: permiso close_cashregister
+   2. Valida: monto_cierre requerido
+   3. Verifica: caja no esté ya cerrada
+   4. Verifica: no mesas abiertas en restaurante
+   5. Obtiene ventas del periodo filtrando por datetime exacto:
+      CONCAT(fecha_emision, ' ', hora_emision) BETWEEN apertura AND cierre
+   6. Calcula totales por método de pago (Efectivo, Tarjeta, Yape, Plin, Otro)
+   7. Calcula totales por tipo documento (Facturas, Boletas, NV)
+   8. Actualiza registro con todos los montos + estado CERRADA
+   9. Redirige a resumen
+```
+
+#### 19.4.3 Reporte de Líneas Eliminadas
+
+```
+Se generan desde restaurant_order_items con:
+   - kitchen_status = CANCELLED
+   - cancelled_from IN (SENT, READY, DELIVERED)
+   - cancelled_at BETWEEN fecha_apertura AND fecha_cierre
+
+Muestra: x{cantidad} - {producto} - {usuario que canceló} {hora}
+```
+
+---
+
+### 19.5 Facturación Electrónica SUNAT
+
+```
+Crear factura/boleta/NV:
+POST /invoices → InvoiceController::store()
+   1. Valida tipo_documento, serie, cliente, items
+   2. Factura (01): cliente debe tener RUC 11 dígitos
+   3. Boleta (03): acepta DNI o RUC
+   4. Por cada item: precio_venta = cantidad × precio_con_igv
+   5. Crea Invoice + InvoiceItems con IGV dinámico
+
+Enviar a SUNAT:
+GET /invoices/{id}/send
+→ GreenterService::sendInvoice($invoice)
+   1. Carga empresa (certificado .p12 + SOAP credentials)
+   2. Construye XML firmado con Greenter
+   3. Envía vía SOAP según entorno (Beta/Producción)
+   4. Recibe CDR, extrae digest value
+   5. Genera PDF con código QR
+   6. Actualiza estado del comprobante
+
+PDF: GET /invoices/{id}/pdf → A4
+Ticket: GET /invoices/{id}/ticket → 80mm
+Nota de Crédito: GET/POST /invoices/{id}/credit-note
+```
+
+---
+
+### 19.6 Productos
+
+```
+Crear: GET /products/create → genera código PRODxxxxx automático
+Store: POST /products/store → guarda con validaciones (código unique, precio min 0)
+
+Duplicar:
+POST /products/{id}/duplicate
+→ duplicate() [PHP]:
+   1. Genera nuevo código (getNextProductCode() busca el número más alto)
+   2. Copia todos los campos excepto:
+      - código: nuevo secuencial
+      - descripción: original + " (Duplicado)"
+      - stock: 0
+   3. Redirige a edición del duplicado
+
+Importar desde Excel:
+POST /products/import → ProductController::importStore()
+   1. Lee archivo .xlsx/.xls/.csv
+   2. Detecta columnas por nombre (codigo, descripcion, precio, stock, etc.)
+   3. Por cada fila: crea producto o salta si ya existe
+   4. Crea categorías automáticamente si no existen
+   5. Reporta: creados, omitidos, errores
+```
+
+---
+
+### 19.7 Compras
+
+```
+Vista: GET /purchases
+Crear: GET /purchases/create → formulario
+   - Búsqueda de productos en tiempo real (código o descripción)
+   - Proveedor, tipo documento, fecha
+
+POST /purchases → PurchaseController::store()
+   1. Valida tipo_documento, proveedor, fecha
+   2. Por cada item:
+      - Incrementa stock: $product->stock += $cantidad
+      - Crea PurchaseItem
+   3. Crea Purchase
+```
+
+---
+
+### 19.8 Dashboard
+
+```
+GET /dashboard → DashboardController::index()
+   - Ventas del mes (SUM de invoices, excluye NV)
+   - Crecimiento vs mes anterior (%)
+   - Total documentos, Aceptados SUNAT, Pendientes
+   - Distribución: Facturas, Boletas, NV
+   - Gráfico de ventas diarias últimos 30 días
+   - Top 5 productos más vendidos del mes
+   - Últimos 10 documentos emitidos
+```
+
+---
+
+### 19.9 Impresión (Server-Side)
+
+#### 19.9.1 Arquitectura
+
+```
+Controlador PHP → PrintService::printXxx()
+   → queuePrint(): crea PrintJob (status: pending)
+   → processQueue(): envía HTTP POST a localhost:9100/print
+
+Tarea programada (cada 1 min):
+php artisan print:process-queue
+   → Busca PrintJobs con status pending/failed (intentos < 3)
+   → Envía al Print Server
+   → Éxito: status = completed | Falla: status = failed
+```
+
+#### 19.9.2 Print Server (Node.js - localhost:9100)
+
+```
+server.js — Express en puerto 9100:
+   - CORS para todos los orígenes + Private Network Access
+   - Disable Quick Edit Mode (evita congelamiento al hacer clic)
+   - Auto-reinicio en caso de fallo (loop en start.bat)
+
+Recepción: { printer: "EPSON", data: "BASE64", mode: "escpos" }
+Opción local (USB): powershell raw-print.ps1 -printerName "EPSON" -filePath "temp.bin"
+Opción red: socket TCP a IP:9100 con datos raw
+Encoding: detecta UTF-8, convierte a CP850, inserta ESC t 0x02
+```
+
+#### 19.9.3 Formatos de Tickets (PlainTextTicket)
+
+| Método | Contenido |
+|--------|-----------|
+| `kitchenTicket()` | **COCINA** + pedido, mesa, hora, items |
+| `prebillTicket()` | **PRECUENTA** + items, subtotal, IGV dinámico, total |
+| `cancelNotificationGrouped()` | **ANULACIÓN COCINA** + items + usuario |
+| `invoiceTicket()` | Factura completa para impresora |
+| `cashRegisterSummary()` | Resumen completo de caja |
+
+---
+
+### 19.10 Polling (Tiempo Real sin WebSocket)
+
+```
+Restaurante:  pollActiveOrders() [JS] → cada 3s
+KDS:           loadKitchenOrders() [JS] → cada 5s
+Print Server:  pollPrintServer() [JS] → cada 10s
+
+Cache usado para señalización:
+   kitchen_updated_{companyId} = timestamp
+   restaurant_updated_{companyId} = timestamp
+```
+
+---
+
+### 19.11 Eventos
+
+```
+KitchenOrderUpdated:
+   - Se dispara via event() en todos los métodos que modifican pedidos
+   - Ya no implementa ShouldBroadcast (eliminado para evitar error de conexión)
+   - El polling del frontend es el único mecanismo de tiempo real
+```
+
+---
+
+### 19.12 Seeders (Datos Iniciales)
+
+```
+php artisan db:seed → ejecuta en orden:
+
+1. AdminUserSeeder     → Empresa demo + usuarios admin
+2. SuperAdminSeeder    → Cajero (Caja@gmail.com / 222938)
+3. TestUsersSeeder     → Usuarios demo (admin, mozo, user)
+4. SeriesSeeder        → F001, B001, NV01, FC01, BC01, FD01, BD01
+5. SunatProductSeeder  → Productos de ejemplo
+6. PermissionsSeeder   → 50 permisos + roles (admin, mozo, cajero, user)
+7. PrinterSeeder       → 7 slots de impresora
+8. UbigeoSeeder        → 1874 registros de ubigeos
+9. CustomerSeeder      → "Clientes Varios" (DNI 88888888)
+```
