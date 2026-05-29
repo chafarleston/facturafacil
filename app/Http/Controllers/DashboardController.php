@@ -15,10 +15,10 @@ class DashboardController extends Controller
         $companyId = \App\Models\Company::getMainCompany()->id;
         
         $stats = [
-            'total' => Invoice::where('company_id', $companyId)->where('tipo_documento', '!=', 'NV')->count(),
+            'total' => Invoice::where('company_id', $companyId)->count(),
             'aceptados' => Invoice::where('company_id', $companyId)->where('sunat_estado', 'ACEPTADO')->count(),
             'pendientes' => Invoice::where('company_id', $companyId)->whereIn('sunat_estado', ['PENDIENTE', 'ENVIADO'])->count(),
-            'total_ventas' => Invoice::where('company_id', $companyId)->where('tipo_documento', '!=', 'NV')->where('sunat_estado', '!=', 'ANULADO')->sum('total'),
+            'total_ventas' => Invoice::where('company_id', $companyId)->where('sunat_estado', '!=', 'ANULADO')->sum('total'),
             'facturas' => Invoice::where('company_id', $companyId)->where('tipo_documento', '01')->count(),
             'boletas' => Invoice::where('company_id', $companyId)->where('tipo_documento', '03')->count(),
             'notas_venta' => Invoice::where('company_id', $companyId)->where('tipo_documento', 'NV')->count(),
@@ -31,7 +31,6 @@ class DashboardController extends Controller
             $fecha = Carbon::now()->subDays($i);
             $ventas = Invoice::where('company_id', $companyId)
                 ->whereDate('fecha_emision', $fecha)
-                ->where('tipo_documento', '!=', 'NV')
                 ->where('sunat_estado', '!=', 'ANULADO')
                 ->sum('total');
             
@@ -47,7 +46,6 @@ class DashboardController extends Controller
             $fecha = Carbon::now()->subDays($i);
             $ventas = Invoice::where('company_id', $companyId)
                 ->whereDate('fecha_emision', $fecha)
-                ->where('tipo_documento', '!=', 'NV')
                 ->where('sunat_estado', '!=', 'ANULADO')
                 ->sum('total');
             
@@ -62,7 +60,6 @@ class DashboardController extends Controller
             ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
             ->join('products', 'invoice_items.product_id', '=', 'products.id')
             ->where('invoices.company_id', $companyId)
-            ->where('invoices.tipo_documento', '!=', 'NV')
             ->whereMonth('invoices.fecha_emision', Carbon::now()->month)
             ->selectRaw('products.descripcion, SUM(invoice_items.cantidad) as total_vendido, SUM(invoice_items.precio_venta) as total_monto')
             ->groupBy('products.descripcion')
