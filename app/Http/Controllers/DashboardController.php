@@ -80,13 +80,11 @@ class DashboardController extends Controller
 
         $currentMonthSales = Invoice::where('company_id', $companyId)
             ->whereBetween('fecha_emision', [$startOfMonth, $endOfMonth])
-            ->where('tipo_documento', '!=', 'NV')
             ->where('sunat_estado', '!=', 'ANULADO')
             ->sum('total');
 
         $prevMonthSales = Invoice::where('company_id', $companyId)
             ->whereBetween('fecha_emision', [$startOfPrevMonth, $endOfPrevMonth])
-            ->where('tipo_documento', '!=', 'NV')
             ->where('sunat_estado', '!=', 'ANULADO')
             ->sum('total');
 
@@ -96,18 +94,15 @@ class DashboardController extends Controller
 
         $stats['total'] = Invoice::where('company_id', $companyId)
             ->whereBetween('fecha_emision', [$startOfMonth, $endOfMonth])
-            ->where('tipo_documento', '!=', 'NV')
             ->count();
 
         $stats['aceptados'] = Invoice::where('company_id', $companyId)
             ->whereBetween('fecha_emision', [$startOfMonth, $endOfMonth])
-            ->where('tipo_documento', '!=', 'NV')
             ->where('sunat_estado', 'ACEPTADO')
             ->count();
 
         $stats['pendientes'] = Invoice::where('company_id', $companyId)
             ->whereBetween('fecha_emision', [$startOfMonth, $endOfMonth])
-            ->where('tipo_documento', '!=', 'NV')
             ->whereIn('sunat_estado', ['PENDIENTE', 'ENVIADO'])
             ->count();
 
