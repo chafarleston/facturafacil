@@ -35,6 +35,9 @@
           <a href="{{ route('products.import.form', ['company_id' => $companyId ?? null]) }}" class="btn btn-success btn-sm ml-1">
             <i class="fas fa-file-import"></i> Importar
           </a>
+          <a href="{{ route('products.export', ['company_id' => $companyId ?? null]) }}" class="btn btn-info btn-sm ml-1">
+            <i class="fas fa-file-export"></i> Exportar
+          </a>
         </div>
       </div>
       <div class="card-body table-responsive p-0">

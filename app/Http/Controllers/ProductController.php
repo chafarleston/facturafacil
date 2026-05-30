@@ -337,39 +337,56 @@ class ProductController extends Controller
 
     public function downloadTemplate()
     {
+        return $this->exportSpreadsheet([
+            ['codigo', 'codigo_barras', 'descripcion', 'precio', 'stock', 'tipo_afectacion', 'umedida', 'categoria', 'codigo_sunat', 'kds_destination'],
+        ], 'plantilla_productos.xlsx');
+    }
+
+    public function export(Request $request)
+    {
+        $companyId = $request->company_id ?? Company::first()->id;
+        $products = Product::with('category')
+            ->where('company_id', $companyId)
+            ->where('estado', '!=', 'INACTIVO')
+            ->orderBy('descripcion')
+            ->get();
+
+        $data = [['Código', 'Cód. Barras', 'Descripción', 'Categoría', 'Precio', 'Stock', 'Tipo', 'U.Medida', 'IGV %', 'Destino KDS', 'Estado']];
+
+        foreach ($products as $p) {
+            $data[] = [
+                $p->codigo,
+                $p->codigo_barras ?? '',
+                $p->descripcion,
+                $p->category->nombre ?? '',
+                $p->precio,
+                $p->stock,
+                $p->tipo_afectacion ?? 'GRA',
+                $p->umedida_codigo ?? 'NIU',
+                $p->igv_percent,
+                $p->kds_destination ?? '',
+                $p->estado,
+            ];
+        }
+
+        return $this->exportSpreadsheet($data, 'productos_' . now()->format('Ymd_His') . '.xlsx');
+    }
+
+    private function exportSpreadsheet(array $data, string $filename)
+    {
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-        
-        $headers = ['codigo', 'codigo_barras', 'descripcion', 'precio', 'stock', 'tipo_afectacion', 'umedida', 'categoria', 'codigo_sunat', 'kds_destination'];
-        $sheet->fromArray($headers, null, 'A1');
-        
-        $sampleData = [
-            ['PROD00001', '7501234567890', 'Producto de ejemplo 1', 100.00, 50, 'GRA', 'NIU', 'Bebidas', '53121801', 'cocina'],
-            ['PROD00002', '7501234567891', 'Galletas de chocolate', 75.50, 30, 'GRA', 'NIU', 'Alimentos', '53121605', 'cocina'],
-            ['PROD00003', '', 'Jugo de naranja 1L', 45.00, 100, 'GRA', 'NIU', 'Bebidas', '51121701', 'cocina2'],
-            ['PROD00004', '', 'Cerveza artesanal', 35.00, 60, 'GRA', 'NIU', 'Bebidas', '51111702', 'bar'],
-            ['PROD00005', '', 'Servicio de diseño web', 200.00, 0, 'GRA', 'NIU', 'Servicios', '', 'cocina'],
-        ];
-        
-        $row = 2;
-        foreach ($sampleData as $data) {
-            $col = 'A';
-            foreach ($data as $value) {
-                $sheet->setCellValue($col . $row, $value);
-                $col++;
-            }
-            $row++;
-        }
-        
-        foreach (range('A', 'J') as $col) {
+        $sheet->fromArray($data, null, 'A1');
+
+        foreach (range('A', 'K') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
-        
+
         $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
-        $tempFile = tempnam(sys_get_temp_dir(), 'template');
+        $tempFile = tempnam(sys_get_temp_dir(), 'export');
         $writer->save($tempFile);
-        
-        return response()->download($tempFile, 'plantilla_productos.xlsx')->deleteFileAfterSend(true);
+
+        return response()->download($tempFile, $filename)->deleteFileAfterSend(true);
     }
 
     private function getNextProductCode(int $companyId): int
