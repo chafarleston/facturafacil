@@ -10,8 +10,10 @@ use App\Models\Product;
 use App\Models\Serie;
 use App\Services\GreenterService;
 use App\Services\SunatService;
+use App\Services\Pro51ApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use NumberFormatter;
 
 class InvoiceController extends Controller
@@ -231,6 +233,22 @@ class InvoiceController extends Controller
 
         $invoice->load('customer');
 
+        $autoPrint = false;
+        if ($company->facturacion_mode === 'api_externa' && $tipoDoc !== 'NV') {
+            try {
+                $this->sendToPro51($invoice, $company);
+                $invoice->refresh();
+                if ($invoice->sunat_estado === 'ACEPTADO') {
+                    $autoPrint = true;
+                }
+            } catch (\Exception $e) {
+                Log::error('pro51 send error', [
+                    'invoice_id' => $invoice->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         $responseData = [
             'success' => true,
             'invoice' => [
@@ -247,12 +265,207 @@ class InvoiceController extends Controller
             ],
         ];
 
+        if ($autoPrint || ($responseDataPro51 ?? null)) {
+            $responseData['pro51'] = $responseDataPro51 ?? [];
+        }
+
         if ($request->expectsJson()) {
             return response()->json($responseData);
         }
 
         return redirect()->route('invoices.show', $invoice)
-            ->with('success', 'Documento creado: ' . $invoice->full_number);
+            ->with('success', 'Documento creado: ' . $invoice->full_number)
+            ->with('auto_print', $autoPrint);
+    }
+
+    public function sendToPro51(Invoice $invoice, Company $company): void
+    {
+        try {
+            $api = new Pro51ApiService($company);
+            $config = $company;
+
+            $serie = match ($invoice->tipo_documento) {
+                '01' => $config->pro51_series_invoice ?? 'F001',
+                '03' => $config->pro51_series_receipt ?? 'B001',
+                default => $invoice->serie,
+            };
+
+            $igvPercent = $company->getActiveIgvPercent();
+            $items = [];
+
+            foreach ($invoice->items as $item) {
+                $priceWithIgv = (float) $item->precio_venta;
+                $quantity = (float) $item->cantidad;
+                $unitPrice = $priceWithIgv / $quantity;
+                $unitValue = round($unitPrice / (1 + $igvPercent / 100), 2);
+
+                $totalBaseIgv = round($unitValue * $quantity, 2);
+                $totalIgv = (float) $item->igv;
+
+                $items[] = [
+                    'codigo_interno' => $item->codigo,
+                    'descripcion' => $item->descripcion,
+                    'unidad_de_medida' => $item->umedida ?? 'NIU',
+                    'cantidad' => $quantity,
+                    'valor_unitario' => $unitValue,
+                    'codigo_tipo_precio' => '01',
+                    'precio_unitario' => $unitPrice,
+                    'codigo_tipo_afectacion_igv' => Pro51ApiService::getIgvTypeCode($item->tipo_afectacion),
+                    'total_base_igv' => $totalBaseIgv,
+                    'porcentaje_igv' => $igvPercent,
+                    'total_igv' => $totalIgv,
+                    'total_impuestos' => $totalIgv,
+                    'total_valor_item' => $totalBaseIgv,
+                    'total_item' => $priceWithIgv,
+                ];
+            }
+
+            $customer = $invoice->customer;
+            $docTypeMap = ['6' => '6', '1' => '1', '4' => '4', '7' => '7', '0' => '0'];
+            $customerDocType = $docTypeMap[$customer?->documento_tipo] ?? '6';
+
+            $fechaEmision = $invoice->fecha_emision instanceof \Carbon\Carbon
+                ? $invoice->fecha_emision
+                : \Carbon\Carbon::parse($invoice->fecha_emision);
+
+            $fechaVencimiento = $invoice->fecha_vencimiento instanceof \Carbon\Carbon
+                ? $invoice->fecha_vencimiento
+                : ($invoice->fecha_vencimiento ? \Carbon\Carbon::parse($invoice->fecha_vencimiento) : null);
+
+            $horaEmision = $invoice->hora_emision instanceof \Carbon\Carbon
+                ? $invoice->hora_emision->format('H:i:s')
+                : ($invoice->hora_emision ?? now()->format('H:i:s'));
+
+            $data = [
+                'serie_documento' => $serie,
+                'numero_documento' => '#',
+                'fecha_de_emision' => $fechaEmision->format('Y-m-d'),
+                'hora_de_emision' => $horaEmision,
+                'codigo_tipo_documento' => $invoice->tipo_documento,
+                'codigo_tipo_moneda' => $invoice->moneda ?? 'PEN',
+                'factor_tipo_de_cambio' => 1,
+                'codigo_tipo_operacion' => $config->pro51_operation_type ?? '0101',
+                'fecha_de_vencimiento' => $fechaVencimiento?->format('Y-m-d') ?? $fechaEmision->format('Y-m-d'),
+
+                'datos_del_cliente_o_receptor' => [
+                    'codigo_tipo_documento_identidad' => $customerDocType,
+                    'numero_documento' => $customer?->documento_numero ?? '00000000',
+                    'apellidos_y_nombres_o_razon_social' => $customer?->nombre ?? 'CLIENTE VARIOS',
+                    'nombre_comercial' => $customer?->nombre ?? '',
+                    'codigo_pais' => 'PE',
+                    'ubigeo' => $customer?->ubigeo ?? '',
+                    'direccion' => $customer?->direccion ?? '',
+                    'correo_electronico' => $customer?->email ?? '',
+                    'telefono' => $customer?->telefono ?? '',
+                ],
+
+                'items' => $items,
+
+                'totales' => [
+                    'total_operaciones_gravadas' => (float) $invoice->gravado,
+                    'total_operaciones_inafectas' => (float) ($invoice->inafecto ?? 0),
+                    'total_operaciones_exoneradas' => (float) ($invoice->exonerado ?? 0),
+                    'total_igv' => (float) $invoice->igv,
+                    'total_valor' => (float) $invoice->gravado,
+                    'total_venta' => (float) $invoice->total,
+                    'total_impuestos' => (float) $invoice->igv,
+                ],
+
+                'pagos' => [
+                    [
+                        'codigo_metodo_pago' => Pro51ApiService::getPaymentMethodCode($invoice->metodo_pago),
+                        'codigo_destino_pago' => 'cash',
+                        'monto' => (float) $invoice->total,
+                    ],
+                ],
+            ];
+
+            $response = $api->createDocument($data);
+
+            if ($response['success'] ?? false) {
+                $pro51Data = $response['data'] ?? [];
+
+                $pro51FullNumber = $pro51Data['number'] ?? '';
+                $parts = explode('-', $pro51FullNumber);
+                $realNumber = (int) ($parts[1] ?? 0);
+
+                $updateData = [
+                    'pro51_external_id' => $pro51Data['external_id'] ?? null,
+                    'pro51_response' => json_encode($response),
+                    'pro51_pdf_url' => $response['links']['pdf'] ?? null,
+                    'pro51_xml_url' => $response['links']['xml'] ?? null,
+                    'pro51_cdr_url' => $response['links']['cdr'] ?? null,
+                    'pro51_ticket_url' => $pro51Data['print_ticket'] ?? null,
+                    'pro51_sent_at' => now(),
+                ];
+
+                if (isset($pro51Data['state_type_id'])) {
+                    $stateMap = [
+                        '01' => 'PENDIENTE',
+                        '03' => 'ENVIADO',
+                        '05' => 'ACEPTADO',
+                        '07' => 'OBSERVADO',
+                        '09' => 'RECHAZADO',
+                        '11' => 'ANULADO',
+                        '13' => 'ANULADO',
+                    ];
+                    $updateData['sunat_estado'] = $stateMap[$pro51Data['state_type_id']] ?? 'PENDIENTE';
+                }
+
+                if ($realNumber > 0) {
+                    $updateData['numero'] = $realNumber;
+                    \App\Models\Serie::where('company_id', $company->id)
+                        ->where('serie', $serie)
+                        ->where('numero_actual', '<', $realNumber)
+                        ->update(['numero_actual' => $realNumber]);
+                }
+
+                if (isset($pro51Data['hash'])) {
+                    $updateData['codigo_hash'] = $pro51Data['hash'];
+                }
+
+                try {
+                    $invoice->update($updateData);
+                } catch (\Exception $e) {
+                    Log::error('pro51 update invoice failed', [
+                        'invoice_id' => $invoice->id,
+                        'update_data' => $updateData,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            } else {
+                $errMsg = $response['message'] ?? 'Error en pro51';
+                $invoice->update([
+                    'pro51_response' => json_encode($response),
+                    'sunat_estado' => 'PENDIENTE',
+                    'sunat_description' => mb_substr($errMsg, 0, 250),
+                ]);
+
+                Log::error('pro51 document creation failed', [
+                    'invoice_id' => $invoice->id,
+                    'response' => $response,
+                ]);
+            }
+        } catch (\Exception $e) {
+            $errMsg = $e->getMessage();
+            Log::error('pro51 exception', [
+                'invoice_id' => $invoice->id,
+                'error' => $errMsg,
+            ]);
+
+            try {
+                $invoice->update([
+                    'pro51_response' => json_encode(['error' => $errMsg]),
+                    'sunat_estado' => 'PENDIENTE',
+                    'sunat_description' => mb_substr($errMsg, 0, 250),
+                ]);
+            } catch (\Exception $inner) {
+                Log::error('pro51 update error', [
+                    'invoice_id' => $invoice->id,
+                    'error' => $inner->getMessage(),
+                ]);
+            }
+        }
     }
 
     public function show(Invoice $invoice)

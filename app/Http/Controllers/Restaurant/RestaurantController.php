@@ -946,7 +946,9 @@ class RestaurantController extends Controller
                     $product->decrement('stock', $item->quantity);
                 }
             }
-            
+
+            // pro51: el envío asíncrono se maneja desde /pro51/pending
+
             $serie->increment('numero_actual');
             
             $order->status = 'COMPLETED';

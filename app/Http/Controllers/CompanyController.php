@@ -75,9 +75,24 @@ public function store(Request $request)
             'soap_type_id' => 'nullable|in:01,02',
             'soap_username' => 'nullable|string|max:255',
             'soap_password' => 'nullable|string|max:255',
+            'facturacion_mode' => 'nullable|in:propio,api_externa',
+            'pro51_url' => 'nullable|string|max:500',
+            'pro51_token' => 'nullable|string|max:255',
+            'pro51_establishment_code' => 'nullable|string|size:4',
+            'pro51_series_invoice' => 'nullable|string|size:4',
+            'pro51_series_receipt' => 'nullable|string|size:4',
+            'pro51_operation_type' => 'nullable|string|size:4',
         ]);
 
         $data = $validated;
+
+        if ($request->facturacion_mode === 'api_externa' && !$company->pro51_activated_at) {
+            $data['pro51_activated_at'] = now();
+        } elseif ($request->facturacion_mode !== 'api_externa') {
+            $data['pro51_url'] = null;
+            $data['pro51_token'] = null;
+            $data['pro51_activated_at'] = null;
+        }
         
         if ($request->hasFile('logo')) {
             if ($company->logo) {

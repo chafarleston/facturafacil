@@ -18,7 +18,9 @@ class Invoice extends Model
         'sunat_response', 'sunat_estado', 'sunat_ticket', 'sunat_cdr',
         'sunat_serie', 'sunat_numero', 'sunat_fecha',
         'sunat_code', 'sunat_description', 'xml_firmado', 'estado_sunat',
-        'metodo_pago', 'referencia_pago', 'exclude_from_totals'
+        'metodo_pago', 'referencia_pago', 'exclude_from_totals',
+        'pro51_external_id', 'pro51_response', 'pro51_pdf_url',
+        'pro51_xml_url', 'pro51_cdr_url', 'pro51_ticket_url', 'pro51_sent_at'
     ];
 
     public function company()

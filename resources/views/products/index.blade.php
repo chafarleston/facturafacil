@@ -38,6 +38,12 @@
           <a href="{{ route('products.export', ['company_id' => $companyId ?? null]) }}" class="btn btn-info btn-sm ml-1">
             <i class="fas fa-file-export"></i> Exportar
           </a>
+            @php $_mainCompany = \App\Models\Company::getMainCompany(); @endphp
+            @if($_mainCompany && ($_mainCompany->facturacion_mode ?? 'propio') === 'api_externa')
+            <button id="syncAllPro51" class="btn btn-primary btn-sm ml-1">
+              <i class="fas fa-cloud-upload-alt"></i> Sincronizar todos
+            </button>
+          @endif
         </div>
       </div>
       <div class="card-body table-responsive p-0">
@@ -50,6 +56,7 @@
               <th>Categoría</th>
               <th>Precio</th>
               <th>Stock</th>
+              <th>pro51</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -71,6 +78,13 @@
                 @endif
               </td>
               <td>
+                @if($product->pro51_synced_at)
+                  <span class="badge bg-success" title="Sincronizado {{ $product->pro51_synced_at->diffForHumans() }}">OK</span>
+                @else
+                  <span class="badge bg-secondary">Pendiente</span>
+                @endif
+              </td>
+              <td>
                 <a href="{{ route('products.show', $product) }}" class="btn btn-info btn-xs"><i class="fas fa-eye"></i></a>
                 <a href="{{ route('products.edit', $product) }}" class="btn btn-warning btn-xs"><i class="fas fa-edit"></i></a>
                 <form action="{{ route('products.duplicate', $product) }}" method="POST" style="display:inline;">
@@ -79,10 +93,15 @@
                         <i class="fas fa-copy"></i>
                     </button>
                 </form>
+                @if($_mainCompany && ($_mainCompany->facturacion_mode ?? 'propio') === 'api_externa' && !$product->pro51_synced_at)
+                    <button class="btn btn-success btn-xs sync-pro51-btn" data-id="{{ $product->id }}" title="Sincronizar con pro51">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </button>
+                @endif
               </td>
             </tr>
             @empty
-            <tr><td colspan="7" class="text-center">No hay productos</td></tr>
+            <tr><td colspan="8" class="text-center">No hay productos</td></tr>
             @endforelse
           </tbody>
         </table>
@@ -92,3 +111,71 @@
   </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.querySelectorAll('.sync-pro51-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const id = this.dataset.id;
+        const originalHtml = this.innerHTML;
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+        fetch('/pro51/products/' + id + '/sync', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const row = this.closest('tr');
+                const statusCell = row.querySelector('td:nth-child(7)');
+                statusCell.innerHTML = '<span class="badge bg-success">OK</span>';
+                this.remove();
+            } else {
+                alert('Error: ' + (data.message || 'Error desconocido'));
+                this.disabled = false;
+                this.innerHTML = originalHtml;
+            }
+        })
+        .catch(err => {
+            alert('Error de conexión');
+            this.disabled = false;
+            this.innerHTML = originalHtml;
+        });
+    });
+});
+
+const syncAllBtn = document.getElementById('syncAllPro51');
+if (syncAllBtn) {
+    syncAllBtn.addEventListener('click', function() {
+        if (!confirm('¿Sincronizar todos los productos pendientes con pro51?')) return;
+        const originalHtml = this.innerHTML;
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
+
+        fetch('{{ route("pro51.products.sync-all") }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ company_id: '{{ $companyId ?? "" }}' })
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message || 'Sincronización completada');
+            location.reload();
+        })
+        .catch(err => {
+            alert('Error de conexión');
+            this.disabled = false;
+            this.innerHTML = originalHtml;
+        });
+    });
+}
+</script>
+@endpush
