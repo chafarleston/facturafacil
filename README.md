@@ -8,11 +8,12 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 
 ### Facturación Electrónica SUNAT
 - Emisión de **Facturas** (01), **Boletas** (03), **Notas de Venta** (NV), **Notas de Crédito** (07), **Notas de Débito** (08)
-- Envío automático a SUNAT vía Greenter
+- Envío automático a SUNAT vía Greenter (propio) o **API externa pro51**
 - Firma digital con certificado .p12
 - PDF en formato A4 y Ticket 80mm con código QR
 - Descarga de XML firmado y CDR
 - Series configurables por tipo de documento
+- **Integración pro51**: modo híbrido que permite elegir entre facturación propia (Greenter) o externa (pro51) por empresa. Incluye sincronización de productos, series y cola de reintentos.
 
 ### POS (Punto de Venta)
 - Interfaz simplificada para ventas rápidas
@@ -70,6 +71,14 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 ### Compras
 - Búsqueda de productos en **tiempo real** al agregar items (letras → descripción, números → código)
 - Gestión de proveedores
+
+### Consumo Interno (Salidas de Stock)
+- Registro de consumos de cocina sin generar venta (mermas, degustaciones, consumo interno)
+- Soporte para cantidades fraccionarias (gramos, kilogramos)
+- **Stock convertible a decimal**: los productos manejan stock con 4 decimales
+- Historial completo con stock antes/después por cada producto
+- Anulación con reincorporación automática al stock
+- Visualización de registros anulados en rojo (soft delete)
 
 ---
 
@@ -141,6 +150,35 @@ php artisan storage:link
 cd print-server-node
 npm install
 ```
+
+### Instalación en Linux (VPS)
+
+```bash
+# Permisos de directorios
+chmod -R 775 storage bootstrap/cache
+chown -R www-data:www-data storage bootstrap/cache
+
+# Permisos para mpdf (generación de PDFs)
+chmod -R 775 vendor/mpdf/mpdf/ttfontdata
+# Si el error persiste, agregar en public/index.php:
+# define('_MPDF_TTFONDTADATAPATH', base_path('storage/fonts/'));
+mkdir -p storage/fonts
+chmod -R 775 storage/fonts
+
+# Cola de impresión (programar en crontab)
+# Ejecutar: crontab -e
+# Agregar: * * * * * cd /ruta/del/proyecto && php artisan schedule:run >> /dev/null 2>&1
+
+# Queue worker (para jobs asíncronos)
+# Ejecutar en segundo plano: nohup php artisan queue:work --queue=default --tries=3 --timeout=120 > storage/logs/queue.log 2>&1 &
+
+# Optimización para producción
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
+
+> **Nota**: El error `mkdir(): Permission denied` en `vendor/mpdf/mpdf/src/Cache.php` es común en servidores Linux nuevos. Se soluciona con los comandos `chmod` indicados arriba.
 
 ### Iniciar Print Server (Windows)
 
@@ -261,6 +299,10 @@ php artisan db:seed --class=UbigeoSeeder
 
 # Cola de impresión
 php artisan print:process-queue
+
+# pro51 (facturación externa)
+php artisan pro51:sync-products          # Sincronizar productos
+php artisan pro51:retry-pending          # Reintentar comprobantes pendientes
 
 # Programar tareas (Windows)
 schtasks /run /tn "FacturaFacilScheduler"
