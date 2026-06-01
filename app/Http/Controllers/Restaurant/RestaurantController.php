@@ -694,7 +694,6 @@ class RestaurantController extends Controller
             ob_end_clean();
         }
         
-        $lastOrderCount = -1;
         $lastStatusChange = null;
         $lastCheck = time();
         $lastCacheKey = 'kitchen_updated_' . $companyId;
@@ -707,29 +706,11 @@ class RestaurantController extends Controller
             $currentTime = time();
             $currentCache = Cache::get($lastCacheKey);
             
-            $orders = RestaurantOrder::where('company_id', $companyId)
-                ->whereIn('status', ['OPEN', 'SENT_TO_KITCHEN', 'READY'])
-                ->whereHas('items', function($q) use ($kds) {
-                    $q->whereIn('kitchen_status', ['SENT', 'READY'])
-                      ->where('kds_destination', $kds);
-                })
-                ->with(['items' => function($q) use ($kds) {
-                    $q->whereIn('kitchen_status', ['SENT', 'READY', 'CANCELLED'])
-                      ->where('kds_destination', $kds);
-                }, 'table.floor', 'user'])
-                ->orderBy('created_at', 'asc')
-                ->get();
-            
             $shouldSend = false;
             
             if ($currentCache !== $lastStatusChange) {
                 $shouldSend = true;
                 $lastStatusChange = $currentCache;
-            }
-            
-            if ($orders->count() !== $lastOrderCount) {
-                $shouldSend = true;
-                $lastOrderCount = $orders->count();
             }
             
             if ($currentTime - $lastCheck >= 5) {
@@ -738,6 +719,19 @@ class RestaurantController extends Controller
             }
             
             if ($shouldSend) {
+                $orders = RestaurantOrder::where('company_id', $companyId)
+                    ->whereIn('status', ['OPEN', 'SENT_TO_KITCHEN', 'READY'])
+                    ->whereHas('items', function($q) use ($kds) {
+                        $q->whereIn('kitchen_status', ['SENT', 'READY'])
+                          ->where('kds_destination', $kds);
+                    })
+                    ->with(['items' => function($q) use ($kds) {
+                        $q->whereIn('kitchen_status', ['SENT', 'READY', 'CANCELLED'])
+                          ->where('kds_destination', $kds);
+                    }, 'table.floor', 'user'])
+                    ->orderBy('created_at', 'asc')
+                    ->get();
+                
                 $formattedOrders = $orders->map(function($order) {
                     return [
                         'id' => $order->id,
@@ -767,7 +761,7 @@ class RestaurantController extends Controller
                 flush();
             }
             
-            usleep(1000000);
+            usleep(3000000);
         }
         
         return response()->json(['success' => true]);
