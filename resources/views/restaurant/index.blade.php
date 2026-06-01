@@ -326,6 +326,7 @@
     
     .btn-kitchen { background: #ff9800; color: white; }
     .btn-print { background: #17a2b8; color: white; }
+    .btn-send { background: #ffc107; color: #212529; }
     .btn-close-order { background: #28a745; color: white; }
     .btn-cancel-order { background: #dc3545; color: white; }
     .btn-move { background: #6f42c1; color: white; }
@@ -568,11 +569,11 @@
     
     <div class="modal-actions">
         @if($orderMode === 'print')
-        <button class="btn-action btn-print" onclick="sendToKitchen()"><i class="fas fa-print"></i><br>Imprimir</button>
+        <button class="btn-action btn-send" onclick="sendToKitchen()"><i class="fas fa-paper-plane"></i><br>Enviar</button>
         <button class="btn-action btn-prebill" onclick="showPrebillOptions(event)" id="btnPrebill" disabled><i class="fas fa-receipt"></i><br>Precuenta</button>
         @else
         <button class="btn-action btn-kitchen" onclick="sendToKitchen()"><i class="fas fa-paper-plane"></i><br>Cocina</button>
-        <button class="btn-action btn-print" onclick="printKitchenTicket()"><i class="fas fa-print"></i><br>Imprimir</button>
+        <button class="btn-action btn-send" onclick="printKitchenTicket()"><i class="fas fa-paper-plane"></i><br>Enviar</button>
         <button class="btn-action btn-prebill" onclick="showPrebillOptions(event)" id="btnPrebill" disabled><i class="fas fa-receipt"></i><br>Precuenta</button>
         <button class="btn-action btn-close-order" onclick="closeTable()"><i class="fas fa-check"></i><br>Cerrar</button>
         @endif
