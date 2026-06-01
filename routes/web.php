@@ -9,6 +9,7 @@ use App\Http\Controllers\SerieController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\StockOutputController;
 use App\Http\Controllers\CashRegisterController;
 use App\Http\Controllers\CustomerApiController;
 use App\Http\Controllers\DecolectaController;
@@ -77,6 +78,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('categories', CategoryController::class);
         Route::resource('suppliers', SupplierController::class);
         Route::resource('purchases', PurchaseController::class);
+        Route::resource('stock-outputs', StockOutputController::class);
         Route::resource('cashregisters', CashRegisterController::class);
         Route::get('/cashregisters/{cashregister}/pdf', [CashRegisterController::class, 'pdf'])->name('cashregisters.pdf');
         Route::get('/cashregisters/{cashregister}/ticket', [CashRegisterController::class, 'ticketPdf'])->name('cashregisters.ticket');

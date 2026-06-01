@@ -170,6 +170,7 @@
                 @can('permission', 'view_suppliers')
                 <li class="nav-item"><a href="{{ route('suppliers.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Proveedores</p></a></li>
                 @endcan
+                <li class="nav-item"><a href="{{ route('stock-outputs.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Consumo Interno</p></a></li>
               </ul>
             </li>
             @endcan

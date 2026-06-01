@@ -17,7 +17,7 @@ class Product extends Model
     ];
 
     protected $casts = [
-        'stock' => 'integer',
+        'stock' => 'decimal:4',
     ];
 
     public function company()
