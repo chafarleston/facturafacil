@@ -116,12 +116,33 @@ class CashRegisterController extends Controller
 
         foreach ($ventas as $v) {
             $metodo = $v->metodo_pago ?? 'EFECTIVO';
-            
-            if ($metodo === 'EFECTIVO') $efectivo += $v->total;
-            elseif ($metodo === 'TARJETA') $tarjeta += $v->total;
-            elseif ($metodo === 'YAPE') $yape += $v->total;
-            elseif ($metodo === 'PLIN') $plin += $v->total;
-            else $otro += $v->total;
+
+            if (str_contains($metodo, ' + ')) {
+                $parts = explode(' + ', $metodo);
+                foreach ($parts as $part) {
+                    $part = trim($part);
+                    if (str_contains($part, '/')) {
+                        [$met, $amt] = explode('/', $part);
+                        $amt = (float) $amt;
+                    } else {
+                        $met = $part;
+                        $amt = $v->total / count($parts);
+                    }
+                    match ($met) {
+                        'EFECTIVO' => $efectivo += $amt,
+                        'TARJETA' => $tarjeta += $amt,
+                        'YAPE' => $yape += $amt,
+                        'PLIN' => $plin += $amt,
+                        default => $otro += $amt,
+                    };
+                }
+            } else {
+                if ($metodo === 'EFECTIVO') $efectivo += $v->total;
+                elseif ($metodo === 'TARJETA') $tarjeta += $v->total;
+                elseif ($metodo === 'YAPE') $yape += $v->total;
+                elseif ($metodo === 'PLIN') $plin += $v->total;
+                else $otro += $v->total;
+            }
 
             if ($v->tipo_documento === '01') {
                 $facturas++;
@@ -197,11 +218,33 @@ class CashRegisterController extends Controller
         
         foreach ($ventas as $venta) {
             $metodo = $venta->metodo_pago ?? 'EFECTIVO';
-            if ($metodo === 'EFECTIVO') $ventasEfectivo += $venta->total;
-            elseif ($metodo === 'TARJETA') $ventasTarjeta += $venta->total;
-            elseif ($metodo === 'YAPE') $ventasYape += $venta->total;
-            elseif ($metodo === 'PLIN') $ventasPlin += $venta->total;
-            else $ventasOtro += $venta->total;
+
+            if (str_contains($metodo, ' + ')) {
+                $parts = explode(' + ', $metodo);
+                foreach ($parts as $part) {
+                    $part = trim($part);
+                    if (str_contains($part, '/')) {
+                        [$met, $amt] = explode('/', $part);
+                        $amt = (float) $amt;
+                    } else {
+                        $met = $part;
+                        $amt = $venta->total / count($parts);
+                    }
+                    match ($met) {
+                        'EFECTIVO' => $ventasEfectivo += $amt,
+                        'TARJETA' => $ventasTarjeta += $amt,
+                        'YAPE' => $ventasYape += $amt,
+                        'PLIN' => $ventasPlin += $amt,
+                        default => $ventasOtro += $amt,
+                    };
+                }
+            } else {
+                if ($metodo === 'EFECTIVO') $ventasEfectivo += $venta->total;
+                elseif ($metodo === 'TARJETA') $ventasTarjeta += $venta->total;
+                elseif ($metodo === 'YAPE') $ventasYape += $venta->total;
+                elseif ($metodo === 'PLIN') $ventasPlin += $venta->total;
+                else $ventasOtro += $venta->total;
+            }
             
             foreach ($venta->items as $item) {
                 $categoriaNombre = $item->product && $item->product->category 
@@ -283,10 +326,23 @@ class CashRegisterController extends Controller
 
         foreach ($ventas as $venta) {
             $metodo = $venta->metodo_pago ?? 'Efectivo';
-            if (!isset($ventasPorMetodo[$metodo])) {
-                $ventasPorMetodo[$metodo] = [];
+
+            if (str_contains($metodo, ' + ')) {
+                $parts = explode(' + ', $metodo);
+                foreach ($parts as $part) {
+                    $part = trim($part);
+                    $met = str_contains($part, '/') ? explode('/', $part)[0] : $part;
+                    if (!isset($ventasPorMetodo[$met])) {
+                        $ventasPorMetodo[$met] = [];
+                    }
+                    $ventasPorMetodo[$met][] = $venta;
+                }
+            } else {
+                if (!isset($ventasPorMetodo[$metodo])) {
+                    $ventasPorMetodo[$metodo] = [];
+                }
+                $ventasPorMetodo[$metodo][] = $venta;
             }
-            $ventasPorMetodo[$metodo][] = $venta;
 
             foreach ($venta->items as $item) {
                 $categoriaNombre = $item->product && $item->product->category 

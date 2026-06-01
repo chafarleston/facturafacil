@@ -861,7 +861,7 @@ class RestaurantController extends Controller
             
             $customerId = $request->customer_id;
             $documentType = $request->document_type ?? 'NV';
-            $paymentMethod = $request->payment_method ?? 'EFECTIVO';
+            $payments = $request->payments ?? [['method' => 'EFECTIVO', 'amount' => $total]];
             $reference = $request->reference ?? '';
             
             $serie = Serie::where('company_id', $companyId)
@@ -913,7 +913,7 @@ class RestaurantController extends Controller
                 'total' => round($total, 2),
                 'subtotal' => round($subtotal, 2),
                 'total_letras' => $this->numberToWords(round($total, 2)) . ' SOLES',
-                'metodo_pago' => $paymentMethod,
+                'metodo_pago' => collect($payments)->map(fn($p) => $p['method'] . '/' . $p['amount'])->implode(' + '),
                 'referencia_pago' => $reference,
                 'sunat_estado' => 'PENDIENTE',
                 'estado' => 'ACTIVO',
@@ -972,14 +972,19 @@ class RestaurantController extends Controller
             $cajaAbierta->cantidad_ventas = ($cajaAbierta->cantidad_ventas ?? 0) + 1;
             $cajaAbierta->total_ventas = ($cajaAbierta->total_ventas ?? 0) + round($total, 2);
             
-            $paymentField = match($paymentMethod) {
-                'EFECTIVO' => 'ventas_efectivo',
-                'TARJETA' => 'ventas_tarjeta',
-                'YAPE' => 'ventas_yape',
-                'PLIN' => 'ventas_plin',
-                default => 'ventas_otro',
-            };
-            $cajaAbierta->$paymentField = ($cajaAbierta->$paymentField ?? 0) + round($total, 2);
+            $totalPagado = collect($payments)->sum('amount');
+            $vuelto = max(0, $totalPagado - $total);
+
+            foreach ($payments as $payment) {
+                $paymentField = match($payment['method']) {
+                    'EFECTIVO' => 'ventas_efectivo',
+                    'TARJETA' => 'ventas_tarjeta',
+                    'YAPE' => 'ventas_yape',
+                    'PLIN' => 'ventas_plin',
+                    default => 'ventas_otro',
+                };
+                $cajaAbierta->$paymentField = ($cajaAbierta->$paymentField ?? 0) + $payment['amount'];
+            }
             $cajaAbierta->save();
 
             return response()->json([
@@ -988,6 +993,7 @@ class RestaurantController extends Controller
                 'full_number' => $fullNumber,
                 'total' => round($total, 2),
                 'document_type' => $documentType,
+                'vuelto' => $vuelto,
             ]);
         } catch (\Exception $e) {
             return response()->json([

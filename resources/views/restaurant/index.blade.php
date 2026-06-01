@@ -650,9 +650,20 @@
             <div style="flex:1;"><label>Tipo Documento</label><select id="chargeDocumentType" class="form-control form-control-sm" onchange="updateChargeSerie()"><option value="03">BOLETA</option><option value="01">FACTURA</option><option value="NV" selected>NOTA DE VENTA</option></select></div>
             <div style="flex:1;"><label>Serie</label><input type="text" id="chargeSerieDisplay" class="form-control form-control-sm" readonly disabled></div>
         </div>
-        <div style="display:flex; gap:8px; margin-bottom:12px;">
-            <div style="flex:1;"><label>Método de Pago</label><select id="chargePaymentMethod" class="form-control form-control-sm"><option value="EFECTIVO">EFECTIVO</option><option value="TARJETA">TARJETA</option><option value="TRANSFERENCIA">TRANSFERENCIA</option><option value="YAPE">YAPE</option><option value="PLIN">PLIN</option><option value="MIXTO">MIXTO</option></select></div>
-            <div style="flex:1;"><label>Referencia</label><input type="text" id="chargeReference" class="form-control form-control-sm" placeholder="N° operación"></div>
+        <div style="margin-bottom:8px;">
+            <label style="font-size:12px; font-weight:600; color:#444;">Referencia</label>
+            <input type="text" id="chargeReference" class="form-control form-control-sm" placeholder="N° operación (opcional)">
+        </div>
+        <div style="margin-bottom:10px;">
+            <label style="font-size:12px; font-weight:600; color:#444;">Métodos de Pago</label>
+            <div id="paymentsContainer"></div>
+            <button type="button" class="btn btn-link btn-sm" onclick="addPaymentRow()" style="padding:4px 0;">
+                <i class="fas fa-plus"></i> Agregar otro método
+            </button>
+            <div style="display:flex; justify-content:flex-end; gap:15px; font-weight:bold; margin-top:6px; font-size:13px;">
+                <span>Pendiente: S/ <span id="pendingAmount" style="color:#dc3545;">0.00</span></span>
+                <span>Vuelto: S/ <span id="chargeVuelto" style="color:#28a745;">0.00</span></span>
+            </div>
         </div>
         <div style="border-top:2px solid #eee; padding-top:12px; margin-bottom:15px;">
             <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;"><span>Subtotal:</span><span id="chargeSubtotal">S/ 0.00</span></div>
@@ -1518,7 +1529,8 @@ function showChargeModal() {
     document.getElementById('chargeSubtotal').textContent = 'S/ ' + (parseFloat(order.subtotal) || total / (1 + igvPercent / 100)).toFixed(2);
     document.getElementById('chargeIgv').textContent = 'S/ ' + (parseFloat(order.igv) || total - total / (1 + igvPercent / 100)).toFixed(2);
     document.getElementById('chargeTotal').textContent = 'S/ ' + total.toFixed(2);
-    document.getElementById('btnProcessCharge').innerHTML = '<i class="fas fa-credit-card"></i> COBRAR S/ ' + total.toFixed(2);
+    document.getElementById('paymentsContainer').innerHTML = '';
+    addPaymentRow(total);
     var defaultCustomer = customersData.find(function(c) { return c.documento_numero === '88888888'; });
     if (defaultCustomer) {
         document.getElementById('chargeCustomerId').value = defaultCustomer.id;
@@ -1526,6 +1538,57 @@ function showChargeModal() {
     }
     document.getElementById('chargeOverlay').style.display = 'flex';
     updateChargeSerie();
+}
+
+function addPaymentRow(amount) {
+    const container = document.getElementById('paymentsContainer');
+    const row = document.createElement('div');
+    row.className = 'payment-row';
+    row.style.cssText = 'display:flex; gap:6px; margin-bottom:5px; align-items:center;';
+    row.innerHTML = `
+        <select class="payment-method form-control form-control-sm" style="flex:1;">
+            <option value="EFECTIVO">EFECTIVO</option>
+            <option value="TARJETA">TARJETA</option>
+            <option value="YAPE">YAPE</option>
+            <option value="PLIN">PLIN</option>
+            <option value="TRANSFERENCIA">TRANSFERENCIA</option>
+        </select>
+        <input type="number" class="payment-amount form-control form-control-sm" style="flex:1;" step="0.01" min="0" placeholder="Monto" oninput="updatePaymentSummary()">
+        <button type="button" class="btn btn-danger btn-sm" onclick="removePaymentRow(this)" style="width:30px;height:30px;padding:0;">×</button>
+    `;
+    if (amount && amount > 0) {
+        row.querySelector('.payment-amount').value = parseFloat(amount).toFixed(2);
+    }
+    container.appendChild(row);
+    updatePaymentSummary();
+}
+
+function removePaymentRow(btn) {
+    if (document.querySelectorAll('.payment-row').length <= 1) return;
+    btn.closest('.payment-row').remove();
+    updatePaymentSummary();
+}
+
+function updatePaymentSummary() {
+    const total = parseFloat(document.getElementById('chargeTotal').textContent.replace('S/ ', '')) || 0;
+    const amounts = document.querySelectorAll('.payment-amount');
+    let sum = 0;
+    amounts.forEach(function(inp) { sum += parseFloat(inp.value) || 0; });
+    const pending = Math.max(0, total - sum);
+    const vuelto = Math.max(0, sum - total);
+    document.getElementById('pendingAmount').textContent = pending.toFixed(2);
+    document.getElementById('chargeVuelto').textContent = vuelto.toFixed(2);
+    const btn = document.getElementById('btnProcessCharge');
+    if (pending === 0 && sum > 0) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-credit-card"></i> COBRAR S/ ' + total.toFixed(2);
+    } else if (sum === 0) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-credit-card"></i> COBRAR S/ ' + total.toFixed(2);
+    } else {
+        btn.disabled = true;
+        btn.innerHTML = 'Faltan S/ ' + pending.toFixed(2);
+    }
 }
 
 function closeChargeModal() {
@@ -1603,7 +1666,16 @@ function processCharge() {
         body: JSON.stringify({
             customer_id: document.getElementById('chargeCustomerId').value,
             document_type: document.getElementById('chargeDocumentType').value,
-            payment_method: document.getElementById('chargePaymentMethod').value,
+            payments: (function() {
+                var rows = document.querySelectorAll('.payment-row');
+                var arr = [];
+                rows.forEach(function(r) {
+                    var m = r.querySelector('.payment-method').value;
+                    var a = parseFloat(r.querySelector('.payment-amount').value) || 0;
+                    if (a > 0) arr.push({ method: m, amount: a });
+                });
+                return arr;
+            })(),
             reference: document.getElementById('chargeReference').value,
         })
     })
@@ -1615,7 +1687,10 @@ function processCharge() {
             document.getElementById('chargeCustomerSearch').value = '';
             document.getElementById('chargeCustomerId').value = '';
             var invoiceId = data.invoice_id;
-            showConfirm('¿Desea imprimir el comprobante?', function() {
+            var vuelto = data.vuelto || 0;
+            var msg = 'Total: S/ ' + data.total.toFixed(2);
+            if (vuelto > 0) msg += '\nVuelto: S/ ' + vuelto.toFixed(2);
+            showConfirm(msg + '\n\n¿Desea imprimir el comprobante?', function() {
                 window.open('/pos/print/' + invoiceId + '/80mm', '_blank', 'width=400,height=600');
                 location.reload();
             });
