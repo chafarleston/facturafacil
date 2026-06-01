@@ -48,7 +48,7 @@ class RestaurantController extends Controller
             ->with(['tables' => function($q) {
                 $q->with(['orders' => function($oq) {
                     $oq->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
-                       ->with('items');
+                       ->withCount('items');
                 }]);
             }])
             ->get();
