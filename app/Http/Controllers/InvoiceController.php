@@ -303,7 +303,7 @@ class InvoiceController extends Controller
                 $totalIgv = (float) $item->igv;
 
                 $items[] = [
-                    'codigo_interno' => $item->codigo,
+                    'codigo_interno' => $item->codigo ?: ('item_' . $item->product_id),
                     'descripcion' => $item->descripcion,
                     'unidad_de_medida' => $item->umedida ?? 'NIU',
                     'cantidad' => $quantity,
@@ -398,6 +398,26 @@ class InvoiceController extends Controller
                     'pro51_ticket_url' => $pro51Data['print_ticket'] ?? null,
                     'pro51_sent_at' => now(),
                 ];
+
+                if ($realNumber > 0) {
+                    $updateData['numero'] = $realNumber;
+                    \App\Models\Serie::where('company_id', $company->id)
+                        ->where('serie', $serie)
+                        ->where('numero_actual', '<', $realNumber)
+                        ->update(['numero_actual' => $realNumber]);
+                }
+
+                if ($serie !== $invoice->serie) {
+                    $updateData['serie'] = $serie;
+                }
+
+                Log::info('pro51 document created', [
+                    'invoice_id' => $invoice->id,
+                    'local_number' => $invoice->full_number,
+                    'pro51_number' => $pro51FullNumber,
+                    'serie_sent' => $serie,
+                    'serie_local' => $invoice->serie,
+                ]);
 
                 if (isset($pro51Data['state_type_id'])) {
                     $stateMap = [

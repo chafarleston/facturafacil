@@ -359,7 +359,7 @@ class Pro51Controller extends Controller
             'invoice_id' => 'required|exists:invoices,id',
         ]);
 
-        $invoice = Invoice::with('company')->findOrFail($request->invoice_id);
+        $invoice = Invoice::with(['company', 'items'])->findOrFail($request->invoice_id);
 
         if ($invoice->company->facturacion_mode !== 'api_externa') {
             return response()->json([
