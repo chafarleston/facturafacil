@@ -236,6 +236,19 @@ class Pro51Controller extends Controller
                 }
             }
 
+            $invoiceSerie = collect($seriesList)->firstWhere('document_type_id', '01');
+            $receiptSerie = collect($seriesList)->firstWhere('document_type_id', '03');
+
+            if ($invoiceSerie && isset($invoiceSerie['number'])) {
+                $company->pro51_series_invoice = $invoiceSerie['number'];
+            }
+            if ($receiptSerie && isset($receiptSerie['number'])) {
+                $company->pro51_series_receipt = $receiptSerie['number'];
+            }
+            if ($invoiceSerie || $receiptSerie) {
+                $company->save();
+            }
+
             $docsResponse = $api->apiGet('documents/lists/2020-01-01/2030-12-31');
             $docsList = $docsResponse['data'] ?? $docsResponse;
             $maxNumberBySerie = [];

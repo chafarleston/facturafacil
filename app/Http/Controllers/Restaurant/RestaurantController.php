@@ -947,7 +947,13 @@ class RestaurantController extends Controller
                 }
             }
 
-            // pro51: el envío asíncrono se maneja desde /pro51/pending
+            if ($company && $company->facturacion_mode === 'api_externa' && $documentType !== 'NV') {
+                try {
+                    app(\App\Http\Controllers\InvoiceController::class)->sendToPro51($invoice, $company);
+                } catch (\Exception $e) {
+                    \Log::error('Restaurant pro51 error: ' . $e->getMessage());
+                }
+            }
 
             $serie->increment('numero_actual');
             

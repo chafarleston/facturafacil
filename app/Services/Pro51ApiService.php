@@ -20,7 +20,7 @@ class Pro51ApiService
     private function apiPost(string $endpoint, array $data = []): array
     {
         try {
-            $response = Http::timeout(30)
+            $response = Http::timeout(10)
                 ->withToken($this->token)
                 ->withOptions(['verify' => false])
                 ->post("{$this->baseUrl}/api/{$endpoint}", $data);
