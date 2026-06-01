@@ -432,14 +432,6 @@ class InvoiceController extends Controller
                     $updateData['sunat_estado'] = $stateMap[$pro51Data['state_type_id']] ?? 'PENDIENTE';
                 }
 
-                if ($realNumber > 0) {
-                    $updateData['numero'] = $realNumber;
-                    \App\Models\Serie::where('company_id', $company->id)
-                        ->where('serie', $serie)
-                        ->where('numero_actual', '<', $realNumber)
-                        ->update(['numero_actual' => $realNumber]);
-                }
-
                 if (isset($pro51Data['hash'])) {
                     $updateData['codigo_hash'] = $pro51Data['hash'];
                 }

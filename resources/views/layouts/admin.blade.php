@@ -193,15 +193,15 @@
             @endcan
 
             @php
-                $_pro51Company = \App\Models\Company::where('facturacion_mode', 'api_externa')->first();
-                $_pro51Pending = 0;
-                if ($_pro51Company) {
-                    $_pro51Pending = \App\Models\Invoice::where('company_id', $_pro51Company->id)
+                $_pro51Pending = \Illuminate\Support\Facades\Cache::remember('pro51_pending_count', 30, function () {
+                    $_pro51Company = \App\Models\Company::where('facturacion_mode', 'api_externa')->first();
+                    if (!$_pro51Company) return 0;
+                    return \App\Models\Invoice::where('company_id', $_pro51Company->id)
                         ->where('tipo_documento', '!=', 'NV')
                         ->whereNull('pro51_external_id')
                         ->whereIn('sunat_estado', ['PENDIENTE', 'RECHAZADO'])
                         ->count();
-                }
+                });
             @endphp
             @if($_pro51Company)
             <li class="nav-item">

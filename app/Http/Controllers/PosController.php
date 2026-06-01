@@ -8,11 +8,13 @@ use App\Models\Product;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Serie;
+use App\Jobs\SendToPro51Job;
 use App\Services\GreenterService;
 use App\Services\PrintService;
 use App\Services\Pro51ApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class PosController extends Controller
 {
@@ -153,8 +155,11 @@ class PosController extends Controller
             'estado' => 'ACTIVO',
         ]);
         
+        $itemIds = collect($items)->pluck('id')->toArray();
+        $products = \App\Models\Product::whereIn('id', $itemIds)->get()->keyBy('id');
+        
         foreach ($items as $item) {
-            $producto = Product::find($item['id']);
+            $producto = $products->get($item['id']);
             
             $priceWithIgv = $item['price'] * $item['quantity'];
             $baseItem = $priceWithIgv / (1 + $igvRate);
@@ -180,10 +185,10 @@ class PosController extends Controller
 
         if ($mainCompany->facturacion_mode === 'api_externa' && $documentType !== 'NV') {
             try {
-                $invoiceController = app(\App\Http\Controllers\InvoiceController::class);
-                $invoiceController->sendToPro51($invoice, $mainCompany);
+                $invoice->load('items', 'customer');
+                SendToPro51Job::dispatch($invoice);
             } catch (\Exception $e) {
-                \Log::error('POS pro51 error: ' . $e->getMessage());
+                \Log::error('POS pro51 dispatch error: ' . $e->getMessage());
             }
         }
 

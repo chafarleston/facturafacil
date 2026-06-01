@@ -20,6 +20,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use App\Jobs\SendToPro51Job;
 use App\Events\KitchenOrderUpdated;
 use App\Services\PrintServerService;
 use App\Services\PrintService;
@@ -896,7 +898,7 @@ class RestaurantController extends Controller
             
             $items = $order->items;
             $total = $items->sum('total');
-            $company = Company::find($companyId);
+            $company = $mainCompany;
             $igvRate = $company ? $company->getIgvRate() : 0.18;
             $subtotal = $total / (1 + $igvRate);
             $igv = $total - $subtotal;
@@ -923,6 +925,9 @@ class RestaurantController extends Controller
                 'estado' => 'ACTIVO',
             ]);
             
+            $productIds = $items->pluck('product_id')->toArray();
+            $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
+
             foreach ($items as $item) {
                 $unitBase = $item->unit_price / (1 + $igvRate);
                 $itemIgv = $item->unit_price - $unitBase;
@@ -941,7 +946,7 @@ class RestaurantController extends Controller
                     'igv_percent' => round($igvRate * 100, 2),
                 ]);
                 
-                $product = Product::find($item->product_id);
+                $product = $products->get($item->product_id);
                 if ($product) {
                     $product->decrement('stock', $item->quantity);
                 }
@@ -949,9 +954,10 @@ class RestaurantController extends Controller
 
             if ($company && $company->facturacion_mode === 'api_externa' && $documentType !== 'NV') {
                 try {
-                    app(\App\Http\Controllers\InvoiceController::class)->sendToPro51($invoice, $company);
+                    $invoice->load('items', 'customer');
+                    SendToPro51Job::dispatch($invoice);
                 } catch (\Exception $e) {
-                    \Log::error('Restaurant pro51 error: ' . $e->getMessage());
+                    Log::error('Restaurant pro51 dispatch error: ' . $e->getMessage());
                 }
             }
 
