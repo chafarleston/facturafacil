@@ -264,15 +264,13 @@ class RestaurantController extends Controller
                     'message' => 'Contraseña de administrador incorrecta'
                 ]);
             }
-        }
 
-        $item->cancelled_from = $item->kitchen_status;
-        $item->cancelled_at = now();
-        $item->cancelled_by = auth()->id();
-        $item->kitchen_status = 'CANCELLED';
-        $item->save();
+            $item->cancelled_from = $item->kitchen_status;
+            $item->cancelled_at = now();
+            $item->cancelled_by = auth()->id();
+            $item->kitchen_status = 'CANCELLED';
+            $item->save();
 
-        if (in_array($item->cancelled_from, ['SENT', 'READY', 'DELIVERED'])) {
             $company = Company::find($order->company_id);
             if ($company && ($company->order_mode ?? 'kds') === 'print') {
                 try {
@@ -283,6 +281,8 @@ class RestaurantController extends Controller
                     \Log::error('Cancel print error: ' . $e->getMessage());
                 }
             }
+        } else {
+            $item->delete();
         }
 
         $this->updateOrderTotals($order);
@@ -294,9 +294,8 @@ class RestaurantController extends Controller
         }
 
         event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
-            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
-            Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
-            Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
+        Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+        Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
         return response()->json(['success' => true]);
     }
