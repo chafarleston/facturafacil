@@ -137,11 +137,20 @@ class CashRegisterController extends Controller
                     };
                 }
             } else {
-                if ($metodo === 'EFECTIVO') $efectivo += $v->total;
-                elseif ($metodo === 'TARJETA') $tarjeta += $v->total;
-                elseif ($metodo === 'YAPE') $yape += $v->total;
-                elseif ($metodo === 'PLIN') $plin += $v->total;
-                else $otro += $v->total;
+                if (str_contains($metodo, '/')) {
+                    [$met, $amt] = explode('/', $metodo);
+                    $amt = (float) $amt;
+                } else {
+                    $met = $metodo;
+                    $amt = $v->total;
+                }
+                match ($met) {
+                    'EFECTIVO' => $efectivo += $amt,
+                    'TARJETA' => $tarjeta += $amt,
+                    'YAPE' => $yape += $amt,
+                    'PLIN' => $plin += $amt,
+                    default => $otro += $amt,
+                };
             }
 
             if ($v->tipo_documento === '01') {
@@ -239,11 +248,20 @@ class CashRegisterController extends Controller
                     };
                 }
             } else {
-                if ($metodo === 'EFECTIVO') $ventasEfectivo += $venta->total;
-                elseif ($metodo === 'TARJETA') $ventasTarjeta += $venta->total;
-                elseif ($metodo === 'YAPE') $ventasYape += $venta->total;
-                elseif ($metodo === 'PLIN') $ventasPlin += $venta->total;
-                else $ventasOtro += $venta->total;
+                if (str_contains($metodo, '/')) {
+                    [$met, $amt] = explode('/', $metodo);
+                    $amt = (float) $amt;
+                } else {
+                    $met = $metodo;
+                    $amt = $venta->total;
+                }
+                match ($met) {
+                    'EFECTIVO' => $ventasEfectivo += $amt,
+                    'TARJETA' => $ventasTarjeta += $amt,
+                    'YAPE' => $ventasYape += $amt,
+                    'PLIN' => $ventasPlin += $amt,
+                    default => $ventasOtro += $amt,
+                };
             }
             
             foreach ($venta->items as $item) {
@@ -338,10 +356,11 @@ class CashRegisterController extends Controller
                     $ventasPorMetodo[$met][] = $venta;
                 }
             } else {
-                if (!isset($ventasPorMetodo[$metodo])) {
-                    $ventasPorMetodo[$metodo] = [];
+                $met = str_contains($metodo, '/') ? explode('/', $metodo)[0] : $metodo;
+                if (!isset($ventasPorMetodo[$met])) {
+                    $ventasPorMetodo[$met] = [];
                 }
-                $ventasPorMetodo[$metodo][] = $venta;
+                $ventasPorMetodo[$met][] = $venta;
             }
 
             foreach ($venta->items as $item) {
