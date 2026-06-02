@@ -307,11 +307,33 @@ class PlainTextTicket
             $t->separator();
             $t->center('COMPROBANTES POR MÉTODO PAGO');
             foreach ($data['ventasPorMetodo'] as $metodo => $docs) {
-                $totalMetodo = collect($docs)->sum('total');
-                $t->twoColumns($metodo . ' (' . count($docs) . ')', 'S/ ' . number_format($totalMetodo, 2));
+                $totalMetodo = 0;
+                $items = [];
                 foreach ($docs as $venta) {
-                    $cliente = $venta->customer->nombre ?? 'Varios';
-                    $t->text('  ' . $venta->full_number . ' - ' . $cliente . ' - S/ ' . number_format($venta->total, 2));
+                    $metodoRaw = $venta->metodo_pago ?? 'EFECTIVO';
+                    $montoMetodo = 0;
+                    if (str_contains($metodoRaw, ' + ')) {
+                        foreach (explode(' + ', $metodoRaw) as $part) {
+                            $part = trim($part);
+                            if (str_contains($part, '/') && explode('/', $part)[0] === $metodo) {
+                                $montoMetodo = (float) explode('/', $part)[1];
+                                break;
+                            }
+                        }
+                    } else {
+                        $montoMetodo = (float) $venta->total;
+                    }
+                    if ($montoMetodo > 0) {
+                        $totalMetodo += $montoMetodo;
+                        $items[] = ['venta' => $venta, 'monto' => $montoMetodo];
+                    }
+                }
+                if (count($items) > 0) {
+                    $t->twoColumns($metodo . ' (' . count($items) . ')', 'S/ ' . number_format($totalMetodo, 2));
+                    foreach ($items as $item) {
+                        $cliente = $item['venta']->customer->nombre ?? 'Varios';
+                        $t->text('  ' . $item['venta']->full_number . ' - ' . $cliente . ' - S/ ' . number_format($item['monto'], 2));
+                    }
                 }
             }
         }

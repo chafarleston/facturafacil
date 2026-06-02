@@ -56,10 +56,35 @@
 
     <div class="border-top py-1 mt-1 mb-1 bold">COMPROBANTES POR MÉTODO PAGO</div>
     @foreach($ventasPorMetodo as $metodo => $ventasMetodo)
-    <div class="bold border-bottom">{{ $metodo }} ({{ count($ventasMetodo) }} und - S/ {{ number_format(collect($ventasMetodo)->sum('total'), 2) }})</div>
-    @foreach($ventasMetodo as $venta)
-    <div style="font-size:8px;">{{ $venta->full_number }} - {{ $venta->customer->nombre ?? 'Varios' }} - S/ {{ number_format($venta->total, 2) }}</div>
+    @php
+        $totalMetodo = 0;
+        $itemsMetodo = [];
+        foreach ($ventasMetodo as $venta) {
+            $metodoRaw = $venta->metodo_pago ?? 'EFECTIVO';
+            $montoMetodo = 0;
+            if (str_contains($metodoRaw, ' + ')) {
+                foreach (explode(' + ', $metodoRaw) as $part) {
+                    $part = trim($part);
+                    if (str_contains($part, '/') && explode('/', $part)[0] === $metodo) {
+                        $montoMetodo = (float) explode('/', $part)[1];
+                        break;
+                    }
+                }
+            } else {
+                $montoMetodo = (float) $venta->total;
+            }
+            if ($montoMetodo > 0) {
+                $totalMetodo += $montoMetodo;
+                $itemsMetodo[] = ['venta' => $venta, 'monto' => $montoMetodo];
+            }
+        }
+    @endphp
+    @if(count($itemsMetodo) > 0)
+    <div class="bold border-bottom">{{ $metodo }} ({{ count($itemsMetodo) }} und - S/ {{ number_format($totalMetodo, 2) }})</div>
+    @foreach($itemsMetodo as $item)
+    <div style="font-size:8px;">{{ $item['venta']->full_number }} - {{ $item['venta']->customer->nombre ?? 'Varios' }} - S/ {{ number_format($item['monto'], 2) }}</div>
     @endforeach
+    @endif
     @endforeach
 
     @if(count($categoriasVentas) > 0)
