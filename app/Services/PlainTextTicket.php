@@ -295,7 +295,7 @@ class PlainTextTicket
         $t->twoColumns('Boletas:', $data['boletas']->count() . ' - S/ ' . number_format($data['boletas']->sum('total'), 2));
         $t->twoColumns('Notas Venta:', $data['nvs']->count() . ' - S/ ' . number_format($data['nvs']->sum('total'), 2));
         $t->separator('=');
-        $t->twoColumns('TOTAL:', 'S/ ' . number_format($cashregister->total_ventas, 2));
+        $t->twoColumns('TOTAL:', 'S/ ' . number_format(collect($data['ventas'] ?? [])->sum('total'), 2));
         $t->separator();
         $t->center('POR MÉTODO DE PAGO');
         $calcEfectivo = 0; $calcTarjeta = 0; $calcYape = 0; $calcPlin = 0; $calcOtro = 0;
@@ -305,12 +305,12 @@ class PlainTextTicket
                 foreach (explode(' + ', $metodo) as $part) {
                     $part = trim($part);
                     $met = str_contains($part, '/') ? explode('/', $part)[0] : $part;
-                    $amt = str_contains($part, '/') ? (float) explode('/', $part)[1] : (float) $v->total / count(explode(' + ', $metodo));
+                    $amt = str_contains($part, '/') ? min((float) explode('/', $part)[1], (float) $v->total) : min((float) $v->total / count(explode(' + ', $metodo)), (float) $v->total);
                     match ($met) { 'EFECTIVO' => $calcEfectivo += $amt, 'TARJETA' => $calcTarjeta += $amt, 'YAPE' => $calcYape += $amt, 'PLIN' => $calcPlin += $amt, default => $calcOtro += $amt, };
                 }
             } elseif (str_contains($metodo, '/')) {
                 [$met, $amt] = explode('/', $metodo);
-                $amt = (float) $amt;
+                $amt = min((float) $amt, (float) $v->total);
                 match ($met) { 'EFECTIVO' => $calcEfectivo += $amt, 'TARJETA' => $calcTarjeta += $amt, 'YAPE' => $calcYape += $amt, 'PLIN' => $calcPlin += $amt, default => $calcOtro += $amt, };
             } else {
                 match ($metodo) { 'EFECTIVO' => $calcEfectivo += (float) $v->total, 'TARJETA' => $calcTarjeta += (float) $v->total, 'YAPE' => $calcYape += (float) $v->total, 'PLIN' => $calcPlin += (float) $v->total, default => $calcOtro += (float) $v->total, };
