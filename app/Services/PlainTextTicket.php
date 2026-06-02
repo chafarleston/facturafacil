@@ -303,38 +303,13 @@ class PlainTextTicket
         $t->twoColumns('Yape:', 'S/ ' . number_format($cashregister->ventas_yape, 2));
         $t->twoColumns('Plin:', 'S/ ' . number_format($cashregister->ventas_plin, 2));
         $t->twoColumns('Otro:', 'S/ ' . number_format($cashregister->ventas_otro, 2));
-        if (isset($data['ventasPorMetodo']) && count($data['ventasPorMetodo']) > 0) {
+        if (isset($data['ventas']) && count($data['ventas']) > 0) {
             $t->separator();
-            $t->center('COMPROBANTES POR MÉTODO PAGO');
-            foreach ($data['ventasPorMetodo'] as $metodo => $docs) {
-                $totalMetodo = 0;
-                $items = [];
-                foreach ($docs as $venta) {
-                    $metodoRaw = $venta->metodo_pago ?? 'EFECTIVO';
-                    $montoMetodo = 0;
-                    if (str_contains($metodoRaw, ' + ')) {
-                        foreach (explode(' + ', $metodoRaw) as $part) {
-                            $part = trim($part);
-                            if (str_contains($part, '/') && explode('/', $part)[0] === $metodo) {
-                                $montoMetodo = (float) explode('/', $part)[1];
-                                break;
-                            }
-                        }
-                    } else {
-                        $montoMetodo = (float) $venta->total;
-                    }
-                    if ($montoMetodo > 0) {
-                        $totalMetodo += $montoMetodo;
-                        $items[] = ['venta' => $venta, 'monto' => $montoMetodo];
-                    }
-                }
-                if (count($items) > 0) {
-                    $t->twoColumns($metodo . ' (' . count($items) . ')', 'S/ ' . number_format($totalMetodo, 2));
-                    foreach ($items as $item) {
-                        $cliente = $item['venta']->customer->nombre ?? 'Varios';
-                        $t->text('  ' . $item['venta']->full_number . ' - ' . $cliente . ' - S/ ' . number_format($item['monto'], 2));
-                    }
-                }
+            $t->center('LISTA DE COMPROBANTES');
+            foreach ($data['ventas'] as $venta) {
+                $cliente = $venta->customer->nombre ?? 'Varios';
+                $t->text('  ' . $venta->full_number . ' - S/ ' . number_format($venta->total, 2));
+                $t->text('    ' . $cliente . ' (' . ($venta->metodo_pago ?? 'EFECTIVO') . ')');
             }
         }
         if (isset($data['categoriasVentas']) && count($data['categoriasVentas']) > 0) {

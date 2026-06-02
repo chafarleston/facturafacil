@@ -54,34 +54,22 @@
         <div>Plin: S/ {{ number_format($cashregister->ventas_plin, 2) }}</div>
     </div>
 
-    <div class="border-top py-1 mt-1 mb-1 bold">COMPROBANTES POR MÉTODO PAGO</div>
-    @foreach($ventasPorMetodo as $metodo => $ventasMetodo)
-    @php
-        $totalMetodo = 0;
-        $itemsMetodo = [];
-        foreach ($ventasMetodo as $venta) {
-            $metodoRaw = $venta->metodo_pago ?? 'EFECTIVO';
-            $montoMetodo = 0;
-            if (str_contains($metodoRaw, ' + ')) {
-                foreach (explode(' + ', $metodoRaw) as $part) {
-                    $part = trim($part);
-                    if (str_contains($part, '/') && explode('/', $part)[0] === $metodo) {
-                        $montoMetodo = (float) explode('/', $part)[1];
-                        break;
-                    }
-                }
-            } else {
-                $montoMetodo = (float) $venta->total;
-            }
-            if ($montoMetodo > 0) {
-                $totalMetodo += $montoMetodo;
-                $itemsMetodo[] = ['venta' => $venta, 'monto' => $montoMetodo];
-            }
-        }
-    @endphp
-    @if(count($itemsMetodo) > 0)
-    <div class="bold border-bottom">{{ $metodo }} ({{ count($itemsMetodo) }} und - S/ {{ number_format($totalMetodo, 2) }})</div>
-    @foreach($itemsMetodo as $item)
+    <div class="border-top py-1 mt-1 mb-1 bold">LISTA DE COMPROBANTES</div>
+    <div style="font-size:7px; border-bottom:1px dashed #000; padding-bottom:2px; margin-bottom:2px; display:flex;">
+        <span style="flex:1;">Documento</span>
+        <span style="flex:1;">Cliente</span>
+        <span style="text-align:right;">Total</span>
+    </div>
+    @foreach($ventas as $venta)
+    <div style="font-size:7px; display:flex; margin-bottom:1px;">
+        <span style="flex:1;">{{ $venta->full_number }}</span>
+        <span style="flex:1;">{{ $venta->customer->nombre ?? 'Varios' }}</span>
+        <span style="text-align:right;">S/ {{ number_format($venta->total, 2) }}</span>
+    </div>
+    <div style="font-size:6px; display:flex;">
+        <span style="flex:1; color:#888;">Pago: {{ $venta->metodo_pago ?? 'EFECTIVO' }}</span>
+    </div>
+    @endforeach
     <div style="font-size:8px;">{{ $item['venta']->full_number }} - {{ $item['venta']->customer->nombre ?? 'Varios' }} - S/ {{ number_format($item['monto'], 2) }}</div>
     @endforeach
     @endif
