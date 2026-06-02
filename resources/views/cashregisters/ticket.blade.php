@@ -91,10 +91,6 @@
         <span style="flex:1; color:#888;">Pago: {{ $venta->metodo_pago ?? 'EFECTIVO' }}</span>
     </div>
     @endforeach
-    <div style="font-size:8px;">{{ $item['venta']->full_number }} - {{ $item['venta']->customer->nombre ?? 'Varios' }} - S/ {{ number_format($item['monto'], 2) }}</div>
-    @endforeach
-    @endif
-    @endforeach
 
     @if(count($categoriasVentas) > 0)
     <div class="border-top py-1 mt-1 mb-1 bold">POR CATEGORÍA</div>
