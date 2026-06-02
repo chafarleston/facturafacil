@@ -47,11 +47,32 @@
     </div>
 
     <div class="border-top py-1 mt-1 mb-1 bold">POR MÉTODO PAGO</div>
+    @php
+        $calcEfectivo = 0; $calcTarjeta = 0; $calcYape = 0; $calcPlin = 0; $calcOtro = 0;
+        foreach ($ventas as $v) {
+            $metodo = $v->metodo_pago ?? 'EFECTIVO';
+            if (str_contains($metodo, ' + ')) {
+                foreach (explode(' + ', $metodo) as $part) {
+                    $part = trim($part);
+                    $met = str_contains($part, '/') ? explode('/', $part)[0] : $part;
+                    $amt = str_contains($part, '/') ? (float) explode('/', $part)[1] : (float) $v->total / count(explode(' + ', $metodo));
+                    match ($met) { 'EFECTIVO' => $calcEfectivo += $amt, 'TARJETA' => $calcTarjeta += $amt, 'YAPE' => $calcYape += $amt, 'PLIN' => $calcPlin += $amt, default => $calcOtro += $amt, };
+                }
+            } elseif (str_contains($metodo, '/')) {
+                [$met, $amt] = explode('/', $metodo);
+                $amt = (float) $amt;
+                match ($met) { 'EFECTIVO' => $calcEfectivo += $amt, 'TARJETA' => $calcTarjeta += $amt, 'YAPE' => $calcYape += $amt, 'PLIN' => $calcPlin += $amt, default => $calcOtro += $amt, };
+            } else {
+                match ($metodo) { 'EFECTIVO' => $calcEfectivo += (float) $v->total, 'TARJETA' => $calcTarjeta += (float) $v->total, 'YAPE' => $calcYape += (float) $v->total, 'PLIN' => $calcPlin += (float) $v->total, default => $calcOtro += (float) $v->total, };
+            }
+        }
+    @endphp
     <div>
-        <div>Efectivo: S/ {{ number_format($cashregister->ventas_efectivo, 2) }}</div>
-        <div>Tarjeta: S/ {{ number_format($cashregister->ventas_tarjeta, 2) }}</div>
-        <div>Yape: S/ {{ number_format($cashregister->ventas_yape, 2) }}</div>
-        <div>Plin: S/ {{ number_format($cashregister->ventas_plin, 2) }}</div>
+        <div>Efectivo: S/ {{ number_format($calcEfectivo, 2) }}</div>
+        <div>Tarjeta: S/ {{ number_format($calcTarjeta, 2) }}</div>
+        <div>Yape: S/ {{ number_format($calcYape, 2) }}</div>
+        <div>Plin: S/ {{ number_format($calcPlin, 2) }}</div>
+        <div>Otro: S/ {{ number_format($calcOtro, 2) }}</div>
     </div>
 
     <div class="border-top py-1 mt-1 mb-1 bold">LISTA DE COMPROBANTES</div>
