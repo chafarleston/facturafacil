@@ -31,10 +31,10 @@
           </div>
         </div>
         <div class="input-group mb-3">
-          <input type="password" name="password" class="form-control" placeholder="Contraseña" required>
+          <input type="password" name="password" id="passwordField" class="form-control" placeholder="Contraseña" required autocomplete="off">
           <div class="input-group-append">
-            <div class="input-group-text">
-              <span class="fas fa-lock"></span>
+            <div class="input-group-text" style="cursor:pointer;" onclick="togglePassword()">
+              <span class="fas fa-eye" id="eyeIcon"></span>
             </div>
           </div>
         </div>
@@ -55,5 +55,18 @@
 </div>
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function togglePassword() {
+    var field = document.getElementById('passwordField');
+    var icon = document.getElementById('eyeIcon');
+    if (field.type === 'password') {
+        field.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        field.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+</script>
 </body>
 </html>
