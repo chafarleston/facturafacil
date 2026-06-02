@@ -123,10 +123,10 @@ class CashRegisterController extends Controller
                     $part = trim($part);
                     if (str_contains($part, '/')) {
                         [$met, $amt] = explode('/', $part);
-                        $amt = (float) $amt;
+                        $amt = min((float) $amt, (float) $v->total);
                     } else {
                         $met = $part;
-                        $amt = $v->total / count($parts);
+                        $amt = min((float) $v->total / count($parts), (float) $v->total);
                     }
                     match ($met) {
                         'EFECTIVO' => $efectivo += $amt,
@@ -139,7 +139,7 @@ class CashRegisterController extends Controller
             } else {
                 if (str_contains($metodo, '/')) {
                     [$met, $amt] = explode('/', $metodo);
-                    $amt = (float) $amt;
+                    $amt = min((float) $amt, (float) $v->total);
                 } else {
                     $met = $metodo;
                     $amt = $v->total;
@@ -234,10 +234,10 @@ class CashRegisterController extends Controller
                     $part = trim($part);
                     if (str_contains($part, '/')) {
                         [$met, $amt] = explode('/', $part);
-                        $amt = (float) $amt;
+                        $amt = min((float) $amt, (float) $venta->total);
                     } else {
                         $met = $part;
-                        $amt = $venta->total / count($parts);
+                        $amt = min((float) $venta->total / count($parts), (float) $venta->total);
                     }
                     match ($met) {
                         'EFECTIVO' => $ventasEfectivo += $amt,
@@ -250,7 +250,7 @@ class CashRegisterController extends Controller
             } else {
                 if (str_contains($metodo, '/')) {
                     [$met, $amt] = explode('/', $metodo);
-                    $amt = (float) $amt;
+                    $amt = min((float) $amt, (float) $venta->total);
                 } else {
                     $met = $metodo;
                     $amt = $venta->total;
