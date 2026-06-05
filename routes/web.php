@@ -18,7 +18,6 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SunatPadronController;
 use App\Http\Controllers\ThemeController;
 use App\Http\Controllers\UbigeoController;
-use App\Http\Controllers\Pro51Controller;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\Restaurant\RestaurantController;
@@ -97,17 +96,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/printers/queue/{printJob}/retry', [\App\Http\Controllers\Admin\PrinterController::class, 'retry'])->name('printers.queue.retry');
         Route::delete('/printers/queue/{printJob}', [\App\Http\Controllers\Admin\PrinterController::class, 'destroy'])->name('printers.queue.destroy');
         Route::put('/printers/{printer}', [\App\Http\Controllers\Admin\PrinterController::class, 'update'])->name('printers.update');
-
-        // pro51 API integration
-        Route::post('/pro51/test-connection', [Pro51Controller::class, 'testConnection'])->name('pro51.test-connection');
-        Route::post('/pro51/products/{product}/sync', [Pro51Controller::class, 'syncProduct'])->name('pro51.products.sync');
-        Route::post('/pro51/products/sync-all', [Pro51Controller::class, 'syncAllProducts'])->name('pro51.products.sync-all');
-        Route::post('/pro51/series/sync', [Pro51Controller::class, 'syncSeries'])->name('pro51.series.sync');
-        Route::get('/pro51/pending', [Pro51Controller::class, 'pendingList'])->name('pro51.pending');
-        Route::post('/pro51/pending/retry', [Pro51Controller::class, 'retryPending'])->name('pro51.pending.retry');
-        Route::post('/pro51/pending/retry-all', [Pro51Controller::class, 'retryAll'])->name('pro51.pending.retry-all');
-        Route::post('/pro51/sync-documents', [Pro51Controller::class, 'syncExistingDocuments'])->name('pro51.sync-documents');
-        Route::post('/pro51/update-status', [Pro51Controller::class, 'updatePro51Status'])->name('pro51.update-status');
     });
     
     Route::get('/invoices/{invoice}/send', [InvoiceController::class, 'sendToSunat'])->name('invoices.send');

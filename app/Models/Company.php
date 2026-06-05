@@ -17,10 +17,6 @@ class Company extends Model
         'tipo_contribuyente', 'estado',
         'soap_type_id', 'soap_username', 'soap_password', 'certificate',
         'order_mode', 'tax_type', 'igv_percent', 'reduced_igv_percent',
-        'facturacion_mode', 'pro51_activated_at',
-        'pro51_url', 'pro51_token',
-        'pro51_establishment_code', 'pro51_series_invoice',
-        'pro51_series_receipt', 'pro51_operation_type'
     ];
 
     protected $casts = [

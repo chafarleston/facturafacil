@@ -5,13 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\CashRegister;
 use App\Models\Product;
-use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Serie;
-use App\Jobs\SendToPro51Job;
 use App\Services\GreenterService;
-use App\Services\PrintService;
-use App\Services\Pro51ApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -183,15 +179,6 @@ class PosController extends Controller
         $serie->numero_actual = $nextNumber;
         $serie->save();
 
-        if ($mainCompany->facturacion_mode === 'api_externa' && $documentType !== 'NV') {
-            try {
-                $invoice->load('items', 'customer');
-                SendToPro51Job::dispatch($invoice);
-            } catch (\Exception $e) {
-                \Log::error('POS pro51 dispatch error: ' . $e->getMessage());
-            }
-        }
-
         try {
             $printService = app(PrintService::class);
             $invoice->load('items', 'customer');
@@ -236,28 +223,6 @@ class PosController extends Controller
             ]);
         }
 
-        if ($invoice->pro51_external_id && $invoice->company->facturacion_mode === 'api_externa') {
-            try {
-                $api = new Pro51ApiService($invoice->company);
-                $result = $api->sendDocument($invoice->pro51_external_id);
-
-                if ($result['success'] ?? false) {
-                    $invoice->update([
-                        'sunat_estado' => 'ENVIADO',
-                        'pro51_response' => json_encode($result),
-                    ]);
-                }
-
-                return response()->json([
-                    'success' => $result['success'] ?? false,
-                    'message' => $result['message'] ?? 'Documento reenviado',
-                    'sunat_estado' => $invoice->fresh()->sunat_estado,
-                ]);
-            } catch (\Exception $e) {
-                \Log::error('POS re-enviar pro51 error: ' . $e->getMessage());
-            }
-        }
-        
         $greenterService = app(GreenterService::class);
         
         try {
@@ -282,22 +247,12 @@ class PosController extends Controller
     {
         $invoice = \App\Models\Invoice::with(['company', 'customer', 'items.product'])->findOrFail($id);
 
-        $isExternal = $invoice->company->facturacion_mode === 'api_externa'
-            && $invoice->tipo_documento !== 'NV';
-
         if ($format === '80mm') {
-            if ($isExternal && $invoice->pro51_ticket_url) {
-                return redirect($invoice->pro51_ticket_url);
-            }
             $greenterService = app(GreenterService::class);
             $pdfContent = $greenterService->generateTicketPdf($invoice);
             return response($pdfContent)
                 ->header('Content-Type', 'application/pdf')
                 ->header('Content-Disposition', 'inline; filename="ticket-' . $invoice->full_number . '.pdf"');
-        }
-
-        if ($isExternal && $invoice->pro51_pdf_url) {
-            return redirect($invoice->pro51_pdf_url);
         }
 
         $greenterService = app(GreenterService::class);

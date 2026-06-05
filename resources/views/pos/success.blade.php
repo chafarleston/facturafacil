@@ -191,13 +191,5 @@ function sendToSunat(invoiceId) {
 function printInvoice(invoiceId, format) {
     window.open('/pos/print/' + invoiceId + '/' + format, '_blank');
 }
-
-@if($invoice->pro51_external_id && $invoice->sunat_estado === 'ACEPTADO')
-window.addEventListener('DOMContentLoaded', function() {
-    setTimeout(function() {
-        printInvoice({{ $invoice->id }}, '80mm');
-    }, 500);
-});
-@endif
 </script>
 @endpush

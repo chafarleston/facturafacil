@@ -193,28 +193,6 @@
             </li>
             @endcan
 
-            @php
-                $_pro51Company = \App\Models\Company::where('facturacion_mode', 'api_externa')->first();
-                $_pro51Pending = 0;
-                if ($_pro51Company) {
-                    $_pro51Pending = \Illuminate\Support\Facades\Cache::remember('pro51_pending_count', 30, function () use ($_pro51Company) {
-                        return \App\Models\Invoice::where('company_id', $_pro51Company->id)
-                            ->where('tipo_documento', '!=', 'NV')
-                            ->whereNull('pro51_external_id')
-                            ->whereIn('sunat_estado', ['PENDIENTE', 'RECHAZADO'])
-                            ->count();
-                    });
-                }
-            @endphp
-            @if($_pro51Company)
-            <li class="nav-item">
-              <a href="{{ route('pro51.pending') }}" class="nav-link {{ request()->routeIs('pro51.pending') ? 'active' : '' }}">
-                <i class="nav-icon fas fa-cloud-upload-alt text-warning"></i>
-                <p>pro51 Pendientes <span class="badge bg-warning">{{ $_pro51Pending }}</span></p>
-              </a>
-            </li>
-            @endif
-
             @can('permission', 'view_restaurant')
             <li class="nav-item">
               <a href="#" class="nav-link {{ request()->routeIs('restaurant.*') ? 'active' : '' }}">

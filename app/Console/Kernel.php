@@ -15,11 +15,8 @@ class Kernel extends ConsoleKernel
         // Reintentar impresiones fallidas cada minuto
         $schedule->command('print:process-queue')->everyMinute();
 
-        // Sincronizar productos con pro51 cada día
-        $schedule->command('pro51:sync-products')->dailyAt('03:00');
-
-        // Reintentar comprobantes pendientes de pro51 cada 5 minutos
-        $schedule->command('pro51:retry-pending')->everyFiveMinutes();
+        // Reintentar impresiones fallidas cada minuto
+        $schedule->command('print:process-queue')->everyMinute();
     }
 
     protected function commands()

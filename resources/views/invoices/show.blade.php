@@ -162,15 +162,15 @@
 @endif
 
 <div class="mt-3">
-    <a href="{{ $invoice->pro51_pdf_url ?: route('invoices.pdf', $invoice) }}" target="_blank" class="btn btn-primary"><i class="fas fa-file-pdf"></i> Ver PDF A4</a>
-    <a href="{{ $invoice->pro51_ticket_url ?: route('invoices.ticket', $invoice) }}" target="_blank" class="btn btn-orange" id="printTicketBtn"><i class="fas fa-print"></i> Ticket (80mm)</a>
+    <a href="{{ route('invoices.pdf', $invoice) }}" target="_blank" class="btn btn-primary"><i class="fas fa-file-pdf"></i> Ver PDF A4</a>
+    <a href="{{ route('invoices.ticket', $invoice) }}" target="_blank" class="btn btn-orange" id="printTicketBtn"><i class="fas fa-print"></i> Ticket (80mm)</a>
 
-    @if($invoice->xml_firmado || $invoice->pro51_xml_url)
-    <a href="{{ $invoice->pro51_xml_url ?: route('invoices.downloadXml', $invoice) }}" class="btn btn-secondary"><i class="fas fa-download"></i> XML</a>
+    @if($invoice->xml_firmado)
+    <a href="{{ route('invoices.downloadXml', $invoice) }}" class="btn btn-secondary"><i class="fas fa-download"></i> XML</a>
     @endif
 
-    @if(($invoice->pro51_cdr_url) || ($invoice->cdr_path || $invoice->sunat_estado == 'ACEPTADO'))
-    <a href="{{ $invoice->pro51_cdr_url ?: route('invoices.downloadCdr', $invoice) }}" class="btn btn-purple"><i class="fas fa-download"></i> CDR</a>
+    @if($invoice->cdr_path || $invoice->sunat_estado == 'ACEPTADO')
+    <a href="{{ route('invoices.downloadCdr', $invoice) }}" class="btn btn-purple"><i class="fas fa-download"></i> CDR</a>
     @endif
 
     @if($invoice->sunat_estado == 'ACEPTADO' && !$invoice->credit_note_id && $invoice->tipo_documento != '07')
@@ -178,16 +178,11 @@
     @endif
 
     @if($invoice->sunat_estado != 'ACEPTADO' && $invoice->sunat_estado != 'ENVIADO' && $invoice->tipo_documento != 'NV')
-        @if($invoice->company->facturacion_mode === 'api_externa')
-            <button class="btn btn-warning retry-pro51-btn" data-id="{{ $invoice->id }}">
-                <i class="fas fa-redo"></i> Reenviar a pro51
-            </button>
-        @else
-            <a href="{{ route('invoices.send', $invoice) }}" class="btn btn-success"><i class="fas fa-paper-plane"></i> Enviar a SUNAT</a>
-        @endif
+    <a href="{{ route('invoices.send', $invoice) }}" class="btn btn-success"><i class="fas fa-paper-plane"></i> Enviar a SUNAT</a>
     @endif
 
     @if(($invoice->sunat_estado == 'ACEPTADO' || $invoice->sunat_estado == 'ENVIADO') && $invoice->tipo_documento != '07')
+
     <form action="{{ route('invoices.destroy', $invoice) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de dar de baja este documento en SUNAT?');">
         @csrf
         @method('DELETE')
@@ -199,8 +194,8 @@
 </div>
 @endsection
 
-@if(session('auto_print'))
 @push('scripts')
+
 <script>
 window.addEventListener('DOMContentLoaded', function() {
     var ticketBtn = document.getElementById('printTicketBtn');

@@ -21,7 +21,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use App\Jobs\SendToPro51Job;
 use App\Events\KitchenOrderUpdated;
 use App\Services\PrintServerService;
 use App\Services\PrintService;
@@ -942,15 +941,6 @@ class RestaurantController extends Controller
                 $product = $products->get($item->product_id);
                 if ($product) {
                     $product->decrement('stock', $item->quantity);
-                }
-            }
-
-            if ($company && $company->facturacion_mode === 'api_externa' && $documentType !== 'NV') {
-                try {
-                    $invoice->load('items', 'customer');
-                    SendToPro51Job::dispatch($invoice);
-                } catch (\Exception $e) {
-                    Log::error('Restaurant pro51 dispatch error: ' . $e->getMessage());
                 }
             }
 
