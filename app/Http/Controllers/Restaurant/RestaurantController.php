@@ -44,27 +44,33 @@ class RestaurantController extends Controller
         $floors = Floor::where('company_id', $companyId)
             ->active()
             ->ordered()
-            ->with(['tables' => function($q) {
-                $q->with(['orders' => function($oq) {
+            ->with(['tables' => function($q) use ($companyId) {
+                $q->with(['orders' => function($oq) use ($companyId) {
                     $oq->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
                        ->withCount('items');
                 }]);
             }])
             ->get();
 
-        $products = Product::where('company_id', $companyId)
-            ->where('estado', 'ACTIVO')
-            ->orderBy('descripcion')
-            ->get();
+        $products = Cache::remember('restaurant_products_' . $companyId, 300, function() use ($companyId) {
+            return Product::where('company_id', $companyId)
+                ->where('estado', 'ACTIVO')
+                ->orderBy('descripcion')
+                ->get();
+        });
 
-        $categories = Category::where('company_id', $companyId)
-            ->whereIn('estado', ['ACTIVO', 'ACT'])
-            ->orderBy('nombre')
-            ->get();
+        $categories = Cache::remember('restaurant_categories_' . $companyId, 300, function() use ($companyId) {
+            return Category::where('company_id', $companyId)
+                ->whereIn('estado', ['ACTIVO', 'ACT'])
+                ->orderBy('nombre')
+                ->get();
+        });
 
-        $customers = Customer::where('company_id', $companyId)
-            ->where('estado', 'ACTIVO')
-            ->get();
+        $customers = Cache::remember('restaurant_customers_' . $companyId, 300, function() use ($companyId) {
+            return Customer::where('company_id', $companyId)
+                ->where('estado', 'ACTIVO')
+                ->get();
+        });
 
         $series = Serie::where('company_id', $companyId)
             ->where('estado', 'ACTIVO')
@@ -612,14 +618,15 @@ class RestaurantController extends Controller
     public function getActiveOrders(Request $request)
     {
         $companyId = $request->company_id ?? Company::first()->id;
-        
+
         $orders = RestaurantOrder::where('company_id', $companyId)
             ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
-            ->with(['table.floor', 'items'])
-            ->orderBy('created_at', 'desc')
+            ->select('id', 'table_id', 'order_number')
             ->get();
 
-        return response()->json(['success' => true, 'orders' => $orders]);
+        return response()->json(['success' => true, 'orders' => $orders])
+            ->header('Cache-Control', 'no-cache, must-revalidate, no-store, private')
+            ->header('Pragma', 'no-cache');
     }
 
     public function kitchenIndex(Request $request)
@@ -641,8 +648,16 @@ class RestaurantController extends Controller
             })
             ->with(['items' => function($q) use ($kds) {
                 $q->whereIn('kitchen_status', ['SENT', 'READY', 'CANCELLED'])
-                  ->where('kds_destination', $kds);
-            }, 'table.floor', 'user'])
+                  ->where('kds_destination', $kds)
+                  ->select('id', 'restaurant_order_id', 'product_name', 'quantity', 'unit_price', 'kitchen_status', 'notes', 'kds_destination');
+            }, 'table' => function($q) {
+                $q->select('id', 'name', 'floor_id');
+            }, 'table.floor' => function($q) {
+                $q->select('id', 'name');
+            }, 'user' => function($q) {
+                $q->select('id', 'name');
+            }])
+            ->select('id', 'order_number', 'status', 'table_id', 'user_id', 'notes', 'created_at')
             ->orderBy('created_at', 'asc')
             ->get();
 

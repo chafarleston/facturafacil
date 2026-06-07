@@ -13,17 +13,27 @@ class DashboardController extends Controller
     public function index()
     {
         $companyId = \App\Models\Company::getMainCompany()->id;
-        
+
+        $tt = \App\Models\Invoice::where('company_id', $companyId)
+            ->selectRaw("COUNT(*) as total")
+            ->selectRaw("SUM(CASE WHEN sunat_estado = 'ACEPTADO' THEN 1 ELSE 0 END) as aceptados")
+            ->selectRaw("SUM(CASE WHEN sunat_estado IN ('PENDIENTE','ENVIADO') THEN 1 ELSE 0 END) as pendientes")
+            ->selectRaw("COALESCE(SUM(CASE WHEN sunat_estado != 'ANULADO' THEN total ELSE 0 END), 0) as total_ventas")
+            ->selectRaw("SUM(CASE WHEN tipo_documento = '01' THEN 1 ELSE 0 END) as facturas")
+            ->selectRaw("SUM(CASE WHEN tipo_documento = '03' THEN 1 ELSE 0 END) as boletas")
+            ->selectRaw("SUM(CASE WHEN tipo_documento = 'NV' THEN 1 ELSE 0 END) as notas_venta")
+            ->first();
+
         $stats = [
-            'total' => Invoice::where('company_id', $companyId)->count(),
-            'aceptados' => Invoice::where('company_id', $companyId)->where('sunat_estado', 'ACEPTADO')->count(),
-            'pendientes' => Invoice::where('company_id', $companyId)->whereIn('sunat_estado', ['PENDIENTE', 'ENVIADO'])->count(),
-            'total_ventas' => Invoice::where('company_id', $companyId)->where('sunat_estado', '!=', 'ANULADO')->sum('total'),
-            'facturas' => Invoice::where('company_id', $companyId)->where('tipo_documento', '01')->count(),
-            'boletas' => Invoice::where('company_id', $companyId)->where('tipo_documento', '03')->count(),
-            'notas_venta' => Invoice::where('company_id', $companyId)->where('tipo_documento', 'NV')->count(),
-            'total_productos' => Product::where('estado', 'ACTIVO')->count(),
-            'total_clientes' => Customer::where('company_id', $companyId)->where('estado', 'ACTIVO')->count(),
+            'total' => $tt->total ?? 0,
+            'aceptados' => $tt->aceptados ?? 0,
+            'pendientes' => $tt->pendientes ?? 0,
+            'total_ventas' => $tt->total_ventas ?? 0,
+            'facturas' => $tt->facturas ?? 0,
+            'boletas' => $tt->boletas ?? 0,
+            'notas_venta' => $tt->notas_venta ?? 0,
+            'total_productos' => \App\Models\Product::where('estado', 'ACTIVO')->count(),
+            'total_clientes' => \App\Models\Customer::where('company_id', $companyId)->where('estado', 'ACTIVO')->count(),
         ];
         
         $ventasPorDia = [];

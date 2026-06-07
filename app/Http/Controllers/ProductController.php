@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Company;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class ProductController extends Controller
 {
@@ -77,6 +78,8 @@ class ProductController extends Controller
 
         Product::create($validated);
 
+        Cache::forget('restaurant_products_' . $request->company_id);
+
         return redirect()->route('products.index', ['company_id' => $request->company_id])
             ->with('success', 'Producto creado correctamente');
     }
@@ -131,12 +134,15 @@ class ProductController extends Controller
 
         $product->update($validated);
 
+        Cache::forget('restaurant_products_' . $product->company_id);
+
         return redirect()->route('products.show', $product)->with('success', 'Producto actualizado');
     }
 
     public function destroy(Product $product)
     {
         $product->update(['estado' => 'INACTIVO']);
+        Cache::forget('restaurant_products_' . $product->company_id);
         return back()->with('success', 'Producto desactivado');
     }
 
