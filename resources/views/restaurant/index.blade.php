@@ -741,6 +741,7 @@
 let currentOrderId = null;
 let currentTableId = null;
 let currentTableName = null;
+let orderModalOpen = false;
 let productsData = @json($products);
 let customersData = @json($customers);
 let seriesData = @json($series);
@@ -793,6 +794,7 @@ function selectFloor(floorId) {
 }
 
 function selectTable(tableId) {
+    orderModalOpen = true;
     const table = document.querySelector(`.table-card[data-table-id="${tableId}"]`);
     if (!table) return;
     
@@ -820,6 +822,11 @@ function selectTable(tableId) {
 }
     
 function closeModal() {
+    if (currentTableId && currentOrderId) {
+        const card = document.querySelector(`.table-card[data-table-id="${currentTableId}"]`);
+        if (card) card.dataset.orderId = currentOrderId;
+    }
+    orderModalOpen = false;
     document.getElementById('tableOrderModal').classList.remove('show');
     document.getElementById('chargeOverlay').style.display = 'none';
     document.getElementById('customerModalOverlay').style.display = 'none';
@@ -1474,7 +1481,9 @@ function pollActiveOrders() {
             const card = document.querySelector(`.table-card[data-table-id="${order.table_id}"]`);
             if (!card) return;
             card.className = 'table-card occupied has-order';
-            card.dataset.orderId = order.id;
+            if (!orderModalOpen) {
+                card.dataset.orderId = order.id;
+            }
             let orderDiv = card.querySelector('.table-order');
             if (!orderDiv) {
                 orderDiv = document.createElement('div');
