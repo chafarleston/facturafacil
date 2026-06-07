@@ -327,7 +327,6 @@ class RestaurantController extends Controller
             $order->save();
 
             event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
-            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
             Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
@@ -466,7 +465,6 @@ class RestaurantController extends Controller
         }
 
         event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
-            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
             Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
@@ -605,7 +603,6 @@ class RestaurantController extends Controller
         }
 
         event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
-            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
             Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
@@ -778,7 +775,6 @@ class RestaurantController extends Controller
             $order->save();
 
             event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
-            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
             Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
@@ -801,7 +797,6 @@ class RestaurantController extends Controller
                 $order->save();
             }
 
-            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
             event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
             Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
@@ -952,7 +947,6 @@ class RestaurantController extends Controller
             $order->table->update(['status' => 'AVAILABLE']);
             
             event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
-            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
             Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
             
@@ -1032,3 +1026,4 @@ private function updateOrderTotals(RestaurantOrder $order)
         }
     }
 }
+
