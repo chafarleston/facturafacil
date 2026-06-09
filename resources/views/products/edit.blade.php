@@ -12,7 +12,7 @@
         @method('PATCH')
         <div class="card-body">
             <div class="row">
-<div class="col-md-6">
+                <div class="col-md-6">
                     <div class="form-group">
                         <label>Código Interno</label>
                         <input type="text" name="codigo" value="{{ $product->codigo }}" class="form-control bg-light" readonly>
@@ -25,7 +25,7 @@
                     </div>
                 </div>
             </div>
-                </div>
+            <div class="row">
                 <div class="col-md-6">
                     <div class="form-group">
                         <label>Código SUNAT</label>
