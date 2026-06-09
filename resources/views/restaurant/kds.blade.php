@@ -191,6 +191,7 @@
         .kds-btn-ready { background: #00ff88; color: #000; }
         .kds-btn-deliver { background: #4caf50; color: white; }
         .kds-btn-print { background: #2196f3; color: white; }
+        .kds-btn-complete { background: #ff9800; color: white; }
         
         .kds-empty {
             text-align: center;
@@ -377,7 +378,9 @@ setInterval(updateClock, 1000);
 updateClock();
 
 function loadKitchenOrders() {
-    fetch('/restaurant/kitchen-orders?_=' + Date.now() + '&kds=' + kdsFilter)
+    fetch('/restaurant/kitchen-orders?_=' + Date.now() + '&kds=' + kdsFilter, {
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+    })
     .then(res => res.json())
     .then(data => {
         if (data.success) {
@@ -490,6 +493,9 @@ function renderKitchenOrders() {
                     <button class="kds-btn kds-btn-print" onclick="printTicket(${order.id})">
                         <i class="fas fa-print"></i> IMPRIMIR
                     </button>
+                    <button class="kds-btn kds-btn-complete" onclick="completeOrder(${order.id})" title="Marcar como completado">
+                        <i class="fas fa-flag-checkered"></i> COMPLETADO
+                    </button>
                 </div>
             </div>
         `;
@@ -503,7 +509,8 @@ function markOrderReady(orderId) {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
         }
     })
     .then(res => res.json())
@@ -519,7 +526,8 @@ function deliverOrder(orderId) {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
         }
     })
     .then(res => res.json())
@@ -532,6 +540,26 @@ function deliverOrder(orderId) {
 
 function printTicket(orderId) {
     window.open('/restaurant/orders/' + orderId + '/print-kitchen', '_blank');
+}
+
+function completeOrder(orderId) {
+    if (!confirm('¿Marcar este pedido como completado?')) return;
+    fetch('/restaurant/kitchen/' + orderId + '/complete', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            loadKitchenOrders();
+        } else {
+            alert(data.message || 'Error al completar pedido');
+        }
+    });
 }
 
 loadKitchenOrders();

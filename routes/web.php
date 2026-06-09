@@ -133,6 +133,7 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     Route::get('/restaurant/stream', [RestaurantController::class, 'restaurantStream'])->name('restaurant.stream');
     Route::post('/restaurant/kitchen/{orderId}/ready', [RestaurantController::class, 'markKitchenReady'])->name('restaurant.kitchenReady');
     Route::post('/restaurant/kitchen/{orderId}/deliver', [RestaurantController::class, 'deliverKitchenOrder'])->name('restaurant.kitchenDeliver');
+    Route::post('/restaurant/kitchen/{orderId}/complete', [RestaurantController::class, 'completeOrder'])->name('restaurant.kitchenComplete');
     Route::post('/restaurant/tables/{tableId}/open', [RestaurantController::class, 'openTable'])->name('restaurant.tables.open');
     Route::get('/restaurant/orders/{orderId}', [RestaurantController::class, 'getOrder'])->name('restaurant.orders.show');
     Route::post('/restaurant/orders/{orderId}/items', [RestaurantController::class, 'addItem'])->name('restaurant.orders.items');

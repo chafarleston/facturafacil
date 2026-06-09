@@ -505,6 +505,30 @@ class RestaurantController extends Controller
         ]);
     }
 
+    public function completeOrder(Request $request, $orderId)
+    {
+        try {
+            $order = RestaurantOrder::with('items')->findOrFail($orderId);
+
+            $order->items()->whereIn('kitchen_status', ['SENT', 'PENDING'])->update([
+                'kitchen_status' => 'DELIVERED',
+            ]);
+
+            $order->update(['status' => 'COMPLETED']);
+
+            if ($order->table) {
+                $order->table->update(['status' => 'AVAILABLE']);
+            }
+
+            Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+            Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
+
+            return response()->json(['success' => true, 'message' => 'Pedido completado']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
     public function moveTable(Request $request, $orderId)
     {
         $order = RestaurantOrder::findOrFail($orderId);

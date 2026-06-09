@@ -886,7 +886,9 @@ function openTable(tableId) {
 function loadOrder(orderId) {
     document.getElementById('modalOrderNumber').textContent = 'Cargando pedido...';
     
-    fetch('/restaurant/orders/' + orderId)
+    fetch('/restaurant/orders/' + orderId, {
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+    })
     .then(res => res.json())
     .then(data => {
         if (data.success) {
@@ -1471,7 +1473,9 @@ function confirmAdminPassword() {
 }
 
 function pollActiveOrders() {
-    fetch('/restaurant/active-orders?_=' + Date.now())
+    fetch('/restaurant/active-orders?_=' + Date.now(), {
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+    })
     .then(res => res.json())
     .then(data => {
         if (!data.success) return;
@@ -1507,7 +1511,9 @@ function pollActiveOrders() {
 }
 
 function pollPrintServer() {
-    fetch('/restaurant/print-status?_=' + Date.now())
+    fetch('/restaurant/print-status?_=' + Date.now(), {
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+    })
     .then(res => res.json())
     .then(data => {
         const badge = document.getElementById('printServerBadge');
@@ -1670,7 +1676,9 @@ function processCharge() {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
         },
         body: JSON.stringify({
             customer_id: document.getElementById('chargeCustomerId').value,
