@@ -342,7 +342,12 @@ close() [PHP]
 | `index()` | GET `/invoices` | Lista de comprobantes |
 | `create()` | GET `/invoices/create` | Formulario de facturación |
 | `store()` | POST `/invoices` | Guarda comprobante |
-| `sendToSunat()` | GET `/invoices/{id}/send` | Envía a SUNAT |
+| `sendToSunat()` | GET `/invoices/{id}/send` | Envía a SUNAT (Factura→BillSender, Boleta→Summary) |
+| `destroy()` | DELETE `/invoices/{id}` | Dar de baja (Factura→Voided, Boleta→Summary) |
+| `creditNoteForm()` | GET `/invoices/{id}/credit-note` | Formulario nota de crédito |
+| `sendCreditNote()` | POST `/invoices/{id}/credit-note` | Genera NC (Factura→BillSender, Boleta→Summary) |
+| `debitNoteForm()` | GET `/invoices/{id}/debit-note` | Formulario nota de débito |
+| `sendDebitNote()` | POST `/invoices/{id}/debit-note` | Genera ND (Factura→BillSender, Boleta→Summary) |
 | `generatePdf()` | GET `/invoices/{id}/pdf` | PDF A4 |
 | `generateTicketPdf()` | GET `/invoices/{id}/ticket` | Ticket 80mm |
 
@@ -363,7 +368,12 @@ close() [PHP]
 | `RoleController` | Gestión de roles y permisos |
 | `PrinterController` | Configuración de impresoras + cola |
 | `UbigeoController` | Catálogo ubigeos (departamento/provincia/distrito) |
-| `SunatPadronController` | Descarga y gestión del padrón SUNAT |
+| `SunatPadronController` | Vista y descarga del padrón SUNAT |
+| `SummaryController` | Resúmenes diarios (listar, consultar tickets, enviar) |
+| `DocumentController` | Documentos especiales (retención, guía, percepción) |
+| `GreenterService` | Servicio de facturación SUNAT (no es controlador) |
+| `SummaryService` | Resumen diario de boletas (no es controlador) |
+| `SpecialDocumentService` | Documentos especiales SUNAT (no es controlador) |
 | `SunatQrService` | Generación de código QR para comprobantes (no es controlador) |
 
 ---
@@ -403,14 +413,40 @@ cashRegisterSummary($cashregister, $data)   // Resumen de caja
 Integración con SUNAT para facturación electrónica.
 
 ```php
-sendInvoice($invoice)          // Envía factura/boleta a SUNAT
-sendCreditNote($invoice, ...)  // Envía nota de crédito
+sendInvoice($invoice)          // Envía factura (01) a SUNAT (BillSender)
+sendCreditNote($invoice, ...)  // Envía NC (07) - Factura→BillSender, Boleta→Summary
+sendDebitNote($invoice, ...)   // Envía ND (08) - Factura→BillSender, Boleta→Summary
+voidInvoice($invoice)          // Da de baja factura (Voided)
 generatePdf($invoice)          // Genera PDF A4
 generateTicketPdf($invoice)    // Genera PDF ticket 80mm
 buildInvoice($invoice)         // Construye objeto Greenter para XML
 ```
 
-### 5.4 PrintServerService (`app/Services/PrintServerService.php`)
+setupSee() PEM-first: busca {ruc}_certificate.pem, si no existe usa .p12 con contraseña.
+
+### 5.5 SummaryService (`app/Services/SummaryService.php`)
+
+Resumen Diario para boletas y NC/ND de boletas.
+
+```php
+sendBoletaToSummary($invoice)          // Envía boleta (03) por Resumen Diario
+sendDailySummary()                      // Agrupa boletas del día en un solo resumen
+voidBoleta($invoice)                    // Anula boleta con estado=3
+sendNoteToSummary($note, $orig, $tipo) // Envía NC/ND de boleta por Summary
+checkTicketStatus($ticket)             // Consulta estado del ticket
+```
+
+### 5.6 SpecialDocumentService (`app/Services/SpecialDocumentService.php`)
+
+Documentos especiales SUNAT.
+
+```php
+sendRetention($doc)           // Envía retención (R001, código 20)
+sendDespatch($doc)            // Envía guía de remisión (T001, código 09)
+sendPerception($doc)          // Envía percepción (P001, código 40)
+```
+
+### 5.7 PrintServerService (`app/Services/PrintServerService.php`)
 
 Comunicación con el Print Server Node.js.
 
@@ -713,7 +749,7 @@ Usuario clickea "Caja" en restaurante o POS
 | `TestUsersSeeder` | Usuarios demo (admin, mozo, user) + roles en pivot |
 | `SeriesSeeder` | Series F001, B001, NV01, FC01, BC01, FD01, BD01 |
 | `SunatProductSeeder` | Productos de ejemplo |
-| `PermissionsSeeder` | Todos los permisos + roles (admin, mozo, cajero, user) |
+| `PermissionsSeeder` | 50+ permisos + roles (admin, mozo, cajero, user) |
 | `PrinterSeeder` | 7 slots de impresora |
 | `UbigeoSeeder` | 1874 registros de ubigeos |
 | `CustomerSeeder` | Cliente "Clientes Varios" (DNI 88888888) |
@@ -768,11 +804,21 @@ Usuario clickea "Caja" en restaurante o POS
 | POST | `/products/{id}/duplicate` | Duplicar producto |
 | GET | `/invoices` | Lista comprobantes |
 | GET | `/invoices/{id}/send` | Enviar a SUNAT |
+| GET/POST | `/invoices/{id}/credit-note` | Nota de Crédito |
+| GET/POST | `/invoices/{id}/debit-note` | Nota de Débito |
+| DELETE | `/invoices/{id}` | Dar de baja en SUNAT |
+| GET | `/invoices/{id}/generate-despatch` | Generar guía desde factura |
+| GET | `/sunat-summaries` | Resúmenes diarios |
+| POST | `/sunat-summaries/check-all` | Consultar tickets pendientes |
+| POST | `/sunat-summaries/send-daily` | Enviar resumen diario |
+| POST | `/sunat-summaries/retry-pending` | Reenviar pendientes |
+| GET/POST | `/documents/{tipo}` | Documentos especiales (R/T/P) |
 | GET | `/printers` | Configurar impresoras |
 | GET | `/printers/queue` | Cola de impresión |
 | POST | `/companies/{id}/certificate` | Subir certificado |
 | GET | `/sunat-padron` | Vista padrón SUNAT |
 | POST | `/sunat-padron/download` | Descargar padrón |
+| GET | `/series` | Series de comprobantes |
 
 ---
 
