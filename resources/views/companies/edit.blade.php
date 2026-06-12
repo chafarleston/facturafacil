@@ -89,22 +89,34 @@
                 <input type="text" name="direccion" value="{{ $company->direccion }}" class="form-control">
             </div>
             <div class="row">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="form-group">
                         <label>Departamento</label>
-                        <input type="text" name="departamento" value="{{ $company->departamento }}" class="form-control">
+                        <select name="departamento" id="departamento" class="form-control" onchange="loadProvincias()">
+                            <option value="">Seleccionar...</option>
+                        </select>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="form-group">
                         <label>Provincia</label>
-                        <input type="text" name="provincia" value="{{ $company->provincia }}" class="form-control">
+                        <select name="provincia" id="provincia" class="form-control" onchange="loadDistritos()">
+                            <option value="">Seleccionar...</option>
+                        </select>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="form-group">
                         <label>Distrito</label>
-                        <input type="text" name="distrito" value="{{ $company->distrito }}" class="form-control">
+                        <select name="distrito" id="distrito" class="form-control" onchange="setUbigeo()">
+                            <option value="">Seleccionar...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label>Ubigeo</label>
+                        <input type="text" name="ubigeo" id="ubigeo" value="{{ $company->ubigeo }}" class="form-control" readonly>
                     </div>
                 </div>
             </div>
@@ -186,14 +198,18 @@
                             @endif
                         </div>
                         @endif
-                        <div class="custom-file">
-                            <input type="file" name="certificado" class="custom-file-input" id="certificadoInput" accept=".p12,.pfx">
-                            <label class="custom-file-label" for="certificadoInput">Seleccionar archivo</label>
-                        </div>
+                        <input type="file" name="certificado" class="form-control" accept=".p12,.pfx" style="padding: 6px;">
+                        <small class="text-muted">Seleccione su certificado digital .p12 o .pfx</small>
+                        @error('certificado')
+                        <div class="text-danger mt-1"><small><i class="fas fa-exclamation-circle"></i> {{ $message }}</small></div>
+                        @enderror
                     </div>
                     <div class="form-group">
                         <label>Contraseña del Certificado</label>
                         <input type="password" name="certificado_password" class="form-control" placeholder="Contraseña del certificado digital">
+                        @error('certificado_password')
+                        <div class="text-danger mt-1"><small><i class="fas fa-exclamation-circle"></i> {{ $message }}</small></div>
+                        @enderror
                     </div>
                 </div>
             </div>
@@ -240,5 +256,83 @@ document.getElementById('logoInput').addEventListener('change', function(e) {
         reader.readAsDataURL(file);
     }
 });
+</script>
+
+<script>
+const deptSelect = document.getElementById('departamento');
+const provSelect = document.getElementById('provincia');
+const distSelect = document.getElementById('distrito');
+const ubigeoInput = document.getElementById('ubigeo');
+
+const currentDepartamento = '{{ old("departamento", $company->departamento) }}';
+const currentProvincia = '{{ old("provincia", $company->provincia) }}';
+const currentDistrito = '{{ old("distrito", $company->distrito) }}';
+const currentUbigeo = '{{ $company->ubigeo }}';
+
+function loadDepartamentos() {
+    fetch('/ubigeo/departamentos')
+        .then(response => response.json())
+        .then(data => {
+            deptSelect.innerHTML = '<option value="">Seleccionar...</option>';
+            data.forEach(dept => {
+                const option = document.createElement('option');
+                option.value = dept;
+                option.textContent = dept;
+                if (dept === currentDepartamento) option.selected = true;
+                deptSelect.appendChild(option);
+            });
+            if (currentDepartamento) loadProvincias();
+        });
+}
+
+function loadProvincias() {
+    const dept = deptSelect.value;
+    if (!dept) return;
+
+    fetch('/ubigeo/provincias?departamento=' + encodeURIComponent(dept))
+        .then(response => response.json())
+        .then(data => {
+            provSelect.innerHTML = '<option value="">Seleccionar...</option>';
+            distSelect.innerHTML = '<option value="">Seleccionar...</option>';
+            data.forEach(prov => {
+                const option = document.createElement('option');
+                option.value = prov;
+                option.textContent = prov;
+                if (prov === currentProvincia) option.selected = true;
+                provSelect.appendChild(option);
+            });
+            if (currentProvincia) loadDistritos();
+        });
+}
+
+function loadDistritos() {
+    const dept = deptSelect.value;
+    const prov = provSelect.value;
+    if (!dept || !prov) return;
+
+    fetch('/ubigeo/distritos?departamento=' + encodeURIComponent(dept) + '&provincia=' + encodeURIComponent(prov))
+        .then(response => response.json())
+        .then(data => {
+            distSelect.innerHTML = '<option value="">Seleccionar...</option>';
+            data.forEach(dist => {
+                const option = document.createElement('option');
+                option.value = dist.distrito;
+                option.dataset.codigo = dist.codigo;
+                option.textContent = dist.distrito;
+                if (dist.distrito === currentDistrito || dist.codigo === currentUbigeo) {
+                    option.selected = true;
+                    ubigeoInput.value = dist.codigo;
+                }
+                distSelect.appendChild(option);
+            });
+        });
+}
+
+function setUbigeo() {
+    const selected = distSelect.options[distSelect.selectedIndex];
+    ubigeoInput.value = selected.dataset.codigo || '';
+}
+
+loadDepartamentos();
 </script>
 @endpush

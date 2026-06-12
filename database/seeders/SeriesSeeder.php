@@ -14,6 +14,10 @@ class SeriesSeeder extends Seeder
             ['serie' => 'F001', 'tipo_documento' => '01'],
             ['serie' => 'B001', 'tipo_documento' => '03'],
             ['serie' => 'NV01', 'tipo_documento' => 'NV'],
+            ['serie' => 'FC01', 'tipo_documento' => '07'],
+            ['serie' => 'BC01', 'tipo_documento' => '07'],
+            ['serie' => 'FD01', 'tipo_documento' => '08'],
+            ['serie' => 'BD01', 'tipo_documento' => '08'],
         ];
 
         $company = Company::first();

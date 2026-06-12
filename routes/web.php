@@ -84,7 +84,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/cashregisters/{cashregister}/print-caja', [CashRegisterController::class, 'printCaja'])->name('cashregisters.printCaja');
         Route::post('/cashregister/open', [CashRegisterController::class, 'open'])->name('cashregisters.open');
         Route::post('/cashregister/close', [CashRegisterController::class, 'close'])->name('cashregisters.close');
-        Route::resource('series', SerieController::class);
+        Route::resource('series', SerieController::class)->parameters(['series' => 'serie']);
         Route::resource('users', \App\Http\Controllers\UserController::class);
         Route::resource('roles', \App\Http\Controllers\RoleController::class);
         Route::resource('permissions', \App\Http\Controllers\PermissionController::class);
@@ -111,7 +111,20 @@ Route::middleware('auth')->group(function () {
     Route::get('/invoices/{invoice}/cdr', [InvoiceController::class, 'downloadCdr'])->name('invoices.downloadCdr');
     Route::get('/invoices/{invoice}/credit-note', [InvoiceController::class, 'creditNoteForm'])->name('invoices.creditNoteForm');
     Route::post('/invoices/{invoice}/credit-note', [InvoiceController::class, 'sendCreditNote'])->name('invoices.sendCreditNote');
+    Route::get('/invoices/{invoice}/debit-note', [InvoiceController::class, 'debitNoteForm'])->name('invoices.debitNoteForm');
+    Route::post('/invoices/{invoice}/debit-note', [InvoiceController::class, 'sendDebitNote'])->name('invoices.sendDebitNote');
     Route::resource('invoices', InvoiceController::class);
+    Route::get('/invoices/{invoice}/generate-despatch', [\App\Http\Controllers\DocumentController::class, 'createFromInvoice'])->name('invoices.generateDespatch');
+    Route::get('/sunat-summaries', [\App\Http\Controllers\SummaryController::class, 'index'])->name('sunat-summaries.index');
+    Route::post('/sunat-summaries/check-all', [\App\Http\Controllers\SummaryController::class, 'checkAllPending'])->name('sunat-summaries.checkAll');
+    Route::post('/sunat-summaries/{summary}/check', [\App\Http\Controllers\SummaryController::class, 'checkStatus'])->name('sunat-summaries.check');
+    Route::post('/sunat-summaries/send-daily', [\App\Http\Controllers\SummaryController::class, 'sendDaily'])->name('sunat-summaries.sendDaily');
+    Route::post('/sunat-summaries/retry-pending', [\App\Http\Controllers\SummaryController::class, 'retryPending'])->name('sunat-summaries.retryPending');
+    Route::get('/documents/{tipo}', [\App\Http\Controllers\DocumentController::class, 'index'])->name('documents.index');
+    Route::get('/documents/{tipo}/create', [\App\Http\Controllers\DocumentController::class, 'create'])->name('documents.create');
+    Route::post('/documents/{tipo}', [\App\Http\Controllers\DocumentController::class, 'store'])->name('documents.store');
+    Route::get('/documents/{tipo}/{document}', [\App\Http\Controllers\DocumentController::class, 'show'])->name('documents.show');
+    Route::post('/documents/{tipo}/{document}/send', [\App\Http\Controllers\DocumentController::class, 'send'])->name('documents.send');
     
 Route::get('/customers/search', [CustomerApiController::class, 'search'])->name('customers.search');
     Route::post('/customers/quick-store', [CustomerApiController::class, 'quickStore'])->name('customers.quickStore');

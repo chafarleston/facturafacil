@@ -157,6 +157,10 @@
                 <li class="nav-item"><a href="{{ route('invoices.index', ['type' => '03']) }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Boletas</p></a></li>
                 <li class="nav-item"><a href="{{ route('invoices.index', ['type' => 'NV']) }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Notas de Venta</p></a></li>
                 <li class="nav-item"><a href="{{ route('invoices.create') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Nuevo Comprobante</p></a></li>
+                <li class="nav-item"><a href="{{ route('sunat-summaries.index') }}" class="nav-link {{ request()->routeIs('sunat-summaries.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Resúmenes Diarios</p></a></li>
+                <li class="nav-item"><a href="{{ route('documents.index', 'R') }}" class="nav-link {{ request()->routeIs('documents.*') && request()->route('tipo') === 'R' ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Retenciones</p></a></li>
+                <li class="nav-item"><a href="{{ route('documents.index', 'T') }}" class="nav-link {{ request()->routeIs('documents.*') && request()->route('tipo') === 'T' ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Guías de Remisión</p></a></li>
+                <li class="nav-item"><a href="{{ route('documents.index', 'P') }}" class="nav-link {{ request()->routeIs('documents.*') && request()->route('tipo') === 'P' ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Percepciones</p></a></li>
               </ul>
             </li>
             @endcan

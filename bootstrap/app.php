@@ -4,6 +4,12 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
+// Configure OpenSSL 3.0+ to load legacy provider for SUNAT PKCS12 certificates
+$opensslConf = getenv('OPENSSL_CONF') ?: 'C:\laragon\bin\php\php-8.4.5-Win32-vs17-x64\extras\ssl\openssl.cnf';
+if (file_exists($opensslConf)) {
+    putenv('OPENSSL_CONF=' . $opensslConf);
+}
+
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',

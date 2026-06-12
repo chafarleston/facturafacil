@@ -235,6 +235,11 @@ observaciones, referencia
 | `printPrebill($orderId)` | GET `/restaurant/orders/{id}/print-prebill` | Genera PDF de prebillete |
 | `saveOrderNotes($orderId)` | POST `/restaurant/orders/{id}/notes` | Guarda notas del pedido |
 | `getActiveOrders()` | GET `/restaurant/active-orders` | Órdenes activas (polling) |
+| `getTableLocks()` | GET `/restaurant/locks` | Mesas bloqueadas (polling) |
+| `lockTable($tableId)` | POST `/restaurant/tables/{id}/lock` | Bloquea mesa para usuario |
+| `unlockTable($tableId)` | POST `/restaurant/tables/{id}/unlock` | Libera bloqueo de mesa |
+| `unlockAllTables()` | POST `/restaurant/tables/unlock-all` | Libera todas las mesas |
+| `completeOrder($orderId)` | POST `/restaurant/kitchen/{id}/complete` | Completa pedido desde KDS |
 | `kitchenIndex()` | GET `/restaurant/kitchen` | Vista KDS |
 | `getKitchenOrders()` | GET `/restaurant/kitchen-orders` | Órdenes de cocina (polling) |
 
@@ -354,8 +359,8 @@ close() [PHP]
 | `RoleController` | Gestión de roles y permisos |
 | `PrinterController` | Configuración de impresoras + cola |
 | `UbigeoController` | Catálogo ubigeos (departamento/provincia/distrito) |
-| `GreenterService` | Servicio de facturación SUNAT (no es controlador) |
-| `PrintService` | Servicio de impresión (no es controlador) |
+| `SunatPadronController` | Descarga y gestión del padrón SUNAT |
+| `SunatQrService` | Generación de código QR para comprobantes (no es controlador) |
 
 ---
 
@@ -665,6 +670,7 @@ Usuario clickea "Caja" en restaurante o POS
 | Vista | Función | Intervalo |
 |-------|---------|-----------|
 | Restaurante | `pollActiveOrders()` | 3 segundos |
+| Restaurante | `pollTableLocks()` | 3 segundos |
 | Restaurante | `pollPrintServer()` | 10 segundos |
 | KDS (Cocina) | `loadKitchenOrders()` | 5 segundos |
 
@@ -688,6 +694,9 @@ Usuario clickea "Caja" en restaurante o POS
 | `cancelOrder()` | Anula pedido |
 | `searchProducts(query)` | Búsqueda de productos en tiempo real |
 | `filterProducts(categoryId)` | Filtra productos por categoría |
+| `pollTableLocks()` | Polling de bloqueos de mesas |
+| `unlockAllTables()` | Desbloquea todas las mesas (admin/cajero) |
+| `completeOrder(orderId)` | Marca pedido como completado desde KDS |
 
 ---
 
@@ -702,7 +711,7 @@ Usuario clickea "Caja" en restaurante o POS
 | `SunatProductSeeder` | Productos de ejemplo |
 | `PermissionsSeeder` | Todos los permisos + roles (admin, mozo, cajero, user) |
 | `PrinterSeeder` | 7 slots de impresora |
-| `UbigeoSeeder` | 1874 registros de ubigeos (departamentos, provincias, distritos) |
+| `UbigeoSeeder` | 1874 registros de ubigeos |
 | `CustomerSeeder` | Cliente "Clientes Varios" (DNI 88888888) |
 | `DatabaseSeeder` | Ejecuta todos los anteriores |
 
@@ -727,14 +736,19 @@ Usuario clickea "Caja" en restaurante o POS
 | GET | `/restaurant` | Vista restaurante |
 | GET | `/restaurant/kitchen` | Vista KDS |
 | GET | `/restaurant/active-orders` | Polling restaurante |
+| GET | `/restaurant/locks` | Mesas bloqueadas (polling) |
 | GET | `/restaurant/kitchen-orders` | Polling KDS |
 | POST | `/restaurant/tables/{id}/open` | Abrir mesa |
+| POST | `/restaurant/tables/{id}/lock` | Bloquear mesa |
+| POST | `/restaurant/tables/{id}/unlock` | Desbloquear mesa |
+| POST | `/restaurant/tables/unlock-all` | Desbloquear todas (admin/cajero) |
 | POST | `/restaurant/orders/{id}/items` | Agregar producto |
 | POST | `/restaurant/orders/{id}/send-to-kitchen` | Enviar a cocina |
 | POST | `/restaurant/orders/{id}/charge` | Cobrar |
 | POST | `/restaurant/orders/{id}/cancel` | Anular |
 | POST | `/restaurant/orders/{id}/move-table` | Mover mesa |
 | POST | `/restaurant/orders/{id}/print-prebill/{key}` | Imprimir precuenta |
+| POST | `/restaurant/kitchen/{orderId}/complete` | Completar pedido desde KDS |
 | GET | `/pos` | Vista POS |
 | POST | `/pos` | Procesar venta |
 | POST | `/pos/open-drawer` | Abrir cajón |
@@ -753,6 +767,8 @@ Usuario clickea "Caja" en restaurante o POS
 | GET | `/printers` | Configurar impresoras |
 | GET | `/printers/queue` | Cola de impresión |
 | POST | `/companies/{id}/certificate` | Subir certificado |
+| GET | `/sunat-padron` | Vista padrón SUNAT |
+| POST | `/sunat-padron/download` | Descargar padrón |
 
 ---
 
@@ -1302,4 +1318,194 @@ php artisan db:seed → ejecuta en orden:
 7. PrinterSeeder       → 7 slots de impresora
 8. UbigeoSeeder        → 1874 registros de ubigeos
 9. CustomerSeeder      → "Clientes Varios" (DNI 88888888)
+
+---
+
+## 20. Nuevos Módulos y Mejoras (Junio 2026)
+
+### 20.1 Sistema de Bloqueo de Mesas
+
+```
+Propósito: Evitar que dos usuarios abran la misma mesa simultáneamente.
+
+Flujo:
+1. Usuario hace clic en mesa → POST /restaurant/tables/{id}/lock
+   - Si mesa bloqueada por otro → Error "Mesa en uso por [nombre]"
+   - Si bloqueo expirado (>5min) → Se libera automáticamente
+   - Si libre → Bloquea para el usuario actual → Abre modal
+
+2. Usuario cierra modal → POST /restaurant/tables/{id}/unlock
+   - Libera el bloqueo (owner o admin)
+
+3. Polling cada 3s → GET /restaurant/locks
+   - Actualiza visual: mesas bloqueadas por otro → borde naranja
+   - Libera bloqueos expirados automáticamente
+
+4. Admin/Cajero → Botón "Desbloquear Mesas"
+   - POST /restaurant/tables/unlock-all
+   - Libera todos los bloqueos de la empresa
+
+Columnas en restaurant_tables:
+- locked_by (FK → users, nullable)
+- locked_at (timestamp, nullable)
+
+Métodos en RestaurantTable:
+- isLocked(): bool
+- isLockedBy($userId): bool
+- isLockExpired(): bool  (timeout: 5 min)
+- lock($userId): void
+- unlock(): void
+
+Migración: 2026_06_10_000001_add_lock_to_restaurant_tables
+```
+
+### 20.2 Módulo de Series para Facturación Electrónica
+
+```
+Tipos de Serie SUNAT:
+
+| Serie | Tipo Documento | Código SUNAT | Uso |
+|-------|---------------|--------------|-----|
+| F001-F999 | Factura Electrónica | 01 | Ventas con RUC |
+| B001-B999 | Boleta Electrónica | 03 | Ventas con DNI |
+| NV01-NV99 | Nota de Venta | NV | Ventas internas (sin SUNAT) |
+| FC01-FC99 | Nota de Crédito Factura | 07 | Anular/corregir facturas |
+| BC01-BC99 | Nota de Crédito Boleta | 07 | Anular/corregir boletas |
+| FD01-FD99 | Nota de Débito Factura | 08 | Incrementar monto facturas |
+| BD01-BD99 | Nota de Débito Boleta | 08 | Incrementar monto boletas |
+
+Validación de formato: [A-Z]{1,2}\d{2,3} (ej: F001, B001, NV01, FC01)
+NV no se envía a SUNAT (validación en InvoiceController::sendToSunat)
+Vista: GET /series | Crear: GET /series/create | Editar: GET /series/{id}/edit
+```
+
+### 20.3 Módulo de Padrón SUNAT
+
+```
+Vista dedicada: GET /sunat-padron
+Menú: Empresa → Padrón SUNAT
+
+Muestra información:
+- Archivo, tamaño, registros, última actualización
+- Estado: disponible / no disponible
+- Botón: Descargar / Actualizar
+
+Descarga: POST /sunat-padron/download
+- Ejecuta: php artisan sunat:download-padron
+- URL: http://www2.sunat.gob.pe/padron_reducido_ruc.zip
+- Extrae y limpia automáticamente
+
+Comando manual: php artisan sunat:download-padron
+```
+
+### 20.4 Facturación Electrónica con Greenter
+
+```
+GreenterService (app/Services/GreenterService.php):
+
+Métodos principales:
+- sendInvoice($invoice) → Envía factura/boleta a SUNAT
+- sendCreditNote($invoice, $motivo, $descripcion) → Nota de crédito
+- voidInvoice($invoice) → Dar de baja documento
+- generatePdf($invoice) → PDF A4 con QR
+- generateTicketPdf($invoice) → Ticket 80mm con QR
+
+setupSee() mejorado:
+- Busca certificado en storage/app/certificates/ (primero)
+- Luego busca en storage/app/ (fallback)
+- Valida existencia del archivo y contraseña
+- Usa soap_username + soap_password (fallback: RUC + cert password)
+- soap_type_id=1 → SunatEndpoints::FE_BETA
+- soap_type_id=2 → SunatEndpoints::FE_HOMOLOGACION
+
+Dependencias (Greenter 5.x):
+- greenter/core 5.2.0, greenter/ws 5.2.0, greenter/xml 5.2.0
+- greenter/xmldsig 5.0.3, greenter/report 5.2.0
+- greenter/htmltopdf 5.2.0, greenter/lite 5.2.0
+
+Extensiones PHP requeridas: ext-soap, ext-openssl, ext-xml, ext-zip, ext-intl
+```
+
+### 20.5 KDS - Botón "Completado"
+
+```
+Nuevo botón en pantalla de cocina (KDS):
+- Botón naranja "COMPLETADO" en cada tarjeta de pedido
+- Acción: Marca todos los items como DELIVERED
+- Cambia orden a COMPLETED y mesa a AVAILABLE
+- Útil para cerrar pedidos sin cobrar
+
+Endpoint: POST /restaurant/kitchen/{orderId}/complete
+Nombre: restaurant.kitchenComplete
+```
+
+### 20.6 Ubigeo con Selects en Cascada
+
+```
+Empresa /companies/{id}/edit:
+- Departamento (select) → carga provincias vía AJAX
+- Provincia (select) → carga distritos vía AJAX
+- Distrito (select) → auto-asigna código ubigeo
+- Ubigeo (input readonly) → código de 6 dígitos
+
+Funciones JavaScript:
+- loadDepartamentos() → GET /ubigeo/departamentos
+- loadProvincias() → GET /ubigeo/provincias?departamento=X
+- loadDistritos() → GET /ubigeo/distritos?departamento=X&provincia=Y
+- setUbigeo() → Actualiza código al seleccionar distrito
+
+Datos: 1874 registros en tabla ubigeos, 25 departamentos.
+```
+
+### 20.7 Polling - Headers JSON
+
+```
+Todos los fetch calls del restaurante y KDS ahora incluyen:
+- 'Accept': 'application/json'
+- 'X-Requested-With': 'XMLHttpRequest'
+
+Esto evita que Laravel redirija a login (HTML) cuando la sesión expira,
+permitiendo que los errores se manejen como JSON correctamente.
+
+Archivos modificados:
+- resources/views/restaurant/index.blade.php (7 calls)
+- resources/views/restaurant/kds.blade.php (3 calls)
+```
+
+---
+
+## 21. Solución de Problemas Comunes (Actualizado)
+
+| Error | Causa | Solución |
+|-------|-------|----------|
+| `MissingAppKeyException` | APP_KEY inválida o cache desactualizado | `php artisan key:generate && php artisan config:clear` |
+| `Duplicate entry for key 'products_company_id_codigo_unique'` | Código duplicado al duplicar producto | Corregido con `getNextProductCode()` que busca el código más alto |
+| `Column 'company_id' cannot be null` | Usuario sin empresa asignada | `php artisan db:seed` o asignar manualmente |
+| `Connection refused localhost:8080` | Reverb configurado sin servidor corriendo | Cambiar `BROADCAST_DRIVER=log` en `.env` |
+| Print Server no responde | Quick Edit Mode de Windows | Usar `disable-quick-edit.ps1` o `start-hidden.vbs` |
+| Cash drawer no abre | CORS bloqueando fetch local | Usar `mode: no-cors` + `Content-Type: application/x-www-form-urlencoded` |
+| Certificado no se sube | Validación mimes rechaza .p12 | No usar `mimes:p12,pfx` en la validación |
+| Certificado contraseña incorrecta | OpenSSL no puede leer .p12 | Verificar contraseña del certificado |
+| Pedido no aparece en mesa | Fetch sin headers JSON | Agregar `Accept: application/json` a todos los fetch |
+| Dos usuarios abren misma mesa | Race condition en openTable | Usar sistema de bloqueo con locked_by/locked_at |
+| Serie no se puede editar | Parámetro de ruta incorrecto | Usar `->parameters(['series' => 'serie'])` en Route::resource |
+| Ubigeo no funciona | Inputs de texto en lugar de selects | Usar selects con cascada JavaScript |
+
+---
+
+## 22. Comandos Artisan (Actualizado)
+
+| Comando | Propósito |
+|---------|-----------|
+| `php artisan print:process-queue` | Procesa cola de impresión |
+| `php artisan sunat:download-padron` | Descarga el padrón reducido de SUNAT |
+| `php artisan config:clear` | Limpia cache de configuración |
+| `php artisan view:clear` | Limpia cache de vistas |
+| `php artisan route:clear` | Limpia cache de rutas |
+| `php artisan cache:clear` | Limpia cache de Laravel |
+| `php artisan migrate` | Ejecuta migraciones |
+| `php artisan db:seed` | Ejecuta seeders |
+| `php artisan key:generate` | Genera APP_KEY |
+| `php artisan route:list` | Lista rutas |
+| `php artisan optimize` | Optimiza rendimiento |
 ```

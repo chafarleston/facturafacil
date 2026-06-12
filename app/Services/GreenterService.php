@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Company;
 use App\Models\Invoice as InvoiceModel;
+use App\Services\SummaryService;
 use Greenter\Model\Sale\Invoice;
 use Greenter\Model\Sale\SaleDetail;
 use Greenter\Model\Sale\Legend;
@@ -47,6 +48,11 @@ class GreenterService
                 'description' => 'No hay certificado digital configurado'
             ];
         }
+
+        // ND relacionada a Boleta debe ir por Resumen Diario
+        if ($invoice->tipo_documento === '03') {
+            return $this->sendNoteViaSummary($invoice, $company, '08', $motivo, $descripcion);
+        }
         
         try {
             $this->setupSee($company);
@@ -59,12 +65,33 @@ class GreenterService
         }
         
         try {
+            // Determine NC serie based on original invoice type
+            $ncPrefix = $invoice->tipo_documento === '01' ? 'FC' : 'BC';
+            $serie = \App\Models\Serie::where('company_id', $company->id)
+                ->where('tipo_documento', '07')
+                ->where('serie', 'like', $ncPrefix . '%')
+                ->where('estado', 'ACTIVO')
+                ->first();
+
+            if (!$serie) {
+                $serie = \App\Models\Serie::create([
+                    'company_id' => $company->id,
+                    'tipo_documento' => '07',
+                    'serie' => $ncPrefix . '01',
+                    'numero_actual' => 0,
+                    'estado' => 'ACTIVO',
+                ]);
+            }
+
+            $nextNumber = $serie->getNextNumber();
+            $correlativo = str_pad($nextNumber, 8, '0', STR_PAD_LEFT);
+
             $note = new Note();
             
             $note->setUblVersion('2.1');
             $note->setTipoDoc('07');
-            $note->setSerie($invoice->serie);
-            $note->setCorrelativo($this->generateNoteNumber());
+            $note->setSerie($serie->serie);
+            $note->setCorrelativo($correlativo);
             $note->setFechaEmision(new \DateTime());
             $note->setTipoMoneda('PEN');
             
@@ -124,18 +151,21 @@ class GreenterService
             
             $legend = new Legend();
             $legend->setCode('1000');
-            $legend->setValue('DESCUENTO POR ' . strtoupper($descripcion));
+            $legend->setValue($invoice->total_letras ?? 'SON ' . number_to_letter($notaTotal) . ' SOLES');
             $note->setLegends([$legend]);
             
             $result = $this->see->send($note);
             
             if ($result->isSuccess()) {
+                $serie->incrementNumber();
+                
                 $noteInvoice = new InvoiceModel();
                 $noteInvoice->company_id = $company->id;
                 $noteInvoice->customer_id = $invoice->customer_id;
                 $noteInvoice->tipo_documento = '07';
-                $noteInvoice->serie = $invoice->serie;
-                $noteInvoice->numero = $this->getLastNoteNumber();
+                $noteInvoice->serie = $serie->serie;
+                $noteInvoice->numero = $nextNumber;
+                $noteInvoice->full_number = $serie->serie . '-' . $correlativo;
                 $noteInvoice->fecha_emision = date('Y-m-d');
                 $noteInvoice->fecha_vencimiento = date('Y-m-d');
                 $noteInvoice->moneda = 'PEN';
@@ -143,7 +173,7 @@ class GreenterService
                 $noteInvoice->igv = $notaIgv;
                 $noteInvoice->total = $notaTotal;
                 $noteInvoice->subtotal = $notaSubtotal;
-                $noteInvoice->total_letras = 'SON ' . number_to_letter($notaTotal) . ' SOLES';
+                $noteInvoice->total_letras = $invoice->total_letras ?? 'SON ' . number_to_letter($notaTotal) . ' SOLES';
                 $noteInvoice->sunat_estado = 'ACEPTADO';
                 $noteInvoice->sunat_code = '0';
                 $noteInvoice->sunat_description = 'ACEPTADO';
@@ -166,7 +196,7 @@ class GreenterService
                     'success' => true,
                     'code' => '0',
                     'description' => 'Nota de crédito generada correctamente',
-                    'note_number' => $note->getCorrelativo()
+                    'note_number' => $serie->serie . '-' . $correlativo,
                 ];
             } else {
                 $error = $result->getError();
@@ -186,18 +216,285 @@ class GreenterService
         }
     }
     
-    private function generateNoteNumber()
+    private function voidInvoiceNumber()
     {
-        $num = $this->getLastNoteNumber();
-        return str_pad($num, 8, '0', STR_PAD_LEFT);
+        return str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
     }
     
-    private function getLastNoteNumber()
+    public function sendDebitNote(InvoiceModel $invoice, string $motivo, string $descripcion)
     {
-        $last = InvoiceModel::where('tipo_documento', '07')
-            ->where('serie', 'like', 'F%')
-            ->max('numero');
-        return ($last ?? 0) + 1;
+        $company = \App\Models\Company::getMainCompany();
+        
+        if (!$company) {
+            return [
+                'success' => false,
+                'code' => 'NO_COMPANY',
+                'description' => 'No hay empresa principal configurada'
+            ];
+        }
+        
+        if (!$company->certificado_path && !$company->certificate) {
+            return [
+                'success' => false,
+                'code' => 'NO_CERT',
+                'description' => 'No hay certificado digital configurado'
+            ];
+        }
+        
+        try {
+            $this->setupSee($company);
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'code' => 'CERT_ERROR',
+                'description' => $e->getMessage()
+            ];
+        }
+        
+        try {
+            $ndPrefix = $invoice->tipo_documento === '01' ? 'FD' : 'BD';
+            $serie = \App\Models\Serie::where('company_id', $company->id)
+                ->where('tipo_documento', '08')
+                ->where('serie', 'like', $ndPrefix . '%')
+                ->where('estado', 'ACTIVO')
+                ->first();
+
+            if (!$serie) {
+                $serie = \App\Models\Serie::create([
+                    'company_id' => $company->id,
+                    'tipo_documento' => '08',
+                    'serie' => $ndPrefix . '01',
+                    'numero_actual' => 0,
+                    'estado' => 'ACTIVO',
+                ]);
+            }
+
+            $nextNumber = $serie->getNextNumber();
+            $correlativo = str_pad($nextNumber, 8, '0', STR_PAD_LEFT);
+
+            $note = new Note();
+            
+            $note->setUblVersion('2.1');
+            $note->setTipoDoc('08');
+            $note->setSerie($serie->serie);
+            $note->setCorrelativo($correlativo);
+            $note->setFechaEmision(new \DateTime());
+            $note->setTipoMoneda('PEN');
+            
+            $note->setTipDocAfectado($invoice->tipo_documento);
+            $note->setNumDocfectado($invoice->full_number);
+            $note->setCodMotivo($motivo);
+            $note->setDesMotivo($descripcion);
+            
+            $note->setCompany($this->buildCompany($company));
+            
+            $client = $invoice->customer;
+            $greenterClient = new Client();
+            $greenterClient->setTipoDoc($client->documento_tipo == '6' ? '6' : '1');
+            $greenterClient->setNumDoc($client->documento_numero);
+            $greenterClient->setRznSocial($client->nombre);
+            if ($client->direccion) {
+                $clientAddress = new Address();
+                $clientAddress->setDireccion($client->direccion);
+                $greenterClient->setAddress($clientAddress);
+            }
+            $note->setClient($greenterClient);
+            
+            $notaTotal = $invoice->total;
+            $notaIgv = $invoice->igv;
+            $notaSubtotal = $invoice->subtotal;
+            
+            $note->setMtoOperGravadas($notaSubtotal);
+            $note->setMtoIGV($notaIgv);
+            $note->setTotalImpuestos($notaIgv);
+            $note->setValorVenta($notaSubtotal);
+            $note->setSubTotal($notaTotal);
+            $note->setMtoImpVenta($notaTotal);
+            
+            $lines = [];
+            foreach ($invoice->items as $item) {
+                $line = new SaleDetail();
+                $line->setUnidad('NIU');
+                $line->setCodProducto($item->codigo ?? '');
+                $line->setDescripcion($item->descripcion);
+                $line->setCantidad($item->cantidad);
+                $rate = $company->getIgvRate();
+                $igvPct = $company->getActiveIgvPercent();
+                $valorUnitario = round($item->precio_unitario / (1 + $rate), 2);
+                $baseIgv = round($valorUnitario * $item->cantidad, 2);
+                $igvItem = round($baseIgv * $rate, 2);
+                $line->setMtoValorUnitario($valorUnitario);
+                $line->setMtoPrecioUnitario($item->precio_unitario);
+                $line->setTipAfeIgv('10');
+                $line->setMtoBaseIgv($baseIgv);
+                $line->setPorcentajeIgv($igvPct);
+                $line->setIgv($igvItem);
+                $line->setMtoValorVenta($baseIgv);
+                $line->setTotalImpuestos($igvItem);
+                $lines[] = $line;
+            }
+            $note->setDetails($lines);
+            
+            $legend = new Legend();
+            $legend->setCode('1000');
+            $legend->setValue($invoice->total_letras ?? 'SON ' . number_to_letter($notaTotal) . ' SOLES');
+            $note->setLegends([$legend]);
+            
+            $result = $this->see->send($note);
+            
+            if ($result->isSuccess()) {
+                $serie->incrementNumber();
+                
+                $noteInvoice = new InvoiceModel();
+                $noteInvoice->company_id = $company->id;
+                $noteInvoice->customer_id = $invoice->customer_id;
+                $noteInvoice->tipo_documento = '08';
+                $noteInvoice->serie = $serie->serie;
+                $noteInvoice->numero = $nextNumber;
+                $noteInvoice->full_number = $serie->serie . '-' . $correlativo;
+                $noteInvoice->fecha_emision = date('Y-m-d');
+                $noteInvoice->fecha_vencimiento = date('Y-m-d');
+                $noteInvoice->moneda = 'PEN';
+                $noteInvoice->gravado = $notaSubtotal;
+                $noteInvoice->igv = $notaIgv;
+                $noteInvoice->total = $notaTotal;
+                $noteInvoice->subtotal = $notaSubtotal;
+                $noteInvoice->total_letras = $invoice->total_letras ?? 'SON ' . number_to_letter($notaTotal) . ' SOLES';
+                $noteInvoice->sunat_estado = 'ACEPTADO';
+                $noteInvoice->sunat_code = '0';
+                $noteInvoice->sunat_description = 'ACEPTADO';
+                $noteInvoice->save();
+                
+                foreach ($invoice->items as $item) {
+                    $noteInvoice->items()->create([
+                        'codigo' => $item->codigo,
+                        'descripcion' => $item->descripcion,
+                        'cantidad' => $item->cantidad,
+                        'precio_unitario' => $item->precio_unitario,
+                        'precio_venta' => $item->precio_venta,
+                        'igv' => $item->igv
+                    ]);
+                }
+                
+                return [
+                    'success' => true,
+                    'code' => '0',
+                    'description' => 'Nota de débito generada correctamente',
+                    'note_number' => $serie->serie . '-' . $correlativo,
+                ];
+            } else {
+                $error = $result->getError();
+                return [
+                    'success' => false,
+                    'code' => $error->getCode() ?? 'ERROR',
+                    'description' => $error->getMessage() ?? 'Error desconocido'
+                ];
+            }
+        } catch (\Exception $e) {
+            \Log::error('Debit Note Error: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'code' => 'EXCEPTION',
+                'description' => $e->getMessage()
+            ];
+        }
+    }
+    
+    private function sendNoteViaSummary(InvoiceModel $invoice, $company, string $tipoDoc, string $motivo, string $descripcion): array
+    {
+        // Determine serie for the note
+        $prefix = $tipoDoc === '07' ? ($invoice->tipo_documento === '01' ? 'FC' : 'BC') : ($invoice->tipo_documento === '01' ? 'FD' : 'BD');
+        $serie = \App\Models\Serie::where('company_id', $company->id)
+            ->where('tipo_documento', $tipoDoc)
+            ->where('serie', 'like', $prefix . '%')
+            ->where('estado', 'ACTIVO')
+            ->first();
+
+        if (!$serie) {
+            $serie = \App\Models\Serie::create([
+                'company_id' => $company->id,
+                'tipo_documento' => $tipoDoc,
+                'serie' => $prefix . '01',
+                'numero_actual' => 0,
+                'estado' => 'ACTIVO',
+            ]);
+        }
+
+        $nextNumber = $serie->getNextNumber();
+        $correlativo = str_pad($nextNumber, 8, '0', STR_PAD_LEFT);
+        $fullNumber = $serie->serie . '-' . $correlativo;
+        $notaTotal = $invoice->total;
+        $notaIgv = $invoice->igv;
+        $notaSubtotal = $invoice->subtotal;
+
+        // Create the note invoice locally with PENDIENTE status
+        $noteInvoice = new InvoiceModel();
+        $noteInvoice->company_id = $company->id;
+        $noteInvoice->customer_id = $invoice->customer_id;
+        $noteInvoice->tipo_documento = $tipoDoc;
+        $noteInvoice->serie = $serie->serie;
+        $noteInvoice->numero = $nextNumber;
+        $noteInvoice->full_number = $fullNumber;
+        $noteInvoice->fecha_emision = date('Y-m-d');
+        $noteInvoice->fecha_vencimiento = date('Y-m-d');
+        $noteInvoice->moneda = 'PEN';
+        $noteInvoice->gravado = $notaSubtotal;
+        $noteInvoice->igv = $notaIgv;
+        $noteInvoice->total = $notaTotal;
+        $noteInvoice->subtotal = $notaSubtotal;
+        $noteInvoice->total_letras = $invoice->total_letras ?? 'SON ' . number_to_letter($notaTotal) . ' SOLES';
+        $noteInvoice->sunat_estado = 'PENDIENTE';
+        $noteInvoice->sunat_code = $tipoDoc === '07' ? 'NC' : 'ND';
+        $noteInvoice->sunat_description = 'ENVIADO POR RESUMEN DIARIO';
+        $noteInvoice->save();
+
+        $serie->incrementNumber();
+
+        foreach ($invoice->items as $item) {
+            $noteInvoice->items()->create([
+                'codigo' => $item->codigo,
+                'descripcion' => $item->descripcion,
+                'cantidad' => $item->cantidad,
+                'precio_unitario' => $item->precio_unitario,
+                'precio_venta' => $item->precio_venta,
+                'igv' => $item->igv,
+            ]);
+        }
+
+        if ($tipoDoc === '07') {
+            \DB::table('invoices')->where('id', $invoice->id)->update(['credit_note_id' => $noteInvoice->id]);
+        }
+
+        // Send via Summary
+        try {
+            $summaryService = new SummaryService();
+            $result = $summaryService->sendNoteToSummary($noteInvoice, $invoice, $tipoDoc);
+
+            if ($result['success']) {
+                return [
+                    'success' => true,
+                    'code' => $result['ticket'] ?? '',
+                    'description' => $noteInvoice->full_number . ' - ' . $result['description'],
+                    'note_number' => $fullNumber,
+                ];
+            } else {
+                // If summary fails, the note stays as PENDIENTE (can be retried)
+                return [
+                    'success' => true,
+                    'code' => 'ENVIADO',
+                    'description' => $noteInvoice->full_number . ' pendiente de envío a SUNAT.',
+                    'note_number' => $fullNumber,
+                ];
+            }
+        } catch (\Exception $e) {
+            \Log::error('Summary send error: ' . $e->getMessage());
+            return [
+                'success' => true,
+                'code' => 'ENVIADO',
+                'description' => $noteInvoice->full_number . ' pendiente de envío a SUNAT.',
+                'note_number' => $fullNumber,
+            ];
+        }
     }
     
     public function voidInvoice(InvoiceModel $invoice)
@@ -232,7 +529,7 @@ class GreenterService
         
         try {
             $voided = new Voided();
-            $voided->setCorrelativo($this->generateVoidedNumber());
+            $voided->setCorrelativo($this->voidInvoiceNumber());
             $voided->setCompany($this->buildCompany($company));
             $voided->setFecGeneracion(new \DateTime());
             $voided->setFecComunicacion(new \DateTime());
@@ -275,11 +572,6 @@ class GreenterService
                 'description' => $e->getMessage()
             ];
         }
-    }
-    
-    private function generateVoidedNumber()
-    {
-        return str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
     }
     
     public function generatePdf(InvoiceModel $invoice)
@@ -931,28 +1223,32 @@ class GreenterService
             throw new \Exception('No hay certificado digital configurado. Suba el archivo .p12 desde la configuración de la empresa.');
         }
 
-        $pfxPath = storage_path('app/certificates/' . $certField);
-        if (!file_exists($pfxPath)) {
-            $pfxPath = storage_path('app/' . $certField);
+        // Try to use PEM file directly (no password needed, OpenSSL 3.0 compatible)
+        $pemPath = storage_path('app/certificates/' . $company->ruc . '_certificate.pem');
+        if (file_exists($pemPath)) {
+            $pemContent = file_get_contents($pemPath);
+            $this->see = new \Greenter\See();
+            $this->see->setCertificate($pemContent);
+        } else {
+            $pfxPath = storage_path('app/certificates/' . $certField);
+            if (!file_exists($pfxPath)) {
+                $pfxPath = storage_path('app/' . $certField);
+            }
+            if (!file_exists($pfxPath)) {
+                throw new \Exception('El archivo del certificado no existe en: ' . $pfxPath);
+            }
+
+            $password = $company->certificado_password;
+            if (!$password) {
+                throw new \Exception('No se ha configurado la contraseña del certificado.');
+            }
+
+            $pfxContent = file_get_contents($pfxPath);
+            $certificate = new X509Certificate($pfxContent, $password);
+            $pemContent = $certificate->export(X509ContentType::PEM);
+            $this->see = new \Greenter\See();
+            $this->see->setCertificate($pemContent);
         }
-        if (!file_exists($pfxPath)) {
-            throw new \Exception('El archivo del certificado no existe en: ' . $pfxPath);
-        }
-
-        $password = $company->certificado_password;
-        if (!$password) {
-            throw new \Exception('No se ha configurado la contraseña del certificado.');
-        }
-
-        $pfxContent = file_get_contents($pfxPath);
-        $certificate = new X509Certificate($pfxContent, $password);
-        $pemContent = $certificate->export(X509ContentType::PEM);
-
-        $sunatUser = $company->soap_username ?? $company->ruc;
-        $sunatPassword = $company->soap_password ?? $password;
-
-        $this->see = new \Greenter\See();
-        $this->see->setCertificate($pemContent);
         $this->see->setClaveSOL($company->ruc, $sunatUser, $sunatPassword);
 
         if ($company->soap_type_id == 2) {

@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Customer;
 use App\Models\Serie;
 use App\Services\GreenterService;
+use App\Services\SummaryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -226,7 +227,13 @@ class PosController extends Controller
         $greenterService = app(GreenterService::class);
         
         try {
-            $result = $greenterService->sendInvoice($invoice);
+            // Boletas se envían mediante Resumen Diario
+            if ($invoice->tipo_documento === '03') {
+                $summaryService = app(SummaryService::class);
+                $result = $summaryService->sendBoletaToSummary($invoice);
+            } else {
+                $result = $greenterService->sendInvoice($invoice);
+            }
             
             return response()->json([
                 'success' => $result['success'] ?? false,

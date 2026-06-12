@@ -7,7 +7,7 @@
     <div class="card-header">
         <h3 class="card-title">Editar Serie: {{ $serie->serie }}</h3>
     </div>
-    <form method="POST" action="{{ route('series.update', $serie) }}">
+    <form method="POST" action="{{ route('series.update', $serie->id) }}">
         @csrf
         @method('PATCH')
         <div class="card-body">
@@ -15,7 +15,7 @@
                 <div class="col-md-4">
                     <div class="form-group">
                         <label>Tipo de Documento</label>
-                        <input type="text" class="form-control" value="{{ $serie->tipo_documento === '01' ? 'Factura Electrónica' : ($serie->tipo_documento === '03' ? 'Boleta de Venta Electrónica' : ($serie->tipo_documento === 'NV' ? 'Nota de Venta' : $serie->tipo_documento)) }}" readonly>
+                        <input type="text" class="form-control" value="{{ $serie->tipo_documento === '01' ? 'Factura Electrónica' : ($serie->tipo_documento === '03' ? 'Boleta de Venta Electrónica' : ($serie->tipo_documento === 'NV' ? 'Nota de Venta' : ($serie->tipo_documento === '07' ? 'Nota de Crédito' : ($serie->tipo_documento === '08' ? 'Nota de Débito' : $serie->tipo_documento)))) }}" readonly>
                     </div>
                 </div>
                 <div class="col-md-4">

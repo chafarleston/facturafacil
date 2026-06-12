@@ -67,8 +67,11 @@ public function store(Request $request)
             'departamento' => 'nullable',
             'provincia' => 'nullable',
             'distrito' => 'nullable',
+            'ubigeo' => 'nullable|max:6',
             'tipo_contribuyente' => 'nullable',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'certificado' => 'nullable|file|max:10240',
+            'certificado_password' => 'nullable|string',
             'tax_type' => 'nullable|in:general,restaurant',
             'igv_percent' => 'nullable|numeric|min:0|max:100',
             'reduced_igv_percent' => 'nullable|numeric|min:0|max:100',
@@ -78,7 +81,7 @@ public function store(Request $request)
         ]);
 
         $data = $validated;
-        
+
         if ($request->hasFile('logo')) {
             if ($company->logo) {
                 \Storage::disk('public')->delete($company->logo);
@@ -87,26 +90,51 @@ public function store(Request $request)
             $data['logo'] = $logoPath;
         }
 
-        if ($request->hasFile('certificado')) {
-            $certPassword = $request->certificado_password;
-            if (!$certPassword) {
-                return back()->withErrors(['certificado_password' => 'Debe ingresar la contraseña del certificado'])->withInput();
-            }
-            try {
-                $certContent = file_get_contents($request->file('certificado')->getRealPath());
-                $certInfo = [];
-                $readResult = @openssl_pkcs12_read($certContent, $certInfo, $certPassword);
-                if (!$readResult) {
-                    return back()->withErrors(['certificado_password' => 'La contraseña del certificado no es correcta'])->withInput();
-                }
-                $filename = $company->ruc . '_certificate.pfx';
-                $path = $request->file('certificado')->storeAs('certificates', $filename);
-                $data['certificado_path'] = 'certificates/' . $filename;
-                $data['certificado_password'] = $certPassword;
-            } catch (\Exception $e) {
-                return back()->withErrors(['certificado' => 'Error al procesar el certificado: ' . $e->getMessage()])->withInput();
-            }
+if ($request->hasFile('certificado')) {
+    $certPassword = $request->input('certificado_password');
+    if (empty($certPassword)) {
+        return back()->withErrors(['certificado_password' => 'Debe ingresar la contraseña del certificado'])->withInput();
+    }
+    try {
+        $certFile = $request->file('certificado');
+        $tempPath = $certFile->getRealPath();
+        $ext = strtolower($certFile->getClientOriginalExtension());
+        $pfxFilename = $company->ruc . '_certificate.' . ($ext === 'p12' ? 'p12' : 'pfx');
+        $pemFilename = $company->ruc . '_certificate.pem';
+
+        // Use OpenSSL 1.1.1 CLI to verify password
+        $opensslBin = 'C:\laragon\bin\git\mingw64\bin\openssl.exe';
+        $verifyCmd = "\"$opensslBin\" pkcs12 -in \"$tempPath\" -passin pass:$certPassword -noout 2>&1";
+        exec($verifyCmd, $verifyOutput, $verifyExitCode);
+
+        if ($verifyExitCode !== 0) {
+            $errorMsg = !empty($verifyOutput) ? implode(' ', $verifyOutput) : 'contraseña inválida';
+            \Log::warning('Certificate upload: password verification failed', ['error' => $errorMsg]);
+            return back()->withErrors(['certificado_password' => 'La contraseña del certificado no es correcta. ' . $errorMsg])->withInput();
         }
+        \Log::info('Certificate password verified via OpenSSL CLI');
+
+        // Store PKCS12 file
+        $pfxPath = $certFile->storeAs('certificates', $pfxFilename, 'local');
+        $data['certificado_path'] = 'certificates/' . $pfxFilename;
+        $data['certificado_password'] = $certPassword;
+
+        // Extract PEM for PHP 8.4 / OpenSSL 3.0 compatibility
+        $pemFullPath = storage_path('app/certificates/' . $pemFilename);
+        $extractCmd = "\"$opensslBin\" pkcs12 -in \"$tempPath\" -passin pass:$certPassword -out \"$pemFullPath\" -nodes 2>&1";
+        exec($extractCmd, $extractOutput, $extractExitCode);
+
+        if ($extractExitCode === 0 && file_exists($pemFullPath)) {
+            $data['certificate'] = $pemFilename;
+            \Log::info('Certificate PEM extracted for OpenSSL 3.0 compatibility');
+        } else {
+            \Log::warning('Failed to extract PEM, will use PKCS12 directly', ['error' => implode(' ', $extractOutput)]);
+        }
+    } catch (\Exception $e) {
+        \Log::error('Certificate upload exception: ' . $e->getMessage());
+        return back()->withErrors(['certificado' => 'Error al procesar el certificado: ' . $e->getMessage()])->withInput();
+    }
+}
 
         $company->update($data);
 
@@ -121,32 +149,40 @@ public function store(Request $request)
         ]);
 
         try {
-            $filename = $company->ruc . '_certificate.pfx';
             $tempPath = $request->file('certificado')->getRealPath();
             $password = $request->certificado_password;
-            
-            $certificateContent = file_get_contents($tempPath);
-            
-            $certInfo = [];
-            $readResult = @openssl_pkcs12_read($certificateContent, $certInfo, $password);
-            
-            if (!$readResult) {
-                return back()->with('error', 'La clave proporcionada no es correcta. Verifique e intente de nuevo.');
-            }
-            
-            $path = $request->file('certificado')->storeAs('certificates', $filename);
+            $ext = strtolower($request->file('certificado')->getClientOriginalExtension());
+            $pfxFilename = $company->ruc . '_certificate.' . ($ext === 'p12' ? 'p12' : 'pfx');
+            $pemFilename = $company->ruc . '_certificate.pem';
 
+            // Use OpenSSL 1.1.1 CLI to verify password
+            $opensslBin = 'C:\laragon\bin\git\mingw64\bin\openssl.exe';
+            $verifyCmd = "\"$opensslBin\" pkcs12 -in \"$tempPath\" -passin pass:$password -noout 2>&1";
+            exec($verifyCmd, $verifyOutput, $verifyExitCode);
+
+            if ($verifyExitCode !== 0) {
+                $errorMsg = !empty($verifyOutput) ? implode(' ', $verifyOutput) : 'contraseña inválida';
+                \Log::warning('Certificate update: password verification failed', ['error' => $errorMsg]);
+                return back()->with('error', 'La clave proporcionada no es correcta. ' . $errorMsg);
+            }
+
+            $path = $request->file('certificado')->storeAs('certificates', $pfxFilename);
             if (!$path) {
                 return back()->with('error', 'Error al guardar el archivo');
             }
 
+            // Extract PEM for PHP 8.4 / OpenSSL 3.0 compatibility
+            $pemFullPath = storage_path('app/certificates/' . $pemFilename);
+            $extractCmd = "\"$opensslBin\" pkcs12 -in \"$tempPath\" -passin pass:$password -out \"$pemFullPath\" -nodes 2>&1";
+            exec($extractCmd, $extractOutput, $extractExitCode);
+
             $company->update([
-                'certificate' => $filename,
+                'certificate' => ($extractExitCode === 0 && file_exists($pemFullPath)) ? $pemFilename : $pfxFilename,
                 'certificado_path' => $path,
                 'certificado_password' => $request->certificado_password,
             ]);
 
-return back()->with('success', 'Certificado actualizado correctamente');
+            return back()->with('success', 'Certificado actualizado correctamente');
         } catch (\Exception $e) {
             return back()->with('error', 'Error: ' . $e->getMessage());
         }

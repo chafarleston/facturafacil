@@ -28,13 +28,13 @@ class SerieController extends Controller
     {
         $validated = $request->validate([
             'company_id' => 'required|exists:companies,id',
-            'tipo_documento' => 'required|in:01,03,NV',
+            'tipo_documento' => 'required|in:01,03,NV,07,08,09,20,40',
             'serie' => 'required|max:4|min:2|regex:/^[A-Z]{1,2}\d{2,3}$/',
             'numero_inicio' => 'required|integer|min:1',
         ], [
             'serie.required' => 'La serie es requerida',
             'serie.max' => 'La serie debe tener máximo 4 caracteres',
-            'serie.regex' => 'Formato inválido. Use: F001, B001, NV01 (letra(s) + números)',
+            'serie.regex' => 'Formato inválido. Use: F001, B001, NV01, FC01, BC01, FD01, BD01',
         ]);
 
         $existing = Serie::where('company_id', $validated['company_id'])

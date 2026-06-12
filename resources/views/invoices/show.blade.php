@@ -175,6 +175,11 @@
 
     @if($invoice->sunat_estado == 'ACEPTADO' && !$invoice->credit_note_id && $invoice->tipo_documento != '07')
     <a href="{{ route('invoices.creditNoteForm', $invoice) }}" class="btn btn-warning"><i class="fas fa-minus-circle"></i> Nota de Crédito</a>
+    <a href="{{ route('invoices.debitNoteForm', $invoice) }}" class="btn btn-danger"><i class="fas fa-plus-circle"></i> Nota de Débito</a>
+    @endif
+
+    @if(in_array($invoice->tipo_documento, ['01', '03']))
+    <a href="{{ route('invoices.generateDespatch', $invoice) }}" class="btn btn-info"><i class="fas fa-truck"></i> Guía de Remisión</a>
     @endif
 
     @if($invoice->sunat_estado != 'ACEPTADO' && $invoice->sunat_estado != 'ENVIADO' && $invoice->tipo_documento != 'NV')
@@ -202,44 +207,6 @@ window.addEventListener('DOMContentLoaded', function() {
     if (ticketBtn) {
         window.open(ticketBtn.href, '_blank');
     }
-});
-</script>
-@endpush
-@endif
-
-@push('scripts')
-<script>
-document.querySelectorAll('.retry-pro51-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const id = this.dataset.id;
-        const originalHtml = this.innerHTML;
-        this.disabled = true;
-        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Reenviando...';
-
-        fetch('{{ route("pro51.pending.retry") }}', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ invoice_id: id })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert(data.message || 'Error al reenviar');
-                this.disabled = false;
-                this.innerHTML = originalHtml;
-            }
-        })
-        .catch(err => {
-            alert('Error de conexión');
-            this.disabled = false;
-            this.innerHTML = originalHtml;
-        });
-    });
 });
 </script>
 @endpush

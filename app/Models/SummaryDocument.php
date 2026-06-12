@@ -15,8 +15,22 @@ class SummaryDocument extends Model
         'sunat_response', 'sunat_fecha'
     ];
 
+    protected $casts = [
+        'sunat_fecha' => 'datetime',
+    ];
+
     public function company()
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function scopePending($query)
+    {
+        return $query->whereIn('sunat_estado', ['PENDIENTE', 'ENVIADO']);
+    }
+
+    public function scopeByStatus($query, $status)
+    {
+        return $status ? $query->where('sunat_estado', $status) : $query;
     }
 }

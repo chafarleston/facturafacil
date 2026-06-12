@@ -17,8 +17,13 @@
                     <option value="01">Factura Electrónica</option>
                     <option value="03">Boleta de Venta Electrónica</option>
                     <option value="NV">Nota de Venta</option>
+                    <option value="07">Nota de Crédito</option>
+                    <option value="08">Nota de Débito</option>
+                    <option value="09">Guía de Remisión</option>
+                    <option value="20">Retención</option>
+                    <option value="40">Percepción</option>
                 </select>
-                <small class="text-muted">Factura: F001-F999 | Boleta: B001-B999 | Nota de Venta: NV01-NV99</small>
+                <small class="text-muted">F001 (Factura) | B001 (Boleta) | NV01 (NV) | FC01/BC01 (NC) | FD01/BD01 (ND) | T001 (Guía) | R001 (Retención) | P001 (Percepción)</small>
             </div>
             <div class="form-group">
                 <label>Número de Serie</label>
@@ -44,13 +49,14 @@
 document.getElementById('tipoDocumento').addEventListener('change', function() {
     var serieInput = document.getElementById('serieInput');
     var tipo = this.value;
-    if (tipo === '01') {
-        serieInput.placeholder = 'Ej: F001';
-    } else if (tipo === '03') {
-        serieInput.placeholder = 'Ej: B001';
-    } else if (tipo === 'NV') {
-        serieInput.placeholder = 'Ej: NV01';
-    }
+    var placeholders = {
+        '01': 'Ej: F001',
+        '03': 'Ej: B001',
+        'NV': 'Ej: NV01',
+        '07': 'Ej: FC01 (Factura) o BC01 (Boleta)',
+        '08': 'Ej: FD01 (Factura) o BD01 (Boleta)'
+    };
+    serieInput.placeholder = placeholders[tipo] || 'Ej: F001';
 });
 </script>
 @endpush

@@ -36,6 +36,16 @@
                   <span class="badge badge-success">Boleta</span>
                 @elseif($serie->tipo_documento === 'NV')
                   <span class="badge badge-warning">Nota de Venta</span>
+                @elseif($serie->tipo_documento === '07')
+                  <span class="badge badge-primary">Nota de Crédito</span>
+                @elseif($serie->tipo_documento === '08')
+                  <span class="badge badge-danger">Nota de Débito</span>
+                @elseif($serie->tipo_documento === '09')
+                  <span class="badge badge-secondary">Guía de Remisión</span>
+                @elseif($serie->tipo_documento === '20')
+                  <span class="badge badge-dark">Retención</span>
+                @elseif($serie->tipo_documento === '40')
+                  <span class="badge badge-dark">Percepción</span>
                 @else
                   <span class="badge badge-secondary">{{ $serie->tipo_documento }}</span>
                 @endif

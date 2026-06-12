@@ -9,6 +9,7 @@ use App\Models\InvoiceItem;
 use App\Models\Product;
 use App\Models\Serie;
 use App\Services\GreenterService;
+use App\Services\SummaryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -338,6 +339,24 @@ class InvoiceController extends Controller
             return back()->with('success', 'Nota de Venta no se envía a SUNAT');
         }
 
+        // Boletas se envían mediante Resumen Diario
+        if ($invoice->tipo_documento === '03') {
+            try {
+                $summaryService = new SummaryService();
+                $response = $summaryService->sendBoletaToSummary($invoice);
+
+                if ($response['success']) {
+                    return back()->with('success', 'Boleta enviada a SUNAT mediante resumen diario. Ticket: ' . ($response['ticket'] ?? ''));
+                } else {
+                    return back()->with('error', 'Error SUNAT: ' . ($response['description'] ?? 'Error desconocido'));
+                }
+            } catch (\Exception $e) {
+                \Log::error('Error sending boleta to SUNAT: ' . $e->getMessage());
+                return back()->with('error', 'Error al enviar boleta a SUNAT: ' . $e->getMessage());
+            }
+        }
+
+        // Facturas se envían individualmente
         try {
             \Log::info('Sending to SUNAT via Greenter', ['invoice' => $invoice->full_number, 'company' => $invoice->company->ruc]);
             
@@ -362,6 +381,19 @@ class InvoiceController extends Controller
     public function destroy(Invoice $invoice)
     {
         try {
+            // Boletas se anulan mediante Resumen Diario
+            if ($invoice->tipo_documento === '03') {
+                $summaryService = new SummaryService();
+                $result = $summaryService->voidBoleta($invoice);
+
+                if ($result['success']) {
+                    return back()->with('success', 'Boleta anulada vía resumen diario. Ticket: ' . ($result['ticket'] ?? ''));
+                } else {
+                    return back()->with('error', 'Error al anular boleta: ' . ($result['description'] ?? 'Error desconocido'));
+                }
+            }
+
+            // Facturas se anulan mediante Comunicación de Baja
             $greenterService = new GreenterService();
             $result = $greenterService->voidInvoice($invoice);
             
@@ -371,7 +403,7 @@ class InvoiceController extends Controller
                 return back()->with('error', 'Error al dar de baja: ' . ($result['description'] ?? 'Error desconocido'));
             }
         } catch (\Exception $e) {
-            return back()->with('error', 'Error aldar de baja: ' . $e->getMessage());
+            return back()->with('error', 'Error al dar de baja: ' . $e->getMessage());
         }
     }
     
@@ -418,6 +450,33 @@ class InvoiceController extends Controller
             if ($result['success']) {
                 return redirect()->route('invoices.index')
                     ->with('success', 'Nota de crédito generada. Ref: ' . ($result['note_number'] ?? ''));
+            } else {
+                return back()->with('error', 'Error al generar nota: ' . ($result['description'] ?? 'Error desconocido'));
+            }
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error: ' . $e->getMessage());
+        }
+    }
+
+    public function debitNoteForm(Invoice $invoice)
+    {
+        return view('invoices.debit-note', compact('invoice'));
+    }
+
+    public function sendDebitNote(Request $request, Invoice $invoice)
+    {
+        $request->validate([
+            'motivo' => 'required',
+            'descripcion' => 'required'
+        ]);
+        
+        try {
+            $greenterService = new GreenterService();
+            $result = $greenterService->sendDebitNote($invoice, $request->motivo, $request->descripcion);
+            
+            if ($result['success']) {
+                return redirect()->route('invoices.index')
+                    ->with('success', 'Nota de débito generada. Ref: ' . ($result['note_number'] ?? ''));
             } else {
                 return back()->with('error', 'Error al generar nota: ' . ($result['description'] ?? 'Error desconocido'));
             }
