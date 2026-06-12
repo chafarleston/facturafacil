@@ -5,9 +5,9 @@
 @section('content')
 <div class="row">
   <div class="col-12">
-    <div class="card">
+    <div class="card card-primary">
       <div class="card-header">
-        <h3 class="card-title">Lista de Series</h3>
+        <h3 class="card-title">Series de Comprobantes</h3>
         <div class="card-tools">
           <a href="{{ route('series.create', ['company_id' => $companyId ?? null]) }}" class="btn btn-primary btn-sm">
             <i class="fas fa-plus"></i> Nueva Serie
@@ -19,8 +19,8 @@
           <thead>
             <tr>
               <th>Serie</th>
-              <th>Tipo</th>
-              <th>Último Número</th>
+              <th>Tipo de Documento</th>
+              <th>Próximo Número</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
@@ -28,8 +28,18 @@
           <tbody>
             @forelse($series as $serie)
             <tr>
-              <td>{{ $serie->serie }}</td>
-              <td>{{ $serie->tipo_documento == '01' ? 'Factura' : 'Boleta' }}</td>
+              <td><strong>{{ $serie->serie }}</strong></td>
+              <td>
+                @if($serie->tipo_documento === '01')
+                  <span class="badge badge-info">Factura</span>
+                @elseif($serie->tipo_documento === '03')
+                  <span class="badge badge-success">Boleta</span>
+                @elseif($serie->tipo_documento === 'NV')
+                  <span class="badge badge-warning">Nota de Venta</span>
+                @else
+                  <span class="badge badge-secondary">{{ $serie->tipo_documento }}</span>
+                @endif
+              </td>
               <td>{{ $serie->numero_actual + 1 }}</td>
               <td>
                 @if($serie->estado === 'ACTIVO')
@@ -43,7 +53,7 @@
               </td>
             </tr>
             @empty
-            <tr><td colspan="5" class="text-center">No hay series</td></tr>
+            <tr><td colspan="5" class="text-center">No hay series configuradas</td></tr>
             @endforelse
           </tbody>
         </table>

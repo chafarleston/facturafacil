@@ -11,19 +11,11 @@ class SeriesSeeder extends Seeder
     public function run()
     {
         $entries = [
-            ['serie' => 'F001', 'description' => 'FACTURA'],
-            ['serie' => 'B001', 'description' => 'BOLETA'],
-            ['serie' => 'FC01', 'description' => 'NOTA DE CRÉDITO FACTURA'],
-            ['serie' => 'BC01', 'description' => 'NOTA DE CRÉDITO BOLETA'],
-            ['serie' => 'FD01', 'description' => 'NOTA DE DÉBITO FACTURA'],
-            ['serie' => 'BD01', 'description' => 'NOTA DE DÉBITO BOLETA'],
-            ['serie' => 'R001', 'description' => 'COMPROBANTE DE RETENCIÓN ELECTRÓNICA'],
-            ['serie' => 'T001', 'description' => 'GUIA DE REMISIÓN REMITENTE'],
-            ['serie' => 'P001', 'description' => 'COMPROBANTE DE PERCEPCIÓN ELECTRÓNICA'],
-            ['serie' => 'NV01', 'description' => 'NOTA DE VENTA'],
+            ['serie' => 'F001', 'tipo_documento' => '01'],
+            ['serie' => 'B001', 'tipo_documento' => '03'],
+            ['serie' => 'NV01', 'tipo_documento' => 'NV'],
         ];
 
-        // Ensure there is a company to associate with series
         $company = Company::first();
         if (!$company) {
             $company = Company::create([
@@ -43,28 +35,13 @@ class SeriesSeeder extends Seeder
         }
 
         foreach ($entries as $e) {
-            $serieCode = $e['serie'];
-            // Determine document type by series code
-            if ($serieCode === 'NV01') {
-                $tipoDocumento = 'NV';
-            } elseif (in_array($serieCode, ['F001'])) {
-                $tipoDocumento = '01';
-            } elseif (in_array($serieCode, ['B001'])) {
-                $tipoDocumento = '03';
-            } elseif (in_array($serieCode, ['FC01', 'FD01'])) {
-                $tipoDocumento = '01';
-            } elseif (in_array($serieCode, ['BC01', 'BD01'])) {
-                $tipoDocumento = '03';
-            } else {
-                $tipoDocumento = '01';
-            }
             Serie::updateOrCreate(
-                ['serie' => $e['serie']],
+                ['serie' => $e['serie'], 'company_id' => $company->id],
                 [
                     'serie' => $e['serie'],
-                    'tipo_documento' => $tipoDocumento,
+                    'tipo_documento' => $e['tipo_documento'],
                     'numero_actual' => 0,
-                    'estado' => 1,
+                    'estado' => 'ACTIVO',
                     'company_id' => $company->id,
                 ]
             );

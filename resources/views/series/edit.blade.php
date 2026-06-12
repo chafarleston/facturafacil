@@ -15,7 +15,7 @@
                 <div class="col-md-4">
                     <div class="form-group">
                         <label>Tipo de Documento</label>
-                        <input type="text" class="form-control" value="{{ $serie->tipo_documento == '01' ? 'Factura' : 'Boleta' }}" readonly>
+                        <input type="text" class="form-control" value="{{ $serie->tipo_documento === '01' ? 'Factura Electrónica' : ($serie->tipo_documento === '03' ? 'Boleta de Venta Electrónica' : ($serie->tipo_documento === 'NV' ? 'Nota de Venta' : $serie->tipo_documento)) }}" readonly>
                     </div>
                 </div>
                 <div class="col-md-4">
@@ -26,14 +26,14 @@
                 </div>
                 <div class="col-md-4">
                     <div class="form-group">
-                        <label>Número Actual</label>
+                        <label>Próximo Número</label>
                         <input type="text" class="form-control" value="{{ $serie->numero_actual + 1 }}" readonly>
                     </div>
                 </div>
             </div>
             <div class="form-group">
                 <label>Reiniciar desde número</label>
-                <input type="number" name="numero_inicio" class="form-control" value="{{ $serie->numero_actual + 1 }}" min="0" required>
+                <input type="number" name="numero_inicio" class="form-control" value="{{ $serie->numero_actual + 1 }}" min="1" required>
                 <small class="text-muted">El próximo documento comenzará desde este número</small>
             </div>
         </div>
