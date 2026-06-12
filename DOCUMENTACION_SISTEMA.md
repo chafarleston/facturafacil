@@ -113,6 +113,10 @@ companies ──┬── users
 | `2026_05_25_113255_add_referencia_to_cashregisters_table` | Referencia en caja |
 | `2026_05_25_114201_add_cancelled_by_to_restaurant_order_items` | Usuario que canceló |
 | `2026_05_21_083855_add_igv_config_to_companies_table` | Configuración IGV |
+| `2026_06_10_000001_add_lock_to_restaurant_tables` | Bloqueo de mesas |
+| `2026_06_12_000001_create_special_documents_tables` | Documentos especiales |
+| `2026_06_12_000002_add_fields_to_special_documents` | Campos extra docs especiales |
+| `2026_06_12_000003_update_summary_correlativo_length` | Ampliar correlativo summary |
 
 ---
 
@@ -1373,6 +1377,9 @@ Tipos de Serie SUNAT:
 | BC01-BC99 | Nota de Crédito Boleta | 07 | Anular/corregir boletas |
 | FD01-FD99 | Nota de Débito Factura | 08 | Incrementar monto facturas |
 | BD01-BD99 | Nota de Débito Boleta | 08 | Incrementar monto boletas |
+| R001-R999 | Retención | 20 | Comprobante de Retención Electrónica |
+| T001-T999 | Guía de Remisión | 09 | Guía de Remisión Remitente |
+| P001-P999 | Percepción | 40 | Comprobante de Percepción Electrónica |
 
 Validación de formato: [A-Z]{1,2}\d{2,3} (ej: F001, B001, NV01, FC01)
 NV no se envía a SUNAT (validación en InvoiceController::sendToSunat)
@@ -1396,25 +1403,37 @@ Descarga: POST /sunat-padron/download
 - Extrae y limpia automáticamente
 
 Comando manual: php artisan sunat:download-padron
-```
 
 ### 20.4 Facturación Electrónica con Greenter
 
 ```
+Flujo según tipo de documento:
+
+| Documento | Envío | Servicio |
+|-----------|-------|----------|
+| Factura (01) | Individual (BillSender) | GreenterService::sendInvoice() |
+| Boleta (03) | Resumen Diario (SummarySender) | SummaryService::sendBoletaToSummary() |
+| NC Factura (FC01, 07) | Individual (BillSender) | GreenterService::sendCreditNote() |
+| NC Boleta (BC01, 07) | Resumen Diario (SummarySender) | sendNoteViaSummary() |
+| ND Factura (FD01, 08) | Individual (BillSender) | GreenterService::sendDebitNote() |
+| ND Boleta (BD01, 08) | Resumen Diario (SummarySender) | sendNoteViaSummary() |
+| Baja Factura (01) | Comunicación Baja (SummarySender) | GreenterService::voidInvoice() |
+| Baja Boleta (03) | Resumen Diario estado=3 (SummarySender) | SummaryService::voidBoleta() |
+| Retención (R001, 20) | Individual | SpecialDocumentService::sendRetention() |
+| Guía Remisión (T001, 09) | Individual | SpecialDocumentService::sendDespatch() |
+| Percepción (P001, 40) | Individual | SpecialDocumentService::sendPerception() |
+
+Nota de Venta (NV) no se envía a SUNAT (bloqueado en sendToSunat).
+
 GreenterService (app/Services/GreenterService.php):
+- Métodos: sendInvoice, sendCreditNote, sendDebitNote, voidInvoice
+- sendDebitNote: TipoDoc=08, serie FD01/BD01, boleta→Summary
+- sendCreditNote: TipoDoc=07, serie FC01/BC01, boleta→Summary
 
-Métodos principales:
-- sendInvoice($invoice) → Envía factura/boleta a SUNAT
-- sendCreditNote($invoice, $motivo, $descripcion) → Nota de crédito
-- voidInvoice($invoice) → Dar de baja documento
-- generatePdf($invoice) → PDF A4 con QR
-- generateTicketPdf($invoice) → Ticket 80mm con QR
-
-setupSee() mejorado:
-- Busca certificado en storage/app/certificates/ (primero)
-- Luego busca en storage/app/ (fallback)
-- Valida existencia del archivo y contraseña
-- Usa soap_username + soap_password (fallback: RUC + cert password)
+setupSee() PEM-first:
+- Busca {ruc}_certificate.pem → lo usa directamente (sin contraseña, OpenSSL 3.0 compatible)
+- Si no existe PEM → usa .p12 con contraseña via X509Certificate
+- soap_username + soap_password (fallback: RUC + cert password)
 - soap_type_id=1 → SunatEndpoints::FE_BETA
 - soap_type_id=2 → SunatEndpoints::FE_HOMOLOGACION
 
@@ -1424,6 +1443,146 @@ Dependencias (Greenter 5.x):
 - greenter/htmltopdf 5.2.0, greenter/lite 5.2.0
 
 Extensiones PHP requeridas: ext-soap, ext-openssl, ext-xml, ext-zip, ext-intl
+```
+
+### 20.4.1 Arquitectura y Flujo Interno de Greenter
+
+```
+Greenter es una librería PHP que implementa la facturación electrónica SUNAT.
+Se compone de varios paquetes que trabajan en conjunto:
+
+greenter/lite → See (Clase principal)
+  ├── setCertificate(PEM) → Configura el certificado digital
+  ├── setClaveSOL(ruc, user, pass) → Credenciales SOL
+  ├── setService(URL) → Endpoint SUNAT (Beta/Producción)
+  └── send($document) → Envía documento a SUNAT
+       └── WsSenderResolver → Selecciona el sender según tipo:
+            ├── BillSender → Para Invoice, Note (envío individual)
+            └── SummarySender → Para Summary, Voided, Reversion (resumen diario/baja)
+
+Flujo de envío (sendInvoice):
+1. Construir objeto Greenter (Invoice, Note, Summary, etc.)
+2. See::send() → XML Builder → genera XML firmado
+3. Xmldsig → Firma digital del XML con el certificado
+4. SoapClient → Envía XML firmado vía SOAP a SUNAT
+5. SUNAT responde con CDR (Constancia de Recepción) o Ticket
+
+XML generation (greenter/xml):
+  Para cada tipo de documento existe un builder específico:
+  - Invoice → Factura/Boleta (UBL 2.1)
+  - Note → Nota de Crédito/Débito
+  - Summary → Resumen Diario
+  - Voided → Comunicación de Baja
+  - Despatch → Guía de Remisión
+  - Retention → Comprobante de Retención
+  - Perception → Comprobante de Percepción
+
+Firma digital (greenter/xmldsig):
+  1. X509Certificate: Lee el .p12 (PKCS12) y extrae el certificado + key
+  2. Firma el XML con XML Signature (ds:Signature)
+  3. Incluye el certificado X509 en el XML firmado
+
+Envío SOAP (greenter/ws):
+  1. BillSender: Envío individual (Facturas, NC/ND individuales)
+     → Respuesta inmediata con CDR (BaseResult)
+     → CDR contiene: estado (aceptado/rechazado), digest value, descripción
+  2. SummarySender: Envío por lote (Resumen Diario, Baja)
+     → Respuesta con ticket (SummaryResult)
+     → Luego se consulta el ticket con getStatus($ticket)
+     → ConsultCdrService::getStatus($ticket) → obtiene CDR final
+
+Manejo de documentos en el sistema:
+
+┌─────────────────────┐
+│  Generar documento  │  ← Sistema crea Invoice/Boleta/NC/ND en BD
+│  sunat_estado:      │     Estado inicial: PENDIENTE
+│  PENDIENTE          │
+└─────────┬───────────┘
+          │
+          ▼ Enviar a SUNAT
+┌─────────────────────┐
+│  Factura (01)       │──→ GreenterService::sendInvoice()
+│  NC/ND Factura      │──→ GreenterService::sendCreditNote/DebitNote()
+│  Retención/Guía/Per │──→ SpecialDocumentService::sendXxx()
+│                     │     → BillSender → CDR inmediato
+│  ─── Resultado ───  │
+│  success=true:      │  sunat_estado=ACEPTADO, guarda XML y CDR
+│  success=false:     │  sunat_estado=RECHAZADO, guarda error
+└─────────────────────┘
+
+┌─────────────────────┐
+│  Boleta (03)        │──→ SummaryService::sendBoletaToSummary()
+│  NC/ND Boleta       │──→ sendNoteViaSummary()
+│  Baja Boleta        │──→ SummaryService::voidBoleta()
+│                     │     → SummarySender → ticket
+│  ─── Resultado ───  │
+│  success=true:      │  sunat_estado=ENVIADO, guarda ticket
+│  success=false:     │  sunat_estado=RECHAZADO
+└─────────────────────┘
+          │
+          ▼ Consultar ticket
+┌─────────────────────┐
+│  checkTicketStatus  │──→ ConsultCdrService::getStatus($ticket)
+│                     │     → Si ACEPTADO: actualiza a ACEPTADO
+│                     │     → Si RECHAZADO: actualiza a RECHAZADO
+│                     │     → Si PENDIENTE: esperar y reintentar
+└─────────────────────┘
+
+Ejemplo de código (enviar factura):
+
+  // 1. Obtener empresa y configurar See
+  $company = Company::getMainCompany();
+  $greenterService = new GreenterService();  // setupSee() automático
+  
+  // 2. Construir documento Greenter
+  $invoice = new Invoice();
+  $invoice->setUblVersion('2.1');
+  $invoice->setTipoDoc('01');
+  $invoice->setSerie('F001');
+  $invoice->setCorrelativo('00000001');
+  $invoice->setCompany($greenterCompany);
+  $invoice->setClient($client);
+  $invoice->setDetails($saleDetails);
+  
+  // 3. Enviar
+  $result = $this->see->send($invoice);
+  
+  // 4. Procesar respuesta
+  if ($result->isSuccess()) {
+      $cdrZip = $result->getCdrZip();   // CDR en ZIP
+      $xmlContent = $this->see->getFactory()->getLastXml();  // XML firmado
+      $digestValue = $this->extractDigestValueFromXml($xmlContent);  // Hash QR
+  } else {
+      $error = $result->getError();
+      // $error->getCode() y $error->getMessage()
+  }
+
+Ejemplo de código (Resumen Diario):
+
+  // 1. Crear Summary con SummaryDetail(s)
+  $summary = new Summary();
+  $summary->setFecGeneracion(new \DateTime('2026-06-12'));
+  $summary->setFecResumen(new \DateTime());
+  $summary->setCorrelativo('001');
+  
+  $detail = new SummaryDetail();
+  $detail->setTipoDoc('03');  // Boleta
+  $detail->setSerieNro('B001-00000001');
+  $detail->setEstado('1');    // 1=Agregar, 3=Anular
+  $detail->setTotal(100.00);
+  $detail->setMtoOperGravadas(84.75);
+  $detail->setMtoIGV(15.25);
+  
+  $summary->setDetails([$detail]);
+  
+  // 2. Enviar
+  $result = $this->see->send($summary);
+  
+  // 3. Respuesta con ticket
+  if ($result->isSuccess()) {
+      $ticket = $result->getTicket();  // Ej: "1781302448095"
+      // Consultar después con getStatus($ticket)
+  }
 ```
 
 ### 20.5 KDS - Botón "Completado"
@@ -1472,6 +1631,130 @@ Archivos modificados:
 - resources/views/restaurant/kds.blade.php (3 calls)
 ```
 
+### 20.8 Resumen Diario (SummaryService)
+
+```
+Propósito: Las boletas (03), NC/ND de boletas y anulaciones de boletas deben
+comunicarse a SUNAT mediante Resumen Diario. Las facturas (01) se envían individualmente.
+
+SummaryService (app/Services/SummaryService.php):
+- sendBoletaToSummary($invoice) → Envía una boleta individual por Resumen Diario
+- sendDailySummary() → Agrupa TODAS las boletas PENDIENTES del día en un solo resumen
+- voidBoleta($invoice) → Anula boleta con estado=3 via Summary
+- sendNoteToSummary($note, $original, $tipoDoc) → Envía NC/ND de boleta por Summary
+- checkTicketStatus($ticket) → Consulta estado del ticket via ConsultCdrService
+
+SummaryController (app/Http/Controllers/SummaryController.php):
+- index() → Lista resúmenes con filtro (Todos/Pendientes/Aceptados/Rechazados)
+- checkStatus($summary) → Consulta ticket individual
+- checkAllPending() → Consulta todos los pendientes
+- sendDaily() → Envía resumen diario manualmente
+- retryPending() → Reenvía facturas/boletas con estado PENDIENTE/ERROR
+
+Modelo SummaryDocument:
+- company_id, fecha_emision, fecha_operacion, correlativo (RC-YYYYMMDD-NNN)
+- cantidad_documentos, ticket, sunat_estado
+- sunat_response, sunat_fecha
+
+Tabla: summary_documents (migración 2024_01_01_000008)
+- correlativo ampliado a 30 chars (migración 2026_06_12_000003)
+
+Vista: GET /sunat-summaries
+Menú: Comprobantes → Resúmenes Diarios
+
+Rutas:
+- GET /sunat-summaries → index
+- POST /sunat-summaries/{summary}/check → checkStatus
+- POST /sunat-summaries/check-all → checkAllPending
+- POST /sunat-summaries/send-daily → sendDaily
+- POST /sunat-summaries/retry-pending → retryPending
+
+Flujo:
+1. Crear boleta → queda PENDIENTE
+2. Al final del día: Enviar Resumen Diario (web o comando)
+3. SUNAT responde con un ticket
+4. Consultar ticket cada 10 min hasta que esté ACEPTADO
+5. La boleta individual actualiza su estado automáticamente
+```
+
+### 20.9 Nota de Débito
+
+```
+sendDebitNote() en GreenterService:
+- TipoDoc: 08 (Nota de Débito)
+- Serie: FD01 (para factura original) / BD01 (para boleta original)
+- Motivos: Intereses por mora, Aumento en el valor, Penalidades, Otros
+- Si la ND es de boleta → se envía por Resumen Diario
+- Si la ND es de factura → se envía individualmente (BillSender)
+
+Rutas:
+- GET /invoices/{id}/debit-note → debitNoteForm (formulario)
+- POST /invoices/{id}/debit-note → sendDebitNote (procesar)
+
+Vista: resources/views/invoices/debit-note.blade.php
+Botón en show: "Nota de Débito" (rojo) junto a "Nota de Crédito"
+```
+
+### 20.10 Documentos Especiales SUNAT
+
+```
+Documentos implementados:
+
+| Documento | Serie | Código SUNAT | Ruta |
+|-----------|-------|--------------|------|
+| Retención | R001 | 20 | /documents/R |
+| Guía de Remisión | T001 | 09 | /documents/T |
+| Percepción | P001 | 40 | /documents/P |
+
+SpecialDocumentService (app/Services/SpecialDocumentService.php):
+- sendRetention($doc) → Envía comprobante de retención
+- sendDespatch($doc) → Envía guía de remisión (con items, direcciones)
+- sendPerception($doc) → Envía comprobante de percepción
+
+DocumentController (app/Http/Controllers/DocumentController.php):
+- index($tipo) → Lista documentos por tipo
+- create($tipo) → Formulario de creación
+- store($tipo, $request) → Guarda documento
+- show($tipo, $document) → Detalle con botón "Enviar a SUNAT"
+- send($tipo, $document) → Envía a SUNAT
+- createFromInvoice($invoice) → Genera guía T001 desde factura/boleta
+
+Tablas (migraciones 2026_06_12_000001 y 000002):
+- special_documents: datos generales + regimen, tasa, imp_retenido, direcciones
+- special_document_entities: proveedor/destinatario
+- special_document_items: items (para guías de remisión)
+
+Guía desde factura:
+- Botón "Guía de Remisión" en /invoices/{id}
+- Pre-carga cliente, items y direcciones automáticamente
+
+Menú: Comprobantes → Retenciones | Guías de Remisión | Percepciones
+```
+
+### 20.11 Certificado Digital (PEM-first con OpenSSL 1.1.1)
+
+```
+Problema: PHP 8.4 usa OpenSSL 3.0 que no puede leer certificados PKCS12
+antiguos (MAC verify failure) sin el provider legacy.
+
+Solución:
+1. Al SUBIR el certificado:
+   - OpenSSL 1.1.1 (Git Bash: C:\laragon\bin\git\mingw64\bin\openssl.exe)
+     verifica la contraseña
+   - Guarda el .p12 original en storage/app/certificates/
+   - Extrae un .pem compatible con OpenSSL 3.0
+
+2. Al USAR el certificado (todos los servicios):
+   - Busca primero {ruc}_certificate.pem → lo usa directamente (sin contraseña)
+   - Si no existe PEM → usa .p12 con contraseña via X509Certificate
+
+Archivos actualizados:
+- CompanyController.php → Usa OpenSSL CLI para verificar y extraer PEM
+- GreenterService.php → setupSee() PEM-first
+- SummaryService.php → setupSee() PEM-first
+- SpecialDocumentService.php → setupSee() PEM-first
+```
+
 ---
 
 ## 21. Solución de Problemas Comunes (Actualizado)
@@ -1490,6 +1773,11 @@ Archivos modificados:
 | Dos usuarios abren misma mesa | Race condition en openTable | Usar sistema de bloqueo con locked_by/locked_at |
 | Serie no se puede editar | Parámetro de ruta incorrecto | Usar `->parameters(['series' => 'serie'])` en Route::resource |
 | Ubigeo no funciona | Inputs de texto en lugar de selects | Usar selects con cascada JavaScript |
+| Class "Address" not found | Falta import en SummaryService | Agregar `use Greenter\Model\Company\Address` |
+| JSON.parse: unexpected character | Excepción PHP devuelve HTML 500 | Revisar `storage/logs/laravel.log` |
+| Data too long for correlativo | Correlativo > 10 chars en DB | Migración para ampliar columna a 30 |
+| "No se ha configurado la contraseña" | setupSee() verifica password antes de buscar PEM | Reordenar: PEM primero, PKCS12 después |
+| Guía de remisión falla | Falta Address import en servicio | Agregar uso de Greenter\Model\Company\Address |
 
 ---
 
@@ -1499,6 +1787,11 @@ Archivos modificados:
 |---------|-----------|
 | `php artisan print:process-queue` | Procesa cola de impresión |
 | `php artisan sunat:download-padron` | Descarga el padrón reducido de SUNAT |
+| `php artisan sunat:check-summaries` | Consulta estado de resúmenes diarios pendientes |
+| `php artisan sunat:send-daily-summary` | Agrupa y envía boletas del día en un Resumen Diario |
+| `php artisan sunat:retry-pending` | Reenvía todas las facturas/boletas pendientes |
+| `php artisan sunat:retry-pending --type=01` | Reenvía solo facturas pendientes |
+| `php artisan sunat:retry-pending --type=03` | Reenvía solo boletas pendientes |
 | `php artisan config:clear` | Limpia cache de configuración |
 | `php artisan view:clear` | Limpia cache de vistas |
 | `php artisan route:clear` | Limpia cache de rutas |
@@ -1508,4 +1801,3 @@ Archivos modificados:
 | `php artisan key:generate` | Genera APP_KEY |
 | `php artisan route:list` | Lista rutas |
 | `php artisan optimize` | Optimiza rendimiento |
-```
