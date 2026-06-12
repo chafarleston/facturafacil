@@ -135,6 +135,10 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     Route::post('/restaurant/kitchen/{orderId}/deliver', [RestaurantController::class, 'deliverKitchenOrder'])->name('restaurant.kitchenDeliver');
     Route::post('/restaurant/kitchen/{orderId}/complete', [RestaurantController::class, 'completeOrder'])->name('restaurant.kitchenComplete');
     Route::post('/restaurant/tables/{tableId}/open', [RestaurantController::class, 'openTable'])->name('restaurant.tables.open');
+    Route::post('/restaurant/tables/{tableId}/lock', [RestaurantController::class, 'lockTable'])->name('restaurant.tables.lock');
+    Route::post('/restaurant/tables/{tableId}/unlock', [RestaurantController::class, 'unlockTable'])->name('restaurant.tables.unlock');
+    Route::post('/restaurant/tables/unlock-all', [RestaurantController::class, 'unlockAllTables'])->name('restaurant.tables.unlockAll');
+    Route::get('/restaurant/locks', [RestaurantController::class, 'getTableLocks'])->name('restaurant.locks');
     Route::get('/restaurant/orders/{orderId}', [RestaurantController::class, 'getOrder'])->name('restaurant.orders.show');
     Route::post('/restaurant/orders/{orderId}/items', [RestaurantController::class, 'addItem'])->name('restaurant.orders.items');
     Route::put('/restaurant/orders/items/{itemId}', [RestaurantController::class, 'updateItem'])->name('restaurant.orders.items.update');

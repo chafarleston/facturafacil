@@ -18,10 +18,13 @@ class RestaurantTable extends Model
         'capacity',
         'status',
         'color',
+        'locked_by',
+        'locked_at',
     ];
 
     protected $casts = [
         'capacity' => 'integer',
+        'locked_at' => 'datetime',
     ];
 
     public function company(): BelongsTo
@@ -52,5 +55,42 @@ class RestaurantTable extends Model
     public function scopeOccupied($query)
     {
         return $query->where('status', 'OCCUPIED');
+    }
+
+    public function lockedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'locked_by');
+    }
+
+    public function isLocked(): bool
+    {
+        return !is_null($this->locked_by);
+    }
+
+    public function isLockedBy(int $userId): bool
+    {
+        return $this->locked_by === $userId;
+    }
+
+    public function isLockExpired(): bool
+    {
+        if (!$this->locked_at) return true;
+        return $this->locked_at->diffInMinutes(now()) >= 5;
+    }
+
+    public function lock(int $userId): void
+    {
+        $this->update([
+            'locked_by' => $userId,
+            'locked_at' => now(),
+        ]);
+    }
+
+    public function unlock(): void
+    {
+        $this->update([
+            'locked_by' => null,
+            'locked_at' => null,
+        ]);
     }
 }

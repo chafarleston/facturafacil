@@ -1064,5 +1064,110 @@ private function updateOrderTotals(RestaurantOrder $order)
             ], 500);
         }
     }
+
+    public function lockTable(Request $request, $tableId)
+    {
+        try {
+            $table = RestaurantTable::findOrFail($tableId);
+            $userId = Auth::id();
+
+            if ($table->isLocked() && !$table->isLockedBy($userId) && !$table->isLockExpired()) {
+                $lockedBy = $table->lockedByUser;
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Mesa en uso por ' . ($lockedBy ? $lockedBy->name : 'otro usuario'),
+                ]);
+            }
+
+            if ($table->isLockExpired()) {
+                $table->unlock();
+            }
+
+            $table->lock($userId);
+
+            return response()->json([
+                'success' => true,
+                'locked_by' => $userId,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function unlockTable(Request $request, $tableId)
+    {
+        try {
+            $table = RestaurantTable::findOrFail($tableId);
+            $userId = Auth::id();
+
+            if ($table->isLocked() && !$table->isLockedBy($userId) && !auth()->user()->isAdmin()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No puedes desbloquear esta mesa',
+                ], 403);
+            }
+
+            $table->unlock();
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function unlockAllTables(Request $request)
+    {
+        try {
+            $user = auth()->user();
+            if (!$user->isAdmin() && $user->role !== 'cajero') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permiso para desbloquear mesas',
+                ], 403);
+            }
+
+            $companyId = $request->company_id ?? Company::first()->id;
+            RestaurantTable::where('company_id', $companyId)
+                ->whereNotNull('locked_by')
+                ->update(['locked_by' => null, 'locked_at' => null]);
+
+            return response()->json(['success' => true, 'message' => 'Todas las mesas desbloqueadas']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function getTableLocks(Request $request)
+    {
+        $companyId = $request->company_id ?? Company::first()->id;
+
+        $locks = RestaurantTable::where('company_id', $companyId)
+            ->whereNotNull('locked_by')
+            ->get()
+            ->map(function ($table) {
+                if ($table->isLockExpired()) {
+                    $table->unlock();
+                    return null;
+                }
+                return [
+                    'table_id' => $table->id,
+                    'locked_by' => $table->locked_by,
+                    'user_name' => $table->lockedByUser ? $table->lockedByUser->name : 'Usuario',
+                ];
+            })
+            ->filter();
+
+        return response()->json(['success' => true, 'locks' => $locks])
+            ->header('Cache-Control', 'no-cache, must-revalidate, no-store, private');
+    }
 }
 

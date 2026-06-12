@@ -92,6 +92,7 @@
     .table-card.available { border-color: #28a745; }
     .table-card.occupied { border-color: #dc3545; background: #fff5f5; }
     .table-card.reserved { border-color: #ffc107; background: #fffef0; }
+    .table-card.locked-by-other { border-color: #ff9800; background: #fff8e1; cursor: not-allowed; opacity: 0.8; }
     
     .table-card i { font-size: 24px; margin-bottom: 6px; }
     .table-card.available i { color: #28a745; }
@@ -403,6 +404,11 @@
                     <i class="fas fa-{{ $printServerRunning ? 'check-circle' : 'times-circle' }}"></i>
                     Print Server {{ $printServerRunning ? 'activo' : 'inactivo' }}
                 </span>
+                @endif
+                @if(in_array(auth()->user()->role, ['admin', 'superadmin', 'cajero']))
+                <button onclick="unlockAllTables()" class="btn btn-sm btn-outline-warning ml-2" style="font-size:9px; padding:2px 8px;" title="Desbloquear todas las mesas">
+                    <i class="fas fa-unlock"></i> Desbloquear Mesas
+                </button>
                 @endif
             </div>
             <span class="badge badge-{{ $orderMode === 'print' ? 'info' : 'secondary' }}" style="font-size:11px;">
@@ -742,6 +748,7 @@ let currentOrderId = null;
 let currentTableId = null;
 let currentTableName = null;
 let orderModalOpen = false;
+const currentUserId = {{ auth()->id() }};
 let productsData = @json($products);
 let customersData = @json($customers);
 let seriesData = @json($series);
@@ -763,6 +770,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     pollActiveOrders();
     setInterval(pollActiveOrders, 3000);
+    pollTableLocks();
+    setInterval(pollTableLocks, 3000);
     
     const psBadge = document.getElementById('printServerBadge');
     if (psBadge) {
@@ -794,34 +803,73 @@ function selectFloor(floorId) {
 }
 
 function selectTable(tableId) {
-    orderModalOpen = true;
     const table = document.querySelector(`.table-card[data-table-id="${tableId}"]`);
     if (!table) return;
-    
-    currentTableId = tableId;
-    currentTableName = table.querySelector('.table-name').textContent;
-    const orderId = table.dataset.orderId;
-    
-    document.getElementById('modalTableName').textContent = currentTableName;
-    document.getElementById('modalOrderNumber').textContent = orderId ? 'Pedido: ' + orderId : 'Abriendo...';
-    const cancelBtn = document.getElementById('btnCancelOrder');
-    if (cancelBtn) cancelBtn.disabled = false;
-    const moveBtn = document.getElementById('btnMoveTable');
-    if (moveBtn) moveBtn.disabled = false;
-    const drawerBtn = document.getElementById('btnCashDrawer');
-    if (drawerBtn) drawerBtn.disabled = false;
-    
-    document.getElementById('tableOrderModal').classList.add('show');
-    switchTab('products');
-    
-    if (orderId) {
-        loadOrder(orderId);
-    } else {
-        openTable(tableId);
+
+    if (table.classList.contains('locked-by-other')) {
+        showError('Mesa en uso por ' + (table.dataset.lockedBy || 'otro usuario'));
+        return;
     }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+    fetch('/restaurant/tables/' + tableId + '/lock', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (!data.success) {
+            showError(data.message || 'No se pudo acceder a la mesa');
+            return;
+        }
+
+        orderModalOpen = true;
+        currentTableId = tableId;
+        currentTableName = table.querySelector('.table-name').textContent;
+        const orderId = table.dataset.orderId;
+
+        document.getElementById('modalTableName').textContent = currentTableName;
+        document.getElementById('modalOrderNumber').textContent = orderId ? 'Pedido: ' + orderId : 'Abriendo...';
+        const cancelBtn = document.getElementById('btnCancelOrder');
+        if (cancelBtn) cancelBtn.disabled = false;
+        const moveBtn = document.getElementById('btnMoveTable');
+        if (moveBtn) moveBtn.disabled = false;
+        const drawerBtn = document.getElementById('btnCashDrawer');
+        if (drawerBtn) drawerBtn.disabled = false;
+
+        document.getElementById('tableOrderModal').classList.add('show');
+        switchTab('products');
+
+        if (orderId) {
+            loadOrder(orderId);
+        } else {
+            openTable(tableId);
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        showError('Error al acceder a la mesa');
+    });
 }
     
 function closeModal() {
+    if (currentTableId) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        fetch('/restaurant/tables/' + currentTableId + '/unlock', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        }).catch(() => {});
+    }
+
     if (currentTableId && currentOrderId) {
         const card = document.querySelector(`.table-card[data-table-id="${currentTableId}"]`);
         if (card) card.dataset.orderId = currentOrderId;
@@ -1508,6 +1556,54 @@ function pollActiveOrders() {
         });
     })
     .catch(() => {});
+}
+
+function pollTableLocks() {
+    fetch('/restaurant/locks?_=' + Date.now(), {
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (!data.success) return;
+
+        document.querySelectorAll('.table-card').forEach(card => {
+            card.classList.remove('locked-by-other');
+            delete card.dataset.lockedBy;
+        });
+
+        data.locks.forEach(lock => {
+            if (lock.locked_by === currentUserId) return;
+            const card = document.querySelector(`.table-card[data-table-id="${lock.table_id}"]`);
+            if (!card) return;
+            card.classList.add('locked-by-other');
+            card.dataset.lockedBy = lock.user_name;
+        });
+    })
+    .catch(() => {});
+}
+
+function unlockAllTables() {
+    if (!confirm('¿Desbloquear todas las mesas?')) return;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    fetch('/restaurant/tables/unlock-all', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.message || 'Error al desbloquear mesas');
+        }
+    })
+    .catch(() => {
+        alert('Error al desbloquear mesas');
+    });
 }
 
 function pollPrintServer() {
