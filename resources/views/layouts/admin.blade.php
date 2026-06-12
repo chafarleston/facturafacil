@@ -111,6 +111,9 @@
                   <a href="{{ route('permissions.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Permisos</p></a>
                 </li>
                 @endcan
+                <li class="nav-item">
+                  <a href="{{ route('sunat-padron.index') }}" class="nav-link {{ request()->routeIs('sunat-padron.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Padrón SUNAT</p></a>
+                </li>
               </ul>
             </li>
             @endcan

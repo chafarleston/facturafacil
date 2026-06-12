@@ -32,15 +32,31 @@ class GreenterService
     {
         $company = \App\Models\Company::getMainCompany();
         
-        if (!$company || !$company->certificado_path) {
+        if (!$company) {
             return [
                 'success' => false,
-                'code' => 'NO_CERT',
-                'description' => 'No hay certificado configurado'
+                'code' => 'NO_COMPANY',
+                'description' => 'No hay empresa principal configurada'
             ];
         }
         
-        $this->setupSee($company);
+        if (!$company->certificado_path && !$company->certificate) {
+            return [
+                'success' => false,
+                'code' => 'NO_CERT',
+                'description' => 'No hay certificado digital configurado'
+            ];
+        }
+        
+        try {
+            $this->setupSee($company);
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'code' => 'CERT_ERROR',
+                'description' => $e->getMessage()
+            ];
+        }
         
         try {
             $note = new Note();
@@ -188,15 +204,31 @@ class GreenterService
     {
         $company = \App\Models\Company::getMainCompany();
         
-        if (!$company || !$company->certificado_path) {
+        if (!$company) {
             return [
                 'success' => false,
-                'code' => 'NO_CERT',
-                'description' => 'No hay certificado configurado'
+                'code' => 'NO_COMPANY',
+                'description' => 'No hay empresa principal configurada'
             ];
         }
         
-        $this->setupSee($company);
+        if (!$company->certificado_path && !$company->certificate) {
+            return [
+                'success' => false,
+                'code' => 'NO_CERT',
+                'description' => 'No hay certificado digital configurado'
+            ];
+        }
+        
+        try {
+            $this->setupSee($company);
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'code' => 'CERT_ERROR',
+                'description' => $e->getMessage()
+            ];
+        }
         
         try {
             $voided = new Voided();
@@ -803,21 +835,37 @@ class GreenterService
     {
         $company = \App\Models\Company::getMainCompany();
         
-        if (!$company || !$company->certificado_path) {
+        if (!$company) {
+            return [
+                'success' => false,
+                'code' => 'NO_COMPANY',
+                'description' => 'No hay empresa principal configurada'
+            ];
+        }
+        
+        if (!$company->certificado_path && !$company->certificate) {
             return [
                 'success' => false,
                 'code' => 'NO_CERT',
-                'description' => 'No hay certificado configurado'
+                'description' => 'No hay certificado digital configurado. Suba el archivo .p12 desde la configuración de la empresa.'
             ];
         }
         
         $this->company = $company;
         
+        try {
+            $this->setupSee($company);
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'code' => 'CERT_ERROR',
+                'description' => $e->getMessage()
+            ];
+        }
+        
         $greenterCompany = $this->buildCompany($company);
         
         $greenterInvoice = $this->buildInvoice($invoice, $company);
-        
-        $this->setupSee($company);
         
         try {
             $result = $this->see->send($greenterInvoice);
@@ -878,21 +926,40 @@ class GreenterService
     
     private function setupSee(Company $company)
     {
-        $pfxPath = storage_path('app/' . $company->certificado_path);
+        $certField = $company->certificado_path ?? $company->certificate;
+        if (!$certField) {
+            throw new \Exception('No hay certificado digital configurado. Suba el archivo .p12 desde la configuración de la empresa.');
+        }
+
+        $pfxPath = storage_path('app/certificates/' . $certField);
+        if (!file_exists($pfxPath)) {
+            $pfxPath = storage_path('app/' . $certField);
+        }
+        if (!file_exists($pfxPath)) {
+            throw new \Exception('El archivo del certificado no existe en: ' . $pfxPath);
+        }
+
         $password = $company->certificado_password;
-        
+        if (!$password) {
+            throw new \Exception('No se ha configurado la contraseña del certificado.');
+        }
+
         $pfxContent = file_get_contents($pfxPath);
-        
         $certificate = new X509Certificate($pfxContent, $password);
         $pemContent = $certificate->export(X509ContentType::PEM);
-        
-        $sunatUser = $company->ruc;
-        $sunatPassword = $password;
-        
+
+        $sunatUser = $company->soap_username ?? $company->ruc;
+        $sunatPassword = $company->soap_password ?? $password;
+
         $this->see = new \Greenter\See();
         $this->see->setCertificate($pemContent);
         $this->see->setClaveSOL($company->ruc, $sunatUser, $sunatPassword);
-        $this->see->setService(SunatEndpoints::FE_BETA);
+
+        if ($company->soap_type_id == 2) {
+            $this->see->setService(SunatEndpoints::FE_HOMOLOGACION);
+        } else {
+            $this->see->setService(SunatEndpoints::FE_BETA);
+        }
     }
     
     private function buildCompany(Company $company)

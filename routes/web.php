@@ -88,6 +88,8 @@ Route::middleware('auth')->group(function () {
         Route::resource('users', \App\Http\Controllers\UserController::class);
         Route::resource('roles', \App\Http\Controllers\RoleController::class);
         Route::resource('permissions', \App\Http\Controllers\PermissionController::class);
+        Route::get('/sunat-padron', [SunatPadronController::class, 'index'])->name('sunat-padron.index');
+        Route::post('/sunat-padron/download', [SunatPadronController::class, 'download'])->name('sunat-padron.download');
         Route::post('/companies/download-padron', [SunatPadronController::class, 'downloadPadron'])->name('sunat.padron.download');
         Route::get('/printers/detect', [\App\Http\Controllers\Admin\PrinterController::class, 'detect'])->name('printers.detect');
         Route::post('/printers/detect', [\App\Http\Controllers\Admin\PrinterController::class, 'detect'])->name('printers.detect.post');
