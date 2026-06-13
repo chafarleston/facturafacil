@@ -9,6 +9,20 @@
             <div class="card-header">
                 <h3 class="card-title">{{ $title }}</h3>
             </div>
+            @if($tipo === 'T' && isset($invoices))
+            <div class="card-body bg-light">
+                <div class="form-group mb-0">
+                    <label><i class="fas fa-file-invoice"></i> Generar desde comprobante</label>
+                    <select id="invoiceSelector" class="form-control" onchange="loadInvoiceData(this.value)">
+                        <option value="">— Seleccione factura/boleta —</option>
+                        @foreach($invoices as $inv)
+                        <option value="{{ $inv->id }}">{{ $inv->full_number }} - {{ $inv->customer?->nombre ?? 'VARIOS' }} (S/ {{ number_format($inv->total, 2) }})</option>
+                        @endforeach
+                    </select>
+                    <small class="text-muted">Seleccione un comprobante para precargar los datos del destinatario y los items</small>
+                </div>
+            </div>
+            @endif
             <form action="{{ route('documents.store', $tipo) }}" method="POST">
                 @csrf
                 <div class="card-body">
@@ -106,15 +120,22 @@
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label>Dirección de Partida</label>
-                                <input type="text" name="dir_partida" class="form-control" required>
+                                <input type="text" name="dir_partida" id="dir_partida" class="form-control" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label>Dirección de Llegada</label>
-                                <input type="text" name="dir_llegada" class="form-control" required>
+                                <input type="text" name="dir_llegada" id="dir_llegada" class="form-control" required>
                             </div>
                         </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Items (se cargarán automáticamente al seleccionar un comprobante)</label>
+                        <div id="itemsContainer" class="p-2 border rounded bg-light">
+                            <p class="text-muted mb-0" id="itemsPlaceholder">Seleccione un comprobante para ver los items</p>
+                        </div>
+                        <input type="hidden" name="items" id="itemsJson">
                     </div>
                     @endif
                     <div class="form-group">
@@ -131,3 +152,47 @@
     </div>
 </div>
 @endsection
+
+@if($tipo === 'T')
+@push('scripts')
+<script>
+function loadInvoiceData(invoiceId) {
+    if (!invoiceId) {
+        document.getElementById('itemsContainer').innerHTML = '<p class="text-muted mb-0">Seleccione un comprobante para ver los items</p>';
+        document.getElementById('itemsJson').value = '';
+        return;
+    }
+
+    fetch('/api/invoice-data/' + invoiceId)
+        .then(r => r.json())
+        .then(data => {
+            if (data.customer) {
+                document.querySelector('[name="entity_num_doc"]').value = data.customer.num_doc || '';
+                document.querySelector('[name="entity_razon_social"]').value = data.customer.razon_social || '';
+                document.querySelector('[name="entity_direccion"]').value = data.customer.direccion || '';
+            }
+            document.querySelector('[name="total"]').value = data.total || 0;
+            document.querySelector('[name="fecha_emision"]').value = data.fecha_emision || '{{ date("Y-m-d") }}';
+
+            if (data.items && data.items.length > 0) {
+                let html = '<table class="table table-sm mb-0"><thead><tr><th>Código</th><th>Descripción</th><th>Cantidad</th><th>Unidad</th></tr></thead><tbody>';
+                data.items.forEach(item => {
+                    html += `<tr><td>${item.codigo || '—'}</td><td>${item.descripcion}</td><td>${item.cantidad}</td><td>${item.unidad}</td></tr>`;
+                });
+                html += '</tbody></table>';
+                document.getElementById('itemsContainer').innerHTML = html;
+                document.getElementById('itemsJson').value = JSON.stringify(data.items);
+            }
+
+            // Pre-fill addresses from company/customer
+            if (data.customer && data.customer.direccion) {
+                document.getElementById('dir_llegada').value = data.customer.direccion;
+            }
+        })
+        .catch(err => {
+            document.getElementById('itemsContainer').innerHTML = '<p class="text-danger mb-0">Error al cargar datos del comprobante</p>';
+        });
+}
+</script>
+@endpush
+@endif

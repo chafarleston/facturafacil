@@ -125,6 +125,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/documents/{tipo}', [\App\Http\Controllers\DocumentController::class, 'store'])->name('documents.store');
     Route::get('/documents/{tipo}/{document}', [\App\Http\Controllers\DocumentController::class, 'show'])->name('documents.show');
     Route::post('/documents/{tipo}/{document}/send', [\App\Http\Controllers\DocumentController::class, 'send'])->name('documents.send');
+    Route::get('/api/invoice-data/{id}', [\App\Http\Controllers\DocumentController::class, 'getInvoiceData'])->name('api.invoice.data');
     
 Route::get('/customers/search', [CustomerApiController::class, 'search'])->name('customers.search');
     Route::post('/customers/quick-store', [CustomerApiController::class, 'quickStore'])->name('customers.quickStore');

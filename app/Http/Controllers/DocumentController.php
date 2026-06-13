@@ -6,8 +6,8 @@ use App\Models\Company;
 use App\Models\Invoice;
 use App\Models\SpecialDocument;
 use App\Models\Serie;
-use App\Services\SpecialDocumentService;
 use Illuminate\Http\Request;
+use App\Services\SpecialDocumentService;
 
 class DocumentController extends Controller
 {
@@ -49,7 +49,17 @@ class DocumentController extends Controller
             ->where('serie', 'like', $tipo . '%')
             ->get();
 
-        return view('documents.create', compact('title', 'tipo', 'company', 'series'));
+        // Pass invoices for T (despatch can be generated from invoice)
+        $invoices = [];
+        if ($tipo === 'T') {
+            $invoices = \App\Models\Invoice::where('company_id', $companyId)
+                ->whereIn('tipo_documento', ['01', '03'])
+                ->orderBy('created_at', 'desc')
+                ->limit(50)
+                ->get();
+        }
+
+        return view('documents.create', compact('title', 'tipo', 'company', 'series', 'invoices'));
     }
 
     public function store(Request $request, $tipo)
@@ -196,5 +206,33 @@ class DocumentController extends Controller
 
         return redirect()->route('documents.show', ['T', $doc->id])
             ->with('success', "Guía de Remisión {$fullNumber} generada desde {$invoice->full_number}");
+    }
+
+    public function getInvoiceData($id)
+    {
+        $invoice = Invoice::with(['customer', 'items'])->find($id);
+        if (!$invoice) {
+            return response()->json(['error' => 'No encontrado'], 404);
+        }
+
+        return response()->json([
+            'id' => $invoice->id,
+            'full_number' => $invoice->full_number,
+            'tipo_documento' => $invoice->tipo_documento,
+            'fecha_emision' => $invoice->fecha_emision,
+            'total' => $invoice->total,
+            'customer' => $invoice->customer ? [
+                'tipo_doc' => $invoice->customer->documento_tipo ?? '6',
+                'num_doc' => $invoice->customer->documento_numero ?? '',
+                'razon_social' => $invoice->customer->nombre ?? '',
+                'direccion' => $invoice->customer->direccion ?? '',
+            ] : null,
+            'items' => $invoice->items->map(fn($i) => [
+                'codigo' => $i->codigo ?? '',
+                'descripcion' => $i->descripcion,
+                'cantidad' => $i->cantidad,
+                'unidad' => 'NIU',
+            ]),
+        ]);
     }
 }
