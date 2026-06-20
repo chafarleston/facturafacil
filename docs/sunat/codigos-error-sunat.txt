@@ -1,0 +1,564 @@
+ANEXO 2: Listado de Errores
+CODIGO	DESCRIPCION 
+0100	El sistema no puede responder su solicitud. Intente nuevamente o comuníquese con su Administrador 
+0101	El encabezado de seguridad es incorrecto 
+0102	Usuario o contraseña incorrectos 
+0103	El Usuario ingresado no existe 
+0104	La Clave ingresada es incorrecta 
+0105	El Usuario no está activo 
+0106	El Usuario no es válido 
+0109	El sistema no puede responder su solicitud. (El servicio de autenticación no está disponible) 
+0110	No se pudo obtener la informacion del tipo de usuario 
+0111	No tiene el perfil para enviar comprobantes electronicos 
+0112	El usuario debe ser secundario 
+0113	El usuario no esta afiliado a Factura Electronica 
+0125	No se pudo obtener la constancia 
+0126	El ticket no le pertenece al usuario 
+0127	El ticket no existe 
+0130	El sistema no puede responder su solicitud. (No se pudo obtener el ticket de proceso) 
+0131	El sistema no puede responder su solicitud. (No se pudo grabar el archivo en el directorio) 
+0132	El sistema no puede responder su solicitud. (No se pudo grabar escribir en el archivo zip) 
+0133	El sistema no puede responder su solicitud. (No se pudo grabar la entrada del log) 
+0134	El sistema no puede responder su solicitud. (No se pudo grabar en el storage) 
+0135	El sistema no puede responder su solicitud. (No se pudo encolar el pedido) 
+0136	El sistema no puede responder su solicitud. (No se pudo recibir una respuesta del batch) 
+0137	El sistema no puede responder su solicitud. (Se obtuvo una respuesta nula) 
+0138	El sistema no puede responder su solicitud. (Error en Base de Datos)
+0151	El nombre del archivo ZIP es incorrecto 
+0152	No se puede enviar por este método un archivo de resumen 
+0153	No se puede enviar por este método un archivo por lotes 
+0154	El RUC del archivo no corresponde al RUC del usuario 
+0155	El archivo ZIP esta vacio 
+0156	El archivo ZIP esta corrupto 
+0157	El archivo ZIP no contiene comprobantes 
+0158	El archivo ZIP contiene demasiados comprobantes para este tipo de envío 
+0159	El nombre del archivo XML es incorrecto 
+0160	El archivo XML esta vacio 
+0161	El nombre del archivo XML no coincide con el nombre del archivo ZIP 
+0200	No se pudo procesar su solicitud. (Ocurrio un error en el batch) 
+0201	No se pudo procesar su solicitud. (Llego un requerimiento nulo al batch)
+0202	No se pudo procesar su solicitud. (No llego información del archivo ZIP)
+0203	No se pudo procesar su solicitud. (No se encontro archivos en la informacion del archivo ZIP)
+0204	No se pudo procesar su solicitud. (Este tipo de requerimiento solo acepta 1 archivo)
+0250	No se pudo procesar su solicitud. (Ocurrio un error desconocido al hacer unzip) 
+0251	No se pudo procesar su solicitud. (No se pudo crear un directorio para el unzip) 
+0252	No se pudo procesar su solicitud. (No se encontro archivos dentro del zip) 
+0253	No se pudo procesar su solicitud. (No se pudo comprimir la constancia) 
+0300	No se encontró la raíz documento xml
+0301	Elemento raiz del xml no esta definido
+0302	Codigo del tipo de comprobante no registrado
+0303	No existe el directorio de schemas 
+0304	No existe el archivo de schema 
+0305	El sistema no puede procesar el archivo xml 
+0306	No se puede leer (parsear) el archivo XML 
+0307	No se pudo recuperar la constancia 
+0400	No tiene permiso para enviar casos de pruebas 
+0401	El caso de prueba no existe 
+0402	La numeracion o nombre del documento ya ha sido enviado anteriormente 
+0403	El documento afectado por la nota no existe 
+0404	El documento afectado por la nota se encuentra rechazado 
+1001	ID - El dato SERIE-CORRELATIVO no cumple con el formato de acuerdo al tipo de comprobante 
+1002	El XML no contiene informacion en el tag ID 
+1003	InvoiceTypeCode - El valor del tipo de documento es invalido o no coincide con el nombre del archivo 
+CODIGO	DESCRIPCION 
+1004	El XML no contiene el tag o no existe informacion de InvoiceTypeCode 
+1005	CustomerAssignedAccountID - El dato ingresado no cumple con el estandar 
+1006	El XML no contiene el tag o no existe informacion de CustomerAssignedAccountID del emisor del documento 
+1007	AdditionalAccountID - El dato ingresado no cumple con el estandar 
+1008	El XML no contiene el tag o no existe informacion de AdditionalAccountID del emisor del documento 
+1009	IssueDate - El dato ingresado  no cumple con el patron YYYY-MM-DD
+1010	El XML no contiene el tag IssueDate
+1011	IssueDate- El dato ingresado no es valido
+1012	ID - El dato ingresado no cumple con el patron SERIE-CORRELATIVO
+1013	El XML no contiene informacion en el tag ID
+1014	CustomerAssignedAccountID - El dato ingresado no cumple con el estándar
+1015	El XML no contiene el tag o no existe informacion de CustomerAssignedAccountID del emisor del documento
+1016	AdditionalAccountID - El dato ingresado no cumple con el estándar
+1017	El XML no contiene el tag AdditionalAccountID del emisor del documento
+1018	IssueDate - El dato ingresado no cumple con el patron YYYY-MM-DD
+1019	El XML no contiene el tag IssueDate
+1020	IssueDate- El dato ingresado no es valido
+1021	Error en la validacion de la nota de credito
+1022	La serie o numero del documento modificado por la Nota Electrónica no cumple con el formato establecido 
+1023	No se ha especificado el tipo de documento modificado por la Nota electronica 
+1024	CustomerAssignedAccountID - El dato ingresado no cumple con el estándar
+1025	El XML no contiene el tag o no existe informacion de CustomerAssignedAccountID del emisor del documento
+1026	AdditionalAccountID - El dato ingresado no cumple con el estándar
+1027	El XML no contiene el tag AdditionalAccountID del emisor del documento
+1028	IssueDate - El dato ingresado no cumple con el patron YYYY-MM-DD
+1029	El XML no contiene el tag IssueDate
+1030	IssueDate- El dato ingresado no es valido
+1031	Error en la validacion de la nota de debito
+1032	El comprobante fue informado previamente en una comunicacion de baja 
+1033 	El comprobante fue registrado previamente con otros datos 
+1034 	Número de RUC del nombre del archivo no coincide con el consignado en el contenido del archivo XML 
+1035 	Numero de Serie del nombre del archivo no coincide con el consignado en el contenido del archivo XML 
+1036 	Número de documento en el nombre del archivo no coincide con el consignado en el contenido del XML 
+1037 	El XML no contiene el tag o no existe informacion de RegistrationName del emisor del documento 
+1038 	RegistrationName - El nombre o razon social del emisor no cumple con el estandar 
+1039 	Solo se pueden recibir notas electronicas que modifican facturas 
+1040 	El tipo de documento modificado por la nota electronica no es valido 
+2010 	El contribuyente no esta activo 
+2011 	El contribuyente no esta habido 
+2012	El contribuyente no está autorizado a emitir comprobantes electrónicos
+2013 	El contribuyente no cumple con tipo de empresa o tributos requeridos 
+2014 	El XML no contiene el tag o no existe informacion de CustomerAssignedAccountID del receptor del documento 
+2015 	El XML no contiene el tag o no existe informacion de AdditionalAccountID del receptor del documento 
+2016 	AdditionalAccountID - El dato ingresado en el tipo de documento de identidad del receptor no cumple con el estandar 
+2017 	CustomerAssignedAccountID - El numero de documento de identidad del recepetor debe ser RUC 
+2018	CustomerAssignedAccountID -  El dato ingresado no cumple con el estándar
+2019	El XML no contiene el tag o no existe informacion de RegistrationName del emisor del documento
+2020	RegistrationName - El nombre o razon social del emisor no cumple con el estándar
+2021 	El XML no contiene el tag o no existe informacion de RegistrationName del receptor del documento 
+2022 	RegistrationName - El dato ingresado no cumple con el estandar 
+2023 	El Numero de orden del item no cumple con el formato establecido 
+2024 	El XML no contiene el tag InvoicedQuantity en el detalle de los Items 
+2025 	InvoicedQuantity El dato ingresado no cumple con el estandar 
+2026	El XML no contiene el tag cac:Item/cbc:Description en el detalle de los Items
+2027 	El XML no contiene el tag o no existe informacion de cac:Item/cbc:Description del item 
+2028 	Debe existir el tag cac:AlternativeConditionPrice con un elemento cbc:PriceTypeCode con valor 01 
+2029	PriceTypeCode El dato ingresado no cumple con el estándar
+2030	El XML no contiene el tag cbc:PriceTypeCode
+2031	LineExtensionAmount El dato ingresado no cumple con el estándar
+2032	El XML no contiene el tag LineExtensionAmount en el detalle de los Items
+2033 	El dato ingresado en TaxAmount de la linea no cumple con el formato establecido 
+2034 	TaxAmount es obligatorio
+2035 	cac:TaxCategory/cac:TaxScheme/cbc:ID El dato ingresado no cumple con el estandar 
+CODIGO	DESCRIPCION 
+2036 	El codigo del tributo es invalido 
+2037	El XML no contiene el tag cac:TaxCategory/cac:TaxScheme/cbc:ID del Item
+2038 	cac:TaxScheme/cbc:Name del item - No existe el tag o el dato ingresado no cumple con el estandar 
+2039	El XML no contiene el tag cac:TaxCategory/cac:TaxScheme/cbc:Name del Item
+2040 	El tipo de afectacion del IGV es incorrecto 
+2041 	El sistema de calculo del ISC es incorrecto 
+2042 	Debe indicar el IGV. Es un campo obligatorio 
+2043 	El dato ingresado en PayableAmount no cumple con el formato establecido 
+2044	PayableAmount es obligatorio
+2045 	El valor ingresado en AdditionalMonetaryTotal/cbc:ID es incorrecto 
+2046 	AdditionalMonetaryTotal/cbc:ID debe tener valor
+2047 	Es obligatorio al menos un AdditionalMonetaryTotal con codigo 1001, 1002 o 1003 
+2048 	El dato ingresado en TaxAmount no cumple con el formato establecido 
+2049	TaxAmount es obligatorio
+2050 	TaxScheme ID - No existe el tag o el dato ingresado no cumple con el estandar 
+2051 	El codigo del tributo es invalido 
+2052	El XML no contiene el tag TaxScheme ID de impuestos globales
+2053 	TaxScheme Name - No existe el tag o el dato ingresado no cumple con el estandar 
+2054 	El XML no contiene el tag TaxScheme Name de impuestos globales
+2055 	TaxScheme TaxTypeCode - El dato ingresado no cumple con el estandar 
+2056	El XML no contiene el tag TaxScheme TaxTypeCode de impuestos globales
+2057 	El Name o TaxTypeCode debe corresponder con el Id para el IGV 
+2058 	El Name o TaxTypeCode debe corresponder con el Id para el ISC 
+2059 	El dato ingresado en TaxSubtotal/cbc:TaxAmount no cumple con el formato establecido 
+2060	TaxSubtotal/cbc:TaxAmount es obligatorio
+2061 	El tag global cac:TaxTotal/cbc:TaxAmount debe tener el mismo valor que cac:TaxTotal/cac:Subtotal/cbc:TaxAmount 
+2062 	El dato ingresado en PayableAmount no cumple con el formato establecido 
+2063	El XML no contiene el tag PayableAmount
+2064 	El dato ingresado en ChargeTotalAmount no cumple con el formato establecido 
+2065 	El dato ingresado en el campo Total Descuentos no cumple con el formato establecido 
+2066 	Debe indicar una descripcion para el tag sac:AdditionalProperty/cbc:Value
+2067	cac:Price/cbc:PriceAmount - El dato ingresado no cumple con el estandar
+2068 	El XML no contiene el tag cac:Price/cbc:PriceAmount en el detalle de los Items 
+2069 	DocumentCurrencyCode - El dato ingresado no cumple con la estructura 
+2070 	El XML no contiene el tag o no existe informacion de DocumentCurrencyCode 
+2071 	La moneda debe ser la misma en todo el documento 
+2072 	CustomizationID - La versión del documento no es la correcta 
+2073 	El XML no contiene el tag o no existe informacion de CustomizationID 
+2074 	UBLVersionID - La versión del UBL no es correcta 
+2075 	El XML no contiene el tag o no existe informacion de UBLVersionID 
+2076 	cac:Signature/cbc:ID - Falta el identificador de la firma 
+2077 	El tag cac:Signature/cbc:ID debe contener informacion 
+2078 	cac:Signature/cac:SignatoryParty/cac:PartyIdentification/cbc:ID - Debe ser igual al RUC del emisor 
+2079	El XML no contiene el tag cac:Signature/cac:SignatoryParty/cac:PartyIdentification/cbc:ID
+2080 	cac:Signature/cac:SignatoryParty/cac:PartyName/cbc:Name - No cumple con el estandar 
+2081	El XML no contiene el tag cac:Signature/cac:SignatoryParty/cac:PartyName/cbc:Name
+2082 	cac:Signature/cac:DigitalSignatureAttachment/cac:ExternalReference/cbc:URI - No cumple con el estandar 
+2083 	El XML no contiene el tag cac:Signature/cac:DigitalSignatureAttachment/cac:ExternalReference/cbc:URI 
+2084 	ext:UBLExtensions/ext:UBLExtension/ext:ExtensionContent/ds:Signature/@Id - No cumple con el estandar 
+2085 	El XML no contiene el tag ext:UBLExtensions/ext:UBLExtension/ext:ExtensionContent/ds:Signature/@Id 
+2086 	ext:UBLExtensions/.../ds:Signature/ds:SignedInfo/ds:CanonicalizationMethod/@Algorithm - No cumple con el estandar 
+2087 	El XML no contiene el tag ext:UBLExtensions/.../ds:Signature/ds:SignedInfo/ds:CanonicalizationMethod/@Algorithm 
+2088 	ext:UBLExtensions/.../ds:Signature/ds:SignedInfo/ds:SignatureMethod/@Algorithm - No cumple con el estandar 
+2089 	El XML no contiene el tag ext:UBLExtensions/.../ds:Signature/ds:SignedInfo/ds:SignatureMethod/@Algorithm 
+2090 	ext:UBLExtensions/.../ds:Signature/ds:SignedInfo/ds:Reference/@URI - Debe estar vacio para id 
+2091	El XML no contiene el tag ext:UBLExtensions/.../ds:Signature/ds:SignedInfo/ds:Reference/@URI
+2092 	ext:UBLExtensions/.../ds:Signature/ds:SignedInfo/.../ds:Transform@Algorithm - No cumple con el estandar 
+2093 	El XML no contiene el tag ext:UBLExtensions/.../ds:Signature/ds:SignedInfo/ds:Reference/ds:Transform@Algorithm 
+2094 	ext:UBLExtensions/.../ds:Signature/ds:SignedInfo/ds:Reference/ds:DigestMethod/@Algorithm - No cumple con el estandar 
+2095 	El XML no contiene el tag ext:UBLExtensions/.../ds:Signature/ds:SignedInfo/ds:Reference/ds:DigestMethod/@Algorithm 
+2096 	ext:UBLExtensions/.../ds:Signature/ds:SignedInfo/ds:Reference/ds:DigestValue - No cumple con el estandar 
+2097 	El XML no contiene el tag ext:UBLExtensions/.../ds:Signature/ds:SignedInfo/ds:Reference/ds:DigestValue 
+2098 	ext:UBLExtensions/.../ds:Signature/ds:SignatureValue - No cumple con el estandar 
+CODIGO	DESCRIPCION 
+2099 	El XML no contiene el tag ext:UBLExtensions/.../ds:Signature/ds:SignatureValue 
+2100 	ext:UBLExtensions/.../ds:Signature/ds:KeyInfo/ds:X509Data/ds:X509Certificate - No cumple con el estandar 
+2101 	El XML no contiene el tag ext:UBLExtensions/.../ds:Signature/ds:KeyInfo/ds:X509Data/ds:X509Certificate 
+2102	Error al procesar la factura
+2103	La serie ingresada no es válida
+2104	Numero de RUC del emisor no existe
+2105 	Factura a dar de baja no se encuentra registrada en SUNAT 
+2106 	Factura a dar de baja ya se encuentra en estado de baja 
+2107 	Numero de RUC SOL no coincide con RUC emisor
+2108 	Presentacion fuera de fecha 
+2109 	El comprobante fue registrado previamente con otros datos
+2110	UBLVersionID - La versión del UBL no es correcta
+2111	El XML no contiene el tag o no existe informacion de UBLVersionID
+2112	CustomizationID - La version del documento no es correcta
+2113	El XML no contiene el tag o no existe informacion de CustomizationID
+2114	DocumentCurrencyCode -  El dato ingresado no cumple con la estructura
+2115	El XML no contiene el tag o no existe informacion de DocumentCurrencyCode
+2116 	El tipo de documento modificado por la Nota de credito debe ser factura electronica o ticket 
+2117 	La serie o numero del documento modificado por la Nota de Credito no cumple con el formato establecido 
+2118 	Debe indicar las facturas relacionadas a la Nota de Credito 
+2119 	La factura relacionada en la Nota de credito no esta registrada. 
+2120 	La factura relacionada en la nota de credito se encuentra de baja 
+2121 	La factura relacionada en la nota de credito esta registrada como rechazada 
+2122	El tag cac:LegalMonetaryTotal/cbc:PayableAmount debe tener informacion valida
+2123	RegistrationName -  El dato ingresado no cumple con el estandar
+2124	El XML no contiene el tag RegistrationName del emisor del documento
+2125 	ReferenceID - El dato ingresado debe indicar SERIE-CORRELATIVO del documento al que se relaciona la Nota 
+2126 	El XML no contiene informacion en el tag ReferenceID del documento al que se relaciona la nota 
+2127 	ResponseCode - El dato ingresado no cumple con la estructura 
+2128 	El XML no contiene el tag o no existe informacion de ResponseCode 
+2129 	AdditionalAccountID - El dato ingresado en el tipo de documento de identidad del receptor no cumple con el estandar 
+2130 	El XML no contiene el tag o no existe informacion de AdditionalAccountID del receptor del documento 
+2131 	CustomerAssignedAccountID - El numero de documento de identidad del receptor debe ser RUC 
+2132 	El XML no contiene el tag o no existe informacion de CustomerAssignedAccountID del receptor del documento 
+2133 	RegistrationName - El dato ingresado no cumple con el estandar 
+2134 	El XML no contiene el tag o no existe informacion de RegistrationName del receptor del documento 
+2135 	cac:DiscrepancyResponse/cbc:Description - El dato ingresado no cumple con la estructura 
+2136 	El XML no contiene el tag o no existe informacion de cac:DiscrepancyResponse/cbc:Description 
+2137 	El Número de orden del item no cumple con el formato establecido 
+2138	CreditedQuantity/@unitCode - El dato ingresado no cumple con el estandar
+2139 	CreditedQuantity - El dato ingresado no cumple con el estandar 
+2140 	El PriceTypeCode debe tener el valor 01 
+2141 	cac:TaxCategory/cac:TaxScheme/cbc:ID - El dato ingresado no cumple con el estandar 
+2142 	El codigo del tributo es invalido 
+2143 	cac:TaxScheme/cbc:Name del item - No existe el tag o el dato ingresado no cumple con el estandar 
+2144	cac:TaxCategory/cac:TaxScheme/cbc:TaxTypeCode El dato ingresado no cumple con el estandar
+2145 	El tipo de afectacion del IGV es incorrecto 
+2146	El Nombre Internacional debe ser VAT
+2147 	El sistema de calculo del ISC es incorrecto 
+2148 	El Nombre Internacional debe ser EXC 
+2149 	El dato ingresado en PayableAmount no cumple con el formato establecido 
+2150 	El valor ingresado en AdditionalMonetaryTotal/cbc:ID es incorrecto 
+2151 	AdditionalMonetaryTotal/cbc:ID debe tener valor 
+2152	Es obligatorio al menos un AdditionalInformation
+2153	Error al procesar la Nota de Credito
+2154	TaxAmount - El dato ingresado en impuestos globales no cumple con el estandar
+2155	El XML no contiene el tag TaxAmount de impuestos globales
+2156 	TaxScheme ID - El dato ingresado no cumple con el estandar 
+2157 	El codigo del tributo es invalido 
+2158 	El XML no contiene el tag o no existe informacion de TaxScheme ID de impuestos globales 
+2159 	TaxScheme Name - El dato ingresado no cumple con el estandar 
+2160 	El XML no contiene el tag o no existe informacion de TaxScheme Name de impuestos globales 
+2161	CustomizationID - La version del documento no es correcta
+CODIGO	DESCRIPCION 
+2162	El XML no contiene el tag o no existe informacion de CustomizationID
+2163	UBLVersionID - La versión del UBL no es correcta
+2164	El XML no contiene el tag o no existe informacion de UBLVersionID
+2165	Error al procesar la Nota de Debito
+2166	RegistrationName - El dato ingresado no cumple con el estandar
+2167	El XML no contiene el tag RegistrationName del emisor del documento
+2168	DocumentCurrencyCode -  El dato ingresado no cumple con el formato establecido
+2169	El XML no contiene el tag o no existe informacion de DocumentCurrencyCode
+2170 	ReferenceID - El dato ingresado debe indicar SERIE-CORRELATIVO del documento al que se relaciona la Nota 
+2171 	El XML no contiene informacion en el tag ReferenceID del documento al que se relaciona la nota 
+2172 	ResponseCode - El dato ingresado no cumple con la estructura 
+2173 	El XML no contiene el tag o no existe informacion de ResponseCode 
+2174 	cac:DiscrepancyResponse/cbc:Description - El dato ingresado no cumple con la estructura 
+2175 	El XML no contiene el tag o no existe informacion de cac:DiscrepancyResponse/cbc:Description 
+2176 	AdditionalAccountID - El dato ingresado en el tipo de documento de identidad del receptor no cumple con el estandar 
+2177 	El XML no contiene el tag o no existe informacion de AdditionalAccountID del receptor del documento 
+2178 	CustomerAssignedAccountID - El numero de documento de identidad del receptor debe ser RUC. 
+2179 	El XML no contiene el tag o no existe informacion de CustomerAssignedAccountID del receptor del documento 
+2180 	RegistrationName - El dato ingresado no cumple con el estandar 
+2181 	El XML no contiene el tag o no existe informacion de RegistrationName del receptor del documento 
+2182 	TaxScheme ID - El dato ingresado no cumple con el estandar 
+2183 	El codigo del tributo es invalido 
+2184 	El XML no contiene el tag o no existe informacion de TaxScheme ID de impuestos globales 
+2185 	TaxScheme Name - El dato ingresado no cumple con el estandar 
+2186 	El XML no contiene el tag o no existe informacion de TaxScheme Name de impuestos globales 
+2187 	El Numero de orden del item no cumple con el formato establecido 
+2188	DebitedQuantity/@unitCode El dato ingresado no cumple con el estandar
+2189 	DebitedQuantity El dato ingresado no cumple con el estandar 
+2190 	El XML no contiene el tag Price/cbc:PriceAmount en el detalle de los Items 
+2191	El XML no contiene el tag Price/cbc:LineExtensionAmount en el detalle de los Items
+2192 	EL PriceTypeCode debe tener el valor 01 
+2193 	cac:TaxCategory/cac:TaxScheme/cbc:ID El dato ingresado no cumple con el estandar 
+2194 	El codigo del tributo es invalido 
+2195 	cac:TaxScheme/cbc:Name del item - No existe el tag o el dato ingresado no cumple con el estandar 
+2196	cac:TaxCategory/cac:TaxScheme/cbc:TaxTypeCode El dato ingresado no cumple con el estandar
+2197 	El tipo de afectacion del IGV es incorrecto 
+2198	El Nombre Internacional debe ser VAT
+2199 	El sistema de calculo del ISC es incorrecto 
+2200	El Nombre Internacional debe ser EXC
+2201	El tag cac:RequestedMonetaryTotal/cbc:PayableAmount debe tener informacion valida
+2202	TaxAmount - El dato ingresado en impuestos globales no cumple con el estándar
+2203	El XML no contiene el tag TaxAmount de impuestos globales
+2204 	El tipo de documento modificado por la Nota de Debito debe ser factura electronica o ticket 
+2205 	La serie o numero del documento modificado por la Nota de Debito no cumple con el formato establecido 
+2206 	Debe indicar los documentos afectados por la Nota de Debito 
+2207 	La factura relacionada en la nota de debito se encuentra de baja 
+2208 	La factura relacionada en la nota de debito esta registrada como rechazada 
+2209 	La factura relacionada en la Nota de debito no esta registrada 
+2210 	El dato ingresado no cumple con el formato RC-fecha-correlativo 
+2211 	El XML no contiene el tag ID 
+2212	UBLVersionID - La versión del UBL del resumen de boletas no es correcta
+2213	El XML no contiene el tag UBLVersionID
+2214	CustomizationID - La versión del resumen de boletas no es correcta
+2215	El XML no contiene el tag CustomizationID
+2216 	CustomerAssignedAccountID - El dato ingresado no cumple con el estandar 
+2217 	El XML no contiene el tag CustomerAssignedAccountID del emisor del documento 
+2218 	AdditionalAccountID - El dato ingresado no cumple con el estandar 
+2219 	El XML no contiene el tag AdditionalAccountID del emisor del documento 
+2220 	El ID debe coincidir con el nombre del archivo 
+2221 	El RUC debe coincidir con el RUC del nombre del archivo 
+2222	El contribuyente no está autorizado a emitir comprobantes electronicos
+2223 	El archivo ya fue presentado anteriormente 
+2224	Numero de RUC SOL no coincide con RUC emisor
+CODIGO	DESCRIPCION 
+2225	Numero de RUC del emisor no existe
+2226	El contribuyente no esta activo
+2227	El contribuyente no cumple con tipo de empresa o tributos requeridos
+2228 	RegistrationName - El dato ingresado no cumple con el estandar 
+2229 	El XML no contiene el tag RegistrationName del emisor del documento 
+2230	IssueDate - El dato ingresado no cumple con el patron YYYY-MM-DD
+2231	El XML no contiene el tag IssueDate
+2232	IssueDate- El dato ingresado no es valido
+2233 	ReferenceDate - El dato ingresado no cumple con el patron YYYY-MM-DD 
+2234	El XML no contiene el tag ReferenceDate
+2235	ReferenceDate- El dato ingresado no es valido
+2236 	La fecha del IssueDate no debe ser mayor al Today 
+2237 	La fecha del ReferenceDate no debe ser mayor al Today 
+2238 	LineID - El dato ingresado no cumple con el estandar 
+2239 	LineID - El dato ingresado debe ser correlativo mayor a cero 
+2240 	El XML no contiene el tag LineID de SummaryDocumentsLine 
+2241 	DocumentTypeCode - El valor del tipo de documento es invalido 
+2242 	El XML no contiene el tag DocumentTypeCode 
+2243 	El dato ingresado no cumple con el patron SERIE 
+2244 	El XML no contiene el tag DocumentSerialID 
+2245 	El dato ingresado en StartDocumentNumberID debe ser numerico 
+2246 	El XML no contiene el tag StartDocumentNumberID 
+2247 	El dato ingresado en sac:EndDocumentNumberID debe ser numerico 
+2248 	El XML no contiene el tag sac:EndDocumentNumberID 
+2249 	Los rangos deben ser mayores a cero 
+2250 	En el rango de comprobantes, el EndDocumentNumberID debe ser mayor o igual al StartInvoiceNumberID 
+2251 	El dato ingresado en TotalAmount debe ser numerico mayor o igual a cero 
+2252	El XML no contiene el tag TotalAmount
+2253	El dato ingresado en TotalAmount debe ser numerico mayor a cero
+2254 	PaidAmount - El dato ingresado no cumple con el estandar 
+2255 	El XML no contiene el tag PaidAmount 
+2256 	InstructionID - El dato ingresado no cumple con el estandar 
+2257 	El XML no contiene el tag InstructionID 
+2258	Debe indicar Referencia de Importes asociados a las boletas de venta
+2259 	Debe indicar 3 Referencias de Importes asociados a las boletas de venta 
+2260	PaidAmount - El dato ingresado debe ser mayor o igual a 0.00
+2261 	cbc:Amount - El dato ingresado no cumple con el estandar 
+2262	El XML no contiene el tag cbc:Amount
+2263 	ChargeIndicator - El dato ingresado no cumple con el estandar 
+2264	El XML no contiene el tag ChargeIndicator
+2265 	Debe indicar Información acerca del Importe Total de Otros Cargos 
+2266	Debe indicar cargos mayores o iguales a cero
+2267 	TaxScheme ID - El dato ingresado no cumple con el estandar 
+2268 	El codigo del tributo es invalido 
+2269 	El XML no contiene el tag TaxScheme ID de Información acerca del importe total de un tipo particular de impuesto 
+2270 	TaxScheme Name - El dato ingresado no cumple con el estandar 
+2271 	El XML no contiene el tag TaxScheme Name de impuesto 
+2272	TaxScheme TaxTypeCode - El dato ingresado no cumple con el estandar
+2273 	TaxAmount - El dato ingresado no cumple con el estandar 
+2274	El XML no contiene el tag TaxAmount
+2275 	Si el codigo de tributo es 2000, el nombre del tributo debe ser ISC 
+2276 	Si el codigo de tributo es 1000, el nombre del tributo debe ser IGV 
+2277 	No se ha consignado ninguna informacion del importe total de tributos 
+2278 	Debe indicar Información acerca del importe total de ISC e IGV 
+2279	Debe indicar Items de consolidado de documentos
+2280	Existen problemas con la informacion del resumen de comprobantes
+2281	Error en la validacion de los rangos de los comprobantes
+2282 	Existe documento ya informado anteriormente 
+2283 	El dato ingresado no cumple con el formato RA-fecha-correlativo 
+2284	El XML no contiene el tag ID
+2285 	El ID debe coincidir con el nombre del archivo 
+2286 	El RUC debe coincidir con el RUC del nombre del archivo 
+2287 	AdditionalAccountID - El dato ingresado no cumple con el estandar 
+CODIGO	DESCRIPCION 
+2288 	El XML no contiene el tag AdditionalAccountID del emisor del documento 
+2289	CustomerAssignedAccountID - El dato ingresado no cumple con el estándar
+2290	El XML no contiene el tag CustomerAssignedAccountID del emisor del documento
+2291	El contribuyente no esta autorizado a emitir comprobantes electrónicos
+2292	Numero de RUC SOL no coincide con RUC emisor
+2293	Numero de RUC del emisor no existe
+2294	El contribuyente no esta activo
+2295	El contribuyente no cumple con tipo de empresa o tributos requeridos
+2296 	RegistrationName - El dato ingresado no cumple con el estandar 
+2297 	El XML no contiene el tag RegistrationName del emisor del documento 
+2298	IssueDate - El dato ingresado no cumple con el patron YYYY-MM-DD
+2299 	El XML no contiene el tag IssueDate 
+2300	IssueDate - El dato ingresado no es valido
+2301 	La fecha del IssueDate no debe ser mayor al Today 
+2302 	ReferenceDate - El dato ingresado no cumple con el patron YYYY-MM-DD 
+2303	El XML no contiene el tag ReferenceDate
+2304	ReferenceDate - El dato ingresado no es valido
+2305 	LineID - El dato ingresado no cumple con el estandar 
+2306 	LineID - El dato ingresado debe ser correlativo mayor a cero 
+2307 	El XML no contiene el tag LineID de VoidedDocumentsLine 
+2308 	DocumentTypeCode - El valor del tipo de documento es invalido 
+2309 	El XML no contiene el tag DocumentTypeCode 
+2310 	El dato ingresado no cumple con el patron SERIE 
+2311 	El XML no contiene el tag DocumentSerialID 
+2312 	El dato ingresado en DocumentNumberID debe ser numerico y como maximo de 8 digitos 
+2313 	El XML no contiene el tag DocumentNumberID 
+2314 	El dato ingresado en VoidReasonDescription debe contener información válida 
+2315 	El XML no contiene el tag VoidReasonDescription 
+2316	Debe indicar Items en VoidedDocumentsLine
+2317	Error al procesar el resumen de anulados
+2318	CustomizationID - La version del documento no es correcta
+2319	El XML no contiene el tag CustomizationID
+2320	UBLVersionID - La version del UBL  no es la correcta
+2321	El XML no contiene el tag UBLVersionID
+2322	Error en la validacion de los rangos
+2323 	Existe documento ya informado anteriormente en una comunicacion de baja 
+2324 	El archivo de comunicacion de baja ya fue presentado anteriormente 
+2325 	El certificado usado no es el comunicado a SUNAT 
+2326 	El certificado usado se encuentra de baja 
+2327 	El certificado usado no se encuentra vigente 
+2328 	El certificado usado se encuentra revocado 
+2329 	La fecha de emision se encuentra fuera del limite permitido 
+2330 	La fecha de generación de la comunicación debe ser igual a la fecha consignada en el nombre del archivo 
+2331	Número de RUC del nombre del archivo no coincide con el consignado en el contenido del archivo XML
+2332	Número de Serie del nombre del archivo no coincide con el consignado en el contenido del archivo XML
+2333	Número de documento en el nombre del archivo no coincide con el consignado en el contenido del XML
+2334 	El documento electrónico ingresado ha sido alterado 
+2335 	El documento electrónico ingresado ha sido alterado 
+2336 	Ocurrió un error en el proceso de validación de la firma digital 
+2337 	La moneda debe ser la misma en todo el documento 
+2338 	La moneda debe ser la misma en todo el documento 
+2339 	El dato ingresado en PayableAmount no cumple con el formato establecido 
+2340 	El valor ingresado en AdditionalMonetaryTotal/cbc:ID es incorrecto 
+2341 	AdditionalMonetaryTotal/cbc:ID debe tener valor 
+2342 	Fecha de emision de la factura no coincide con la informada en la comunicacion 
+2343 	cac:TaxTotal/cac:TaxSubtotal/cbc:TaxAmount - El dato ingresado no cumple con el estandar 
+2344	El XML no contiene el tag cac:TaxTotal/cac:TaxSubtotal/cbc:TaxAmount
+2345 	La serie no corresponde al tipo de comprobante 
+2346 	La fecha de generación del resumen debe ser igual a la fecha consignada en el nombre del archivo 
+2347	Los rangos informados en el archivo XML se encuentran duplicados o superpuestos
+2348	Los documentos informados en el archivo XML se encuentran duplicados
+2349 	Debe consignar solo un elemento sac:AdditionalMonetaryTotal con cbc:ID igual a 1001 
+2350 	Debe consignar solo un elemento sac:AdditionalMonetaryTotal con cbc:ID igual a 1002 
+CODIGO	DESCRIPCION 
+2351 	Debe consignar solo un elemento sac:AdditionalMonetaryTotal con cbc:ID igual a 1003 
+2352 	Debe consignar solo un elemento cac:TaxTotal a nivel global para IGV (cbc:ID igual a 1000) 
+2353 	Debe consignar solo un elemento cac:TaxTotal a nivel global para ISC (cbc:ID igual a 2000) 
+2354 	Debe consignar solo un elemento cac:TaxTotal a nivel global para Otros (cbc:ID igual a 9999) 
+2355 	Debe consignar solo un elemento cac:TaxTotal a nivel de item para IGV (cbc:ID igual a 1000) 
+2356 	Debe consignar solo un elemento cac:TaxTotal a nivel de item para ISC (cbc:ID igual a 2000) 
+2357 	Debe consignar solo un elemento sac:BillingPayment a nivel de item con cbc:InstructionID igual a 01 
+2358 	Debe consignar solo un elemento sac:BillingPayment a nivel de item con cbc:InstructionID igual a 02 
+2359 	Debe consignar solo un elemento sac:BillingPayment a nivel de item con cbc:InstructionID igual a 03 
+2360	Debe consignar solo un elemento sac:BillingPayment a nivel de item con cbc:InstructionID igual a 04
+2361 	Debe consignar solo un elemento cac:TaxTotal a nivel de item para Otros (cbc:ID igual a 9999) 
+2362 	Debe consignar solo un tag cac:AccountingSupplierParty/cbc:AdditionalAccountID 
+2363 	Debe consignar solo un tag cac:AccountingCustomerParty/cbc:AdditionalAccountID 
+2364 	El comprobante contiene un tipo y número de Guía de Remisión repetido 
+2365 	El comprobante contiene un tipo y número de Documento Relacionado repetido 
+2366 	El codigo en el tag sac:AdditionalProperty/cbc:ID debe tener 4 posiciones
+2367 	El dato ingresado en PriceAmount del Precio de venta unitario por item no cumple con el formato establecido 
+2368 	El dato ingresado en TaxSubtotal/cbc:TaxAmount del item no cumple con el formato establecido 
+2369 	El dato ingresado en PriceAmount del Valor de venta unitario por item no cumple con el formato establecido 
+2370 	El dato ingresado en LineExtensionAmount del item no cumple con el formato establecido 
+2371 	El XML no contiene el tag cbc:TaxExemptionReasonCode de Afectacion al IGV 
+2372 	El tag en el item cac:TaxTotal/cbc:TaxAmount debe tener el mismo valor que cac:TaxTotal/cac:TaxSubtotal/cbc:TaxAmount 
+2373 	Si existe monto de ISC en el ITEM debe especificar el sistema de calculo 
+2374 	La factura a dar de baja tiene una fecha de recepcion fuera del plazo permitido 
+2375 	Fecha de emision de la boleta no coincide con la fecha de emision consignada en la comunicacion 
+2376 	La boleta de venta a dar de baja fue informada en un resumen con fecha de recepcion fuera del plazo permitido 
+2377 	El Name o TaxTypeCode debe corresponder con el Id para el IGV 
+2378 	El Name o TaxTypeCode debe corresponder con el Id para el ISC 
+2379 	La numeracion de boleta de venta a dar de baja fue generada en una fecha fuera del plazo permitido 
+2380	El documento tiene observaciones
+2381 	Comprobante no cumple con el Grupo 1: No todos los items corresponden a operaciones gravadas a IGV 
+2382 	Comprobante no cumple con el Grupo 2: No todos los items corresponden a operaciones inafectas o exoneradas al IGV 
+2383 	Comprobante no cumple con el Grupo 3: Falta leyenda con codigo 1002 
+2384 	Comprobante no cumple con el Grupo 3: Existe item con operación onerosa 
+2385 	Comprobante no cumple con el Grupo 4: Debe exitir Total descuentos mayor a cero 
+2386 	Comprobante no cumple con el Grupo 5: Todos los items deben tener operaciones afectas a ISC 
+2387 	Comprobante no cumple con el Grupo 6: El monto de percepcion no existe o es cero 
+2388 	Comprobante no cumple con el Grupo 6: Todos los items deben tener código de Afectación al IGV igual a 10 
+2389 	Comprobante no cumple con el Grupo 7: El codigo de moneda no es diferente a PEN 
+2390 	Comprobante no cumple con el Grupo 8: No todos los items corresponden a operaciones gravadas a IGV 
+2391 	Comprobante no cumple con el Grupo 9: No todos los items corresponden a operaciones inafectas o exoneradas al IGV 
+2392 	Comprobante no cumple con el Grupo 10: Falta leyenda con codigo 1002 
+2393 	Comprobante no cumple con el Grupo 10: Existe item con operación onerosa 
+2394 	Comprobante no cumple con el Grupo 11: Debe existir Total descuentos mayor a cero 
+2395 	Comprobante no cumple con el Grupo 12: El codigo de moneda no es diferente a PEN 
+2396 	Si el monto total es mayor a S/. 700.00 debe consignar tipo y numero de documento del adquiriente 
+2397 	El tipo de documento del adquiriente no puede ser Numero de RUC 
+2398 	El documento a dar de baja se encuentra rechazado 
+2399	El tipo de documento modificado por la Nota de credito debe ser boleta electronica
+2400 	El tipo de documento modificado por la Nota de debito debe ser boleta electronica 
+2401 	No se puede leer (parsear) el archivo XML 
+2402	El caso de prueba no existe
+2403	La numeracion o nombre del documento ya ha sido enviado anteriormente
+2404 	Documento afectado por la nota electronica no se encuentra autorizado 
+2405 	Contribuyente no se encuentra autorizado como emisor de boletas electronicas 
+2406 	Existe mas de un tag sac:AdditionalMonetaryTotal con el mismo ID 
+2407 	Existe mas de un tag sac:AdditionalProperty con el mismo ID 
+2408 	El dato ingresado en PriceAmount del Valor referencial unitario por item no cumple con el formato establecido 
+2409 	Existe mas de un tag cac:AlternativeConditionPrice con el mismo cbc:PriceTypeCode 
+2410 	Se ha consignado un valor invalido en el campo cbc:PriceTypeCode 
+2411 	Ha consignado mas de un elemento cac:AllowanceCharge con el mismo campo cbc:ChargeIndicator 
+2412 	Se ha consignado mas de un documento afectado por la nota (tag cac:BillingReference) 
+2413 	Se ha consignado mas de un motivo o sustento de la nota (tag cac:DiscrepancyResponse/cbc:Description) 
+CODIGO	DESCRIPCION 
+2414 	No se ha consignado en la nota el tag cac:DiscrepancyResponse 
+2415 	Se ha consignado en la nota mas de un tag cac:DiscrepancyResponse 
+2416	Si existe leyenda Transferida Gratuita debe consignar Total Valor de Venta de Operaciones Gratuitas
+2417	Debe consignar Valor Referencial unitario por ítem en operaciones no onerosas
+2418	Si consigna Valor Referencial unitario por ítem en operaciones no onerosas, la operación debe ser no onerosa
+2419	El dato ingresado en AllowanceTotalAmount no cumple con el formato establecido
+2420	Ya transcurrieron mas de 25 dias calendarios para concluir con su proceso de homologacion
+4000	El documento ya fue presentado anteriormente.
+4001 	El numero de RUC del receptor no existe. 
+4002 	Para el TaxTypeCode, esta usando un valor que no existe en el catalogo. 
+4003	El comprobante fue registrado previamente como rechazado.
+4004 	El DocumentTypeCode de las guias debe existir y tener 2 posiciones 
+4005 	El DocumentTypeCode de las guias debe ser 09 o 31 
+4006 	El ID de las guias debe tener informacion de la SERIE-NUMERO de guia. 
+4007	El XML no contiene el ID de las guias.
+4008 	El DocumentTypeCode de Otros documentos relacionados no cumple con el estandar. 
+4009 	El DocumentTypeCode de Otros documentos relacionados tiene valores incorrectos. 
+4010 	El ID de los documentos relacionados no cumplen con el estandar. 
+4011	El XML no contiene el tag ID de documentos relacionados.
+4012 	El ubigeo indicado en el comprobante no es el mismo que esta registrado para el contribuyente. 
+4013 	El RUC del receptor no esta activo 
+4014 	El RUC del receptor no esta habido 
+4015 	Si el tipo de documento del receptor no es RUC, debe tener operaciones de exportacion 
+4016 	El total valor venta neta de oper. gravadas IGV debe ser mayor a 0.00 o debe existir oper. gravadas onerosas 
+4017 	El total valor venta neta de oper. inafectas IGV debe ser mayor a 0.00 o debe existir oper. inafectas onerosas o de export. 
+4018 	El total valor venta neta de oper. exoneradas IGV debe ser mayor a 0.00 o debe existir oper. exoneradas 
+4019 	El calculo del IGV no es correcto 
+4020 	El ISC no esta informado correctamente 
+4021 	Si se utiliza la leyenda con codigo 2000, el importe de percepcion debe ser mayor a 0.00 
+4022 	Si se utiliza la leyenda con código 2001, el total de operaciones exoneradas debe ser mayor a 0.00 
+4023 	Si se utiliza la leyenda con código 2002, el total de operaciones exoneradas debe ser mayor a 0.00 
+4024 	Si se utiliza la leyenda con código 2003, el total de operaciones exoneradas debe ser mayor a 0.00 
+4025 	Si usa la leyenda de Transferencia o Servivicio gratuito, todos los items deben ser no onerosos 
+4026 	No se puede indicar Guia de remision de remitente y Guia de remision de transportista en el mismo documento 
+4027 	El importe total no coincide con la sumatoria de los valores de venta mas los tributos mas los cargos 
+4028 	El monto total de la nota de credito debe ser menor o igual al monto de la factura 
+4029 	El ubigeo indicado en el comprobante no es el mismo que esta registrado para el contribuyente 
+4030 	El ubigeo indicado en el comprobante no es el mismo que esta registrado para el contribuyente 
+4031 	Debe indicar el nombre comercial 
+4032 	Si el código del motivo de emisión de la Nota de Credito es 03, debe existir la descripción del item 
+4033 	La fecha de generación de la numeración debe ser menor o igual a la fecha de generación de la comunicación 
+4034	El comprobante fue registrado previamente como baja
+4035	El comprobante fue registrado previamente como rechazado
+4036 	La fecha de emisión de los rangos debe ser menor o igual a la fecha de generación del resumen 
+4037 	El calculo del Total de IGV del Item no es correcto 
+4038 	El resumen contiene menos series por tipo de documento que el envío anterior para la misma fecha de emisión 
+4039 	No ha consignado información del ubigeo del domicilio fiscal 
+4040 	Si el importe de percepcion es mayor a 0.00, debe utilizar una leyenda con codigo 2000 
+4041 	El codigo de pais debe ser PE 
+
+
+
+

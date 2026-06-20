@@ -1847,3 +1847,22 @@ Archivos actualizados:
 | `php artisan key:generate` | Genera APP_KEY |
 | `php artisan route:list` | Lista rutas |
 | `php artisan optimize` | Optimiza rendimiento |
+
+---
+
+## Anexo: Códigos de Error SUNAT
+
+El archivo `docs/sunat/codigos-error-sunat.txt` contiene el listado completo de códigos de error de SUNAT (anexo 2), utilizado para depurar respuestas al enviar comprobantes electrónicos.
+
+| Rango | Descripción |
+|-------|-------------|
+| 0100-0159 | Errores de autenticación, archivo ZIP y nombre de archivo |
+| 0200-0307 | Errores de procesamiento batch y extracción ZIP |
+| 0400-0403 | Errores de casos de prueba |
+| 1001-1040 | Errores de validación XML (formato, tags obligatorios) |
+| 2010-2101 | Errores de validación de datos del emisor y receptor |
+| 2102-2200 | Errores de facturas, notas de crédito y débito |
+| 2210-2280 | Errores de resumen diario (Summary) |
+| 2281-2340 | Errores de comunicación de baja (Voided) |
+| 2341-2420 | Errores de validación de negocio y reglas SUNAT |
+| 4000-4041 | Errores de validación avanzada (RUC, montos, cálculos) |
