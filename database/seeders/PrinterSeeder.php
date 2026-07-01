@@ -15,6 +15,7 @@ class PrinterSeeder extends Seeder
         ['assigned_to' => 'precuenta2', 'name' => 'Precuenta 2', 'type' => 'local', 'port' => 9100],
         ['assigned_to' => 'precuenta3', 'name' => 'Precuenta 3', 'type' => 'local', 'port' => 9100],
         ['assigned_to' => 'caja', 'name' => 'Caja', 'type' => 'local', 'port' => 9100],
+        ['assigned_to' => 'autopedido', 'name' => 'Auto Pedido', 'type' => 'local', 'port' => 9100],
     ];
 
     public function run(): void

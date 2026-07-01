@@ -1,391 +1,257 @@
-<?php
-
+<?PHP
 namespace App\Services;
 
 class PlainTextTicket
 {
-    protected int $width = 42;
-    protected array $lines = [];
-
-    // ESC/POS commands
-    const ESC = "\x1B";
-    const GS = "\x1D";
-    const LF = "\x0A";
-    const INIT = "\x1B\x40";
-    const ALIGN_LEFT = "\x1B\x61\x00";
-    const ALIGN_CENTER = "\x1B\x61\x01";
-    const ALIGN_RIGHT = "\x1B\x61\x02";
-    const BOLD_ON = "\x1B\x45\x01";
-    const BOLD_OFF = "\x1B\x45\x00";
-    const DOUBLE_ON = "\x1B\x21\x30";
-    const DOUBLE_OFF = "\x1B\x21\x00";
-    const CUT = "\x1D\x56\x00";
-    const FEED = "\x1B\x64\x05";
-    const QR_MODEL = "\x1D\x28\x6B\x04\x00\x31\x41\x32\x00";
-    const QR_SIZE = "\x1D\x28\x6B\x03\x00\x31\x43\x06";
-    const QR_EC = "\x1D\x28\x6B\x03\x00\x31\x45\x30";
-    const QR_PRINT = "\x1D\x28\x6B\x03\x00\x31\x51\x30";
-
+    private $text = '';
+    private $format = 'text';
+    
+    public function __construct(string $format = 'text')
+    {
+        $this->format = $format;
+    }
+    
     public function center(string $text, string $char = ' '): void
     {
-        $text = $this->clean($text);
-        $pad = max(0, $this->width - strlen($text));
-        $left = intdiv($pad, 2);
-        $right = $pad - $left;
-        $this->lines[] = str_repeat($char, $left) . $text . str_repeat($char, $right);
+        $pad = intval((32 - strlen($this->clean($text))) / 2);
+        if ($pad < 0) $pad = 0;
+        $this->text .= str_repeat($char, $pad) . $text . "\n";
     }
-
+    
     public function left(string $text): void
     {
-        $this->lines[] = $this->clean(mb_substr($text, 0, $this->width));
+        $this->text .= $text . "\n";
     }
-
+    
     public function right(string $text): void
     {
-        $text = $this->clean($text);
-        $pad = max(0, $this->width - strlen($text));
-        $this->lines[] = str_repeat(' ', $pad) . $text;
+        $clean = $this->clean($text);
+        $pad = 32 - strlen($clean);
+        if ($pad < 0) $pad = 0;
+        $this->text .= str_repeat(' ', $pad) . $text . "\n";
     }
-
+    
     public function twoColumns(string $left, string $right, string $glue = ' '): void
     {
-        $left = $this->clean($left);
-        $right = $this->clean($right);
-        $available = $this->width - strlen($right);
-        $left = mb_substr($left, 0, $available - 1);
-        $dots = $this->width - strlen($left) - strlen($right);
-        $this->lines[] = $left . str_repeat($glue, max(0, $dots)) . $right;
+        $cleanL = $this->clean($left);
+        $cleanR = $this->clean($right);
+        $dots = 32 - strlen($cleanL) - strlen($cleanR);
+        if ($dots < 1) $dots = 1;
+        $this->text .= $left . str_repeat($glue, $dots) . $right . "\n";
     }
-
+    
     public function itemLine(string $qty, string $name, string $total): void
     {
-        $qty = $this->clean($qty);
-        $total = $this->clean($total);
-        $name = $this->clean(mb_substr($name, 0, $this->width - strlen($qty) - strlen($total) - 2));
-        $dots = $this->width - strlen($qty) - strlen($name) - strlen($total);
-        $this->lines[] = $qty . ' ' . $name . str_repeat('.', max(0, $dots)) . $total;
+        $line = $qty . ' ' . $name;
+        $clean = $this->clean($line);
+        $pad = 32 - strlen($clean) - strlen($this->clean($total));
+        if ($pad < 0) { $line = substr($line, 0, $pad - 3) . '...'; $pad = 1; }
+        $this->text .= $line . str_repeat(' ', $pad) . $total . "\n";
     }
-
+    
     public function separator(string $char = '-'): void
     {
-        $this->lines[] = str_repeat($char, $this->width);
+        $this->text .= str_repeat($char, 32) . "\n";
     }
-
+    
     public function blank(): void
     {
-        $this->lines[] = '';
+        $this->text .= "\n";
     }
-
+    
     public function text(string $text): void
     {
-        $this->lines[] = $this->clean($text);
+        $this->left($text);
     }
-
+    
     public function getText(): string
     {
-        return implode("\n", $this->lines) . "\n";
+        return $this->text;
     }
-
+    
     public function getEscPos(): string
     {
-        $out = self::INIT;
-        $out .= self::ALIGN_CENTER;
-
-        $first = true;
-        foreach ($this->lines as $line) {
-            $trimmed = trim($line);
-
-            if (str_contains($trimmed, self::BOLD_ON) || str_contains($trimmed, self::DOUBLE_ON)) {
-                $out .= self::ALIGN_CENTER . $trimmed . self::LF;
-                $first = false;
-                continue;
-            }
-
-            if ($first) {
-                $out .= self::BOLD_ON . strtoupper($trimmed) . self::BOLD_OFF . self::LF;
-                $first = false;
-                continue;
-            }
-            if (str_starts_with($trimmed, '*** ') || str_starts_with($trimmed, '** ')) {
-                $out .= self::ALIGN_CENTER . self::BOLD_ON . $trimmed . self::BOLD_OFF . self::LF;
-            } elseif (str_starts_with($trimmed, '--') || str_starts_with($trimmed, '==')) {
-                $out .= self::ALIGN_LEFT . $trimmed . self::LF;
-            } elseif ($trimmed === '') {
-                $out .= self::LF;
-            } else {
-                $out .= self::ALIGN_LEFT . $trimmed . self::LF;
-            }
+        $lines = explode("\n", $this->text);
+        $out = "\x1B\x40"; // INIT
+        $out .= "\x1B\x74\x02"; // CP850
+        foreach ($lines as $line) {
+            $trimmed = rtrim($line, " \t\r\n");
+            $encoded = $this->utf8ToCp850($trimmed);
+            $out .= $encoded . "\x0A";
         }
-        $out .= self::LF . self::FEED;
-        if ($this->qrData) {
-            $out .= $this->buildQR();
-        }
-        $out .= self::CUT;
+        $out .= "\x1B\x64\x05"; // FEED 5
+        $out .= "\x1D\x56\x00"; // CUT
         return $out;
     }
-
-    protected string $qrData = '';
-
-    public function setQR(string $data): void
+    
+    private function utf8ToCp850(string $text): string
     {
-        $this->qrData = $data;
+        $map = [
+            'á' => "\xA0", 'é' => "\x82", 'í' => "\xA1", 'ó' => "\xA2", 'ú' => "\xA3",
+            'Á' => "\xB5", 'É' => "\x90", 'Í' => "\xD6", 'Ó' => "\xE0", 'Ú' => "\xE9",
+            'ñ' => "\xA4", 'Ñ' => "\xA5", 'ü' => "\x81", 'Ü' => "\x9A",
+            '¡' => "\xA6", '¿' => "\xA8",
+            '°' => "\xF8", '¬' => "\xAA",
+        ];
+        return strtr($text, $map);
     }
-
-    protected function buildQR(): string
-    {
-        $data = $this->qrData;
-        $len = strlen($data) + 3;
-        $pL = $len & 0xFF;
-        $pH = ($len >> 8) & 0xFF;
-        $out = self::QR_MODEL;
-        $out .= self::QR_SIZE;
-        $out .= self::QR_EC;
-        $out .= "\x1D\x28\x6B{$pL}{$pH}\x31\x50\x30";
-        $out .= $data;
-        $out .= self::ALIGN_CENTER;
-        $out .= self::QR_PRINT;
-        $out .= self::LF;
-        return $out;
-    }
-
+    
     protected function clean(string $text): string
     {
-        $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', $text);
-        return strtr($text, [
-            'Á' => "\x41", 'É' => "\x90", 'Í' => "\xB6", 'Ó' => "\xE0", 'Ú' => "\xE9",
-            'á' => "\xA0", 'é' => "\x82", 'í' => "\xA1", 'ó' => "\xA2", 'ú' => "\xA3",
-            'Ñ' => "\xA4", 'ñ' => "\xA5", 'Ü' => "\x9A", 'ü' => "\x9A",
-            '¿' => "\xA8", '¡' => "\xAD", 'º' => "\xA7",
+        $clean = strtr($text, [
+            'á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u',
+            'Á'=>'A','É'=>'E','Í'=>'I','Ó'=>'O','Ú'=>'U',
+            'ñ'=>'n','Ñ'=>'N','ü'=>'u','Ü'=>'U',
         ]);
+        return $clean;
     }
-
+    
+    protected function buildQR(): string
+    {
+        return '';
+    }
+    
+    public function setQR(string $data): void
+    {
+    }
+    
     public static function kitchenTicket($order, string $format = 'text'): string
     {
-        $t = new self();
-        $dest = $order->items->first()->kds_destination ?? 'cocina';
-        $t->buildKitchenHeader($order, $dest);
-        foreach ($order->items as $item) {
+        $t = new self($format);
+        $t->buildKitchenHeader($order);
+        $t->separator();
+        $items = $order->items ?? $order->pendingItems ?? [];
+        foreach ($items as $item) {
             if ($item->kitchen_status === 'CANCELLED') continue;
-            $t->itemLine("{$item->quantity}x", $item->product_name, '');
-            if ($item->notes) $t->text('  Obs: ' . $item->notes);
+            $dests = ['cocina'=>'', 'cocina2'=>'', 'bar'=>''];
+            $dest = $item->kds_destination ?? 'cocina';
+            if (isset($dests[$dest]) && $dest !== $dests[$dest]) continue;
+            $t->itemLine(number_format($item->quantity, $item->quantity == intval($item->quantity) ? 0 : 2), $item->product_name, '');
+            if ($item->notes) $t->text('    Nota: ' . $item->notes);
         }
         $t->separator();
-        $footer = match($dest) { 'cocina2' => 'COCINA 2', 'bar' => 'BAR', default => 'COCINA 1' };
-        $t->center("**** $footer ****");
-        return $format === 'escpos' ? $t->getEscPos() : $t->getText();
+        $t->text('Hora: ' . now()->format('H:i:s'));
+        return $t->getText();
     }
-
+    
     public static function prebillTicket($order, string $format = 'text'): string
     {
-        $t = new self();
+        $t = new self($format);
         $t->buildPrebillHeader($order);
-        $activeItems = $order->items->where('kitchen_status', '!=', 'CANCELLED');
-        foreach ($activeItems as $item) {
-            $t->itemLine("{$item->quantity}x", $item->product_name, 'S/ ' . number_format($item->total, 2));
-            if ($item->notes) $t->text('  ' . $item->notes);
-        }
-        $t->separator();
-        $total = $activeItems->sum('total');
-        $company = \App\Models\Company::find($order->company_id);
-        $igvPct = $company ? $company->getActiveIgvPercent() : 18;
-        $igvRate = $igvPct / 100;
-        $subtotal = $total / (1 + $igvRate);
-        $igv = $total - $subtotal;
-        $t->twoColumns('Subtotal:', 'S/ ' . number_format($subtotal, 2));
-        $t->twoColumns('IGV (' . $igvPct . '%):', 'S/ ' . number_format($igv, 2));
-        $t->separator('=');
-        $t->twoColumns('TOTAL:', 'S/ ' . number_format($total, 2));
-        $t->separator();
-        $t->center(now()->format('d/m/Y H:i:s'));
-        $t->center('**** PRECUENTA ****');
-        $t->center('Gracias por su visita');
-        return $format === 'escpos' ? $t->getEscPos() : $t->getText();
-    }
-
-    public static function invoiceTicket($invoice, string $format = 'text'): string
-    {
-        $t = new self();
-        $company = \App\Models\Company::getMainCompany();
-        $t->center($company->nombre_comercial ?? $company->razon_social ?? 'Restaurante');
-        if ($company->ruc) $t->center('RUC: ' . $company->ruc);
-        if ($company->direccion) $t->center($company->direccion);
-        $docName = match($invoice->tipo_documento) { '01' => 'FACTURA', '03' => 'BOLETA', default => 'NOTA DE VENTA' };
-        $t->center("** $docName **");
-        $t->separator();
-        $t->twoColumns('N°:', $invoice->full_number);
-        $t->twoColumns('Fecha:', ($invoice->fecha_emision ?? now()->format('Y-m-d')) . ' ' . ($invoice->hora_emision ?? now()->format('H:i:s')));
-        if ($invoice->customer) {
-            $t->twoColumns('Cliente:', $invoice->customer->nombre ?? 'Varios');
-            $t->twoColumns('Doc:', ($invoice->customer->documento_numero ?? ''));
-        }
-        $t->separator();
-
-        foreach ($invoice->items as $item) {
-            $t->itemLine("{$item->cantidad}x", $item->descripcion, 'S/ ' . number_format($item->precio_venta * $item->cantidad, 2));
-        }
-        $t->separator();
-        $t->twoColumns('Subtotal:', 'S/ ' . number_format($invoice->subtotal, 2));
-        $t->twoColumns('IGV:', 'S/ ' . number_format($invoice->igv, 2));
-        $t->separator('=');
-        $t->twoColumns('TOTAL:', 'S/ ' . number_format($invoice->total, 2));
-        $t->blank();
-        $t->twoColumns('Pago:', $invoice->metodo_pago ?? 'EFECTIVO');
-        if ($invoice->referencia_pago) $t->twoColumns('Ref:', $invoice->referencia_pago);
-        $t->separator();
-        $t->center(now()->format('d/m/Y H:i:s'));
-        $t->center('Gracias por su compra');
-        return $format === 'escpos' ? $t->getEscPos() : $t->getText();
-    }
-
-    public static function cancelNotification($order, $item, string $format = 'text', string $dest = 'cocina'): string
-    {
-        $t = new self();
-        $t->buildCancelHeader($order, $dest);
-        $t->center('*** ANULADO ***');
-        $t->separator();
-        $t->itemLine("{$item->quantity}x", $item->product_name, '');
-        $t->separator('=');
-        return $format === 'escpos' ? $t->getEscPos() : $t->getText();
-    }
-
-    public static function cancelNotificationGrouped($order, string $format = 'text', string $dest = 'cocina'): string
-    {
-        $t = new self();
-        $t->buildCancelHeader($order, $dest);
         $t->separator();
         foreach ($order->items as $item) {
-            $t->itemLine("{$item->quantity}x", $item->product_name, '');
+            if ($item->kitchen_status === 'CANCELLED') continue;
+            $totalItem = $item->unit_price * $item->quantity;
+            $t->itemLine(number_format($item->quantity, 0), $item->product_name, 'S/ ' . number_format($totalItem, 2));
         }
-        $t->separator('=');
-        return $format === 'escpos' ? $t->getEscPos() : $t->getText();
+        $t->separator();
+        $t->twoColumns('SUBTOTAL:', 'S/ ' . number_format($order->subtotal ?? $order->total, 2));
+        $igvPercent = $order->igvPercent ?? 18;
+        $t->twoColumns('IGV (' . $igvPercent . '%):', 'S/ ' . number_format($order->igv ?? 0, 2));
+        $t->twoColumns('TOTAL:', 'S/ ' . number_format($order->total, 2));
+        return $t->getText();
     }
-
+    
+    public static function invoiceTicket($invoice, string $format = 'text'): string
+    {
+        return ''; // Use Greenter PDF instead
+    }
+    
+    public static function cancelNotification($order, $item, string $format = 'text', string $dest = 'cocina'): string
+    {
+        $t = new self($format);
+        $t->center('*** ANULACIÓN ***', '*');
+        $t->blank();
+        $t->text('Pedido: ' . $order->order_number);
+        $t->text('Producto: ' . $item->product_name);
+        $t->text('Cantidad: ' . $item->quantity);
+        $t->text('Anulado por: ' . ($item->cancelledBy->name ?? 'Usuario'));
+        $t->blank();
+        $t->separator();
+        return $t->getText();
+    }
+    
+    public static function cancelNotificationGrouped($order, string $format = 'text', string $dest = 'cocina'): string
+    {
+        $t = new self($format);
+        $t->buildCancelHeader($order, $dest);
+        $items = $order->items->where('kds_destination', $dest)->where('kitchen_status', 'CANCELLED');
+        foreach ($items as $item) {
+            $t->itemLine(number_format($item->quantity, 0), $item->product_name, '');
+        }
+        return $t->getText();
+    }
+    
     protected function buildCancelHeader($order, string $dest = 'cocina'): void
     {
-        $label = match($dest) {
-            'cocina2' => 'COCINA 2',
-            'bar' => 'BAR',
-            default => 'COCINA 1',
-        };
-        $this->lines[] = self::DOUBLE_ON . self::BOLD_ON . '   ANULACION ' . $label . '   ' . self::BOLD_OFF . self::DOUBLE_OFF;
-        $this->separator();
-        $this->twoColumns('Pedido:', $order->order_number);
-        $this->twoColumns('Mesa:', ($order->table->name ?? 'N/A') . ($order->table && $order->table->floor ? ' (' . $order->table->floor->name . ')' : ''));
-        $this->twoColumns('Hora:', now()->format('H:i'));
-        if ($order->user) $this->twoColumns('Mozo:', $order->user->name);
-        if ($order->notes) $this->text('NOTA: ' . $order->notes);
-        $this->separator();
+        $this->center('*** ANULACIÓN COCINA ***', '*');
+        $this->blank();
+        $this->text('Pedido: ' . $order->order_number);
+        if ($order->table) $this->text('Mesa: ' . $order->table->name);
+        $this->text('Hora: ' . now()->format('H:i:s'));
     }
-
+    
     public static function cashRegisterSummary($cashregister, array $data, string $format = 'text'): string
     {
-        $t = new self();
-        $company = \App\Models\Company::getMainCompany();
-        $t->center($company->nombre_comercial ?? $company->razon_social ?? 'Restaurante');
-        if ($company->ruc) $t->center('RUC: ' . $company->ruc);
-        $t->center('** RESUMEN DE CAJA **');
+        $t = new self($format);
+        $t->center('*** CIERRE DE CAJA ***', '*');
+        $t->blank();
+        $t->text('Caja #' . $cashregister->id);
+        $t->text('Apertura: ' . ($cashregister->fecha_apertura ? $cashregister->fecha_apertura->format('d/m H:i') : ''));
+        $t->text('Cierre: ' . now()->format('d/m H:i'));
         $t->separator();
-        $t->twoColumns('Apertura:', $cashregister->fecha_apertura ? $cashregister->fecha_apertura->format('d/m/Y H:i') : '-');
-        $t->twoColumns('Cierre:', $cashregister->fecha_cierre ? $cashregister->fecha_cierre->format('d/m/Y H:i') : now()->format('d/m/Y H:i'));
-        $t->twoColumns('Apertura S/:', number_format($cashregister->monto_apertura, 2));
-        $t->twoColumns('Cierre S/:', number_format($cashregister->monto_cierre ?? 0, 2));
-        $t->separator();
-        $t->center('RESUMEN POR DOCUMENTO');
-        $t->twoColumns('Facturas:', $data['facturas']->count() . ' - S/ ' . number_format($data['facturas']->sum('total'), 2));
-        $t->twoColumns('Boletas:', $data['boletas']->count() . ' - S/ ' . number_format($data['boletas']->sum('total'), 2));
-        $t->twoColumns('Notas Venta:', $data['nvs']->count() . ' - S/ ' . number_format($data['nvs']->sum('total'), 2));
-        $t->separator('=');
-        $t->twoColumns('TOTAL:', 'S/ ' . number_format(collect($data['ventas'] ?? [])->sum('total'), 2));
+        $t->twoColumns('Total Ventas:', 'S/ ' . number_format($data['total_ventas'] ?? 0, 2));
         $t->separator();
         $t->center('POR MÉTODO DE PAGO');
-        $calcEfectivo = 0; $calcTarjeta = 0; $calcYape = 0; $calcPlin = 0; $calcOtro = 0;
-        foreach ($data['ventas'] ?? [] as $v) {
-            $metodo = $v->metodo_pago ?? 'EFECTIVO';
-            if (str_contains($metodo, ' + ')) {
-                foreach (explode(' + ', $metodo) as $part) {
-                    $part = trim($part);
-                    $met = str_contains($part, '/') ? explode('/', $part)[0] : $part;
-                    $amt = str_contains($part, '/') ? min((float) explode('/', $part)[1], (float) $v->total) : min((float) $v->total / count(explode(' + ', $metodo)), (float) $v->total);
-                    match ($met) { 'EFECTIVO' => $calcEfectivo += $amt, 'TARJETA' => $calcTarjeta += $amt, 'YAPE' => $calcYape += $amt, 'PLIN' => $calcPlin += $amt, default => $calcOtro += $amt, };
-                }
-            } elseif (str_contains($metodo, '/')) {
-                [$met, $amt] = explode('/', $metodo);
-                $amt = min((float) $amt, (float) $v->total);
-                match ($met) { 'EFECTIVO' => $calcEfectivo += $amt, 'TARJETA' => $calcTarjeta += $amt, 'YAPE' => $calcYape += $amt, 'PLIN' => $calcPlin += $amt, default => $calcOtro += $amt, };
-            } else {
-                match ($metodo) { 'EFECTIVO' => $calcEfectivo += (float) $v->total, 'TARJETA' => $calcTarjeta += (float) $v->total, 'YAPE' => $calcYape += (float) $v->total, 'PLIN' => $calcPlin += (float) $v->total, default => $calcOtro += (float) $v->total, };
-            }
-        }
-        $t->twoColumns('Efectivo:', 'S/ ' . number_format($calcEfectivo, 2));
-        $t->twoColumns('Tarjeta:', 'S/ ' . number_format($calcTarjeta, 2));
-        $t->twoColumns('Yape:', 'S/ ' . number_format($calcYape, 2));
-        $t->twoColumns('Plin:', 'S/ ' . number_format($calcPlin, 2));
-        $t->twoColumns('Otro:', 'S/ ' . number_format($calcOtro, 2));
-        if (isset($data['ventas']) && count($data['ventas']) > 0) {
-            $t->separator();
-            $t->center('LISTA DE COMPROBANTES');
-            foreach ($data['ventas'] as $venta) {
-                $cliente = $venta->customer->nombre ?? 'Varios';
-                $t->text('  ' . $venta->full_number . ' - S/ ' . number_format($venta->total, 2));
-                $t->text('    ' . $cliente . ' (' . ($venta->metodo_pago ?? 'EFECTIVO') . ')');
-            }
-        }
-        if (isset($data['categoriasVentas']) && count($data['categoriasVentas']) > 0) {
-            $t->separator();
-            $t->center('POR CATEGORÍA');
-            foreach ($data['categoriasVentas'] as $categoria => $info) {
-                $t->itemLine((string)$info['cantidad'], $categoria, 'S/ ' . number_format($info['total'], 2));
-            }
-        }
-        if (isset($data['productosVendidos']) && count($data['productosVendidos']) > 0) {
-            $t->separator();
-            $t->center('PRODUCTOS VENDIDOS');
-            foreach ($data['productosVendidos'] as $producto => $info) {
-                $t->itemLine((string)$info['cantidad'], $producto, 'S/ ' . number_format($info['total'], 2));
-            }
-        }
-        if (isset($data['lineasEliminadas']) && count($data['lineasEliminadas']) > 0) {
-            $t->separator();
-            $t->center('LÍNEAS ELIMINADAS');
-            foreach ($data['lineasEliminadas'] as $item) {
-                $user = $item->cancelledBy->name ?? '';
-                $t->text('x' . number_format($item->quantity, 0) . ' - ' . $item->product_name . ' - ' . $user . ' ' . ($item->cancelled_at ? $item->cancelled_at->format('H:i') : ''));
-            }
+        foreach (['efectivo','tarjeta','yape','plin','otro'] as $met) {
+            $label = ucfirst($met);
+            $amount = $data[$met] ?? 0;
+            if ($amount > 0) $t->twoColumns($label . ':', 'S/ ' . number_format($amount, 2));
         }
         $t->separator();
-        $t->center(now()->format('d/m/Y H:i:s'));
-        $t->center('Gracias por su preferencia');
-        return $format === 'escpos' ? $t->getEscPos() : $t->getText();
+        $t->text('Monto apertura: S/ ' . number_format($cashregister->monto_apertura ?? 0, 2));
+        $t->text('Monto cierre: S/ ' . number_format($cashregister->monto_cierre ?? 0, 2));
+        return $t->getText();
     }
 
+    public static function autoPedidoTicket($order): string
+    {
+        $t = new self('text');
+        $t->center('*** AUTO PEDIDO ***', '*');
+        $t->center('FacturaFácil');
+        $t->blank();
+        $t->center('🧾 ' . $order->order_number, ' ');
+        $t->separator();
+        foreach ($order->items as $item) {
+            $t->itemLine(number_format($item->quantity, 0), $item->product_name, 'S/ ' . number_format($item->total, 2));
+        }
+        $t->separator();
+        $t->twoColumns('TOTAL:', 'S/ ' . number_format($order->total, 2));
+        $t->blank();
+        $t->center('Pase a Caja para pagar');
+        $t->center('¡Gracias por su pedido!');
+        $t->blank();
+        $t->text('Fecha: ' . now()->format('d/m/Y H:i'));
+        return $t->getText();
+    }
+    
     protected function buildKitchenHeader($order, string $dest = 'cocina'): void
     {
-        $label = match($dest) {
-            'cocina2' => 'COCINA 2',
-            'bar' => 'BAR',
-            default => 'COCINA 1',
-        };
-        $this->center("*** $label ***");
-        $this->separator();
-        $this->twoColumns('Pedido:', $order->order_number);
-        $this->twoColumns('Mesa:', ($order->table->name ?? 'N/A') . ($order->table && $order->table->floor ? ' (' . $order->table->floor->name . ')' : ''));
-        $this->twoColumns('Hora:', now()->format('H:i'));
-        if ($order->user) $this->twoColumns('Mozo:', $order->user->name);
-        if ($order->notes) $this->text('NOTA: ' . $order->notes);
-        $this->separator();
+        $label = match($dest) { 'cocina2' => 'COCINA 2', 'bar' => 'BAR', default => 'COCINA' };
+        $this->center('*** ' . $label . ' ***', '*');
+        $this->blank();
+        $this->text('Pedido: ' . $order->order_number);
+        if ($order->table) $this->text('Mesa: ' . $order->table->name);
+        if ($order->user) $this->text('Mozo: ' . $order->user->name);
+        $this->text('Hora: ' . now()->format('H:i:s'));
     }
-
+    
     protected function buildPrebillHeader($order): void
     {
-        $company = \App\Models\Company::getMainCompany();
-        $this->center($company->nombre_comercial ?? $company->razon_social ?? 'Restaurante');
-        if ($company->ruc) $this->center('RUC: ' . $company->ruc);
-        $this->center('** PRECUENTA **');
-        $this->separator();
-        $this->twoColumns('Pedido:', $order->order_number);
-        $this->twoColumns('Mesa:', ($order->table->name ?? 'N/A') . ($order->table && $order->table->floor ? ' (' . $order->table->floor->name . ')' : ''));
-        $this->twoColumns('Hora:', now()->format('H:i'));
-        if ($order->user) $this->twoColumns('Mozo:', $order->user->name);
-        $this->separator();
+        $this->center('*** PRECUENTA ***', '*');
+        $this->blank();
+        $this->text('Pedido: ' . $order->order_number);
+        if ($order->table) $this->text('Mesa: ' . $order->table->name);
+        $this->text('Hora: ' . now()->format('H:i:s'));
     }
 }

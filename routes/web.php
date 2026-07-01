@@ -38,6 +38,9 @@ Route::get('/ubigeo/provincias', [UbigeoController::class, 'getProvincias']);
 Route::get('/ubigeo/distritos', [UbigeoController::class, 'getDistritos']);
 Route::get('/ubigeo/by-codigo', [UbigeoController::class, 'getByUbigeo']);
 Route::get('/decolecta/search', [DecolectaController::class, 'search'])->name('decolecta.search');
+Route::get('/autopedido', [\App\Http\Controllers\AutoPedidoController::class, 'index'])->name('autopedido.index');
+Route::post('/autopedido/confirm', [\App\Http\Controllers\AutoPedidoController::class, 'confirmOrder'])->name('autopedido.confirm');
+Route::get('/autopedido/success/{orderId}', [\App\Http\Controllers\AutoPedidoController::class, 'success'])->name('autopedido.success');
 
 Route::get('/test-json', function() {
     return response()->json(['test' => 'ok', 'time' => now()]);
@@ -139,6 +142,8 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
 
     // Restaurant Routes
     Route::get('/restaurant', [RestaurantController::class, 'index'])->name('restaurant.index');
+    Route::get('/restaurant/kiosk-orders', [RestaurantController::class, 'kioskOrders'])->name('restaurant.kioskOrders');
+    Route::post('/restaurant/kiosk-charge/{orderId}', [RestaurantController::class, 'chargeKioskOrder'])->name('restaurant.kioskCharge');
     Route::get('/restaurant/mode', [RestaurantController::class, 'modeIndex'])->name('restaurant.mode');
     Route::get('/restaurant/kitchen', [RestaurantController::class, 'kitchenIndex'])->name('restaurant.kitchen');
     Route::get('/restaurant/kitchen/cocina', function () { return redirect('/restaurant/kitchen?kds=cocina'); })->name('restaurant.kitchen.cocina');

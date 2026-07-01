@@ -117,6 +117,7 @@ companies ──┬── users
 | `2026_06_12_000001_create_special_documents_tables` | Documentos especiales |
 | `2026_06_12_000002_add_fields_to_special_documents` | Campos extra docs especiales |
 | `2026_06_12_000003_update_summary_correlativo_length` | Ampliar correlativo summary |
+| `2026_06_19_000001_add_order_source_and_type` | order_source en invoices, order_type en restaurant_orders |
 
 ---
 
@@ -371,6 +372,7 @@ close() [PHP]
 | `SunatPadronController` | Vista y descarga del padrón SUNAT |
 | `SummaryController` | Resúmenes diarios (listar, consultar tickets, enviar) |
 | `DocumentController` | Documentos especiales (retención, guía, percepción) |
+| `AutoPedidoController` | Kiosko de autopedidos (pantalla táctil pública) |
 | `GreenterService` | Servicio de facturación SUNAT (no es controlador) |
 | `SummaryService` | Resumen diario de boletas (no es controlador) |
 | `SpecialDocumentService` | Documentos especiales SUNAT (no es controlador) |
@@ -750,7 +752,7 @@ Usuario clickea "Caja" en restaurante o POS
 | `SeriesSeeder` | Series F001, B001, NV01, FC01, BC01, FD01, BD01 |
 | `SunatProductSeeder` | Productos de ejemplo |
 | `PermissionsSeeder` | 50+ permisos + roles (admin, mozo, cajero, user) |
-| `PrinterSeeder` | 7 slots de impresora |
+| `PrinterSeeder` | 8 slots de impresora (cocina, bar, caja, autopedido) |
 | `UbigeoSeeder` | 1874 registros de ubigeos |
 | `CustomerSeeder` | Cliente "Clientes Varios" (DNI 88888888) |
 | `DatabaseSeeder` | Ejecuta todos los anteriores |
@@ -1537,6 +1539,35 @@ Envío SOAP (greenter/ws):
      → Luego se consulta el ticket con getStatus($ticket)
      → ConsultCdrService::getStatus($ticket) → obtiene CDR final
 
+Selección de endpoint por entorno:
+
+```php
+// GreenterService::setupSee() - selección de URL
+if ($company->soap_type_id == 2) {
+    // Producción real
+    $this->see->setService(SunatEndpoints::FE_PRODUCCION);
+    // https://e-factura.sunat.gob.pe/ol-ti-itcpfegem/billService
+} else {
+    // Beta (pruebas SUNAT)
+    $this->see->setService(SunatEndpoints::FE_BETA);
+    // https://e-beta.sunat.gob.pe/ol-ti-itcpfegem-beta/billService
+}
+```
+
+Certificado digital (PEM-first para OpenSSL 3.0):
+
+```php
+// Busca primero el PEM (no necesita contraseña, compatible con OpenSSL 3.0)
+$pemPath = storage_path("app/certificates/{$company->ruc}_certificate.pem");
+if (file_exists($pemPath)) {
+    $this->see->setCertificate(file_get_contents($pemPath));
+} else {
+    // Fallback a PKCS12 (.p12) con contraseña
+    $cert = new X509Certificate($pfxContent, $password);
+    $this->see->setCertificate($cert->export(X509ContentType::PEM));
+}
+```
+
 Manejo de documentos en el sistema:
 
 ┌─────────────────────┐
@@ -1690,15 +1721,78 @@ SummaryService (app/Services/SummaryService.php):
 - sendNoteToSummary($note, $original, $tipoDoc) → Envía NC/ND de boleta por Summary
 - checkTicketStatus($ticket) → Consulta estado del ticket via ConsultCdrService
 
-SummaryController (app/Http/Controllers/SummaryController.php):
-- index() → Lista resúmenes con filtro (Todos/Pendientes/Aceptados/Rechazados)
-- checkStatus($summary) → Consulta ticket individual
-- checkAllPending() → Consulta todos los pendientes
-- sendDaily() → Envía resumen diario manualmente
-- retryPending() → Reenvía facturas/boletas con estado PENDIENTE/ERROR
+Cada método crea un objeto Summary con SummaryDetail(s) y lo envía con See::send().
+El WsSenderResolver detecta Summary::class y automáticamente usa SummarySender,
+que comprime el XML en ZIP y lo envía por SOAP a SUNAT.
 
-Modelo SummaryDocument:
-- company_id, fecha_emision, fecha_operacion, correlativo (RC-YYYYMMDD-NNN)
+Ejemplo de código (sendBoletaToSummary):
+```php
+// 1. Crear el detalle del resumen (1 por boleta)
+$detail = new SummaryDetail();
+$detail->setTipoDoc('03');  // Boleta
+$detail->setSerieNro($invoice->serie . '-' . str_pad($invoice->numero, 8, '0', STR_PAD_LEFT));
+$detail->setClienteTipo($client->documento_tipo == '6' ? '6' : '1');
+$detail->setClienteNro($client->documento_numero);
+$detail->setEstado('1');  // 1=Agregar, 3=Anular
+$detail->setTotal($invoice->total);
+$detail->setMtoOperGravadas($invoice->gravado ?? $invoice->subtotal);
+$detail->setMtoIGV($invoice->igv);
+$detail->setPorcentajeIgv($company->getActiveIgvPercent());
+
+// 2. Crear el resumen
+$correlativo = '001';  // Número secuencial del día
+$summary = new Summary();
+$summary->setFecGeneracion(new \DateTime($invoice->fecha_emision));
+$summary->setFecResumen(new \DateTime());  // Fecha del envío
+$summary->setCorrelativo($correlativo);
+$summary->setMoneda('PEN');
+$summary->setCompany($greenterCompany);
+$summary->setDetails([$detail]);
+
+// 3. Enviar a SUNAT
+$result = $this->see->send($summary);
+
+// 4. Respuesta: ticket en lugar de CDR
+if ($result->isSuccess()) {
+    $ticket = $result->getTicket();  // Ej: "1781302448095"
+    // Guardar ticket y consultar después con checkTicketStatus()
+}
+
+// 5. Consultar estado del ticket
+$statusResult = $this->see->getStatus($ticket);
+if ($statusResult->isSuccess()) {
+    $cdrZip = $statusResult->getCdrZip();
+    // Actualizar invoice a ACEPTADO
+}
+```
+
+Ejemplo de código (sendDailySummary):
+```php
+// Agrupa todas las boletas PENDIENTES del día en un solo Summary
+$invoices = Invoice::where('tipo_documento', '03')
+    ->where('sunat_estado', 'PENDIENTE')
+    ->whereDate('fecha_emision', today())
+    ->get();
+
+// Crea un SummaryDetail por cada boleta
+$details = [];
+foreach ($invoices as $invoice) {
+    $detail = new SummaryDetail();
+    // ... configurar detalle ...
+    $details[] = $detail;
+}
+
+$summary->setDetails($details);  // Múltiples boletas en un solo resumen
+$result = $this->see->send($summary);
+```
+
+Filas afectadas:
+- summary_documents: guarda el resumen enviado con su ticket
+- invoices: actualiza sunat_estado a 'ENVIADO', guarda ticket
+- Al consultar ticket ACEPTADO: invoices → sunat_estado='ACEPTADO'
+
+Vista: GET /sunat-summaries (dos tablas: resúmenes diarios + envíos individuales)
+Menú: Comprobantes → Resúmenes Diarios
 - cantidad_documentos, ticket, sunat_estado
 - sunat_response, sunat_fecha
 
@@ -1799,6 +1893,157 @@ Archivos actualizados:
 - GreenterService.php → setupSee() PEM-first
 - SummaryService.php → setupSee() PEM-first
 - SpecialDocumentService.php → setupSee() PEM-first
+```
+
+### 20.12 Kiosko de Autopedidos (Pantalla Táctil)
+
+```
+Propósito: Pantalla táctil en la entrada del local para que los clientes realicen sus
+pedidos directamente, sin intervención del mozo.
+
+Arquitectura:
+┌──────────────────────────────────────┐
+│  Pantalla Táctil (Entrada)           │
+│  http://facturafacil.test/autopedido │
+│  - Sin autenticación                 │
+│  - Interfaz touch-friendly           │
+└──────────┬───────────────────────────┘
+           │ HTTP
+┌──────────▼───────────────────────────┐
+│  AutoPedidoController                 │
+│  - Crea RestaurantOrder              │
+│    status=PENDING_PAYMENT            │
+│    order_type=kiosko                 │
+│  - No asigna mesa                    │
+│  - Imprime ticket con N° y total     │
+└──────────┬───────────────────────────┘
+           │
+┌──────────▼───────────────────────────┐
+│  Cajero (vista pendientes)           │
+│  - Ve pedidos kiosko                 │
+│  - Abre modal de cobro (existente)   │
+│    Yape / Plin / Efectivo / Tarjeta  │
+│  - Cobra → envía pedido a cocina     │
+│  - Genera Invoice con                │
+│    order_source='kiosko'             │
+└──────────┬───────────────────────────┘
+           │
+┌──────────▼───────────────────────────┐
+│  Cocina (KDS o Impresión 80mm)       │
+│  - Recibe pedido normalmente         │
+│  - Prepara y sirve                   │
+└──────────────────────────────────────┘
+
+Flujo completo:
+1. Cliente llega al kiosko en la entrada
+2. Navega por categorías o busca productos con el teclado virtual
+3. Agrega productos al carrito (puede modificar cantidades)
+4. Confirma pedido → se imprime ticket con N° de pedido y total a pagar
+5. Cliente se acerca a caja con su ticket
+6. Cajero abre la vista de pedidos kiosko pendientes
+7. Cajero hace clic en "Cobrar" → se abre el mismo modal de cobro de mesas
+8. Cajero cobra (Yape/Plin/Efectivo/Tarjeta, pagos mixtos)
+9. Al cobrar, el pedido se envía automáticamente a cocina (KDS o impresión 80mm)
+10. Cocina prepara el pedido
+
+Rutas:
+- GET  /autopedido                → Interfaz táctil del kiosko (pública)
+- POST /autopedido/confirm        → Confirma el pedido (pública)
+- GET  /autopedido/success/{id}   → Pantalla de éxito con N° y total
+- GET  /cajero/kiosk-orders       → Lista de pedidos pendientes (auth)
+- POST /restaurant/kiosk-charge/{id} → Cobrar pedido kiosko (auth)
+
+Código del controlador (AutoPedidoController):
+```php
+// confirmOrder() - crea el pedido e imprime ticket
+$order = RestaurantOrder::create([
+    'order_type' => 'kiosko',
+    'status' => 'PENDING_PAYMENT',
+    'order_number' => RestaurantOrder::generateOrderNumber(),
+]);
+
+foreach ($items as $item) {
+    $product = Product::find($item['product_id']);
+    RestaurantOrderItem::create([
+        'restaurant_order_id' => $order->id,
+        'product_id' => $product->id,
+        'product_name' => $product->descripcion,
+        'quantity' => $item['quantity'],
+        'unit_price' => $product->precio,
+        'total' => $product->precio * $item['quantity'],
+        'kitchen_status' => 'PENDING',
+        'kds_destination' => $product->kds_destination ?? 'cocina',
+    ]);
+}
+
+// Imprime ticket en impresora "autopedido"
+$printService->printAutoPedidoTicket($order);
+```
+
+Código del cobro (chargeKioskOrder):
+```php
+// 1. Marcar items como enviados a cocina
+foreach ($order->items as $item) {
+    $item->kitchen_status = 'SENT';
+    $item->sent_to_kitchen_at = now();
+    $item->save();
+}
+$order->status = 'SENT_TO_KITCHEN';
+$order->save();
+
+// 2. Imprimir ticket de cocina si modo 80mm
+if ($company->order_mode === 'print') {
+    $printService->printKitchenOrder($order);
+}
+
+// 3. Cobrar (reutiliza chargeOrder() existente)
+$invoice = Invoice::create(['order_source' => 'kiosko', ...]);
+// → La invoice queda marcada como kiosko para el reporte de caja
+```
+
+Ticket de autopedido (PlainTextTicket::autoPedidoTicket):
+```
+         *** AUTO PEDIDO ***
+           FacturaFácil
+
+            🧾 P-001
+
+    2x Hamburguesa     S/ 24.00
+    1x Papas Fritas    S/  8.00
+    --------------------------------
+    TOTAL:             S/ 32.00
+
+      Pase a Caja para pagar
+      ¡Gracias por su pedido!
+```
+
+Características de la interfaz táctil:
+- Teclado virtual en pantalla (sin necesidad de teclado físico)
+- Categorías como tabs (Todos, Entradas, Principales, Bebidas...)
+- Productos en grid con imágenes y precio
+- Carrito con modificación de cantidades (+/−) y eliminar
+- Barra inferior fija con total y botón confirmar
+- Sin necesidad de autenticación (público)
+
+Reporte de cierre de caja:
+- Los pedidos kiosko se muestran por separado en el resumen de caja
+- Se identifican con order_source='kiosko' en la tabla invoices
+- Aparece una tarjeta "Pedidos Kiosko" con conteo y total en S/
+
+Vista del cajero:
+- Menú: Restaurante → Pedidos Kiosko
+- Tabla con: N° Pedido, Items, Total, Fecha, Botón "Cobrar"
+- El modal de cobro es el mismo que se usa para cobrar mesas
+  (Yape/Plin/Efectivo/Tarjeta, pagos mixtos)
+
+Archivos involucrados:
+- app/Http/Controllers/AutoPedidoController.php      → Controlador del kiosko
+- app/Services/PlainTextTicket.php                    → Ticket de autopedido
+- app/Services/PrintService.php                       → Impresión ticket
+- resources/views/autopedido/index.blade.php          → Interfaz táctil
+- resources/views/autopedido/success.blade.php        → Confirmación
+- resources/views/restaurant/kiosk-orders.blade.php   → Vista del cajero
+- database/migrations/2026_06_19_000001_add_order_source_and_type.php
 ```
 
 ---

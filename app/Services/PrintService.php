@@ -19,6 +19,17 @@ class PrintService
         return Printer::where('assigned_to', $assignedTo)->where('active', true)->first();
     }
 
+    public function printAutoPedidoTicket($order): void
+    {
+        $printer = $this->getPrinter('autopedido');
+        if (!$printer) {
+            \Log::warning('No hay impresora configurada para autopedido');
+            return;
+        }
+        $text = PlainTextTicket::autoPedidoTicket($order);
+        $this->queuePrint($printer, $text, 'autopedido', get_class($order), $order->id);
+    }
+
     protected function queuePrint(Printer $printer, string $data, string $jobType, ?string $refType = null, ?int $refId = null): void
     {
         PrintJob::create([

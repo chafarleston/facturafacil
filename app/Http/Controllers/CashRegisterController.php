@@ -113,8 +113,14 @@ class CashRegisterController extends Controller
         $boletasTotal = 0;
         $nvs = 0;
         $nvsTotal = 0;
+        $kioskoTotal = 0;
+        $kioskoCount = 0;
 
         foreach ($ventas as $v) {
+            if (($v->order_source ?? '') === 'kiosko') {
+                $kioskoTotal += $v->total;
+                $kioskoCount++;
+            }
             $metodo = $v->metodo_pago ?? 'EFECTIVO';
 
             if (str_contains($metodo, ' + ')) {
@@ -216,88 +222,11 @@ class CashRegisterController extends Controller
         $facturas = $ventas->where('tipo_documento', '01');
         $boletas = $ventas->where('tipo_documento', '03');
         $nvs = $ventas->where('tipo_documento', 'NV');
+        $kioskoVentas = $ventas->where('order_source', 'kiosko');
+        $kioskoTotal = $kioskoVentas->sum('total');
+        $kioskoCount = $kioskoVentas->count();
 
-        $categoriasVentas = [];
-        $productosVendidos = [];
-        $ventasEfectivo = 0;
-        $ventasTarjeta = 0;
-        $ventasYape = 0;
-        $ventasPlin = 0;
-        $ventasOtro = 0;
-        
-        foreach ($ventas as $venta) {
-            $metodo = $venta->metodo_pago ?? 'EFECTIVO';
-
-            if (str_contains($metodo, ' + ')) {
-                $parts = explode(' + ', $metodo);
-                foreach ($parts as $part) {
-                    $part = trim($part);
-                    if (str_contains($part, '/')) {
-                        [$met, $amt] = explode('/', $part);
-                        $amt = min((float) $amt, (float) $venta->total);
-                    } else {
-                        $met = $part;
-                        $amt = min((float) $venta->total / count($parts), (float) $venta->total);
-                    }
-                    match ($met) {
-                        'EFECTIVO' => $ventasEfectivo += $amt,
-                        'TARJETA' => $ventasTarjeta += $amt,
-                        'YAPE' => $ventasYape += $amt,
-                        'PLIN' => $ventasPlin += $amt,
-                        default => $ventasOtro += $amt,
-                    };
-                }
-            } else {
-                if (str_contains($metodo, '/')) {
-                    [$met, $amt] = explode('/', $metodo);
-                    $amt = min((float) $amt, (float) $venta->total);
-                } else {
-                    $met = $metodo;
-                    $amt = $venta->total;
-                }
-                match ($met) {
-                    'EFECTIVO' => $ventasEfectivo += $amt,
-                    'TARJETA' => $ventasTarjeta += $amt,
-                    'YAPE' => $ventasYape += $amt,
-                    'PLIN' => $ventasPlin += $amt,
-                    default => $ventasOtro += $amt,
-                };
-            }
-            
-            foreach ($venta->items as $item) {
-                $categoriaNombre = $item->product && $item->product->category 
-                    ? $item->product->category->nombre 
-                    : 'Sin Categoría';
-                
-                if (!isset($categoriasVentas[$categoriaNombre])) {
-                    $categoriasVentas[$categoriaNombre] = ['cantidad' => 0, 'total' => 0];
-                }
-                $categoriasVentas[$categoriaNombre]['cantidad']++;
-                $categoriasVentas[$categoriaNombre]['total'] += $item->precio_venta;
-                
-                $productoNombre = $item->descripcion;
-                if (!isset($productosVendidos[$productoNombre])) {
-                    $productosVendidos[$productoNombre] = ['cantidad' => 0, 'total' => 0];
-                }
-                $productosVendidos[$productoNombre]['cantidad'] += $item->cantidad;
-                $productosVendidos[$productoNombre]['total'] += $item->precio_venta;
-            }
-        }
-        
-        $totalMetodos = $ventasEfectivo + $ventasTarjeta + $ventasYape + $ventasPlin + $ventasOtro;
-        
-        arsort($categoriasVentas);
-        arsort($productosVendidos);
-
-        $lineasEliminadas = RestaurantOrderItem::with('cancelledBy')
-            ->where('kitchen_status', 'CANCELLED')
-            ->whereNotNull('cancelled_from')
-            ->whereIn('cancelled_from', ['SENT', 'READY', 'DELIVERED'])
-            ->where('cancelled_at', '>=', $fechaApertura)
-            ->where('cancelled_at', '<=', $fechaCierre)
-            ->get();
-
-        return view('cashregisters.show', compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventas', 'categoriasVentas', 'productosVendidos', 'ventasEfectivo', 'ventasTarjeta', 'ventasYape', 'ventasPlin', 'ventasOtro', 'totalMetodos', 'lineasEliminadas'));
+        return view('cashregisters.show', compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventas', 'categoriasVentas', 'productosVendidos', 'ventasEfectivo', 'ventasTarjeta', 'ventasYape', 'ventasPlin', 'ventasOtro', 'totalMetodos', 'lineasEliminadas', 'kioskoTotal', 'kioskoCount'));
     }
 
     private function getCashRegisterData(CashRegister $cashregister)

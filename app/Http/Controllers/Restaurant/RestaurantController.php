@@ -1169,5 +1169,89 @@ private function updateOrderTotals(RestaurantOrder $order)
         return response()->json(['success' => true, 'locks' => $locks])
             ->header('Cache-Control', 'no-cache, must-revalidate, no-store, private');
     }
+
+    public function kioskOrders(Request $request)
+    {
+        $companyId = $request->company_id ?? Company::first()->id;
+        $orders = RestaurantOrder::where('company_id', $companyId)
+            ->where('order_type', 'kiosko')
+            ->where('status', 'PENDING_PAYMENT')
+            ->with('items')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('restaurant.kiosk-orders', compact('orders', 'companyId'));
+    }
+
+    public function chargeKioskOrder(Request $request, $orderId)
+    {
+        if (auth()->user()->isMozo()) {
+            return response()->json(['success' => false, 'message' => 'No tienes permiso'], 403);
+        }
+
+        try {
+            $order = RestaurantOrder::with('items')->findOrFail($orderId);
+            if ($order->status !== 'PENDING_PAYMENT') {
+                return response()->json(['success' => false, 'message' => 'El pedido no está pendiente de pago']);
+            }
+
+            // Mark items as SENT for kitchen
+            foreach ($order->items as $item) {
+                $item->kitchen_status = 'SENT';
+                $item->sent_to_kitchen_at = now();
+                $product = Product::find($item->product_id);
+                if ($product && $product->kds_destination) {
+                    $item->kds_destination = $product->kds_destination;
+                }
+                $item->save();
+            }
+
+            $order->status = 'SENT_TO_KITCHEN';
+            $order->save();
+
+            event(new \App\Events\KitchenOrderUpdated($order->company_id, 'kitchen'));
+            Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+            Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
+
+            // Print kitchen ticket
+            $company = Company::find($order->company_id);
+            if ($company && ($company->order_mode ?? 'kds') === 'print') {
+                try {
+                    $printService = app(\App\Services\PrintService::class);
+                    $printService->printKitchenOrder($order->fresh(['table', 'user']), $order->items);
+                } catch (\Exception $e) {
+                    \Log::error('Kiosko kitchen print error: ' . $e->getMessage());
+                }
+            }
+
+            // Now process payment using the existing charge logic
+            $request->merge(['document_type' => $request->document_type ?? 'NV']);
+            $request->merge(['payments' => $request->payments ?? [['method' => 'EFECTIVO', 'amount' => $order->total]]]);
+
+            // Override request to use kiosko order data
+            $request->request->set('customer_id', $request->customer_id);
+            $request->request->set('reference', 'KIOSKO-' . $order->order_number);
+
+            $chargeResult = $this->chargeOrder($request, $orderId);
+
+            if ($chargeResult instanceof \Illuminate\Http\JsonResponse) {
+                $data = $chargeResult->getData(true);
+                if ($data['success']) {
+                    // Update the invoice to mark it as kiosko source
+                    if (isset($data['invoice_id'])) {
+                        \App\Models\Invoice::where('id', $data['invoice_id'])
+                            ->update(['order_source' => 'kiosko']);
+                    }
+                    return response()->json(['success' => true, 'message' => 'Pedido cobrado y enviado a cocina'] + $data);
+                }
+                return $chargeResult;
+            }
+
+            return response()->json(['success' => false, 'message' => 'Error al procesar el cobro']);
+        } catch (\Exception $e) {
+            \Log::error('Kiosko charge error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
 }
 

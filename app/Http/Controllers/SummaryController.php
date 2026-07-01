@@ -23,7 +23,14 @@ class SummaryController extends Controller
             ->pending()
             ->count();
 
-        return view('sunat-summaries.index', compact('summaries', 'status', 'pendingCount', 'companyId'));
+        // Envíos individuales (facturas, boletas, NC, ND)
+        $individualSends = \App\Models\Invoice::where('company_id', $companyId)
+            ->whereIn('sunat_estado', ['ACEPTADO', 'RECHAZADO', 'ENVIADO', 'ANULADO', 'PENDIENTE'])
+            ->orderBy('updated_at', 'desc')
+            ->limit(50)
+            ->get();
+
+        return view('sunat-summaries.index', compact('summaries', 'status', 'pendingCount', 'companyId', 'individualSends'));
     }
 
     public function checkStatus(SummaryDocument $summary)
@@ -80,7 +87,7 @@ class SummaryController extends Controller
 
     public function retryPending(GreenterService $greenterService, SummaryService $summaryService)
     {
-        $invoices = \App\Models\Invoice::whereIn('sunat_estado', ['PENDIENTE', 'ERROR'])
+        $invoices = \App\Models\Invoice::whereIn('sunat_estado', ['PENDIENTE', 'ERROR', 'RECHAZADO'])
             ->whereIn('tipo_documento', ['01', '03'])
             ->get();
 

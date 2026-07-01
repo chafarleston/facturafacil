@@ -103,10 +103,73 @@
                     @endforelse
                 </tbody>
             </table>
-        </div>
-    </div>
+</div>
     <div class="card-footer">
         {{ $summaries->appends(['status' => $status])->links() }}
+    </div>
+</div>
+
+<div class="card card-info">
+    <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-file-invoice"></i> Envíos Individuales (Facturas, NC, ND)</h3>
+    </div>
+    <div class="card-body table-responsive p-0">
+        <table class="table table-hover table-bordered">
+            <thead>
+                <tr>
+                    <th>Documento</th>
+                    <th>Tipo</th>
+                    <th>Total</th>
+                    <th>Estado</th>
+                    <th>Código</th>
+                    <th>Actualizado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($individualSends ?? [] as $inv)
+                <tr>
+                    <td><strong>{{ $inv->full_number }}</strong></td>
+                    <td>
+                        @switch($inv->tipo_documento)
+                            @case('01')<span class="badge badge-info">Factura</span>@break
+                            @case('03')<span class="badge badge-success">Boleta</span>@break
+                            @case('07')<span class="badge badge-primary">NC</span>@break
+                            @case('08')<span class="badge badge-danger">ND</span>@break
+                            @case('NV')<span class="badge badge-warning">NV</span>@break
+                            @default<span class="badge badge-secondary">{{ $inv->tipo_documento }}</span>
+                        @endswitch
+                    </td>
+                    <td>S/ {{ number_format($inv->total, 2) }}</td>
+                    <td>
+                        @switch($inv->sunat_estado)
+                            @case('PENDIENTE')<span class="badge badge-warning">Pendiente</span>@break
+                            @case('ENVIADO')<span class="badge badge-info">Enviado</span>@break
+                            @case('ACEPTADO')<span class="badge badge-success">Aceptado</span>@break
+                            @case('RECHAZADO')<span class="badge badge-danger">Rechazado</span>@break
+                            @case('ANULADO')<span class="badge badge-secondary">Anulado</span>@break
+                            @default<span class="badge badge-secondary">{{ $inv->sunat_estado }}</span>
+                        @endswitch
+                    </td>
+                    <td><small>{{ $inv->sunat_code ?? '—' }} {{ $inv->sunat_description ? '- ' . \Illuminate\Support\Str::limit($inv->sunat_description, 30) : '' }}</small></td>
+                    <td>{{ $inv->updated_at ? $inv->updated_at->format('d/m H:i') : '—' }}</td>
+                    <td>
+                        <a href="{{ route('invoices.show', $inv) }}" class="btn btn-info btn-xs"><i class="fas fa-eye"></i></a>
+                        @if(in_array($inv->sunat_estado, ['PENDIENTE', 'RECHAZADO']) && $inv->tipo_documento != 'NV')
+                        <a href="{{ route('invoices.send', $inv) }}" class="btn btn-success btn-xs" title="Enviar a SUNAT"><i class="fas fa-paper-plane"></i></a>
+                        @endif
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                        No hay envíos individuales registrados
+                    </td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
     </div>
 </div>
 @endsection

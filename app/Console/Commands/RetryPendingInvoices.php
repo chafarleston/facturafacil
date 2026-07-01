@@ -16,7 +16,7 @@ class RetryPendingInvoices extends Command
     {
         $type = $this->option('type');
 
-        $query = Invoice::whereIn('sunat_estado', ['PENDIENTE', 'ERROR'])
+        $query = Invoice::whereIn('sunat_estado', ['PENDIENTE', 'ERROR', 'RECHAZADO'])
             ->whereNotNull('tipo_documento');
 
         if ($type !== 'all') {

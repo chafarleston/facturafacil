@@ -32,6 +32,7 @@ class RestaurantOrder extends Model
         'user_id',
         'order_number',
         'status',
+        'order_type',
         'subtotal',
         'igv',
         'total',

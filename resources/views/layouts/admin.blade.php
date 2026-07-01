@@ -217,6 +217,8 @@
                 @can('permission', 'view_order_mode')
                 <li class="nav-item"><a href="{{ route('restaurant.mode') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Modo de Pedidos</p></a></li>
                 @endcan
+                <li class="nav-item"><a href="{{ route('restaurant.kioskOrders') }}" class="nav-link {{ request()->routeIs('restaurant.kioskOrders') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Pedidos Kiosko</p></a></li>
+                <li class="nav-item"><a href="{{ route('autopedido.index') }}" class="nav-link" target="_blank"><i class="far fa-circle nav-icon"></i><p>🖥️ Kiosko (Pantalla)</p></a></li>
               </ul>
             </li>
             @endcan

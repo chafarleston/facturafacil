@@ -109,6 +109,15 @@
             </div>
         </div>
     </div>
+    <div class="col-md-3">
+        <div class="card card-dark">
+            <div class="card-header"><h5>Pedidos Kiosko</h5></div>
+            <div class="card-body">
+                <h5>{{ $kioskoCount ?? 0 }} pedidos</h5>
+                <h4 class="text-warning">S/ {{ number_format($kioskoTotal ?? 0, 2) }}</h4>
+            </div>
+        </div>
+    </div>
 </div>
 
 <h4 class="mt-4">Resumen por Método de Pago</h4>
