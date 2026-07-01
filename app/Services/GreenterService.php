@@ -1252,7 +1252,7 @@ class GreenterService
         $this->see->setClaveSOL($company->ruc, $sunatUser, $sunatPassword);
 
         if ($company->soap_type_id == 2) {
-            $this->see->setService(SunatEndpoints::FE_HOMOLOGACION);
+            $this->see->setService(SunatEndpoints::FE_PRODUCCION);
         } else {
             $this->see->setService(SunatEndpoints::FE_BETA);
         }
