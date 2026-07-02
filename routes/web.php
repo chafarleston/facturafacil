@@ -80,6 +80,8 @@ Route::middleware('auth')->group(function () {
         Route::resource('categories', CategoryController::class);
         Route::resource('suppliers', SupplierController::class);
         Route::resource('purchases', PurchaseController::class);
+        Route::get('/purchases/{purchase}/print/a4', [\App\Http\Controllers\PurchaseController::class, 'printA4'])->name('purchases.print.a4');
+        Route::get('/purchases/{purchase}/print/ticket', [\App\Http\Controllers\PurchaseController::class, 'printTicket'])->name('purchases.print.ticket');
         Route::resource('stock-outputs', StockOutputController::class);
         Route::resource('cashregisters', CashRegisterController::class);
         Route::get('/cashregisters/{cashregister}/pdf', [CashRegisterController::class, 'pdf'])->name('cashregisters.pdf');

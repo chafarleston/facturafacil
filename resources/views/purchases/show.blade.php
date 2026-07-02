@@ -70,6 +70,8 @@
         </table>
     </div>
     <div class="card-footer">
+        <a href="{{ route('purchases.print.a4', $purchase) }}" class="btn btn-primary" target="_blank"><i class="fas fa-file-pdf"></i> Imprimir A4</a>
+        <a href="{{ route('purchases.print.ticket', $purchase) }}" class="btn btn-info" target="_blank"><i class="fas fa-receipt"></i> Imprimir Ticket 80mm</a>
         <a href="{{ route('purchases.index', ['company_id' => $purchase->company_id]) }}" class="btn btn-secondary">Volver</a>
     </div>
 </div>

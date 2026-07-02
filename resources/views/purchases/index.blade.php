@@ -30,6 +30,8 @@
                     <td><span class="badge badge-{{ $purchase->estado == 'REGISTRADO' ? 'success' : 'danger' }}">{{ $purchase->estado }}</span></td>
                     <td>
                         <a href="{{ route('purchases.show', $purchase) }}" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>
+                        <a href="{{ route('purchases.print.a4', $purchase) }}" class="btn btn-secondary btn-sm" target="_blank" title="Imprimir A4"><i class="fas fa-file-pdf"></i></a>
+                        <a href="{{ route('purchases.print.ticket', $purchase) }}" class="btn btn-secondary btn-sm" target="_blank" title="Imprimir Ticket 80mm"><i class="fas fa-receipt"></i></a>
                         @if($purchase->estado == 'REGISTRADO')
                         <form action="{{ route('purchases.destroy', $purchase) }}" method="POST" class="d-inline">
                             @csrf

@@ -6,6 +6,7 @@ use App\Models\Purchase;
 use App\Models\Supplier;
 use App\Models\Product;
 use App\Models\PurchaseItem;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -94,5 +95,29 @@ class PurchaseController extends Controller
         $purchase->save();
 
         return back()->with('success', 'Compra anulada');
+    }
+
+    public function printA4(Purchase $purchase)
+    {
+        $purchase->load('items.product', 'supplier');
+        $pdf = Pdf::loadView('purchases.print-a4', compact('purchase'))
+            ->setPaper('A4', 'portrait');
+        return response($pdf->output(), 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="compra-' . $purchase->id . '.pdf"');
+    }
+
+    public function printTicket(Purchase $purchase)
+    {
+        $purchase->load('items.product', 'supplier');
+        $pdf = Pdf::loadView('purchases.print-ticket', compact('purchase'))
+            ->setPaper([0, 0, 226.77, 800], 'portrait')
+            ->setOption('margin-top', 2)
+            ->setOption('margin-right', 2)
+            ->setOption('margin-bottom', 2)
+            ->setOption('margin-left', 2);
+        return response($pdf->output(), 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="ticket-compra-' . $purchase->id . '.pdf"');
     }
 }
