@@ -1223,6 +1223,9 @@ class GreenterService
             throw new \Exception('No hay certificado digital configurado. Suba el archivo .p12 desde la configuración de la empresa.');
         }
 
+        $sunatUser = $company->soap_username ?? $company->ruc;
+        $sunatPassword = $company->soap_password ?? $company->certificado_password ?? '';
+
         // Try to use PEM file directly (no password needed, OpenSSL 3.0 compatible)
         $pemPath = storage_path('app/certificates/' . $company->ruc . '_certificate.pem');
         if (file_exists($pemPath)) {
