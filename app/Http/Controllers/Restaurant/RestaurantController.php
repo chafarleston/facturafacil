@@ -900,27 +900,19 @@ class RestaurantController extends Controller
                 ->where('tipo_documento', $documentType)
                 ->where('estado', 'ACTIVO')
                 ->first();
-            
-            $lastInvoice = Invoice::where('company_id', $companyId)
-                ->where('tipo_documento', $documentType);
-            
-            if ($serie) {
-                $lastInvoice = $lastInvoice->where('serie', $serie->serie);
-            }
-            
-            $lastInvoice = $lastInvoice->orderBy('numero', 'desc')->first();
-            $nextNumber = $lastInvoice ? ((int)$lastInvoice->numero + 1) : 1;
-            
+
             if (!$serie) {
                 $prefix = $documentType === 'NV' ? 'NV' : ($documentType === '01' ? 'F' : 'B');
                 $serie = Serie::create([
                     'company_id' => $companyId,
                     'tipo_documento' => $documentType,
                     'serie' => $prefix . '001',
-                    'numero_actual' => $nextNumber,
+                    'numero_actual' => 0,
                     'estado' => 'ACTIVO',
                 ]);
             }
+
+            $nextNumber = $serie->getNextNumber();
             
             $items = $order->items;
             $total = $items->sum('total');

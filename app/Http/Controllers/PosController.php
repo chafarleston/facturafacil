@@ -87,33 +87,19 @@ class PosController extends Controller
             ->where('tipo_documento', $documentType)
             ->where('estado', 'ACTIVO')
             ->first();
-        
-        $lastInvoice = \App\Models\Invoice::where('company_id', $companyId)
-            ->where('tipo_documento', $documentType);
-        
-        if ($serie) {
-            $lastInvoice = $lastInvoice->where('serie', $serie->serie);
-        }
-        
-        $lastInvoice = $lastInvoice->orderBy('numero', 'desc')->first();
-        $nextNumber = $lastInvoice ? ((int)$lastInvoice->numero + 1) : 1;
-        
+
         if (!$serie) {
             $prefix = $documentType === 'NV' ? 'NV' : ($documentType === '01' ? 'F' : 'B');
             $serie = new Serie();
             $serie->company_id = $companyId;
             $serie->tipo_documento = $documentType;
             $serie->serie = $prefix . '001';
-            $serie->numero_inicial = 1;
-            $serie->numero_actual = $nextNumber;
+            $serie->numero_actual = 0;
             $serie->estado = 'ACTIVO';
             $serie->save();
-        } else {
-            if ($nextNumber > $serie->numero_actual) {
-                $serie->numero_actual = $nextNumber;
-                $serie->save();
-            }
         }
+
+        $nextNumber = $serie->getNextNumber();
         
         $subtotal = 0;
         $igv = 0;
