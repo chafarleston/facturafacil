@@ -752,7 +752,7 @@ Usuario clickea "Caja" en restaurante o POS
 | `SeriesSeeder` | Series F001, B001, NV01, FC01, BC01, FD01, BD01 |
 | `SunatProductSeeder` | Productos de ejemplo |
 | `PermissionsSeeder` | 50+ permisos + roles (admin, mozo, cajero, user) |
-| `PrinterSeeder` | 8 slots de impresora (cocina, bar, caja, autopedido) |
+| `PrinterSeeder` | 8 slots de impresora: cocina-1, cocina-2, bar-1, precuenta, precuenta2, precuenta3, caja, autopedido |
 | `UbigeoSeeder` | 1874 registros de ubigeos |
 | `CustomerSeeder` | Cliente "Clientes Varios" (DNI 88888888) |
 | `DatabaseSeeder` | Ejecuta todos los anteriores |
@@ -1367,7 +1367,7 @@ php artisan db:seed → ejecuta en orden:
 4. SeriesSeeder        → F001, B001, NV01, FC01, BC01, FD01, BD01
 5. SunatProductSeeder  → Productos de ejemplo
 6. PermissionsSeeder   → 50 permisos + roles (admin, mozo, cajero, user)
-7. PrinterSeeder       → 7 slots de impresora
+7. PrinterSeeder       → 8 slots de impresora (cocina, bar, precuenta, caja, autopedido)
 8. UbigeoSeeder        → 1874 registros de ubigeos
 9. CustomerSeeder      → "Clientes Varios" (DNI 88888888)
 
@@ -2020,7 +2020,7 @@ Ticket de autopedido (PlainTextTicket::autoPedidoTicket):
 Características de la interfaz táctil:
 - Teclado virtual en pantalla (sin necesidad de teclado físico)
 - Categorías como tabs (Todos, Entradas, Principales, Bebidas...)
-- Productos en grid con imágenes y precio
+- Productos en grid con precio y botón de agregar
 - Carrito con modificación de cantidades (+/−) y eliminar
 - Barra inferior fija con total y botón confirmar
 - Sin necesidad de autenticación (público)
@@ -2044,6 +2044,17 @@ Archivos involucrados:
 - resources/views/autopedido/success.blade.php        → Confirmación
 - resources/views/restaurant/kiosk-orders.blade.php   → Vista del cajero
 - database/migrations/2026_06_19_000001_add_order_source_and_type.php
+
+Impresora (slot):
+- assigned_to: "autopedido"
+- Se crea automáticamente con PrinterSeeder o manualmente
+- Imprime ticket de 80mm con N° de pedido y total
+- Método: PrintService::printAutoPedidoTicket($order)
+- Formato: PlainTextTicket::autoPedidoTicket($order)
+
+Menú del sistema:
+- Restaurante → Pedidos Kiosko (lista para cajero)
+- Restaurante → 🖥️ Kiosko (Pantalla) (abre /autopedido en nueva pestaña)
 ```
 
 ---
