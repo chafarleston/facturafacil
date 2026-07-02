@@ -123,12 +123,12 @@ class SummaryService
             $details = [];
 
             foreach ($invoices as $invoice) {
-                $client = $invoice->customer;
+                $cd = $this->getClientData($invoice);
                 $detail = new SummaryDetail();
                 $detail->setTipoDoc('03');
                 $detail->setSerieNro($invoice->serie . '-' . str_pad($invoice->numero, 8, '0', STR_PAD_LEFT));
-                $detail->setClienteTipo($client->documento_tipo == '6' ? '6' : '1');
-                $detail->setClienteNro($client->documento_numero);
+                $detail->setClienteTipo($cd['tipo_doc']);
+                $detail->setClienteNro($cd['num_doc']);
                 $detail->setEstado('1');
                 $detail->setTotal($invoice->total);
                 $detail->setMtoOperGravadas($invoice->gravado ?? $invoice->subtotal);
@@ -192,6 +192,23 @@ class SummaryService
         }
     }
 
+    private function getClientData($invoice): array
+    {
+        $client = $invoice->customer;
+        if ($client) {
+            return [
+                'tipo_doc' => $client->documento_tipo == '6' ? '6' : '1',
+                'num_doc' => $client->documento_numero ?? '',
+                'razon_social' => $client->nombre ?? 'CLIENTES VARIOS',
+            ];
+        }
+        return [
+            'tipo_doc' => '1',
+            'num_doc' => '88888888',
+            'razon_social' => 'CLIENTES VARIOS',
+        ];
+    }
+
     public function sendBoletaToSummary(InvoiceModel $invoice): array
     {
         $company = Company::getMainCompany();
@@ -207,13 +224,13 @@ class SummaryService
 
         try {
             $correlativo = $this->getNextCorrelativo($company);
-            $client = $invoice->customer;
+            $cd = $this->getClientData($invoice);
 
             $detail = new SummaryDetail();
             $detail->setTipoDoc('03');
             $detail->setSerieNro($invoice->serie . '-' . str_pad($invoice->numero, 8, '0', STR_PAD_LEFT));
-            $detail->setClienteTipo($client->documento_tipo == '6' ? '6' : '1');
-            $detail->setClienteNro($client->documento_numero);
+            $detail->setClienteTipo($cd['tipo_doc']);
+            $detail->setClienteNro($cd['num_doc']);
             $detail->setEstado('1');
             $detail->setTotal($invoice->total);
             $detail->setMtoOperGravadas($invoice->gravado ?? $invoice->subtotal);
@@ -355,13 +372,13 @@ class SummaryService
 
         try {
             $correlativo = $this->getNextCorrelativo($company);
-            $client = $invoice->customer;
+            $cd = $this->getClientData($invoice);
 
             $detail = new SummaryDetail();
             $detail->setTipoDoc('03');
             $detail->setSerieNro($invoice->serie . '-' . str_pad($invoice->numero, 8, '0', STR_PAD_LEFT));
-            $detail->setClienteTipo($client->documento_tipo == '6' ? '6' : '1');
-            $detail->setClienteNro($client->documento_numero);
+            $detail->setClienteTipo($cd['tipo_doc']);
+            $detail->setClienteNro($cd['num_doc']);
             $detail->setEstado('3');
             $detail->setTotal(0);
             $detail->setMtoOperGravadas(0);
@@ -436,7 +453,7 @@ class SummaryService
 
         try {
             $correlativo = $this->getNextCorrelativo($company);
-            $client = $note->customer ?? $originalInvoice->customer;
+            $cd = $this->getClientData($note->id ? $note : $originalInvoice);
 
             // Reference the original boleta
             $refDoc = new GreenterDocument();
@@ -446,8 +463,8 @@ class SummaryService
             $detail = new SummaryDetail();
             $detail->setTipoDoc($tipoDoc); // '07' for credit note, '08' for debit note
             $detail->setSerieNro($note->serie . '-' . str_pad($note->numero, 8, '0', STR_PAD_LEFT));
-            $detail->setClienteTipo($client->documento_tipo == '6' ? '6' : '1');
-            $detail->setClienteNro($client->documento_numero);
+            $detail->setClienteTipo($cd['tipo_doc']);
+            $detail->setClienteNro($cd['num_doc']);
             $detail->setDocReferencia($refDoc);
             $detail->setEstado('1');
             $detail->setTotal($note->total);

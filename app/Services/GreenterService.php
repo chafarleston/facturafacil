@@ -102,12 +102,12 @@ class GreenterService
             
             $note->setCompany($this->buildCompany($company));
             
-            $client = $invoice->customer;
+            $cd = $this->getClientData($invoice);
             $greenterClient = new Client();
-            $greenterClient->setTipoDoc($client->documento_tipo == '6' ? '6' : '1');
-            $greenterClient->setNumDoc($client->documento_numero);
-            $greenterClient->setRznSocial($client->nombre);
-            if ($client->direccion) {
+            $greenterClient->setTipoDoc($cd['tipo_doc']);
+            $greenterClient->setNumDoc($cd['num_doc']);
+            $greenterClient->setRznSocial($cd['razon_social']);
+            if ($cd['direccion']) {
                 $clientAddress = new Address();
                 $clientAddress->setDireccion($client->direccion);
                 $greenterClient->setAddress($clientAddress);
@@ -288,12 +288,12 @@ class GreenterService
             
             $note->setCompany($this->buildCompany($company));
             
-            $client = $invoice->customer;
+            $cd = $this->getClientData($invoice);
             $greenterClient = new Client();
-            $greenterClient->setTipoDoc($client->documento_tipo == '6' ? '6' : '1');
-            $greenterClient->setNumDoc($client->documento_numero);
-            $greenterClient->setRznSocial($client->nombre);
-            if ($client->direccion) {
+            $greenterClient->setTipoDoc($cd['tipo_doc']);
+            $greenterClient->setNumDoc($cd['num_doc']);
+            $greenterClient->setRznSocial($cd['razon_social']);
+            if ($cd['direccion']) {
                 $clientAddress = new Address();
                 $clientAddress->setDireccion($client->direccion);
                 $greenterClient->setAddress($clientAddress);
@@ -620,6 +620,10 @@ class GreenterService
     private function buildTicketHtml($invoice, $company, $qrUrl)
     {
         $customer = $invoice->customer;
+        $custName = $customer ? $customer->nombre : 'CLIENTES VARIOS';
+        $custDocTipo = $customer ? ($customer->documento_tipo == '6' ? 'RUC: ' : 'DNI: ') : 'DNI: ';
+        $custDocNum = $customer ? $customer->documento_numero : '88888888';
+        $custDireccion = $customer ? ($customer->direccion ?? '') : '';
         $width = 76;
         // Hash block to display below QR
         $hashBlock = '';
@@ -692,9 +696,9 @@ class GreenterService
         $client = '
         <div class="mb-1">
             <div class="bold">CLIENTE:</div>
-            <div>' . e($customer->nombre) . '</div>
-            <div>' . ($customer->documento_tipo == '6' ? 'RUC: ' : 'DNI: ') . e($customer->documento_numero) . '</div>
-            ' . ($customer->direccion ? '<div>' . e($customer->direccion) . '</div>' : '') . '
+            <div>' . e($custName) . '</div>
+            <div>' . e($custDocTipo) . e($custDocNum) . '</div>
+            ' . ($custDireccion ? '<div>' . e($custDireccion) . '</div>' : '') . '
         </div>
         ';
         
@@ -827,6 +831,10 @@ class GreenterService
             $qrImg = '<div class="text-center" style="margin-top:6px;"><img src="'.$qrUrl.'" style="width: 90px; height: 90px;" alt="SUNAT QR"></div>';
         }
         $customer = $invoice->customer;
+        $custName = $customer ? $customer->nombre : 'CLIENTES VARIOS';
+        $custDocTipo = $customer ? ($customer->documento_tipo == '6' ? 'RUC' : 'DNI') : 'DNI';
+        $custDocNum = $customer ? $customer->documento_numero : '88888888';
+        $custDireccion = $customer ? ($customer->direccion ?? '') : '';
         
         $style = '
         <style>
@@ -1007,9 +1015,9 @@ class GreenterService
         <div class="client-section">
             <div class="client-title">Datos del Cliente</div>
             <div class="client-info">
-                <strong>Razón Social:</strong> ' . e($customer->nombre) . '<br>
-                <strong>' . ($customer->documento_tipo == '6' ? 'RUC' : 'DNI') . ':</strong> ' . e($customer->documento_numero) . '<br>
-                ' . ($customer->direccion ? '<strong>Dirección:</strong> ' . e($customer->direccion) . '<br>' : '') . '
+                <strong>Razón Social:</strong> ' . e($custName) . '<br>
+                <strong>' . e($custDocTipo) . ':</strong> ' . e($custDocNum) . '<br>
+                ' . ($custDireccion ? '<strong>Dirección:</strong> ' . e($custDireccion) . '<br>' : '') . '
             </div>
             <div class="mt-2" style="font-size: 10px; color: #666;">
                 <strong>F. Emisión:</strong> ' . date('Y-m-d', strtotime($invoice->fecha_emision)) . ' | <strong>H. Emisión:</strong> ' . $horaEmision . '
@@ -1280,7 +1288,26 @@ class GreenterService
         
         return $greenterCompany;
     }
-    
+
+    private function getClientData($invoice): array
+    {
+        $client = $invoice->customer ?? $invoice->customer;
+        if ($client) {
+            return [
+                'tipo_doc' => $client->documento_tipo == '6' ? '6' : '1',
+                'num_doc' => $client->documento_numero ?? '',
+                'razon_social' => $client->nombre ?? 'CLIENTES VARIOS',
+                'direccion' => $client->direccion ?? '',
+            ];
+        }
+        return [
+            'tipo_doc' => '1',
+            'num_doc' => '88888888',
+            'razon_social' => 'CLIENTES VARIOS',
+            'direccion' => '',
+        ];
+    }
+
     private function buildInvoice(InvoiceModel $invoice, Company $company)
     {
         $greenter = new Invoice();
@@ -1297,14 +1324,14 @@ class GreenterService
         
         $greenter->setCompany($this->buildCompany($company));
         
-        $client = $invoice->customer;
+        $cd = $this->getClientData($invoice);
         $greenterClient = new Client();
-        $greenterClient->setTipoDoc($client->documento_tipo == '6' ? '6' : '1');
-        $greenterClient->setNumDoc($client->documento_numero);
-        $greenterClient->setRznSocial($client->nombre);
-        if ($client->direccion) {
+        $greenterClient->setTipoDoc($cd['tipo_doc']);
+        $greenterClient->setNumDoc($cd['num_doc']);
+        $greenterClient->setRznSocial($cd['razon_social']);
+        if ($cd['direccion']) {
             $clientAddress = new Address();
-            $clientAddress->setDireccion($client->direccion);
+            $clientAddress->setDireccion($cd['direccion']);
             $greenterClient->setAddress($clientAddress);
         }
         $greenter->setClient($greenterClient);
