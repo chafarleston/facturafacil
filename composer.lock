@@ -1462,16 +1462,16 @@
         },
         {
             "name": "greenter/core",
-            "version": "v5.2.0",
+            "version": "v5.3.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thegreenter/core.git",
-                "reference": "ed92def3820688a2bbf37f3009a09a04736af9d0"
+                "reference": "f0093a08d13bf5564e2c32869541de04ba73d7de"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thegreenter/core/zipball/ed92def3820688a2bbf37f3009a09a04736af9d0",
-                "reference": "ed92def3820688a2bbf37f3009a09a04736af9d0",
+                "url": "https://api.github.com/repos/thegreenter/core/zipball/f0093a08d13bf5564e2c32869541de04ba73d7de",
+                "reference": "f0093a08d13bf5564e2c32869541de04ba73d7de",
                 "shasum": ""
             },
             "require": {
@@ -1507,9 +1507,9 @@
             ],
             "support": {
                 "forum": "https://community.greenter.dev/",
-                "source": "https://github.com/thegreenter/core/tree/v5.2.0"
+                "source": "https://github.com/thegreenter/core/tree/v5.3.0"
             },
-            "time": "2026-02-25T19:22:04+00:00"
+            "time": "2026-06-08T19:26:33+00:00"
         },
         {
             "name": "greenter/gre-api",
@@ -1628,7 +1628,7 @@
         },
         {
             "name": "greenter/lite",
-            "version": "v5.2.0",
+            "version": "v5.3.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thegreenter/lite.git",
@@ -1683,7 +1683,7 @@
             "support": {
                 "forum": "https://community.greenter.dev/",
                 "issues": "https://github.com/thegreenter/lite/issues",
-                "source": "https://github.com/thegreenter/lite/tree/v5.2.0"
+                "source": "https://github.com/thegreenter/lite/tree/v5.3.0"
             },
             "time": "2026-02-25T19:23:52+00:00"
         },
@@ -1748,7 +1748,7 @@
         },
         {
             "name": "greenter/ws",
-            "version": "v5.2.0",
+            "version": "v5.3.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thegreenter/ws.git",
@@ -1807,22 +1807,22 @@
             ],
             "support": {
                 "forum": "https://community.greenter.dev/",
-                "source": "https://github.com/thegreenter/ws/tree/v5.2.0"
+                "source": "https://github.com/thegreenter/ws/tree/v5.3.0"
             },
             "time": "2023-05-03T05:20:55+00:00"
         },
         {
             "name": "greenter/xml",
-            "version": "v5.2.0",
+            "version": "v5.3.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thegreenter/xml.git",
-                "reference": "506c920ab1670bee944476d2bd1bf8197274e310"
+                "reference": "027ac6a54526d3bc8996fc04acb4d098cabc291b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thegreenter/xml/zipball/506c920ab1670bee944476d2bd1bf8197274e310",
-                "reference": "506c920ab1670bee944476d2bd1bf8197274e310",
+                "url": "https://api.github.com/repos/thegreenter/xml/zipball/027ac6a54526d3bc8996fc04acb4d098cabc291b",
+                "reference": "027ac6a54526d3bc8996fc04acb4d098cabc291b",
                 "shasum": ""
             },
             "require": {
@@ -1866,9 +1866,9 @@
             ],
             "support": {
                 "forum": "https://community.greenter.dev/",
-                "source": "https://github.com/thegreenter/xml/tree/v5.2.0"
+                "source": "https://github.com/thegreenter/xml/tree/v5.3.0"
             },
-            "time": "2026-02-25T19:23:42+00:00"
+            "time": "2026-06-08T19:26:31+00:00"
         },
         {
             "name": "greenter/xmldsig",
