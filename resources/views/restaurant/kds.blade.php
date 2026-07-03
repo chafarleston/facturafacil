@@ -520,6 +520,7 @@ function renderKitchenOrders() {
                             <div>
                                 <div class="kds-item-name">${item.product_name}</div>
                                 ${item.notes ? `<div class="kds-item-notes">${item.notes}</div>` : ''}
+                                ${item.auxiliary_names && item.auxiliary_names.length > 0 ? `<div class="kds-item-aux" style="font-size:10px;color:#ce93d8;margin-top:2px;">+ ${item.auxiliary_names.join(', ')}</div>` : ''}
                             </div>
                         </div>`;
                     }).join('')}

@@ -167,6 +167,8 @@ class RestaurantController extends Controller
                 'product_id' => 'required|exists:products,id',
                 'quantity' => 'required|numeric|min:0.01',
                 'notes' => 'nullable|string|max:500',
+                'auxiliary_items' => 'nullable|array',
+                'auxiliary_items.*' => 'integer|exists:auxiliary_items,id',
             ]);
 
             $product = Product::findOrFail($validated['product_id']);
@@ -176,6 +178,7 @@ class RestaurantController extends Controller
                 ->where('product_id', $product->id)
                 ->where('kitchen_status', 'PENDING')
                 ->where('notes', $validated['notes'] ?? null)
+                ->where('auxiliary_items', json_encode($validated['auxiliary_items'] ?? null))
                 ->first();
 
             if ($existingItem) {
@@ -196,6 +199,7 @@ class RestaurantController extends Controller
                     'total' => $product->precio * $validated['quantity'],
                     'kitchen_status' => 'PENDING',
                     'notes' => $validated['notes'] ?? null,
+                    'auxiliary_items' => $validated['auxiliary_items'] ?? null,
                     'kds_destination' => $product->kds_destination ?? 'cocina',
                 ]);
             }
@@ -673,7 +677,7 @@ class RestaurantController extends Controller
             ->with(['items' => function($q) use ($kds) {
                 $q->whereIn('kitchen_status', ['SENT', 'READY', 'CANCELLED'])
                   ->where('kds_destination', $kds)
-                  ->select('id', 'restaurant_order_id', 'product_name', 'quantity', 'unit_price', 'kitchen_status', 'notes', 'kds_destination');
+                  ->select('id', 'restaurant_order_id', 'product_name', 'quantity', 'unit_price', 'kitchen_status', 'notes', 'auxiliary_items', 'kds_destination');
             }, 'table' => function($q) {
                 $q->select('id', 'name', 'floor_id');
             }, 'table.floor' => function($q) {
@@ -697,12 +701,20 @@ class RestaurantController extends Controller
                 'created_at' => $order->created_at->toIso8601String(),
                 'order_type' => $order->order_type ?? 'mozo',
                 'items' => $order->items->map(function($item) {
+                    $auxNames = [];
+                    if ($item->auxiliary_items) {
+                        $auxNames = \App\Models\AuxiliaryItem::whereIn('id', $item->auxiliary_items)
+                            ->pluck('name')
+                            ->toArray();
+                    }
                     return [
                         'id' => $item->id,
                         'product_name' => $item->product_name,
                         'quantity' => $item->quantity,
                         'kitchen_status' => $item->kitchen_status,
                         'notes' => $item->notes,
+                        'auxiliary_items' => $item->auxiliary_items,
+                        'auxiliary_names' => $auxNames,
                     ];
                 })
             ];

@@ -26,6 +26,7 @@ class RestaurantOrderItem extends Model
         'kitchen_status',
         'sent_to_kitchen_at',
         'notes',
+        'auxiliary_items',
         'cancelled_from',
         'cancelled_at',
         'cancelled_by',
@@ -36,6 +37,7 @@ class RestaurantOrderItem extends Model
         'quantity' => 'decimal:2',
         'unit_price' => 'decimal:2',
         'total' => 'decimal:2',
+        'auxiliary_items' => 'array',
         'sent_to_kitchen_at' => 'datetime',
         'cancelled_at' => 'datetime',
     ];

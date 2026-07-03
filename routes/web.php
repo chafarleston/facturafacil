@@ -38,6 +38,7 @@ Route::get('/ubigeo/provincias', [UbigeoController::class, 'getProvincias']);
 Route::get('/ubigeo/distritos', [UbigeoController::class, 'getDistritos']);
 Route::get('/ubigeo/by-codigo', [UbigeoController::class, 'getByUbigeo']);
 Route::get('/decolecta/search', [DecolectaController::class, 'search'])->name('decolecta.search');
+Route::get('/auxiliary-items/list', [\App\Http\Controllers\AuxiliaryItemController::class, 'list'])->name('auxiliary-items.list');
 Route::get('/autopedido', [\App\Http\Controllers\AutoPedidoController::class, 'index'])->name('autopedido.index');
 Route::post('/autopedido/confirm', [\App\Http\Controllers\AutoPedidoController::class, 'confirmOrder'])->name('autopedido.confirm');
 Route::get('/autopedido/success/{orderId}', [\App\Http\Controllers\AutoPedidoController::class, 'success'])->name('autopedido.success');
@@ -95,6 +96,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('users', \App\Http\Controllers\UserController::class);
         Route::resource('roles', \App\Http\Controllers\RoleController::class);
         Route::resource('permissions', \App\Http\Controllers\PermissionController::class);
+        Route::resource('auxiliary-items', \App\Http\Controllers\AuxiliaryItemController::class);
         Route::get('/sunat-padron', [SunatPadronController::class, 'index'])->name('sunat-padron.index');
         Route::post('/sunat-padron/download', [SunatPadronController::class, 'download'])->name('sunat-padron.download');
         Route::post('/companies/download-padron', [SunatPadronController::class, 'downloadPadron'])->name('sunat.padron.download');

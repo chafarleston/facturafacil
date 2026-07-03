@@ -214,6 +214,7 @@
                 <li class="nav-item"><a href="{{ route('restaurant.kitchen.bar') }}" class="nav-link" target="_blank"><i class="far fa-circle nav-icon"></i><p>KDS Bar</p></a></li>
                 @endcan
                 <li class="nav-item"><a href="{{ route('restaurant.floors.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Pisos</p></a></li>
+    <li class="nav-item"><a href="{{ route('auxiliary-items.index') }}" class="nav-link {{ request()->routeIs('auxiliary-items.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Elementos Auxiliares</p></a></li>
                 @can('permission', 'view_order_mode')
                 <li class="nav-item"><a href="{{ route('restaurant.mode') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Modo de Pedidos</p></a></li>
                 @endcan

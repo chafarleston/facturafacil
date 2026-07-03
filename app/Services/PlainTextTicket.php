@@ -128,6 +128,10 @@ class PlainTextTicket
             if (isset($dests[$dest]) && $dest !== $dests[$dest]) continue;
             $t->itemLine(number_format($item->quantity, $item->quantity == intval($item->quantity) ? 0 : 2), $item->product_name, '');
             if ($item->notes) $t->text('    Nota: ' . $item->notes);
+            if ($item->auxiliary_items) {
+                $names = \App\Models\AuxiliaryItem::whereIn('id', $item->auxiliary_items)->pluck('name')->toArray();
+                if ($names) $t->text('    + ' . implode(', ', $names));
+            }
         }
         $t->separator();
         $t->text('Hora: ' . now()->format('H:i:s'));

@@ -28,6 +28,7 @@ class PrintService
         }
         $text = PlainTextTicket::autoPedidoTicket($order);
         $this->queuePrint($printer, $text, 'autopedido', get_class($order), $order->id);
+        $this->processQueue();
     }
 
     protected function queuePrint(Printer $printer, string $data, string $jobType, ?string $refType = null, ?int $refId = null): void

@@ -389,6 +389,20 @@
         .products-grid { grid-template-columns: repeat(2, 1fr); }
         .modal-tabs { font-size: 13px; }
     }
+    .aux-chip {
+        display: inline-block;
+        padding: 5px 14px;
+        border: 2px solid #ddd;
+        border-radius: 20px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all .15s;
+        user-select: none;
+        background: #fff;
+        color: #333;
+    }
+    .aux-chip:hover { border-color: #aaa; background: #f5f5f5; }
+    .aux-chip.selected { background: #e94560; color: #fff; border-color: #e94560; }
 </style>
 @endpush
 
@@ -472,6 +486,10 @@
         <h5 style="margin:0 0 15px 0;">Cantidad</h5>
         <input type="number" id="itemQtyInput" class="form-control" value="1" min="0.1" step="0.1" style="margin-bottom:10px;">
         <textarea id="itemNotesInput" class="form-control" rows="2" placeholder="Nota para cocina (opcional)..." style="margin-bottom:10px;"></textarea>
+        <div id="auxiliaryContainer" style="margin-bottom:10px; display:none;">
+            <small class="text-muted d-block mb-1">Elementos Auxiliares:</small>
+            <div id="auxiliaryChips" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+        </div>
         <small class="text-muted d-block mb-2">Producto: <span id="modalProductName"></span></small>
         <div style="display:flex; gap:10px; justify-content:flex-end;">
             <button type="button" class="btn btn-secondary" onclick="closeQtyModal()">Cancelar</button>
@@ -706,6 +724,10 @@
         <h5 style="margin:0 0 15px 0;">Cantidad</h5>
         <input type="number" id="itemQtyInput" class="form-control" value="1" min="0.1" step="0.1" style="margin-bottom:10px;">
         <textarea id="itemNotesInput" class="form-control" rows="2" placeholder="Nota para cocina (opcional)..." style="margin-bottom:10px;"></textarea>
+        <div id="auxiliaryContainer" style="margin-bottom:10px; display:none;">
+            <small class="text-muted d-block mb-1">Elementos Auxiliares:</small>
+            <div id="auxiliaryChips" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+        </div>
         <small class="text-muted d-block mb-2">Producto: <span id="modalProductName"></span></small>
         <div style="display:flex; gap:10px; justify-content:flex-end;">
             <button type="button" class="btn btn-secondary" onclick="closeQtyModal()">Cancelar</button>
@@ -749,6 +771,7 @@ let currentTableId = null;
 let currentTableName = null;
 let orderModalOpen = false;
 const currentUserId = {{ auth()->id() }};
+const companyId = {{ $companyId }};
 let productsData = @json($products);
 let customersData = @json($customers);
 let seriesData = @json($series);
@@ -783,6 +806,16 @@ document.addEventListener('DOMContentLoaded', function() {
         chargeSearch.addEventListener('input', function(e) { searchChargeCustomers(e.target.value); });
         chargeSearch.addEventListener('blur', function() { setTimeout(function() { document.getElementById('chargeCustomerDropdown').style.display = 'none'; }, 200); });
     }
+    
+    window._auxNames = {};
+    fetch('/auxiliary-items/list?company_id=' + companyId, {
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(function(items) {
+        items.forEach(function(item) { window._auxNames[item.id] = item.name; });
+    })
+    .catch(function() {});
 });
 
 function selectFloor(floorId) {
@@ -988,7 +1021,8 @@ function renderOrder(order) {
             <div class="order-item-info">
                 <div class="order-item-name">${item.product_name}</div>
                 <div class="order-item-qty">${item.quantity} x S/ ${parseFloat(item.unit_price).toFixed(2)} = S/ ${parseFloat(item.total).toFixed(2)}</div>
-                ${item.notes ? `<div class="order-item-note"><i class="fas fa-sticky-note"></i> ${item.notes}</div>` : ''}
+                 ${item.notes ? `<div class="order-item-note"><i class="fas fa-sticky-note"></i> ${item.notes}</div>` : ''}
+                 ${item.auxiliary_items && item.auxiliary_items.length > 0 ? `<div class="order-item-aux" style="font-size:11px;color:#9c27b0;margin-top:2px;"><i class="fas fa-tag"></i> ${item.auxiliary_items.map(function(id) { var n = window._auxNames && window._auxNames[id]; return n || ('#' + id); }).join(', ')}</div>` : ''}
                 ${item.kitchen_status !== 'PENDING' ? `<span class="badge badge-${statusClass === 'sent' ? 'warning' : statusClass === 'ready' ? 'success' : 'info'}" style="font-size:10px;">${statusLabel}</span>` : ''}
             </div>
             <div class="order-item-actions">
@@ -1038,18 +1072,46 @@ function applyFilters() {
     });
 }
 
+function loadAuxiliaryItems() {
+    const container = document.getElementById('auxiliaryChips');
+    const wrapper = document.getElementById('auxiliaryContainer');
+    container.innerHTML = '';
+    wrapper.style.display = 'none';
+    
+    fetch('/auxiliary-items/list?company_id=' + companyId, {
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(items => {
+        if (items.length === 0) return;
+        items.forEach(item => {
+            const chip = document.createElement('span');
+            chip.className = 'aux-chip';
+            chip.dataset.id = item.id;
+            chip.textContent = item.name;
+            chip.onclick = function() { this.classList.toggle('selected'); };
+            container.appendChild(chip);
+        });
+        wrapper.style.display = 'block';
+    })
+    .catch(() => {});
+}
+
 function addProductToOrder(productId) {
     pendingProductId = productId;
     const product = productsData.find(p => p.id === productId);
     document.getElementById('modalProductName').textContent = product.descripcion;
     document.getElementById('itemQtyInput').value = 1;
     document.getElementById('itemQtyInput').focus();
+    loadAuxiliaryItems();
     document.getElementById('qtyOverlay').style.display = 'flex';
 }
 
 function closeQtyModal() {
     document.getElementById('qtyOverlay').style.display = 'none';
     document.getElementById('itemNotesInput').value = '';
+    document.getElementById('auxiliaryContainer').style.display = 'none';
+    document.getElementById('auxiliaryChips').innerHTML = '';
 }
 
 function confirmAddItem() {
@@ -1060,8 +1122,14 @@ function confirmAddItem() {
     }
     
     const itemNotes = document.getElementById('itemNotesInput').value.trim();
+    const auxItems = [];
+    document.querySelectorAll('.aux-chip.selected').forEach(chip => {
+        auxItems.push(parseInt(chip.dataset.id));
+    });
     document.getElementById('qtyOverlay').style.display = 'none';
     document.getElementById('itemNotesInput').value = '';
+    document.getElementById('auxiliaryContainer').style.display = 'none';
+    document.getElementById('auxiliaryChips').innerHTML = '';
     
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     
@@ -1075,7 +1143,8 @@ function confirmAddItem() {
         body: JSON.stringify({
             product_id: pendingProductId,
             quantity: quantity,
-            notes: itemNotes || null
+            notes: itemNotes || null,
+            auxiliary_items: auxItems.length > 0 ? auxItems : null
         })
     })
     .then(async res => {
@@ -1775,7 +1844,6 @@ function updateChargeSerie() {
 
 function openCustomerModal() {
     document.getElementById('chargeOverlay').style.display = 'none';
-    const companyId = {{ $companyId }};
     document.getElementById('customerFrame').src = '/customers/create?company_id=' + companyId + '&modal=1';
     document.getElementById('customerModalOverlay').style.display = 'flex';
 }
