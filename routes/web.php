@@ -83,6 +83,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/purchases/{purchase}/print/a4', [\App\Http\Controllers\PurchaseController::class, 'printA4'])->name('purchases.print.a4');
         Route::get('/purchases/{purchase}/print/ticket', [\App\Http\Controllers\PurchaseController::class, 'printTicket'])->name('purchases.print.ticket');
         Route::resource('stock-outputs', StockOutputController::class);
+        Route::get('/stock-outputs/{stock_output}/print/a4', [\App\Http\Controllers\StockOutputController::class, 'printA4'])->name('stock-outputs.print.a4');
+        Route::get('/stock-outputs/{stock_output}/print/ticket', [\App\Http\Controllers\StockOutputController::class, 'printTicket'])->name('stock-outputs.print.ticket');
         Route::resource('cashregisters', CashRegisterController::class);
         Route::get('/cashregisters/{cashregister}/pdf', [CashRegisterController::class, 'pdf'])->name('cashregisters.pdf');
         Route::get('/cashregisters/{cashregister}/ticket', [CashRegisterController::class, 'ticketPdf'])->name('cashregisters.ticket');

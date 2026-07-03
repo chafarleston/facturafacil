@@ -48,6 +48,12 @@
                         <a href="{{ route('stock-outputs.show', $output) }}" class="btn btn-info btn-xs">
                             <i class="fas fa-eye"></i>
                         </a>
+                        <a href="{{ route('stock-outputs.print.a4', $output) }}" class="btn btn-secondary btn-xs" target="_blank" title="Imprimir A4">
+                            <i class="fas fa-file-pdf"></i>
+                        </a>
+                        <a href="{{ route('stock-outputs.print.ticket', $output) }}" class="btn btn-secondary btn-xs" target="_blank" title="Imprimir Ticket 80mm">
+                            <i class="fas fa-receipt"></i>
+                        </a>
                         @if(!$output->trashed())
                         <a href="{{ route('stock-outputs.edit', $output) }}" class="btn btn-warning btn-xs">
                             <i class="fas fa-edit"></i>
