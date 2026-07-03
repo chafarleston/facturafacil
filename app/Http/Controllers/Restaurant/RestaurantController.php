@@ -45,7 +45,7 @@ class RestaurantController extends Controller
             ->active()
             ->ordered()
             ->with(['tables' => function($q) use ($companyId) {
-                $q->with(['orders' => function($oq) use ($companyId) {
+                $q->excludeKiosko()->with(['orders' => function($oq) use ($companyId) {
                     $oq->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
                        ->withCount('items');
                 }]);

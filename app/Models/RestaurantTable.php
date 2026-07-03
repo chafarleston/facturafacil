@@ -20,6 +20,7 @@ class RestaurantTable extends Model
         'color',
         'locked_by',
         'locked_at',
+        'is_for_kiosko',
     ];
 
     protected $casts = [
@@ -55,6 +56,11 @@ class RestaurantTable extends Model
     public function scopeOccupied($query)
     {
         return $query->where('status', 'OCCUPIED');
+    }
+
+    public function scopeExcludeKiosko($query)
+    {
+        return $query->where('is_for_kiosko', false);
     }
 
     public function lockedByUser(): BelongsTo

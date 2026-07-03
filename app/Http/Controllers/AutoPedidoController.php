@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Product;
 use App\Models\RestaurantOrder;
 use App\Models\RestaurantOrderItem;
+use App\Models\RestaurantTable;
 use App\Services\PrintService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -48,9 +49,17 @@ class AutoPedidoController extends Controller
             return response()->json(['success' => false, 'message' => 'Carrito vacío']);
         }
 
+        $kioskoTable = RestaurantTable::where('company_id', $companyId)
+            ->where('is_for_kiosko', true)
+            ->first();
+
+        if (!$kioskoTable) {
+            return response()->json(['success' => false, 'message' => 'Mesa Kiosko no configurada']);
+        }
+
         $order = RestaurantOrder::create([
             'company_id' => $companyId,
-            'table_id' => null,
+            'table_id' => $kioskoTable->id,
             'user_id' => null,
             'order_number' => RestaurantOrder::generateOrderNumber(),
             'status' => 'PENDING_PAYMENT',

@@ -14,7 +14,7 @@ class FloorController extends Controller
         $companyId = $request->company_id ?? Company::first()->id;
         $floors = Floor::where('company_id', $companyId)
             ->ordered()
-            ->with('tables')
+            ->with(['tables' => function($q) { $q->excludeKiosko(); }])
             ->get();
 
         return view('restaurant.floors.index', compact('floors', 'companyId'));
@@ -46,7 +46,7 @@ class FloorController extends Controller
 
     public function edit(Floor $floor)
     {
-        $tables = $floor->tables()->orderBy('id')->get();
+        $tables = $floor->tables()->excludeKiosko()->orderBy('id')->get();
         return view('restaurant.floors.edit', compact('floor', 'tables'));
     }
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Company;
 use App\Models\Product;
 use App\Models\StockOutput;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -158,5 +159,29 @@ class StockOutputController extends Controller
 
         return redirect()->route('stock-outputs.index')
             ->with('success', 'Consumo anulado. Stock reincorporado.');
+    }
+
+    public function printA4(StockOutput $stockOutput)
+    {
+        $stockOutput->load(['user', 'items.product', 'company']);
+        $pdf = Pdf::loadView('stock-outputs.print-a4', compact('stockOutput'))
+            ->setPaper('A4', 'portrait');
+        return response($pdf->output(), 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="consumo-' . $stockOutput->id . '.pdf"');
+    }
+
+    public function printTicket(StockOutput $stockOutput)
+    {
+        $stockOutput->load(['user', 'items.product', 'company']);
+        $pdf = Pdf::loadView('stock-outputs.print-ticket', compact('stockOutput'))
+            ->setPaper([0, 0, 226.77, 800], 'portrait')
+            ->setOption('margin-top', 2)
+            ->setOption('margin-right', 2)
+            ->setOption('margin-bottom', 2)
+            ->setOption('margin-left', 2);
+        return response($pdf->output(), 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'inline; filename="ticket-consumo-' . $stockOutput->id . '.pdf"');
     }
 }
