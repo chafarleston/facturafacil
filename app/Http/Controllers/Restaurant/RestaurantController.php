@@ -516,7 +516,7 @@ class RestaurantController extends Controller
 
             $order->update(['status' => 'COMPLETED']);
 
-            if ($order->table) {
+            if ($order->table && $order->order_type !== 'kiosko') {
                 $order->table->update(['status' => 'AVAILABLE']);
             }
 
@@ -681,7 +681,7 @@ class RestaurantController extends Controller
             }, 'user' => function($q) {
                 $q->select('id', 'name');
             }])
-            ->select('id', 'order_number', 'status', 'table_id', 'user_id', 'notes', 'created_at')
+            ->select('id', 'order_number', 'status', 'table_id', 'user_id', 'notes', 'created_at', 'order_type')
             ->orderBy('created_at', 'asc')
             ->get();
 
@@ -695,6 +695,7 @@ class RestaurantController extends Controller
                 'user_name' => $order->user ? $order->user->name : null,
                 'notes' => $order->notes,
                 'created_at' => $order->created_at->toIso8601String(),
+                'order_type' => $order->order_type ?? 'mozo',
                 'items' => $order->items->map(function($item) {
                     return [
                         'id' => $item->id,

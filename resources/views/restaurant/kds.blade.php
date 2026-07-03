@@ -254,6 +254,43 @@
         .kds-order.pending { border-left-color: #e94560; }
         .kds-order.sent { border-left-color: #ffc107; }
         .kds-order.ready { border-left-color: #00ff88; }
+        .kds-order.kiosko { border-left-color: #9c27b0; }
+        
+        .kds-section-title {
+            grid-column: 1 / -1;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 8px 0 4px 0;
+            border-bottom: 2px solid #333;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .kds-section-title .kiosko-badge {
+            background: #9c27b0;
+            color: #fff;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+        .kds-section-title .mozo-badge {
+            background: #e94560;
+            color: #fff;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+        .kds-tag-kiosko {
+            display: inline-block;
+            background: #9c27b0;
+            color: #fff;
+            font-size: 9px;
+            padding: 1px 6px;
+            border-radius: 8px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
         
         @media (max-width: 768px) {
             .kds-orders {
@@ -439,24 +476,32 @@ function renderKitchenOrders() {
         return;
     }
     
+    const mozoOrders = sortedOrders.filter(o => o.order_type !== 'kiosko');
+    const kioskoOrders = sortedOrders.filter(o => o.order_type === 'kiosko');
+    
     let html = '';
     
-    sortedOrders.forEach(order => {
+    function renderOrderCard(order) {
         const elapsed = getElapsedTime(order.created_at);
         const overdue = isOverdue(order.created_at);
+        const isKiosko = order.order_type === 'kiosko';
         const statusClass = order.status === 'READY' ? 'ready' : 
                            order.status === 'SENT_TO_KITCHEN' ? 'sent' : 'pending';
+        const kioskoClass = isKiosko ? 'kiosko' : '';
         
         const sortedItems = [...order.items].sort((a, b) => {
             const orderVal = { 'PENDING': 0, 'SENT': 1, 'READY': 2, 'DELIVERED': 3, 'CANCELLED': 4 };
             return (orderVal[a.kitchen_status] || 0) - (orderVal[b.kitchen_status] || 0);
         });
         
-        html += `
-            <div class="kds-order ${statusClass}" data-order-id="${order.id}">
+        return `
+            <div class="kds-order ${statusClass} ${kioskoClass}" data-order-id="${order.id}">
                 <div class="kds-order-header">
                     <div>
-                        <div class="kds-order-number">${order.order_number}</div>
+                        <div class="kds-order-number">
+                            ${order.order_number}
+                            ${isKiosko ? `<span class="kds-tag-kiosko"><i class="fas fa-shopping-cart"></i> KIOSKO</span>` : ''}
+                        </div>
                         <div class="kds-order-table">
                             <i class="fas fa-chair"></i> ${order.table_name || 'Mesa'}
                             ${order.floor_name ? ` <span style="opacity:0.6;">(${order.floor_name})</span>` : ''}
@@ -499,7 +544,21 @@ function renderKitchenOrders() {
                 </div>
             </div>
         `;
-    });
+    }
+    
+    if (mozoOrders.length > 0) {
+        html += `<div class="kds-section-title">
+            <span class="mozo-badge">MOZO</span> Pedidos de Mesas (${mozoOrders.length})
+        </div>`;
+        mozoOrders.forEach(o => { html += renderOrderCard(o); });
+    }
+    
+    if (kioskoOrders.length > 0) {
+        html += `<div class="kds-section-title">
+            <span class="kiosko-badge">KIOSKO</span> Autoservicio (${kioskoOrders.length})
+        </div>`;
+        kioskoOrders.forEach(o => { html += renderOrderCard(o); });
+    }
     
     container.innerHTML = html;
 }
