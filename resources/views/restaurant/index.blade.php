@@ -769,9 +769,9 @@ document.addEventListener('DOMContentLoaded', function() {
         selectFloor(floorId);
     }
     pollActiveOrders();
-    setInterval(pollActiveOrders, 3000);
+    setInterval(pollActiveOrders, 10000);
     pollTableLocks();
-    setInterval(pollTableLocks, 3000);
+    setInterval(pollTableLocks, 10000);
     
     const psBadge = document.getElementById('printServerBadge');
     if (psBadge) {
@@ -1130,6 +1130,10 @@ function saveItemNotes() {
         } else {
             showError(data.message || 'Error al guardar nota');
         }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        showError('Error al guardar nota');
     });
 }
 
@@ -1152,6 +1156,10 @@ function changeItemQty(itemId, delta) {
         } else {
             showError(data.message);
         }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        showError('Error al cambiar cantidad');
     });
 }
 
@@ -1191,6 +1199,10 @@ function removeItem(itemId) {
             } else {
                 showError(data.message);
             }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            showError('Error al eliminar producto');
         });
     });
 }
@@ -1270,6 +1282,10 @@ function sendToKitchen() {
             } else {
                 showAlert(data.message || 'Error');
             }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            showError('Error al enviar a cocina');
         });
     });
 }
@@ -1424,6 +1440,10 @@ function closeTable() {
             } else {
                 showError(data.message || 'Error');
             }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            showError('Error al cerrar pedido');
         });
     });
 }
@@ -1479,6 +1499,10 @@ function cancelOrderRequest(password) {
         } else {
             showError(data.message || 'Error');
         }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        showError('Error al anular pedido');
     });
 }
 
@@ -1517,6 +1541,10 @@ function confirmAdminPassword() {
         } else {
             showError(data.message || 'Error');
         }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        showError('Error al eliminar producto');
     });
 }
 

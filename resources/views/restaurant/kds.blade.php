@@ -517,7 +517,13 @@ function markOrderReady(orderId) {
     .then(data => {
         if (data.success) {
             loadKitchenOrders();
+        } else {
+            alert(data.message || 'Error al marcar como listo');
         }
+    })
+    .catch(err => {
+        console.error('KDS Error:', err);
+        alert('Error de conexión al marcar como listo');
     });
 }
 
@@ -534,7 +540,13 @@ function deliverOrder(orderId) {
     .then(data => {
         if (data.success) {
             loadKitchenOrders();
+        } else {
+            alert(data.message || 'Error al entregar');
         }
+    })
+    .catch(err => {
+        console.error('KDS Error:', err);
+        alert('Error de conexión al entregar');
     });
 }
 
@@ -559,6 +571,10 @@ function completeOrder(orderId) {
         } else {
             alert(data.message || 'Error al completar pedido');
         }
+    })
+    .catch(err => {
+        console.error('KDS Error:', err);
+        alert('Error de conexión al completar');
     });
 }
 
