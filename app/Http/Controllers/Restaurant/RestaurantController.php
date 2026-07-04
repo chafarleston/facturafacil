@@ -1180,7 +1180,7 @@ private function updateOrderTotals(RestaurantOrder $order)
         $companyId = $request->company_id ?? Company::first()->id;
         $orders = RestaurantOrder::where('company_id', $companyId)
             ->where('order_type', 'kiosko')
-            ->where('status', 'PENDING_PAYMENT')
+            ->whereIn('status', ['PENDING_PAYMENT', 'SENT_TO_KITCHEN'])
             ->with('items')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -1188,7 +1188,7 @@ private function updateOrderTotals(RestaurantOrder $order)
         return view('restaurant.kiosk-orders', compact('orders', 'companyId'));
     }
 
-    public function chargeKioskOrder(Request $request, $orderId)
+    public function kioskSendToKitchen($orderId)
     {
         if (auth()->user()->isMozo()) {
             return response()->json(['success' => false, 'message' => 'No tienes permiso'], 403);
@@ -1197,10 +1197,9 @@ private function updateOrderTotals(RestaurantOrder $order)
         try {
             $order = RestaurantOrder::with('items')->findOrFail($orderId);
             if ($order->status !== 'PENDING_PAYMENT') {
-                return response()->json(['success' => false, 'message' => 'El pedido no está pendiente de pago']);
+                return response()->json(['success' => false, 'message' => 'El pedido ya fue enviado a cocina']);
             }
 
-            // Mark items as SENT for kitchen
             foreach ($order->items as $item) {
                 $item->kitchen_status = 'SENT';
                 $item->sent_to_kitchen_at = now();
@@ -1218,7 +1217,6 @@ private function updateOrderTotals(RestaurantOrder $order)
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
             Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
-            // Print kitchen ticket
             $company = Company::find($order->company_id);
             if ($company && ($company->order_mode ?? 'kds') === 'print') {
                 try {
@@ -1229,11 +1227,28 @@ private function updateOrderTotals(RestaurantOrder $order)
                 }
             }
 
-            // Now process payment using the existing charge logic
+            return response()->json(['success' => true, 'message' => 'Pedido enviado a cocina']);
+        } catch (\Exception $e) {
+            \Log::error('Kiosko send error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function chargeKioskOrder(Request $request, $orderId)
+    {
+        if (auth()->user()->isMozo()) {
+            return response()->json(['success' => false, 'message' => 'No tienes permiso'], 403);
+        }
+
+        try {
+            $order = RestaurantOrder::with('items')->findOrFail($orderId);
+            if ($order->status !== 'SENT_TO_KITCHEN') {
+                return response()->json(['success' => false, 'message' => 'Debe enviar el pedido a cocina antes de cobrar']);
+            }
+
             $request->merge(['document_type' => $request->document_type ?? 'NV']);
             $request->merge(['payments' => $request->payments ?? [['method' => 'EFECTIVO', 'amount' => $order->total]]]);
 
-            // Override request to use kiosko order data
             $request->request->set('customer_id', $request->customer_id);
             $request->request->set('reference', 'KIOSKO-' . $order->order_number);
 
@@ -1242,12 +1257,11 @@ private function updateOrderTotals(RestaurantOrder $order)
             if ($chargeResult instanceof \Illuminate\Http\JsonResponse) {
                 $data = $chargeResult->getData(true);
                 if ($data['success']) {
-                    // Update the invoice to mark it as kiosko source
                     if (isset($data['invoice_id'])) {
                         \App\Models\Invoice::where('id', $data['invoice_id'])
                             ->update(['order_source' => 'kiosko']);
                     }
-                    return response()->json(['success' => true, 'message' => 'Pedido cobrado y enviado a cocina'] + $data);
+                    return response()->json(['success' => true, 'message' => 'Pedido cobrado'] + $data);
                 }
                 return $chargeResult;
             }

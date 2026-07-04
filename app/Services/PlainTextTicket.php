@@ -123,9 +123,6 @@ class PlainTextTicket
         $items = $order->items ?? $order->pendingItems ?? [];
         foreach ($items as $item) {
             if ($item->kitchen_status === 'CANCELLED') continue;
-            $dests = ['cocina'=>'', 'cocina2'=>'', 'bar'=>''];
-            $dest = $item->kds_destination ?? 'cocina';
-            if (isset($dests[$dest]) && $dest !== $dests[$dest]) continue;
             $t->itemLine(number_format($item->quantity, $item->quantity == intval($item->quantity) ? 0 : 2), $item->product_name, '');
             if ($item->notes) $t->text('    Nota: ' . $item->notes);
             if ($item->auxiliary_items) {
@@ -224,7 +221,7 @@ class PlainTextTicket
         $t->center('*** AUTO PEDIDO ***', '*');
         $t->center('FacturaFácil');
         $t->blank();
-        $t->center('🧾 ' . $order->order_number, ' ');
+        $t->center($order->order_number, ' ');
         $t->separator();
         foreach ($order->items as $item) {
             $t->itemLine(number_format($item->quantity, 0), $item->product_name, 'S/ ' . number_format($item->total, 2));
@@ -245,7 +242,11 @@ class PlainTextTicket
         $this->center('*** ' . $label . ' ***', '*');
         $this->blank();
         $this->text('Pedido: ' . $order->order_number);
-        if ($order->table) $this->text('Mesa: ' . $order->table->name);
+        if ($order->order_type === 'kiosko') {
+            $this->text('Autoservicio');
+        } elseif ($order->table) {
+            $this->text('Mesa: ' . $order->table->name);
+        }
         if ($order->user) $this->text('Mozo: ' . $order->user->name);
         $this->text('Hora: ' . now()->format('H:i:s'));
     }
@@ -255,7 +256,11 @@ class PlainTextTicket
         $this->center('*** PRECUENTA ***', '*');
         $this->blank();
         $this->text('Pedido: ' . $order->order_number);
-        if ($order->table) $this->text('Mesa: ' . $order->table->name);
+        if ($order->order_type === 'kiosko') {
+            $this->text('Autoservicio');
+        } elseif ($order->table) {
+            $this->text('Mesa: ' . $order->table->name);
+        }
         $this->text('Hora: ' . now()->format('H:i:s'));
     }
 }

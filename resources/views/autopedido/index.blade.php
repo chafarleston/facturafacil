@@ -37,6 +37,29 @@
         .cart-item-price { font-size: 16px; font-weight: bold; min-width: 70px; text-align: right; }
         .btn-remove { color: #dc3545; font-size: 20px; cursor: pointer; padding: 5px; }
 
+        /* Product Modal */
+        .product-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 50; align-items: center; justify-content: center; padding: 20px; }
+        .product-modal.show { display: flex; }
+        .product-modal-content { background: #fff; border-radius: 16px; padding: 24px; max-width: 400px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .product-modal-content h3 { margin: 0 0 6px 0; font-size: 20px; }
+        .product-modal-content .price { font-size: 18px; color: #28a745; font-weight: bold; margin-bottom: 15px; }
+        .qty-control { display: flex; align-items: center; gap: 15px; justify-content: center; margin: 15px 0; }
+        .qty-control button { width: 48px; height: 48px; border-radius: 50%; border: 2px solid #ddd; background: #fff; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .qty-control button:active { background: #eee; }
+        .qty-control span { font-size: 28px; font-weight: bold; min-width: 40px; text-align: center; }
+        .modal-textarea { width: 100%; border: 2px solid #ddd; border-radius: 10px; padding: 12px; font-size: 16px; resize: none; margin-bottom: 10px; }
+        .modal-aux-container { margin-bottom: 10px; }
+        .modal-aux-title { font-size: 13px; color: #666; margin-bottom: 6px; }
+        .modal-aux-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .modal-aux-chip { padding: 8px 16px; border: 2px solid #ddd; border-radius: 20px; font-size: 14px; cursor: pointer; transition: all .15s; background: #fff; color: #333; user-select: none; }
+        .modal-aux-chip:active { transform: scale(.95); }
+        .modal-aux-chip.selected { background: #e94560; color: #fff; border-color: #e94560; }
+        .modal-btns { display: flex; gap: 10px; margin-top: 15px; }
+        .modal-btns button { flex: 1; padding: 14px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        .btn-add-cart { background: #28a745; color: #fff; }
+        .btn-add-cart:active { background: #218838; }
+        .btn-cancel-modal { background: #6c757d; color: #fff; }
+
         /* Virtual Keyboard */
         .keyboard-overlay { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; background: #d1d5db; padding: 8px; }
         .keyboard-overlay.show { display: block; }
@@ -58,8 +81,8 @@
     <div class="header">🍽️ Auto Pedido</div>
 
     <div class="search-bar">
-        <input type="text" class="search-input" id="searchInput" placeholder="Buscar producto..." readonly onfocus="openKeyboard()">
-        <button class="search-btn" onclick="openKeyboard()"><i class="fas fa-keyboard"></i></button>
+        <input type="text" class="search-input" id="searchInput" placeholder="Buscar producto..." readonly onfocus="openKeyboard(this)">
+        <button class="search-btn" onclick="openKeyboard(document.getElementById('searchInput'))"><i class="fas fa-keyboard"></i></button>
     </div>
 
     <div class="categories" id="categoriesContainer">
@@ -81,6 +104,28 @@
 
     <!-- Cart items popup -->
     <div class="cart-items" id="cartItems"></div>
+
+    <!-- Product Modal -->
+    <div class="product-modal" id="productModal">
+        <div class="product-modal-content">
+            <h3 id="modalProductName"></h3>
+            <div class="price" id="modalProductPrice"></div>
+            <div class="qty-control">
+                <button onclick="modalQtyChange(-1)">−</button>
+                <span id="modalQtyDisplay">1</span>
+                <button onclick="modalQtyChange(1)">+</button>
+            </div>
+            <textarea class="modal-textarea" id="modalNotes" rows="2" placeholder="Nota para cocina (opcional)..." readonly onfocus="openKeyboard(this)"></textarea>
+            <div class="modal-aux-container" id="modalAuxContainer" style="display:none;">
+                <div class="modal-aux-title">Elementos Auxiliares:</div>
+                <div class="modal-aux-chips" id="modalAuxChips"></div>
+            </div>
+            <div class="modal-btns">
+                <button class="btn-cancel-modal" onclick="closeProductModal()">Cancelar</button>
+                <button class="btn-add-cart" onclick="confirmAddToCart()">Agregar al Carrito</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Bottom bar -->
     <div class="bottom-bar">
@@ -147,14 +192,79 @@
         let cart = [];
         let activeCategory = 'all';
         let showCart = false;
+        let modalProductId = null;
+        let modalQty = 1;
+        let activeInput = null;
+        const companyId = {{ $companyId }};
 
         function addProduct(id, name, price) {
-            const existing = cart.find(c => c.product_id === id);
+            modalProductId = id;
+            modalQty = 1;
+            document.getElementById('modalProductName').textContent = name;
+            document.getElementById('modalProductPrice').textContent = 'S/ ' + price.toFixed(2);
+            document.getElementById('modalQtyDisplay').textContent = '1';
+            document.getElementById('modalNotes').value = '';
+            document.getElementById('productModal').classList.add('show');
+            loadModalAuxItems();
+        }
+
+        function loadModalAuxItems() {
+            const container = document.getElementById('modalAuxChips');
+            const wrapper = document.getElementById('modalAuxContainer');
+            container.innerHTML = '';
+            wrapper.style.display = 'none';
+
+            fetch('/auxiliary-items/list?company_id=' + companyId, {
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(r => r.json())
+            .then(items => {
+                if (items.length === 0) return;
+                items.forEach(item => {
+                    const chip = document.createElement('span');
+                    chip.className = 'modal-aux-chip';
+                    chip.dataset.id = item.id;
+                    chip.textContent = item.name;
+                    chip.onclick = function() { this.classList.toggle('selected'); };
+                    container.appendChild(chip);
+                });
+                wrapper.style.display = 'block';
+            })
+            .catch(() => {});
+        }
+
+        function modalQtyChange(delta) {
+            modalQty = Math.max(1, modalQty + delta);
+            document.getElementById('modalQtyDisplay').textContent = modalQty;
+        }
+
+        function closeProductModal() {
+            document.getElementById('productModal').classList.remove('show');
+            activeInput = null;
+            closeKeyboard();
+        }
+
+        function confirmAddToCart() {
+            const notes = document.getElementById('modalNotes').value.trim();
+            const auxItems = [];
+            document.querySelectorAll('#modalAuxChips .modal-aux-chip.selected').forEach(chip => {
+                auxItems.push(parseInt(chip.dataset.id));
+            });
+
+            const existing = cart.find(c => c.product_id === modalProductId && c.notes === notes && JSON.stringify(c.auxiliary_items) === JSON.stringify(auxItems));
             if (existing) {
-                existing.quantity++;
+                existing.quantity += modalQty;
             } else {
-                cart.push({ product_id: id, name, price, quantity: 1 });
+                cart.push({
+                    product_id: modalProductId,
+                    name: document.getElementById('modalProductName').textContent,
+                    price: parseFloat(document.getElementById('modalProductPrice').textContent.replace('S/ ', '')),
+                    quantity: modalQty,
+                    notes: notes,
+                    auxiliary_items: auxItems
+                });
             }
+            closeProductModal();
             updateCart();
         }
 
@@ -172,8 +282,9 @@
             }
             let html = '';
             cart.forEach((c, i) => {
+                const auxText = c.auxiliary_items && c.auxiliary_items.length > 0 ? ' + aux' : '';
                 html += `<div class="cart-item">
-                    <span class="cart-item-name">${c.name}</span>
+                    <span class="cart-item-name">${c.name}${c.notes ? '<br><small style="color:#e94560;">Nota: ' + c.notes + '</small>' : ''}${auxText ? '<br><small style="color:#9c27b0;">' + auxText + '</small>' : ''}</small></span>
                     <div class="cart-item-qty">
                         <button class="qty-btn" onclick="changeQty(${i}, -1)">−</button>
                         <span style="font-size:18px;font-weight:bold;">${c.quantity}</span>
@@ -217,24 +328,32 @@
         }
 
         /* Virtual Keyboard */
-        function openKeyboard() {
+        function openKeyboard(input) {
+            activeInput = input;
             document.getElementById('keyboard').classList.add('show');
-            document.getElementById('searchInput').focus();
+            if (activeInput) activeInput.focus();
         }
         function closeKeyboard() {
+            activeInput = null;
             document.getElementById('keyboard').classList.remove('show');
         }
         function pressKey(k) {
-            const input = document.getElementById('searchInput');
-            input.value += k;
-            input.focus();
-            applyFilters();
+            if (!activeInput) return;
+            const start = activeInput.selectionStart;
+            const end = activeInput.selectionEnd;
+            activeInput.value = activeInput.value.substring(0, start) + k + activeInput.value.substring(end);
+            activeInput.selectionStart = activeInput.selectionEnd = start + k.length;
+            activeInput.focus();
+            if (activeInput.id === 'searchInput') applyFilters();
         }
         function pressBackspace() {
-            const input = document.getElementById('searchInput');
-            input.value = input.value.slice(0, -1);
-            input.focus();
-            applyFilters();
+            if (!activeInput) return;
+            const start = activeInput.selectionStart;
+            if (start === 0) return;
+            activeInput.value = activeInput.value.substring(0, start - 1) + activeInput.value.substring(start);
+            activeInput.selectionStart = activeInput.selectionEnd = start - 1;
+            activeInput.focus();
+            if (activeInput.id === 'searchInput') applyFilters();
         }
 
         /* Confirm order */
@@ -251,7 +370,12 @@
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ items: JSON.stringify(cart.map(c => ({ product_id: c.product_id, quantity: c.quantity }))) })
+                body: JSON.stringify({ items: JSON.stringify(cart.map(c => ({
+                    product_id: c.product_id,
+                    quantity: c.quantity,
+                    notes: c.notes || null,
+                    auxiliary_items: c.auxiliary_items && c.auxiliary_items.length > 0 ? c.auxiliary_items : null
+                }))) })
             })
             .then(r => r.json())
             .then(data => {

@@ -503,8 +503,8 @@ function renderKitchenOrders() {
                             ${isKiosko ? `<span class="kds-tag-kiosko"><i class="fas fa-shopping-cart"></i> KIOSKO</span>` : ''}
                         </div>
                         <div class="kds-order-table">
-                            <i class="fas fa-chair"></i> ${order.table_name || 'Mesa'}
-                            ${order.floor_name ? ` <span style="opacity:0.6;">(${order.floor_name})</span>` : ''}
+                            <i class="fas ${isKiosko ? 'fa-shopping-cart' : 'fa-chair'}"></i> ${isKiosko ? 'Autoservicio' : (order.table_name || 'Mesa')}
+                            ${!isKiosko && order.floor_name ? ` <span style="opacity:0.6;">(${order.floor_name})</span>` : ''}
                         </div>
                         ${order.user_name ? `<div class="kds-order-user"><i class="fas fa-user"></i> ${order.user_name}</div>` : ''}
                         ${order.notes ? `<div class="kds-order-notes"><i class="fas fa-sticky-note"></i> ${order.notes}</div>` : ''}

@@ -14,6 +14,7 @@
                     <th>N° Pedido</th>
                     <th>Items</th>
                     <th>Total</th>
+                    <th>Estado</th>
                     <th>Fecha</th>
                     <th>Acción</th>
                 </tr>
@@ -28,11 +29,30 @@
                         @endforeach
                     </td>
                     <td><strong class="text-success">S/ {{ number_format($order->total, 2) }}</strong></td>
-                    <td>{{ $order->created_at->format('d/m H:i') }}</td>
                     <td>
+                        @if($order->status === 'PENDING_PAYMENT')
+                        <span class="badge badge-warning">Pendiente</span>
+                        @else
+                        <span class="badge badge-info">En Cocina</span>
+                        @endif
+                    </td>
+                    <td>{{ $order->created_at->format('d/m H:i') }}</td>
+                    <td class="text-right">
+                        @if($order->status === 'PENDING_PAYMENT')
+                        <button class="btn btn-warning btn-sm" onclick="sendKioskToKitchen({{ $order->id }})">
+                            <i class="fas fa-utensils"></i> Enviar a Cocina
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="cancelKioskOrder({{ $order->id }})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        @else
                         <button class="btn btn-success btn-sm" onclick="chargeKioskOrder({{ $order->id }}, {{ $order->total }})">
                             <i class="fas fa-cash-register"></i> Cobrar
                         </button>
+                        <button class="btn btn-danger btn-sm" onclick="cancelKioskOrder({{ $order->id }})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        @endif
                     </td>
                 </tr>
                 @empty
@@ -40,6 +60,48 @@
                 @endforelse
             </tbody>
         </table>
+    </div>
+</div>
+
+{{-- Charge Modal --}}
+<div class="charge-overlay" id="chargeOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+    <div class="charge-popup" style="background:white; padding:25px; border-radius:10px; min-width:400px; max-width:500px; max-height:90vh; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h5 style="margin:0;"><i class="fas fa-credit-card"></i> Cobrar Pedido <span id="chargeOrderNumber" style="font-weight:normal; font-size:14px;"></span></h5>
+            <button onclick="closeChargeModal()" style="border:none; background:none; font-size:20px; cursor:pointer;">&times;</button>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;"><i class="fas fa-user"></i> Cliente</label>
+            <div style="position:relative;">
+                <input type="text" id="chargeCustomerSearch" class="form-control form-control-sm" placeholder="Buscar cliente..." autocomplete="off">
+                <input type="hidden" id="chargeCustomerId" value="">
+                <div id="chargeCustomerDropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid #ddd; border-radius:4px; max-height:200px; overflow-y:auto; z-index:999;"></div>
+            </div>
+        </div>
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+            <div style="flex:1;"><label>Tipo Documento</label><select id="chargeDocumentType" class="form-control form-control-sm" onchange="updateChargeSerie()"><option value="03">BOLETA</option><option value="01">FACTURA</option><option value="NV" selected>NOTA DE VENTA</option></select></div>
+            <div style="flex:1;"><label>Serie</label><input type="text" id="chargeSerieDisplay" class="form-control form-control-sm" readonly disabled></div>
+        </div>
+        <div style="margin-bottom:10px;">
+            <label style="font-size:12px; font-weight:600; color:#444;">Métodos de Pago</label>
+            <div id="paymentsContainer"></div>
+            <button type="button" class="btn btn-link btn-sm" onclick="addPaymentRow()" style="padding:4px 0;">
+                <i class="fas fa-plus"></i> Agregar otro método
+            </button>
+            <div style="display:flex; justify-content:flex-end; gap:15px; font-weight:bold; margin-top:6px; font-size:13px;">
+                <span>Pendiente: S/ <span id="pendingAmount" style="color:#dc3545;">0.00</span></span>
+                <span>Vuelto: S/ <span id="chargeVuelto" style="color:#28a745;">0.00</span></span>
+            </div>
+        </div>
+        <div style="border-top:2px solid #eee; padding-top:12px; margin-bottom:15px;">
+            <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;"><span>Subtotal:</span><span id="chargeSubtotal">S/ 0.00</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;"><span>IGV:</span><span id="chargeIgv">S/ 0.00</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:18px; font-weight:bold; margin-top:8px;"><span>TOTAL:</span><span id="chargeTotal">S/ 0.00</span></div>
+        </div>
+        <div style="display:flex; gap:8px;">
+            <button class="btn btn-secondary btn-sm" onclick="closeChargeModal()" style="flex:0 0 80px;">Cancelar</button>
+            <button class="btn btn-success btn-sm" id="btnProcessCharge" onclick="processCharge()" style="flex:1; padding:8px 0;"><i class="fas fa-credit-card"></i> COBRAR S/ 0.00</button>
+        </div>
     </div>
 </div>
 @endsection
@@ -51,6 +113,76 @@ let currentChargeOrderId = null;
 let customersData = @json(\App\Models\Customer::where('company_id', $companyId ?? 1)->get());
 let seriesData = @json(\App\Models\Serie::where('estado', 'ACTIVO')->get());
 let igvPercent = {{ \App\Models\Company::find($companyId ?? 1)?->getActiveIgvPercent() ?? 18 }};
+
+function sendKioskToKitchen(orderId) {
+    if (!confirm('¿Enviar este pedido a cocina?')) return;
+    const btn = document.querySelector(`button[onclick="sendKioskToKitchen(${orderId})"]`);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
+    fetch('/restaurant/kiosk-send/' + orderId, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.message || 'Error');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-utensils"></i> Enviar a Cocina'; }
+        }
+    })
+    .catch(err => {
+        alert('Error: ' + err.message);
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-utensils"></i> Enviar a Cocina'; }
+    });
+}
+
+function cancelKioskOrder(orderId) {
+    if (!confirm('¿Anular este pedido?')) return;
+
+    fetch('/restaurant/orders/' + orderId + '/cancel', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Pedido anulado');
+            location.reload();
+        } else if (data.requires_admin) {
+            var pwd = prompt('Se requiere contraseña de administrador:');
+            if (pwd) {
+                fetch('/restaurant/orders/' + orderId + '/cancel', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ admin_password: pwd })
+                })
+                .then(r => r.json())
+                .then(d2 => {
+                    if (d2.success) { alert('Pedido anulado'); location.reload(); }
+                    else { alert(d2.message || 'Error'); }
+                })
+                .catch(err => alert('Error: ' + err.message));
+            }
+        } else {
+            alert(data.message || 'Error');
+        }
+    })
+    .catch(err => alert('Error: ' + err.message));
+}
 
 function chargeKioskOrder(orderId, total) {
     currentChargeOrderId = orderId;
@@ -209,5 +341,13 @@ function selectChargeCustomer(id, nombre) {
     document.getElementById('chargeCustomerSearch').value = nombre;
     document.getElementById('chargeCustomerDropdown').style.display = 'none';
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const search = document.getElementById('chargeCustomerSearch');
+    if (search) {
+        search.addEventListener('input', function(e) { searchChargeCustomers(e.target.value); });
+        search.addEventListener('blur', function() { setTimeout(function() { document.getElementById('chargeCustomerDropdown').style.display = 'none'; }, 200); });
+    }
+});
 </script>
 @endpush

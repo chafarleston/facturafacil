@@ -33,7 +33,7 @@ class AutoPedidoController extends Controller
                 ->get();
         });
 
-        return view('autopedido.index', compact('products', 'categories'));
+        return view('autopedido.index', compact('products', 'categories', 'companyId'));
     }
 
     public function confirmOrder(Request $request)
@@ -49,6 +49,14 @@ class AutoPedidoController extends Controller
             return response()->json(['success' => false, 'message' => 'Carrito vacío']);
         }
 
+        $cashRegister = \App\Models\CashRegister::where('company_id', $companyId)
+            ->where('estado', 'ABIERTA')
+            ->first();
+
+        if (!$cashRegister) {
+            return response()->json(['success' => false, 'message' => 'No hay caja abierta. No se puede realizar el pedido.']);
+        }
+
         $kioskoTable = RestaurantTable::where('company_id', $companyId)
             ->where('is_for_kiosko', true)
             ->first();
@@ -61,7 +69,7 @@ class AutoPedidoController extends Controller
             'company_id' => $companyId,
             'table_id' => $kioskoTable->id,
             'user_id' => null,
-            'order_number' => RestaurantOrder::generateOrderNumber(),
+            'order_number' => RestaurantOrder::generateKioskoOrderNumber($companyId),
             'status' => 'PENDING_PAYMENT',
             'order_type' => 'kiosko',
         ]);
@@ -82,6 +90,8 @@ class AutoPedidoController extends Controller
                 'unit_price' => $unitPrice,
                 'total' => $unitPrice * $qty,
                 'kitchen_status' => 'PENDING',
+                'notes' => $item['notes'] ?? null,
+                'auxiliary_items' => $item['auxiliary_items'] ?? null,
                 'kds_destination' => $product->kds_destination ?? 'cocina',
             ]);
             $total += $unitPrice * $qty;

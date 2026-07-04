@@ -150,6 +150,7 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     Route::get('/restaurant', [RestaurantController::class, 'index'])->name('restaurant.index');
     Route::get('/restaurant/kiosk-orders', [RestaurantController::class, 'kioskOrders'])->name('restaurant.kioskOrders');
     Route::post('/restaurant/kiosk-charge/{orderId}', [RestaurantController::class, 'chargeKioskOrder'])->name('restaurant.kioskCharge');
+    Route::post('/restaurant/kiosk-send/{orderId}', [RestaurantController::class, 'kioskSendToKitchen'])->name('restaurant.kioskSend');
     Route::get('/restaurant/mode', [RestaurantController::class, 'modeIndex'])->name('restaurant.mode');
     Route::get('/restaurant/kitchen', [RestaurantController::class, 'kitchenIndex'])->name('restaurant.kitchen');
     Route::get('/restaurant/kitchen/cocina', function () { return redirect('/restaurant/kitchen?kds=cocina'); })->name('restaurant.kitchen.cocina');

@@ -107,6 +107,32 @@ class RestaurantOrder extends Model
         return 'P-' . $date . '-' . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
 
+    public static function generateKioskoOrderNumber(?int $companyId = null): string
+    {
+        $companyId = $companyId ?? (auth()->check() ? auth()->user()->company_id : 1);
+        
+        $cashRegister = \App\Models\CashRegister::where('company_id', $companyId)
+            ->where('estado', 'ABIERTA')
+            ->first();
+
+        if (!$cashRegister) {
+            throw new \RuntimeException('No hay caja abierta');
+        }
+
+        $lastOrder = self::where('company_id', $companyId)
+            ->where('order_type', 'kiosko')
+            ->where('created_at', '>=', $cashRegister->fecha_apertura)
+            ->orderBy('id', 'desc')
+            ->first();
+        
+        $sequence = 1;
+        if ($lastOrder && preg_match('/^A-(\d+)$/', $lastOrder->order_number, $matches)) {
+            $sequence = intval($matches[1]) + 1;
+        }
+        
+        return 'A-' . str_pad($sequence, 3, '0', STR_PAD_LEFT);
+    }
+
     public function statusLabel(): string
     {
         return match($this->status) {
