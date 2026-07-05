@@ -238,7 +238,18 @@ class ProductController extends Controller
         $categoriesCreated = 0;
         $errors = [];
         $categoryCache = [];
-        $autoCodeStart = $this->getNextProductCode($request->company_id);
+        $dbMaxNum = $this->getNextProductCode($request->company_id);
+        $fileMaxNum = 0;
+        if ($colCodigo !== null) {
+            foreach ($rows as $row) {
+                $c = trim($row[$colCodigo] ?? '');
+                if (preg_match('/^PROD(\d+)$/', strtoupper($c), $m)) {
+                    $num = intval($m[1]);
+                    if ($num >= $fileMaxNum) $fileMaxNum = $num + 1;
+                }
+            }
+        }
+        $autoCodeStart = max($dbMaxNum, $fileMaxNum);
 
         foreach ($rows as $i => $row) {
             if (empty($row[$colDescripcion] ?? '')) continue;
@@ -258,7 +269,8 @@ class ProductController extends Controller
                     })->first();
 
                 if ($existing && $existing->codigo === $codigo) {
-                    $newCode = 'PROD' . str_pad($this->getNextProductCode($request->company_id), 5, '0', STR_PAD_LEFT);
+                    $newCode = 'PROD' . str_pad($autoCodeStart, 5, '0', STR_PAD_LEFT);
+                    $autoCodeStart++;
                     $codigo = $newCode;
                 } elseif ($existing) {
                     $skipped++;
@@ -373,6 +385,21 @@ class ProductController extends Controller
         $errorCount = 0;
         $warningCount = 0;
 
+        // Find the highest PROD code between DB and the uploaded file
+        $dbMaxNum = $this->getNextProductCode($request->company_id);
+        $fileMaxNum = 0;
+        $colCodigo = $colMap['codigo'];
+        foreach ($rows as $row) {
+            if ($colCodigo !== null) {
+                $c = trim($row[$colCodigo] ?? '');
+                if (preg_match('/^PROD(\d+)$/', strtoupper($c), $m)) {
+                    $num = intval($m[1]);
+                    if ($num >= $fileMaxNum) $fileMaxNum = $num + 1;
+                }
+            }
+        }
+        $nextAutoCode = max($dbMaxNum, $fileMaxNum);
+
         foreach ($rows as $i => $row) {
             $descripcion = trim($row[$colDescripcion] ?? '');
             if (empty($descripcion)) {
@@ -422,7 +449,8 @@ class ProductController extends Controller
             $productExists = Product::where('company_id', $request->company_id)
                 ->where('codigo', $codigo)->exists();
             if (!empty($codigo) && $productExists) {
-                $newCode = 'PROD' . str_pad($this->getNextProductCode($request->company_id), 5, '0', STR_PAD_LEFT);
+                $newCode = 'PROD' . str_pad($nextAutoCode, 5, '0', STR_PAD_LEFT);
+                $nextAutoCode++;
                 $warnings[] = "Código '$codigo' ya existe, se usará '$newCode'";
                 $codigo = $newCode;
             }
