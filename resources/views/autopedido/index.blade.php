@@ -14,7 +14,7 @@
         .search-input { flex: 1; padding: 14px 16px; font-size: 18px; border: 2px solid #ddd; border-radius: 10px; outline: none; }
         .search-input:focus { border-color: #e94560; }
         .search-btn { padding: 14px 20px; background: #e94560; color: #fff; border: none; border-radius: 10px; font-size: 18px; cursor: pointer; }
-        .categories { display: flex; gap: 8px; padding: 10px 15px; overflow-x: auto; background: #fff; border-bottom: 1px solid #eee; white-space: nowrap; }
+        .categories { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 15px; background: #fff; border-bottom: 1px solid #eee; justify-content: center; }
         .cat-btn { padding: 10px 20px; border: 2px solid #ddd; border-radius: 25px; background: #fff; font-size: 16px; cursor: pointer; transition: all .2s; }
         .cat-btn.active { background: #e94560; color: #fff; border-color: #e94560; }
         .products { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; padding: 15px; padding-bottom: 100px; }
