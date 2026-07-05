@@ -2332,6 +2332,102 @@ Comportamiento de .catch() según contexto:
 - Acciones del usuario → catch con showError() o alert() (feedback visual)
 ```
 
+### 20.17 Modal "Solo Consumo" en Cobro de Restaurante
+
+```
+Propósito: Permitir al cajero agrupar todos los productos del pedido en una sola
+línea "POR CONSUMO" en el comprobante, usando el código SUNAT 90101801.
+
+Motivación: Algunos clientes no quieren que su boleta/factura muestre el detalle
+de cada producto (ej. "Ceviche", "Limonada", "Menú"), sino solo el total como
+"Por Consumo". Esto es común en restaurantes donde el consumo es general.
+
+Arquitectura:
+┌─────────────────────────────────────────┐
+│ Modal de Cobro (Restaurante)            │
+│ ┌─────────────────────────────────────┐ │
+│ │ Checkbox: ☐ Solo Consumo            │ │
+│ │          (todo como "POR CONSUMO")  │ │
+│ └─────────────────────────────────────┘ │
+└────────────────┬────────────────────────┘
+                 │ POST /restaurant/orders/{id}/charge? solo_consumo=true
+┌────────────────▼────────────────────────┐
+│ RestaurantController@chargeOrder         │
+│                                          │
+│ if (solo_consumo) {                      │
+│   InvoiceItem::create([                  │
+│     'codigo' => '90101801',             │
+│     'descripcion' => 'POR CONSUMO',     │
+│     'cantidad' => 1,                    │
+│     'precio_venta' => $total,           │
+│   ]);                                    │
+│ } else {                                 │
+│   // Lógica actual: 1 item por producto  │
+│ }                                        │
+│                                          │
+│ // Stock: siempre descuenta productos    │
+│ foreach ($items as $item) {              │
+│   $product->decrement('stock', ...);     │
+│ }                                        │
+└──────────────────────────────────────────┘
+
+Código SUNAT 90101801:
+- Corresponde a "Servicios de restaurante" en el catálogo de productos SUNAT
+- Se usa en el campo codigo del InvoiceItem para que el XML sea válido
+- Si se usara un código vacío o incorrecto, SUNAT rechazaría el comprobante
+- Solo aplica cuando el checkbox "Solo Consumo" está activo
+
+Stock:
+- El stock se descuenta SIEMPRE de los productos reales del pedido
+- El invoice item "POR CONSUMO" es solo para el comprobante fiscal
+- No afecta el inventario ni el cuadre de caja
+
+Cierre de caja:
+- No afectado. La caja registradora lee Invoice.total y métodos de pago,
+  no los items individuales. El total es el mismo.
+
+Cambios en el código:
+- Frontend (restaurant/index.blade.php): checkbox #chargeSoloConsumo en modal
+- JS processCharge(): envía solo_consumo: true/false en el body del fetch
+- RestaurantController@chargeOrder: cuando solo_consumo es true, crea un
+  solo InvoiceItem con código 90101801 y descripción "POR CONSUMO"
+```
+
+### 20.18 Corrección de Validación de Stock en Productos
+
+```
+Propósito: Corregir la validación del campo stock en el formulario de productos
+para que acepte decimales y no bloquee la edición cuando el stock es negativo.
+
+Problema original:
+- La columna stock en DB es decimal(12,4) (acepta decimales)
+- La validación PHP decía: 'stock' => 'nullable|integer|min:0'
+- integer no acepta decimales (5.5 falla)
+- min:0 no acepta negativos (-5.5 falla)
+- Al editar un producto con stock negativo, la validación fallaba aunque
+  el usuario estuviera editando otro campo como codigo_sunat
+
+Solución:
+1. store (creación): 'stock' => 'nullable|numeric'
+   - numeric acepta enteros y decimales
+   - Se eliminó min:0 para permitir stock negativo si es necesario
+2. update (edición): se eliminó stock de la validación
+   - El stock no se puede modificar manualmente al editar
+   - Se controla mediante compras, consumos internos y ventas
+3. Edit view: campo stock readonly (fondo gris, no editable)
+   - El usuario ve el stock actual pero no puede cambiarlo
+4. Create view: step="0.01" en lugar de min="0"
+   - Permite ingresar decimales al crear el producto
+
+Justificación:
+- La primera vez que se crea el producto se puede establecer un stock inicial
+- Después, el stock solo se modifica mediante transacciones:
+  - Compra (purchase): incrementa stock
+  - Consumo interno (stock-output): decrementa stock
+  - Venta (invoice/pos): decrementa stock
+- No es buena práctica permitir edición manual del stock
+```
+
 ---
 
 ## 21. Solución de Problemas Comunes (Actualizado)
@@ -2364,6 +2460,10 @@ Comportamiento de .catch() según contexto:
 | Modal de cobro en kiosk-orders no funciona | HTML del modal faltaba en la vista | Agregar charge-overlay en kiosk-orders.blade.php |
 | Numeración kiosko no se reinicia | generateKioskoOrderNumber() usaba today() | Cambiar a contar desde fecha_apertura de caja abierta |
 | Kiosko permite pedidos sin caja abierta | Falta validación en confirmOrder() | Verificar CashRegister ABIERTA antes de crear pedido |
+| Stock validation falla con decimales | Validación usaba integer pero DB es decimal | Cambiar a nullable\|numeric |
+| Producto con stock negativo no se puede editar | min:0 en validación de update | Eliminar stock de validación de update |
+| SUNAT rechaza XML con "Por Consumo" | Código de producto incorrecto | Usar código 90101801 (servicios restaurante) |
+| Tildes y ñ se ven como caracteres extraños en ticket | Texto enviado como UTF-8 a impresora CP850 | Usar getEscPos() que convierte a CP850 vía utf8ToCp850() |
 
 ---
 
