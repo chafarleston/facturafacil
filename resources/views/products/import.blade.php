@@ -29,7 +29,7 @@
             </p>
         </div>
 
-        <form method="POST" action="{{ route('products.import.store') }}" enctype="multipart/form-data">
+        <form method="POST" action="{{ route('products.import.preview') }}" enctype="multipart/form-data">
             @csrf
             <input type="hidden" name="company_id" value="{{ $companyId }}">
             
@@ -48,7 +48,7 @@
             <div class="mt-3">
                 <a href="{{ route('products.index', ['company_id' => $companyId]) }}" class="btn btn-secondary">Cancelar</a>
                 <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-upload"></i> Importar Productos
+                    <i class="fas fa-eye"></i> Previsualizar
                 </button>
             </div>
         </form>

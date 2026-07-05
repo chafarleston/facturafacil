@@ -75,6 +75,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/products/export', [ProductController::class, 'export'])->name('products.export');
         Route::get('/products/import', [ProductController::class, 'importForm'])->name('products.import.form');
         Route::post('/products/import', [ProductController::class, 'importStore'])->name('products.import.store');
+        Route::post('/products/import-preview', [ProductController::class, 'previewImport'])->name('products.import.preview');
         Route::get('/products/import/template', [ProductController::class, 'downloadTemplate'])->name('products.import.template');
         Route::post('/products/{product}/duplicate', [ProductController::class, 'duplicate'])->name('products.duplicate');
         Route::resource('products', ProductController::class);

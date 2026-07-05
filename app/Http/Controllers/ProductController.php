@@ -182,32 +182,52 @@ class ProductController extends Controller
     public function importStore(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv',
             'company_id' => 'required|exists:companies,id',
         ]);
 
-        $file = $request->file('file');
-        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file->getPathname());
-        $sheet = $spreadsheet->getActiveSheet();
-        $rows = $sheet->toArray();
-
-        if (count($rows) < 2) {
-            return back()->with('error', 'El archivo debe contener al menos una fila de datos');
+        $tmpFile = $request->input('tmp_file');
+        if ($tmpFile) {
+            $tmpPath = storage_path('app/tmp/' . basename($tmpFile));
+            if (!file_exists($tmpPath)) {
+                return back()->with('error', 'El archivo temporal no existe. Vuelva a subir el archivo.');
+            }
+            $data = json_decode(file_get_contents($tmpPath), true);
+            $rows = $data['rows'] ?? [];
+            $colMap = $data['colMap'] ?? [];
+            @unlink($tmpPath);
+        } else {
+            $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv']);
+            $file = $request->file('file');
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file->getPathname());
+            $sheet = $spreadsheet->getActiveSheet();
+            $rows = $sheet->toArray();
+            $header = array_map('trim', $rows[0]);
+            $headerLower = array_map('strtolower', $header);
+            $rows = array_slice($rows, 1);
+            $colMap = [
+                'codigo' => $this->findColumn($headerLower, ['codigo', 'codigo_interno', 'code']),
+                'codigo_barras' => $this->findColumn($headerLower, ['codigo_barras', 'barras', 'barcode', 'ean']),
+                'descripcion' => $this->findColumn($headerLower, ['descripcion', 'descripcion', 'nombre', 'name', 'producto', 'detalle']),
+                'precio' => $this->findColumn($headerLower, ['precio', 'price', 'pvp', 'precio_venta']),
+                'stock' => $this->findColumn($headerLower, ['stock', 'cantidad', 'quantity']),
+                'tipo_afectacion' => $this->findColumn($headerLower, ['tipo_afectacion', 'tipo_igv', 'afectacion']),
+                'umedida' => $this->findColumn($headerLower, ['umedida', 'unidad', 'uom', 'medida']),
+                'categoria' => $this->findColumn($headerLower, ['categoria', 'category', 'categoría']),
+                'codigo_sunat' => $this->findColumn($headerLower, ['codigo_sunat', 'sunat', 'sunat_code']),
+                'kds_destination' => $this->findColumn($headerLower, ['kds_destination', 'kds', 'destino_kds']),
+            ];
         }
 
-        $header = array_map('trim', $rows[0]);
-        $headerLower = array_map('strtolower', $header);
-
-        $colCodigo = $this->findColumn($headerLower, ['codigo', 'codigo_interno', 'code']);
-        $colCodigoBarras = $this->findColumn($headerLower, ['codigo_barras', 'barras', 'barcode', 'ean']);
-        $colDescripcion = $this->findColumn($headerLower, ['descripcion', 'descripcion', 'nombre', 'name', 'producto', 'detalle']);
-        $colPrecio = $this->findColumn($headerLower, ['precio', 'price', 'pvp', 'precio_venta']);
-        $colStock = $this->findColumn($headerLower, ['stock', 'cantidad', 'quantity']);
-        $colTipoAfectacion = $this->findColumn($headerLower, ['tipo_afectacion', 'tipo_igv', 'afectacion']);
-        $colUndMedida = $this->findColumn($headerLower, ['umedida', 'unidad', 'uom', 'medida']);
-        $colCategoria = $this->findColumn($headerLower, ['categoria', 'category', 'categoría']);
-        $colCodigoSunat = $this->findColumn($headerLower, ['codigo_sunat', 'sunat', 'sunat_code']);
-        $colKdsDest = $this->findColumn($headerLower, ['kds_destination', 'kds', 'destino_kds']);
+        $colDescripcion = $colMap['descripcion'];
+        $colCodigo = $colMap['codigo'];
+        $colCodigoBarras = $colMap['codigo_barras'];
+        $colPrecio = $colMap['precio'];
+        $colStock = $colMap['stock'];
+        $colTipoAfectacion = $colMap['tipo_afectacion'];
+        $colUndMedida = $colMap['umedida'];
+        $colCategoria = $colMap['categoria'];
+        $colCodigoSunat = $colMap['codigo_sunat'];
+        $colKdsDest = $colMap['kds_destination'];
 
         if ($colDescripcion === null) {
             return back()->with('error', 'No se encontró la columna "descripcion" en el archivo');
@@ -217,27 +237,21 @@ class ProductController extends Controller
         $skipped = 0;
         $categoriesCreated = 0;
         $errors = [];
-
         $categoryCache = [];
+        $autoCodeStart = $this->getNextProductCode($request->company_id);
 
-        for ($i = 1; $i < count($rows); $i++) {
-            $row = $rows[$i];
-            if (empty($row[$colDescripcion])) {
-                continue;
-            }
+        foreach ($rows as $i => $row) {
+            if (empty($row[$colDescripcion] ?? '')) continue;
 
             try {
                 $codigo = $colCodigo !== null ? trim($row[$colCodigo] ?? '') : '';
                 if (empty($codigo)) {
-                    static $autoCodeStart = null;
-                    if ($autoCodeStart === null) {
-                        $autoCodeStart = $this->getNextProductCode($request->company_id);
-                    }
-                    $codigo = 'PROD' . str_pad($autoCodeStart + $i, 5, '0', STR_PAD_LEFT);
+                    $codigo = 'PROD' . str_pad($autoCodeStart, 5, '0', STR_PAD_LEFT);
+                    $autoCodeStart++;
                 }
 
                 $descripcion = trim($row[$colDescripcion] ?? '');
-                
+
                 $existing = Product::where('company_id', $request->company_id)
                     ->where(function($q) use ($codigo, $descripcion) {
                         $q->where('codigo', $codigo)->orWhere('descripcion', $descripcion);
@@ -248,23 +262,19 @@ class ProductController extends Controller
                     continue;
                 }
 
-                $precio = $colPrecio !== null ? floatval($row[$colPrecio] ?? 0) : 0;
+                $precio = $colPrecio !== null ? floatval(str_replace(',', '.', preg_replace('/[^0-9.,]/', '', $row[$colPrecio] ?? '0'))) : 0;
                 $stock = $colStock !== null ? intval($row[$colStock] ?? 0) : 0;
 
                 $tipoAfectacion = 'GRA';
                 if ($colTipoAfectacion !== null) {
                     $val = strtoupper(trim($row[$colTipoAfectacion] ?? ''));
-                    if (in_array($val, ['GRA', 'EXO', 'INA', 'EXE'])) {
-                        $tipoAfectacion = $val;
-                    }
+                    if (in_array($val, ['GRA', 'EXO', 'INA', 'EXE'])) $tipoAfectacion = $val;
                 }
 
                 $umedida = 'NIU';
                 if ($colUndMedida !== null) {
                     $val = strtoupper(trim($row[$colUndMedida] ?? ''));
-                    if (in_array($val, ['NIU', 'KGM', 'GRM', 'LTR', 'MLT', 'MTK', 'MTQ', 'HR', 'D', 'TNE', 'BX', 'PK'])) {
-                        $umedida = $val;
-                    }
+                    if (in_array($val, ['NIU', 'KGM', 'GRM', 'LTR', 'MLT', 'MTK', 'MTQ', 'HR', 'D', 'TNE', 'BX', 'PK'])) $umedida = $val;
                 }
 
                 $categoryId = null;
@@ -272,23 +282,15 @@ class ProductController extends Controller
                     $categoryName = trim($row[$colCategoria] ?? '');
                     if (!empty($categoryName)) {
                         $categoryKey = strtoupper($categoryName);
-                        
                         if (isset($categoryCache[$categoryKey])) {
                             $categoryId = $categoryCache[$categoryKey];
                         } else {
                             $category = Category::where('company_id', $request->company_id)
-                                ->where('nombre', $categoryName)
-                                ->first();
-                            
+                                ->where('nombre', $categoryName)->first();
                             if (!$category) {
-                                $category = Category::create([
-                                    'company_id' => $request->company_id,
-                                    'nombre' => $categoryName,
-                                    'estado' => 'ACT',
-                                ]);
+                                $category = Category::create(['company_id' => $request->company_id, 'nombre' => $categoryName, 'estado' => 'ACT']);
                                 $categoriesCreated++;
                             }
-                            
                             $categoryId = $category->id;
                             $categoryCache[$categoryKey] = $categoryId;
                         }
@@ -313,20 +315,149 @@ class ProductController extends Controller
 
                 $created++;
             } catch (\Exception $e) {
-                $errors[] = 'Fila ' . ($i + 1) . ': ' . $e->getMessage();
+                $errors[] = 'Fila ' . ($i + 2) . ': ' . $e->getMessage();
             }
         }
 
         $msg = "Importación completada: {$created} productos creados, {$skipped} omitidos (ya existen)";
-        if ($categoriesCreated > 0) {
-            $msg .= ", {$categoriesCreated} categorías creadas";
-        }
-        if (!empty($errors)) {
-            $msg .= '. Errores: ' . implode('; ', array_slice($errors, 0, 5));
-        }
+        if ($categoriesCreated > 0) $msg .= ", {$categoriesCreated} categorías creadas";
+        if (!empty($errors)) $msg .= '. Errores: ' . implode('; ', array_slice($errors, 0, 5));
 
         return redirect()->route('products.index', ['company_id' => $request->company_id])
             ->with('success', $msg);
+    }
+
+    public function previewImport(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv',
+            'company_id' => 'required|exists:companies,id',
+        ]);
+
+        $file = $request->file('file');
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file->getPathname());
+        $sheet = $spreadsheet->getActiveSheet();
+        $allRows = $sheet->toArray();
+
+        if (count($allRows) < 2) {
+            return back()->with('error', 'El archivo debe contener al menos una fila de datos');
+        }
+
+        $header = array_map('trim', $allRows[0]);
+        $headerLower = array_map('strtolower', $header);
+        $rows = array_slice($allRows, 1);
+
+        $colMap = [
+            'codigo' => $this->findColumn($headerLower, ['codigo', 'codigo_interno', 'code']),
+            'codigo_barras' => $this->findColumn($headerLower, ['codigo_barras', 'barras', 'barcode', 'ean']),
+            'descripcion' => $this->findColumn($headerLower, ['descripcion', 'descripcion', 'nombre', 'name', 'producto', 'detalle']),
+            'precio' => $this->findColumn($headerLower, ['precio', 'price', 'pvp', 'precio_venta']),
+            'stock' => $this->findColumn($headerLower, ['stock', 'cantidad', 'quantity']),
+            'tipo_afectacion' => $this->findColumn($headerLower, ['tipo_afectacion', 'tipo_igv', 'afectacion']),
+            'umedida' => $this->findColumn($headerLower, ['umedida', 'unidad', 'uom', 'medida']),
+            'categoria' => $this->findColumn($headerLower, ['categoria', 'category', 'categoría']),
+            'codigo_sunat' => $this->findColumn($headerLower, ['codigo_sunat', 'sunat', 'sunat_code']),
+            'kds_destination' => $this->findColumn($headerLower, ['kds_destination', 'kds', 'destino_kds']),
+        ];
+
+        $colDescripcion = $colMap['descripcion'];
+        if ($colDescripcion === null) {
+            return back()->with('error', 'No se encontró la columna "descripcion" en el archivo');
+        }
+
+        $previewRows = [];
+        $validCount = 0;
+        $errorCount = 0;
+        $warningCount = 0;
+
+        foreach ($rows as $i => $row) {
+            $descripcion = trim($row[$colDescripcion] ?? '');
+            if (empty($descripcion)) {
+                $errorCount++;
+                $previewRows[] = ['row' => $i + 2, 'status' => 'error', 'message' => 'Descripción requerida'];
+                continue;
+            }
+
+            $codigo = $colMap['codigo'] !== null ? trim($row[$colMap['codigo']] ?? '') : '';
+            $precioStr = $colMap['precio'] !== null ? trim($row[$colMap['precio']] ?? '') : '';
+            $stockStr = $colMap['stock'] !== null ? trim($row[$colMap['stock']] ?? '') : '';
+            $tipo = $colMap['tipo_afectacion'] !== null ? strtoupper(trim($row[$colMap['tipo_afectacion']] ?? '')) : '';
+            $umedida = $colMap['umedida'] !== null ? strtoupper(trim($row[$colMap['umedida']] ?? '')) : '';
+            $codSunat = $colMap['codigo_sunat'] !== null ? trim($row[$colMap['codigo_sunat']] ?? '') : '';
+            $cat = $colMap['categoria'] !== null ? trim($row[$colMap['categoria']] ?? '') : '';
+            $kds = $colMap['kds_destination'] !== null ? trim($row[$colMap['kds_destination']] ?? '') : '';
+            $barras = $colMap['codigo_barras'] !== null ? trim($row[$colMap['codigo_barras']] ?? '') : '';
+
+            $warnings = [];
+
+            $precioVal = $colMap['precio'] !== null ? floatval(str_replace(',', '.', preg_replace('/[^0-9.,]/', '', $precioStr))) : 0;
+            if (!empty($precioStr) && $precioVal == 0 && preg_match('/[0-9]/', $precioStr)) {
+                $warnings[] = 'Precio inválido';
+            }
+
+            $stockVal = $colMap['stock'] !== null ? intval(preg_replace('/[^0-9]/', '', $stockStr)) : 0;
+
+            if (!empty($tipo) && !in_array($tipo, ['GRA', 'EXO', 'INA', 'EXE'])) {
+                $warnings[] = "Tipo '$tipo' inválido, se usará GRA";
+            }
+            $umedidasValidas = ['NIU', 'KGM', 'GRM', 'LTR', 'MLT', 'MTK', 'MTQ', 'HR', 'D', 'TNE', 'BX', 'PK'];
+            if (!empty($umedida) && !in_array($umedida, $umedidasValidas)) {
+                $warnings[] = "U.Medida '$umedida' inválida, se usará NIU";
+            }
+            if (!empty($codSunat) && strlen($codSunat) !== 8) {
+                $warnings[] = "Código SUNAT debe tener 8 dígitos";
+            }
+            $kdsValidos = ['cocina', 'cocina2', 'bar'];
+            if (!empty($kds) && !in_array($kds, $kdsValidos)) {
+                $warnings[] = "Destino KDS '$kds' inválido, se usará cocina";
+            }
+
+            $productExists = Product::where('company_id', $request->company_id)
+                ->where('codigo', $codigo)->exists();
+            if (!empty($codigo) && $productExists) {
+                $warnings[] = "Código '$codigo' ya existe, se saltará";
+            }
+
+            $status = count($warnings) > 0 ? 'warning' : 'valid';
+            if ($status === 'warning') $warningCount++;
+            else $validCount++;
+
+            $previewRows[] = [
+                'row' => $i + 2,
+                'codigo' => $codigo ?: '(auto)',
+                'codigo_barras' => $barras,
+                'descripcion' => $descripcion,
+                'precio' => $precioVal,
+                'stock' => $stockVal,
+                'tipo_afectacion' => $tipo ?: 'GRA',
+                'umedida' => $umedida ?: 'NIU',
+                'categoria' => $cat,
+                'codigo_sunat' => $codSunat,
+                'kds_destination' => $kds ?: 'cocina',
+                'status' => $status,
+                'message' => implode('; ', $warnings),
+            ];
+        }
+
+        // Save parsed data to temp file
+        $tmpDir = storage_path('app/tmp');
+        if (!is_dir($tmpDir)) mkdir($tmpDir, 0755, true);
+        $tmpName = 'import_' . uniqid() . '.json';
+        file_put_contents($tmpDir . '/' . $tmpName, json_encode([
+            'rows' => $rows,
+            'colMap' => $colMap,
+            'header' => $header,
+        ]));
+
+        return view('products.preview', [
+            'companyId' => $request->company_id,
+            'previewRows' => $previewRows,
+            'total' => count($previewRows),
+            'validCount' => $validCount,
+            'errorCount' => $errorCount,
+            'warningCount' => $warningCount,
+            'tmpFile' => $tmpName,
+        ]);
     }
 
     private function findColumn(array $header, array $names): ?int
