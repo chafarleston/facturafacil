@@ -257,7 +257,10 @@ class ProductController extends Controller
                         $q->where('codigo', $codigo)->orWhere('descripcion', $descripcion);
                     })->first();
 
-                if ($existing) {
+                if ($existing && $existing->codigo === $codigo) {
+                    $newCode = 'PROD' . str_pad($this->getNextProductCode($request->company_id), 5, '0', STR_PAD_LEFT);
+                    $codigo = $newCode;
+                } elseif ($existing) {
                     $skipped++;
                     continue;
                 }
@@ -389,13 +392,20 @@ class ProductController extends Controller
             $barras = $colMap['codigo_barras'] !== null ? trim($row[$colMap['codigo_barras']] ?? '') : '';
 
             $warnings = [];
+            $errors = [];
 
             $precioVal = $colMap['precio'] !== null ? floatval(str_replace(',', '.', preg_replace('/[^0-9.,]/', '', $precioStr))) : 0;
-            if (!empty($precioStr) && $precioVal == 0 && preg_match('/[0-9]/', $precioStr)) {
-                $warnings[] = 'Precio inválido';
+            if (empty($precioStr) || $precioVal <= 0) {
+                $errors[] = 'Precio requerido o inválido';
             }
 
             $stockVal = $colMap['stock'] !== null ? intval(preg_replace('/[^0-9]/', '', $stockStr)) : 0;
+
+            if (empty($codSunat)) {
+                $errors[] = 'Código SUNAT requerido';
+            } elseif (strlen($codSunat) !== 8) {
+                $errors[] = 'Código SUNAT debe tener 8 dígitos';
+            }
 
             if (!empty($tipo) && !in_array($tipo, ['GRA', 'EXO', 'INA', 'EXE'])) {
                 $warnings[] = "Tipo '$tipo' inválido, se usará GRA";
@@ -403,9 +413,6 @@ class ProductController extends Controller
             $umedidasValidas = ['NIU', 'KGM', 'GRM', 'LTR', 'MLT', 'MTK', 'MTQ', 'HR', 'D', 'TNE', 'BX', 'PK'];
             if (!empty($umedida) && !in_array($umedida, $umedidasValidas)) {
                 $warnings[] = "U.Medida '$umedida' inválida, se usará NIU";
-            }
-            if (!empty($codSunat) && strlen($codSunat) !== 8) {
-                $warnings[] = "Código SUNAT debe tener 8 dígitos";
             }
             $kdsValidos = ['cocina', 'cocina2', 'bar'];
             if (!empty($kds) && !in_array($kds, $kdsValidos)) {
@@ -415,12 +422,24 @@ class ProductController extends Controller
             $productExists = Product::where('company_id', $request->company_id)
                 ->where('codigo', $codigo)->exists();
             if (!empty($codigo) && $productExists) {
-                $warnings[] = "Código '$codigo' ya existe, se saltará";
+                $newCode = 'PROD' . str_pad($this->getNextProductCode($request->company_id), 5, '0', STR_PAD_LEFT);
+                $warnings[] = "Código '$codigo' ya existe, se usará '$newCode'";
+                $codigo = $newCode;
             }
 
-            $status = count($warnings) > 0 ? 'warning' : 'valid';
-            if ($status === 'warning') $warningCount++;
-            else $validCount++;
+            if (count($errors) > 0) {
+                $status = 'error';
+                $errorCount++;
+                $message = implode('; ', $errors);
+            } elseif (count($warnings) > 0) {
+                $status = 'warning';
+                $warningCount++;
+                $message = implode('; ', $warnings);
+            } else {
+                $status = 'valid';
+                $validCount++;
+                $message = '';
+            }
 
             $previewRows[] = [
                 'row' => $i + 2,
