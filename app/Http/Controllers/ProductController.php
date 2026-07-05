@@ -58,7 +58,7 @@ class ProductController extends Controller
             'tipo_afectacion' => 'required|in:GRA,EXO,INA,EXE',
             'igv_percent' => 'nullable|numeric|min:0|max:100',
             'category_id' => 'nullable|exists:categories,id',
-            'stock' => 'nullable|integer|min:0',
+            'stock' => 'nullable|numeric',
             'kds_destination' => 'nullable|in:cocina,cocina2,bar',
         ]);
 
@@ -118,7 +118,6 @@ class ProductController extends Controller
             'tipo_afectacion' => 'required|in:GRA,EXO,INA,EXE',
             'igv_percent' => 'nullable|numeric|min:0|max:100',
             'category_id' => 'nullable|exists:categories,id',
-            'stock' => 'nullable|integer|min:0',
             'kds_destination' => 'nullable|in:cocina,cocina2,bar',
         ]);
 

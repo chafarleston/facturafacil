@@ -52,7 +52,7 @@
                 <div class="col-md-2">
                     <div class="form-group">
                         <label>Stock Inicial</label>
-                        <input type="number" name="stock" class="form-control" value="0" min="0" placeholder="0">
+                        <input type="number" name="stock" class="form-control" value="0" step="0.01" placeholder="0">
                     </div>
                 </div>
                 <div class="col-md-2">

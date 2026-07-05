@@ -58,7 +58,7 @@
                 <div class="col-md-2">
                     <div class="form-group">
                         <label>Stock</label>
-                        <input type="number" name="stock" class="form-control" value="{{ $product->stock ?? 0 }}" min="0">
+                        <input type="number" name="stock" class="form-control" value="{{ $product->stock ?? 0 }}" readonly style="background:#e9ecef;">
                     </div>
                 </div>
                 <div class="col-md-3">
