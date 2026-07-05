@@ -675,6 +675,13 @@
             <div style="flex:1;"><label>Serie</label><input type="text" id="chargeSerieDisplay" class="form-control form-control-sm" readonly disabled></div>
         </div>
         <div style="margin-bottom:8px;">
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px;">
+                <input type="checkbox" id="chargeSoloConsumo">
+                Solo Consumo
+                <small style="color:#888;">(todo como "POR CONSUMO")</small>
+            </label>
+        </div>
+        <div style="margin-bottom:8px;">
             <label style="font-size:12px; font-weight:600; color:#444;">Referencia</label>
             <input type="text" id="chargeReference" class="form-control form-control-sm" placeholder="N° operación (opcional)">
         </div>
@@ -1886,6 +1893,7 @@ function processCharge() {
                 return arr;
             })(),
             reference: document.getElementById('chargeReference').value,
+            solo_consumo: document.getElementById('chargeSoloConsumo').checked,
         })
     })
     .then(res => res.json())

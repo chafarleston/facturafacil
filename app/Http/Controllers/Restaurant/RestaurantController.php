@@ -908,6 +908,7 @@ class RestaurantController extends Controller
             $documentType = $request->document_type ?? 'NV';
             $payments = $request->payments ?? [['method' => 'EFECTIVO', 'amount' => $total]];
             $reference = $request->reference ?? '';
+            $soloConsumo = $request->boolean('solo_consumo');
             
             $serie = Serie::where('company_id', $companyId)
                 ->where('tipo_documento', $documentType)
@@ -959,24 +960,43 @@ class RestaurantController extends Controller
             $productIds = $items->pluck('product_id')->toArray();
             $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
 
-            foreach ($items as $item) {
-                $unitBase = $item->unit_price / (1 + $igvRate);
-                $itemIgv = $item->unit_price - $unitBase;
-                
+            if ($soloConsumo) {
                 InvoiceItem::create([
                     'invoice_id' => $invoice->id,
-                    'product_id' => $item->product_id,
-                    'codigo' => $item->product_code ?? '',
-                    'descripcion' => $item->product_name,
-                    'cantidad' => $item->quantity,
+                    'product_id' => null,
+                    'codigo' => '90101801',
+                    'descripcion' => 'POR CONSUMO',
+                    'cantidad' => 1,
                     'umedida' => 'NIU',
-                    'precio_unitario' => round($unitBase, 2),
-                    'precio_venta' => $item->unit_price * $item->quantity,
-                    'igv' => round($itemIgv, 2),
+                    'precio_unitario' => round($subtotal, 2),
+                    'precio_venta' => round($total, 2),
+                    'igv' => round($igv, 2),
                     'tipo_afectacion' => '10',
                     'igv_percent' => round($igvRate * 100, 2),
                 ]);
-                
+            } else {
+                foreach ($items as $item) {
+                    $unitBase = $item->unit_price / (1 + $igvRate);
+                    $itemIgv = $item->unit_price - $unitBase;
+                    
+                    InvoiceItem::create([
+                        'invoice_id' => $invoice->id,
+                        'product_id' => $item->product_id,
+                        'codigo' => $item->product_code ?? '',
+                        'descripcion' => $item->product_name,
+                        'cantidad' => $item->quantity,
+                        'umedida' => 'NIU',
+                        'precio_unitario' => round($unitBase, 2),
+                        'precio_venta' => $item->unit_price * $item->quantity,
+                        'igv' => round($itemIgv, 2),
+                        'tipo_afectacion' => '10',
+                        'igv_percent' => round($igvRate * 100, 2),
+                    ]);
+                }
+            }
+
+            // Stock: always deduct from real products regardless of solo_consumo
+            foreach ($items as $item) {
                 $product = $products->get($item->product_id);
                 if ($product) {
                     $product->decrement('stock', $item->quantity);
