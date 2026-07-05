@@ -26,7 +26,7 @@ class PrintService
             \Log::warning('No hay impresora configurada para autopedido');
             return;
         }
-        $text = PlainTextTicket::autoPedidoTicket($order);
+        $text = PlainTextTicket::autoPedidoTicket($order, 'escpos');
         $this->queuePrint($printer, $text, 'autopedido', get_class($order), $order->id);
         $this->processQueue();
     }

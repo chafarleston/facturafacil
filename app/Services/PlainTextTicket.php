@@ -132,7 +132,7 @@ class PlainTextTicket
         }
         $t->separator();
         $t->text('Hora: ' . now()->format('H:i:s'));
-        return $t->getText();
+        return $format === 'escpos' ? $t->getEscPos() : $t->getText();
     }
     
     public static function prebillTicket($order, string $format = 'text'): string
@@ -150,7 +150,7 @@ class PlainTextTicket
         $igvPercent = $order->igvPercent ?? 18;
         $t->twoColumns('IGV (' . $igvPercent . '%):', 'S/ ' . number_format($order->igv ?? 0, 2));
         $t->twoColumns('TOTAL:', 'S/ ' . number_format($order->total, 2));
-        return $t->getText();
+        return $format === 'escpos' ? $t->getEscPos() : $t->getText();
     }
     
     public static function invoiceTicket($invoice, string $format = 'text'): string
@@ -169,7 +169,7 @@ class PlainTextTicket
         $t->text('Anulado por: ' . ($item->cancelledBy->name ?? 'Usuario'));
         $t->blank();
         $t->separator();
-        return $t->getText();
+        return $format === 'escpos' ? $t->getEscPos() : $t->getText();
     }
     
     public static function cancelNotificationGrouped($order, string $format = 'text', string $dest = 'cocina'): string
@@ -180,7 +180,7 @@ class PlainTextTicket
         foreach ($items as $item) {
             $t->itemLine(number_format($item->quantity, 0), $item->product_name, '');
         }
-        return $t->getText();
+        return $format === 'escpos' ? $t->getEscPos() : $t->getText();
     }
     
     protected function buildCancelHeader($order, string $dest = 'cocina'): void
@@ -188,7 +188,11 @@ class PlainTextTicket
         $this->center('*** ANULACIÓN COCINA ***', '*');
         $this->blank();
         $this->text('Pedido: ' . $order->order_number);
-        if ($order->table) $this->text('Mesa: ' . $order->table->name);
+        if ($order->order_type === 'kiosko') {
+            $this->text('Autoservicio');
+        } elseif ($order->table) {
+            $this->text('Mesa: ' . $order->table->name);
+        }
         $this->text('Hora: ' . now()->format('H:i:s'));
     }
     
@@ -212,14 +216,14 @@ class PlainTextTicket
         $t->separator();
         $t->text('Monto apertura: S/ ' . number_format($cashregister->monto_apertura ?? 0, 2));
         $t->text('Monto cierre: S/ ' . number_format($cashregister->monto_cierre ?? 0, 2));
-        return $t->getText();
+        return $format === 'escpos' ? $t->getEscPos() : $t->getText();
     }
 
-    public static function autoPedidoTicket($order): string
+    public static function autoPedidoTicket($order, string $format = 'text'): string
     {
-        $t = new self('text');
+        $t = new self($format);
         $t->center('*** AUTO PEDIDO ***', '*');
-        $t->center('FacturaFácil');
+        $t->center('FacturaFacil');
         $t->blank();
         $t->center($order->order_number, ' ');
         $t->separator();
@@ -230,12 +234,12 @@ class PlainTextTicket
         $t->twoColumns('TOTAL:', 'S/ ' . number_format($order->total, 2));
         $t->blank();
         $t->center('Pase a Caja para pagar');
-        $t->center('¡Gracias por su pedido!');
+        $t->center('Gracias por su pedido!');
         $t->blank();
         $t->text('Fecha: ' . now()->format('d/m/Y H:i'));
-        return $t->getText();
+        return $format === 'escpos' ? $t->getEscPos() : $t->getText();
     }
-    
+
     protected function buildKitchenHeader($order, string $dest = 'cocina'): void
     {
         $label = match($dest) { 'cocina2' => 'COCINA 2', 'bar' => 'BAR', default => 'COCINA' };
