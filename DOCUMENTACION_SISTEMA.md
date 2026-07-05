@@ -1907,25 +1907,37 @@ Arquitectura:
 │  http://facturafacil.test/autopedido │
 │  - Sin autenticación                 │
 │  - Interfaz touch-friendly           │
+│  - Modal de producto con:            │
+│    · Cantidad (+/−)                  │
+│    · Nota para cocina                │
+│    · Elementos Auxiliares (chips)    │
 └──────────┬───────────────────────────┘
            │ HTTP
 ┌──────────▼───────────────────────────┐
 │  AutoPedidoController                 │
+│  - Valida caja abierta               │
 │  - Busca mesa virtual "Kiosko"       │
 │    (is_for_kiosko=true)              │
 │  - Crea RestaurantOrder              │
 │    table_id=id_mesa_kiosko           │
 │    status=PENDING_PAYMENT            │
 │    order_type=kiosko                 │
+│    order_number=A-001 (por caja)     │
 │  - Imprime ticket con N° y total     │
 └──────────┬───────────────────────────┘
            │
 ┌──────────▼───────────────────────────┐
 │  Cajero (vista pendientes)           │
-│  - Ve pedidos kiosko                 │
-│  - Abre modal de cobro (existente)   │
+│  - Ve pedidos kiosko pendientes      │
+│    y en cocina (2 estados)           │
+│  - Botón "Enviar a Cocina"           │
+│    (cambia status a SENT_TO_KITCHEN) │
+│  - Botón "Cobrar" (solo si ya        │
+│    fue enviado a cocina)             │
+│  - Botón "🗑️ Eliminar"               │
+│    (pide admin si ya fue enviado)    │
+│  - Modal de cobro (existente)        │
 │    Yape / Plin / Efectivo / Tarjeta  │
-│  - Cobra → envía pedido a cocina     │
 │  - Genera Invoice con                │
 │    order_source='kiosko'             │
 └──────────┬───────────────────────────┘
@@ -1935,27 +1947,48 @@ Arquitectura:
 │  - Sección separada "KIOSKO"         │
 │  - Badge morado con etiqueta KIOSKO  │
 │  - Prepara y deja en mostrador       │
+│  - Muestra elementos auxiliares      │
+│    en cada item (+ Mayonesa)         │
 └──────────────────────────────────────┘
 
 Flujo completo:
 1. Cliente llega al kiosko en la entrada
 2. Navega por categorías o busca productos con el teclado virtual
-3. Agrega productos al carrito (puede modificar cantidades)
-4. Confirma pedido → se imprime ticket con N° de pedido y total a pagar
-5. Cliente se acerca a caja con su ticket
-6. Cajero abre la vista de pedidos kiosko pendientes
-7. Cajero hace clic en "Cobrar" → se abre el mismo modal de cobro de mesas
-8. Cajero cobra (Yape/Plin/Efectivo/Tarjeta, pagos mixtos)
-9. Al cobrar, el pedido se envía automáticamente a cocina
-10. KDS muestra pedido en sección "KIOSKO" separada de mesas
-11. Cocina prepara y deja en mostrador de recogida
+3. Toca un producto → se abre modal con:
+   - Cantidad ajustable (+/−)
+   - Nota para cocina (opcional, con teclado virtual)
+   - Elementos Auxiliares (chips seleccionables)
+4. Toca "Agregar al Carrito" → producto se agrega con sus opciones
+5. Repite hasta completar el pedido
+6. Confirma pedido → se imprime ticket con N° de pedido y total a pagar
+7. Cliente se acerca a caja con su ticket
+8. Cajero abre la vista de pedidos kiosko pendientes
+9. Cajero hace clic en "Enviar a Cocina" → cocina comienza a preparar
+10. Cajero hace clic en "Cobrar" → se abre modal de cobro
+11. Cajero cobra (Yape/Plin/Efectivo/Tarjeta, pagos mixtos)
+12. KDS muestra pedido en sección "KIOSKO" separada de mesas
+13. Cocina prepara y deja en mostrador de recogida
 
 Rutas:
 - GET  /autopedido                → Interfaz táctil del kiosko (pública)
 - POST /autopedido/confirm        → Confirma el pedido (pública)
 - GET  /autopedido/success/{id}   → Pantalla de éxito con N° y total
-- GET  /cajero/kiosk-orders       → Lista de pedidos pendientes (auth)
+- GET  /restaurant/kiosk-orders   → Lista de pedidos pendientes y en cocina (auth)
+- POST /restaurant/kiosk-send/{id}   → Enviar pedido a cocina (auth)
 - POST /restaurant/kiosk-charge/{id} → Cobrar pedido kiosko (auth)
+
+Numeración A-001:
+- Se genera con RestaurantOrder::generateKioskoOrderNumber($companyId)
+- La numeración está ligada a la caja abierta actual
+- Busca el último pedido kiosko creado después de la fecha_apertura de la caja
+- Al cerrar caja y abrir una nueva, la secuencia se reinicia a A-001
+- Si no hay caja abierta, lanza excepción (el controlador valida antes)
+
+Validación de caja abierta:
+- confirmOrder() verifica que exista una caja con estado 'ABIERTA'
+- Si no hay caja abierta, responde con error:
+  "No hay caja abierta. No se puede realizar el pedido."
+- Todas las ventas del sistema dependen de caja abierta
 
 Mesa virtual Kiosko:
 - Se almacena en restaurant_tables con is_for_kiosko=true
@@ -1967,18 +2000,45 @@ Mesa virtual Kiosko:
 - Esto evita tener table_id=NULL en restaurant_orders
 - Se crea una por cada empresa (si tiene al menos un piso)
 
+Teclado virtual:
+- Se usa tanto para el campo de búsqueda como para la nota en el modal
+- Variable global activeInput apunta al input/textarea activo
+- openKeyboard(input) recibe el elemento, lo asigna a activeInput y muestra el teclado
+- pressKey(k) escribe en activeInput.value usando selectionStart/selectionEnd
+- pressBackspace() borra el caracter anterior a selectionStart
+- closeKeyboard() limpia activeInput y oculta el teclado
+- Si activeInput.id === 'searchInput' se ejecuta applyFilters()
+
+Modal de producto:
+- Se abre al tocar un producto en la cuadrícula
+- Muestra nombre, precio, control de cantidad con +/−
+- Textarea para nota de cocina (con teclado virtual)
+- Chips de elementos auxiliares cargados vía GET /auxiliary-items/list
+- Botón "Agregar al Carrito" → guarda en cart[] con notes y auxiliary_items
+- Si mismo producto + mismas notas + mismos auxiliares → incrementa cantidad
+- Botón "Cancelar" → cierra modal sin agregar
+
+Ticket de autopedido:
+- No usar emojis (🧾, ✅) en tickets ESC/POS. Las impresoras usan CP850
+  que distorsiona los emojis UTF-8. Usar texto plano como "A-001".
+
 Código del controlador (AutoPedidoController):
 ```php
-// confirmOrder() - crea el pedido e imprime ticket
+// confirmOrder() - valida caja abierta, crea pedido, imprime ticket
+$cashRegister = CashRegister::where('company_id', $companyId)
+    ->where('estado', 'ABIERTA')->first();
+if (!$cashRegister) {
+    return response()->json(['success' => false, 'message' => 'No hay caja abierta']);
+}
+
 $kioskoTable = RestaurantTable::where('company_id', $companyId)
-    ->where('is_for_kiosko', true)
-    ->first();
+    ->where('is_for_kiosko', true)->first();
 
 $order = RestaurantOrder::create([
     'company_id' => $companyId,
     'table_id' => $kioskoTable->id,
     'user_id' => null,
-    'order_number' => RestaurantOrder::generateOrderNumber(),
+    'order_number' => RestaurantOrder::generateKioskoOrderNumber($companyId),
     'status' => 'PENDING_PAYMENT',
     'order_type' => 'kiosko',
 ]);
@@ -1993,15 +2053,15 @@ foreach ($items as $item) {
         'unit_price' => $product->precio,
         'total' => $product->precio * $item['quantity'],
         'kitchen_status' => 'PENDING',
+        'notes' => $item['notes'] ?? null,
+        'auxiliary_items' => $item['auxiliary_items'] ?? null,
         'kds_destination' => $product->kds_destination ?? 'cocina',
     ]);
 }
-
-// Imprime ticket en impresora "autopedido"
 $printService->printAutoPedidoTicket($order);
 ```
 
-Código del cobro (chargeKioskOrder):
+Código del envío a cocina (kioskSendToKitchen):
 ```php
 // 1. Marcar items como enviados a cocina
 foreach ($order->items as $item) {
@@ -2011,15 +2071,27 @@ foreach ($order->items as $item) {
 }
 $order->status = 'SENT_TO_KITCHEN';
 $order->save();
+event(new KitchenOrderUpdated(...));
 
 // 2. Imprimir ticket de cocina si modo 80mm
 if ($company->order_mode === 'print') {
-    $printService->printKitchenOrder($order);
+    $printService->printKitchenOrder($order->fresh(), $order->items);
+}
+```
+
+Código del cobro (chargeKioskOrder):
+```php
+// 1. Validar que el pedido ya fue enviado a cocina
+if ($order->status !== 'SENT_TO_KITCHEN') {
+    return response()->json(['success' => false, 'message' => 'Debe enviar el pedido a cocina antes de cobrar']);
 }
 
-// 3. Cobrar (reutiliza chargeOrder() existente)
-$invoice = Invoice::create(['order_source' => 'kiosko', ...]);
-// → La invoice queda marcada como kiosko para el reporte de caja
+// 2. Cobrar (reutiliza chargeOrder() existente)
+$request->merge(['document_type' => $request->document_type ?? 'NV']);
+$chargeResult = $this->chargeOrder($request, $orderId);
+
+// 3. Marcar invoice como kiosko
+Invoice::where('id', $data['invoice_id'])->update(['order_source' => 'kiosko']);
 ```
 
 Ticket de autopedido (PlainTextTicket::autoPedidoTicket):
@@ -2027,7 +2099,7 @@ Ticket de autopedido (PlainTextTicket::autoPedidoTicket):
          *** AUTO PEDIDO ***
            FacturaFácil
 
-            🧾 P-001
+             A-001
 
     2x Hamburguesa     S/ 24.00
     1x Papas Fritas    S/  8.00
@@ -2040,9 +2112,10 @@ Ticket de autopedido (PlainTextTicket::autoPedidoTicket):
 
 Características de la interfaz táctil:
 - Teclado virtual en pantalla (sin necesidad de teclado físico)
+- Modal de producto con cantidad, nota y elementos auxiliares
 - Categorías como tabs (Todos, Entradas, Principales, Bebidas...)
-- Productos en grid con precio y botón de agregar
-- Carrito con modificación de cantidades (+/−) y eliminar
+- Productos en grid con precio
+- Carrito con modificación de cantidades (+/−), nota y auxiliares
 - Barra inferior fija con total y botón confirmar
 - Sin necesidad de autenticación (público)
 
@@ -2053,9 +2126,13 @@ Reporte de cierre de caja:
 
 Vista del cajero:
 - Menú: Restaurante → Pedidos Kiosko
-- Tabla con: N° Pedido, Items, Total, Fecha, Botón "Cobrar"
-- El modal de cobro es el mismo que se usa para cobrar mesas
-  (Yape/Plin/Efectivo/Tarjeta, pagos mixtos)
+- Tabla con: N° Pedido, Items, Total, Estado, Fecha, Acción
+- Estados: "Pendiente" (PENDING_PAYMENT) y "En Cocina" (SENT_TO_KITCHEN)
+- Botones contextuales según estado:
+  - Pendiente → "Enviar a Cocina" + 🗑️
+  - En Cocina → "Cobrar" + 🗑️
+- Modal de cobro incluido en la misma vista (no depende del index del restaurante)
+- Búsqueda de clientes con dropdown
 
 KDS (Cocina):
 - Los pedidos kiosko aparecen en una sección separada "KIOSKO — Autoservicio"
@@ -2063,17 +2140,29 @@ KDS (Cocina):
 - Cada tarjeta kiosko tiene badge morado "KIOSKO" en el número de orden
 - El borde izquierdo de las tarjetas kiosko es morado (#9c27b0) vs rojo (mozo)
 - La sección KIOSKO tiene un contador (ej. Autoservicio (3))
+- Muestra "Autoservicio" en lugar de "Mesa: Kiosko"
+- Icono de carrito (fa-shopping-cart) en vez de silla (fa-chair)
+- Muestra elementos auxiliares en cada item (+ Mayonesa, Kétchup)
 - El cocinero sabe que los pedidos kiosko van al mostrador de recogida
+
+Eliminación de pedidos:
+- Botón 🗑️ disponible en ambos estados
+- PENDING_PAYMENT → cancela directo (sin contraseña)
+- SENT_TO_KITCHEN → requiere contraseña de administrador
+- Usa el mismo endpoint cancelOrder() del RestaurantController
+- Si se cancela con items en cocina, imprime notificación de cancelación
+  en modo print
 
 Archivos involucrados:
 - app/Http/Controllers/AutoPedidoController.php          → Controlador del kiosko
-- app/Http/Controllers/Restaurant/RestaurantController.php → chargeKioskOrder, kioskOrders, getKitchenOrders
-- app/Models/RestaurantTable.php                          → scope excludeKiosko, is_for_kiosko en fillable
+- app/Http/Controllers/Restaurant/RestaurantController.php → kioskOrders, kioskSendToKitchen, chargeKioskOrder
+- app/Models/RestaurantOrder.php                          → generateKioskoOrderNumber()
+- app/Models/RestaurantTable.php                          → scope excludeKiosko, is_for_kiosko
 - app/Services/PlainTextTicket.php                        → Ticket de autopedido
 - app/Services/PrintService.php                           → Impresión ticket
-- resources/views/autopedido/index.blade.php              → Interfaz táctil
+- resources/views/autopedido/index.blade.php              → Interfaz táctil con modal
 - resources/views/autopedido/success.blade.php            → Confirmación
-- resources/views/restaurant/kiosk-orders.blade.php       → Vista del cajero
+- resources/views/restaurant/kiosk-orders.blade.php       → Vista del cajero con modal de cobro
 - resources/views/restaurant/kds.blade.php                 → KDS con secciones separadas
 - database/migrations/2026_06_19_000001_add_order_source_and_type.php
 - database/migrations/2026_07_02_202441_add_is_for_kiosko_to_restaurant_tables.php
@@ -2084,11 +2173,134 @@ Impresora (slot):
 - Se crea automáticamente con PrinterSeeder o manualmente
 - Imprime ticket de 80mm con N° de pedido y total
 - Método: PrintService::printAutoPedidoTicket($order)
+- Importante: este método debe llamar a $this->processQueue() después de
+  $this->queuePrint() (bug corregido: faltaba la llamada)
 - Formato: PlainTextTicket::autoPedidoTicket($order)
+- No usar emojis en el ticket (CP850 no los soporta)
 
 Menú del sistema:
 - Restaurante → Pedidos Kiosko (lista para cajero)
 - Restaurante → 🖥️ Kiosko (Pantalla) (abre /autopedido en nueva pestaña)
+```
+
+### 20.14 Elementos Auxiliares (Chips en Productos)
+
+```
+Propósito: Permitir agregar acompañamientos a los productos del pedido
+(ej. Mayonesa, Kétchup, Mostaza, Ají) tanto en el POS del restaurante
+como en el kiosko de autopedido.
+
+Base de datos:
+- Tabla: auxiliary_items
+- Columnas: id, company_id, name, status (ACTIVO/INACTIVO), timestamps
+- Los items activos se cargan vía scopeActive()
+
+Modelo: App\Models\AuxiliaryItem
+- $fillable: company_id, name, status
+- belongsTo(Company::class)
+- scopeActive(): where('status', 'ACTIVO')
+
+Almacenamiento en pedidos:
+- Columna auxiliary_items (JSON, nullable) en restaurant_order_items
+- Cast en modelo: $casts = ['auxiliary_items' => 'array']
+- Se almacena como array de IDs: [1, 3, 5]
+- fillable incluye 'auxiliary_items'
+
+CRUD:
+- Controlador: AuxiliaryItemController
+- Rutas: Route::resource('auxiliary-items', ...) dentro del grupo admin
+- Vista index con tabla de items y botones crear/editar/eliminar
+- Vista create/edit con campos: nombre, estado
+- Ruta pública GET /auxiliary-items/list?company_id=X → JSON con items activos
+
+Integración en POS (restaurant/index.blade.php):
+- En el modal de cantidad (qtyOverlay), sección "Elementos Auxiliares:"
+- Chips cliqueables con toggle .selected
+- CSS: .aux-chip (borde gris) / .aux-chip.selected (fondo rojo e94560)
+- loadAuxiliaryItems(): fetch a /auxiliary-items/list, crea chips
+- confirmAddItem(): recoge IDs seleccionados, envía como auxiliary_items[]
+- En el renderizado del pedido: muestra nombres via window._auxNames cache
+
+Integración en Kiosko (autopedido/index.blade.php):
+- En el modal de producto, sección con chips
+- loadModalAuxItems(): misma mecánica que POS
+- confirmAddToCart(): almacena en cart[] como c.auxiliary_items
+
+Visualización en KDS (kds.blade.php):
+- getKitchenOrders() resuelve nombres via AuxiliaryItem::whereIn()
+- Retorna auxiliary_items (IDs) y auxiliary_names (nombres) por item
+- Renderizado: + Mayonesa, Kétchup en color morado (#ce93d8)
+
+Visualización en comanda impresa (PlainTextTicket::kitchenTicket):
+- Si item->auxiliary_items tiene IDs, resuelve nombres y los imprime
+- Formato: "    + Mayonesa, Kétchup"
+
+Archivos involucrados:
+- app/Models/AuxiliaryItem.php
+- app/Http/Controllers/AuxiliaryItemController.php
+- database/migrations/...create_auxiliary_items_table.php
+- database/migrations/...add_auxiliary_items_to_restaurant_order_items.php
+- resources/views/auxiliary-items/{index,create,edit}.blade.php
+- resources/views/restaurant/index.blade.php (modal + render)
+- resources/views/restaurant/kds.blade.php (render en KDS)
+- resources/views/autopedido/index.blade.php (modal kiosko)
+- app/Http/Controllers/Restaurant/RestaurantController.php (getKitchenOrders)
+- app/Services/PlainTextTicket.php (kitchenTicket)
+```
+
+### 20.15 Mejoras en Impresión Térmica
+
+```
+Propósito: Correcciones y mejoras en el sistema de impresión térmica ESC/POS.
+
+1. processQueue() faltante en printAutoPedidoTicket:
+   - Todos los métodos de PrintService que llaman a queuePrint() deben llamar
+     también a processQueue() para enviar el trabajo al print server.
+   - printKitchenOrder(), printPrebill(), printInvoice() ya lo hacían.
+   - printAutoPedidoTicket() NO lo hacía → el ticket quedaba en cola "pending"
+     sin enviarse nunca al print server.
+   - Corregido agregando $this->processQueue() al final del método.
+
+2. Filtro $dests roto en kitchenTicket:
+   - PlainTextTicket::kitchenTicket() tenía un filtro que saltaba TODOS los items:
+     $dests = ['cocina'=>'', 'cocina2'=>'', 'bar'=>''];
+     $dest = $item->kds_destination ?? 'cocina';
+     if (isset($dests[$dest]) && $dest !== $dests[$dest]) continue;
+   - $dests[$dest] siempre es '' (string vacío), por lo que $dest !== ''
+     siempre es true para cualquier destino válido → todos los items se saltaban.
+   - Como printKitchenOrder() ya agrupa items por destino antes de llamar
+     a kitchenTicket(), el filtro era redundante. Se eliminó.
+
+3. Emojis no compatibles con CP850:
+   - Las impresoras térmicas usan encoding CP850.
+   - Los emojis UTF-8 (🧾, ✅, ❌, etc.) se imprimen como caracteres
+     basura (ðŸ§¾, etc.).
+   - Usar siempre texto plano en tickets ESC/POS.
+
+4. Proceso de impresión:
+   queuePrint() → crea PrintJob (status=pending)
+   processQueue() → envía al print server vía HTTP
+   PrintServer Node.js → recibe y envía a la impresora
+   Reintentos: hasta 3 intentos para jobs failed
+```
+
+### 20.16 Actualización de Greenter v5.3.0
+
+```
+Propósito: Actualización de los paquetes Greenter de v5.2.0 a v5.3.0.
+
+Paquetes actualizados:
+- greenter/core: v5.2.0 → v5.3.0
+- greenter/lite: v5.2.0 → v5.3.0 (sin cambios, mismo commit)
+- greenter/ws: v5.2.0 → v5.3.0 (sin cambios, mismo commit)
+- greenter/xml: v5.2.0 → v5.3.0
+
+Cambios reales (solo en core + xml):
+- Agregado campo "fecha de entrega de bienes" (fechaEntrega) al modelo
+  Shipment de guía de remisión.
+- Template XML despatch2022.xml.twig actualizado con 5 líneas nuevas.
+- No hay cambios en APIs existentes. Actualización segura.
+- Comando: composer update greenter/core greenter/lite greenter/ws greenter/xml
 ```
 
 ### 20.13 Mejoras en Polling y Fetch
@@ -2119,164 +2331,6 @@ Comportamiento de .catch() según contexto:
 - Polling automático → catch silencioso (no molestar al usuario)
 - Acciones del usuario → catch con showError() o alert() (feedback visual)
 ```
-Propósito: Pantalla táctil en la entrada del local para que los clientes realicen sus
-pedidos directamente, sin intervención del mozo.
-
-Arquitectura:
-┌──────────────────────────────────────┐
-│  Pantalla Táctil (Entrada)           │
-│  http://facturafacil.test/autopedido │
-│  - Sin autenticación                 │
-│  - Interfaz touch-friendly           │
-└──────────┬───────────────────────────┘
-           │ HTTP
-┌──────────▼───────────────────────────┐
-│  AutoPedidoController                 │
-│  - Crea RestaurantOrder              │
-│    status=PENDING_PAYMENT            │
-│    order_type=kiosko                 │
-│  - No asigna mesa                    │
-│  - Imprime ticket con N° y total     │
-└──────────┬───────────────────────────┘
-           │
-┌──────────▼───────────────────────────┐
-│  Cajero (vista pendientes)           │
-│  - Ve pedidos kiosko                 │
-│  - Abre modal de cobro (existente)   │
-│    Yape / Plin / Efectivo / Tarjeta  │
-│  - Cobra → envía pedido a cocina     │
-│  - Genera Invoice con                │
-│    order_source='kiosko'             │
-└──────────┬───────────────────────────┘
-           │
-┌──────────▼───────────────────────────┐
-│  Cocina (KDS o Impresión 80mm)       │
-│  - Recibe pedido normalmente         │
-│  - Prepara y sirve                   │
-└──────────────────────────────────────┘
-
-Flujo completo:
-1. Cliente llega al kiosko en la entrada
-2. Navega por categorías o busca productos con el teclado virtual
-3. Agrega productos al carrito (puede modificar cantidades)
-4. Confirma pedido → se imprime ticket con N° de pedido y total a pagar
-5. Cliente se acerca a caja con su ticket
-6. Cajero abre la vista de pedidos kiosko pendientes
-7. Cajero hace clic en "Cobrar" → se abre el mismo modal de cobro de mesas
-8. Cajero cobra (Yape/Plin/Efectivo/Tarjeta, pagos mixtos)
-9. Al cobrar, el pedido se envía automáticamente a cocina (KDS o impresión 80mm)
-10. Cocina prepara el pedido
-
-Rutas:
-- GET  /autopedido                → Interfaz táctil del kiosko (pública)
-- POST /autopedido/confirm        → Confirma el pedido (pública)
-- GET  /autopedido/success/{id}   → Pantalla de éxito con N° y total
-- GET  /cajero/kiosk-orders       → Lista de pedidos pendientes (auth)
-- POST /restaurant/kiosk-charge/{id} → Cobrar pedido kiosko (auth)
-
-Código del controlador (AutoPedidoController):
-```php
-// confirmOrder() - crea el pedido e imprime ticket
-$order = RestaurantOrder::create([
-    'order_type' => 'kiosko',
-    'status' => 'PENDING_PAYMENT',
-    'order_number' => RestaurantOrder::generateOrderNumber(),
-]);
-
-foreach ($items as $item) {
-    $product = Product::find($item['product_id']);
-    RestaurantOrderItem::create([
-        'restaurant_order_id' => $order->id,
-        'product_id' => $product->id,
-        'product_name' => $product->descripcion,
-        'quantity' => $item['quantity'],
-        'unit_price' => $product->precio,
-        'total' => $product->precio * $item['quantity'],
-        'kitchen_status' => 'PENDING',
-        'kds_destination' => $product->kds_destination ?? 'cocina',
-    ]);
-}
-
-// Imprime ticket en impresora "autopedido"
-$printService->printAutoPedidoTicket($order);
-```
-
-Código del cobro (chargeKioskOrder):
-```php
-// 1. Marcar items como enviados a cocina
-foreach ($order->items as $item) {
-    $item->kitchen_status = 'SENT';
-    $item->sent_to_kitchen_at = now();
-    $item->save();
-}
-$order->status = 'SENT_TO_KITCHEN';
-$order->save();
-
-// 2. Imprimir ticket de cocina si modo 80mm
-if ($company->order_mode === 'print') {
-    $printService->printKitchenOrder($order);
-}
-
-// 3. Cobrar (reutiliza chargeOrder() existente)
-$invoice = Invoice::create(['order_source' => 'kiosko', ...]);
-// → La invoice queda marcada como kiosko para el reporte de caja
-```
-
-Ticket de autopedido (PlainTextTicket::autoPedidoTicket):
-```
-         *** AUTO PEDIDO ***
-           FacturaFácil
-
-            🧾 P-001
-
-    2x Hamburguesa     S/ 24.00
-    1x Papas Fritas    S/  8.00
-    --------------------------------
-    TOTAL:             S/ 32.00
-
-      Pase a Caja para pagar
-      ¡Gracias por su pedido!
-```
-
-Características de la interfaz táctil:
-- Teclado virtual en pantalla (sin necesidad de teclado físico)
-- Categorías como tabs (Todos, Entradas, Principales, Bebidas...)
-- Productos en grid con precio y botón de agregar
-- Carrito con modificación de cantidades (+/−) y eliminar
-- Barra inferior fija con total y botón confirmar
-- Sin necesidad de autenticación (público)
-
-Reporte de cierre de caja:
-- Los pedidos kiosko se muestran por separado en el resumen de caja
-- Se identifican con order_source='kiosko' en la tabla invoices
-- Aparece una tarjeta "Pedidos Kiosko" con conteo y total en S/
-
-Vista del cajero:
-- Menú: Restaurante → Pedidos Kiosko
-- Tabla con: N° Pedido, Items, Total, Fecha, Botón "Cobrar"
-- El modal de cobro es el mismo que se usa para cobrar mesas
-  (Yape/Plin/Efectivo/Tarjeta, pagos mixtos)
-
-Archivos involucrados:
-- app/Http/Controllers/AutoPedidoController.php      → Controlador del kiosko
-- app/Services/PlainTextTicket.php                    → Ticket de autopedido
-- app/Services/PrintService.php                       → Impresión ticket
-- resources/views/autopedido/index.blade.php          → Interfaz táctil
-- resources/views/autopedido/success.blade.php        → Confirmación
-- resources/views/restaurant/kiosk-orders.blade.php   → Vista del cajero
-- database/migrations/2026_06_19_000001_add_order_source_and_type.php
-
-Impresora (slot):
-- assigned_to: "autopedido"
-- Se crea automáticamente con PrinterSeeder o manualmente
-- Imprime ticket de 80mm con N° de pedido y total
-- Método: PrintService::printAutoPedidoTicket($order)
-- Formato: PlainTextTicket::autoPedidoTicket($order)
-
-Menú del sistema:
-- Restaurante → Pedidos Kiosko (lista para cajero)
-- Restaurante → 🖥️ Kiosko (Pantalla) (abre /autopedido en nueva pestaña)
-```
 
 ---
 
@@ -2304,6 +2358,12 @@ Menú del sistema:
 | Column 'status' no acepta PENDING_PAYMENT | ENUM no incluye el valor | Migración add_pending_payment_to_restaurant_orders_status |
 | Error de conexión al confirmar autopedido | table_id = null en FK NOT NULL | Mesa virtual Kiosko (is_for_kiosko=true) ahora provee table_id válido |
 | Fetch one-shot sin feedback al usuario | Falta .catch() | Agregar showError()/alert() en catch |
+| Ticket de autopedido no se imprime | printAutoPedidoTicket() no llama processQueue() | Agregar $this->processQueue() después de queuePrint() |
+| Comanda impresa sin productos | Filtro $dests roto en kitchenTicket() | Eliminar filtro redundante (printKitchenOrder ya agrupa) |
+| Caracteres extraños en ticket (ðŸ§¾) | Emoji no compatible con CP850 | Usar texto plano, no emojis |
+| Modal de cobro en kiosk-orders no funciona | HTML del modal faltaba en la vista | Agregar charge-overlay en kiosk-orders.blade.php |
+| Numeración kiosko no se reinicia | generateKioskoOrderNumber() usaba today() | Cambiar a contar desde fecha_apertura de caja abierta |
+| Kiosko permite pedidos sin caja abierta | Falta validación en confirmOrder() | Verificar CashRegister ABIERTA antes de crear pedido |
 
 ---
 
