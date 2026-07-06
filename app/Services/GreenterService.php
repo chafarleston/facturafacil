@@ -109,7 +109,7 @@ class GreenterService
             $greenterClient->setRznSocial($cd['razon_social']);
             if ($cd['direccion']) {
                 $clientAddress = new Address();
-                $clientAddress->setDireccion($client->direccion);
+                $clientAddress->setDireccion($cd['direccion']);
                 $greenterClient->setAddress($clientAddress);
             }
             $note->setClient($greenterClient);
@@ -241,6 +241,11 @@ class GreenterService
             ];
         }
         
+        // ND relacionada a Boleta debe ir por Resumen Diario
+        if ($invoice->tipo_documento === '03') {
+            return $this->sendNoteViaSummary($invoice, $company, '08', $motivo, $descripcion);
+        }
+        
         try {
             $this->setupSee($company);
         } catch (\Exception $e) {
@@ -295,7 +300,7 @@ class GreenterService
             $greenterClient->setRznSocial($cd['razon_social']);
             if ($cd['direccion']) {
                 $clientAddress = new Address();
-                $clientAddress->setDireccion($client->direccion);
+                $clientAddress->setDireccion($cd['direccion']);
                 $greenterClient->setAddress($clientAddress);
             }
             $note->setClient($greenterClient);
