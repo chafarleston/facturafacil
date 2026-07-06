@@ -36,14 +36,14 @@ class BackupController extends Controller
         $password = $db['password'];
 
         $command = sprintf(
-            '"%s" -h %s -P %s -u %s %s %s > "%s"',
+            '"%s" -h %s -P %s -u %s %s %s > %s',
             $this->findMysqldump(),
             escapeshellarg($host),
             escapeshellarg($port),
             escapeshellarg($username),
             $password ? '-p' . escapeshellarg($password) : '',
             escapeshellarg($database),
-            $path
+            escapeshellarg($path)
         );
 
         $output = null;

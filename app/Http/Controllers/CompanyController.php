@@ -104,7 +104,7 @@ if ($request->hasFile('certificado')) {
 
         // Use OpenSSL 1.1.1 CLI to verify password
         $opensslBin = 'C:\laragon\bin\git\mingw64\bin\openssl.exe';
-        $verifyCmd = "\"$opensslBin\" pkcs12 -in \"$tempPath\" -passin pass:$certPassword -noout 2>&1";
+        $verifyCmd = escapeshellarg($opensslBin) . ' pkcs12 -in ' . escapeshellarg($tempPath) . ' -passin pass:' . escapeshellarg($certPassword) . ' -noout 2>&1';
         exec($verifyCmd, $verifyOutput, $verifyExitCode);
 
         if ($verifyExitCode !== 0) {
@@ -121,7 +121,7 @@ if ($request->hasFile('certificado')) {
 
         // Extract PEM for PHP 8.4 / OpenSSL 3.0 compatibility
         $pemFullPath = storage_path('app/certificates/' . $pemFilename);
-        $extractCmd = "\"$opensslBin\" pkcs12 -in \"$tempPath\" -passin pass:$certPassword -out \"$pemFullPath\" -nodes 2>&1";
+        $extractCmd = escapeshellarg($opensslBin) . ' pkcs12 -in ' . escapeshellarg($tempPath) . ' -passin pass:' . escapeshellarg($certPassword) . ' -out ' . escapeshellarg($pemFullPath) . ' -nodes 2>&1';
         exec($extractCmd, $extractOutput, $extractExitCode);
 
         if ($extractExitCode === 0 && file_exists($pemFullPath)) {
@@ -157,7 +157,7 @@ if ($request->hasFile('certificado')) {
 
             // Use OpenSSL 1.1.1 CLI to verify password
             $opensslBin = 'C:\laragon\bin\git\mingw64\bin\openssl.exe';
-            $verifyCmd = "\"$opensslBin\" pkcs12 -in \"$tempPath\" -passin pass:$password -noout 2>&1";
+            $verifyCmd = escapeshellarg($opensslBin) . ' pkcs12 -in ' . escapeshellarg($tempPath) . ' -passin pass:' . escapeshellarg($password) . ' -noout 2>&1';
             exec($verifyCmd, $verifyOutput, $verifyExitCode);
 
             if ($verifyExitCode !== 0) {
@@ -173,7 +173,7 @@ if ($request->hasFile('certificado')) {
 
             // Extract PEM for PHP 8.4 / OpenSSL 3.0 compatibility
             $pemFullPath = storage_path('app/certificates/' . $pemFilename);
-            $extractCmd = "\"$opensslBin\" pkcs12 -in \"$tempPath\" -passin pass:$password -out \"$pemFullPath\" -nodes 2>&1";
+            $extractCmd = escapeshellarg($opensslBin) . ' pkcs12 -in ' . escapeshellarg($tempPath) . ' -passin pass:' . escapeshellarg($password) . ' -out ' . escapeshellarg($pemFullPath) . ' -nodes 2>&1';
             exec($extractCmd, $extractOutput, $extractExitCode);
 
             $company->update([
