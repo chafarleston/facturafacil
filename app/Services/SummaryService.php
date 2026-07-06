@@ -53,7 +53,7 @@ class SummaryService
         }
 
         $sunatUser = $company->soap_username ?? $company->ruc;
-        $sunatPassword = $company->soap_password ?? $password;
+        $sunatPassword = $company->soap_password ?? $company->certificado_password ?? '';
         $this->see->setClaveSOL($company->ruc, $sunatUser, $sunatPassword);
 
         if ($company->soap_type_id == 2) {
