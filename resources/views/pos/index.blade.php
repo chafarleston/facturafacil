@@ -630,14 +630,14 @@ function addToSale(productId) {
     const product = productsData.find(p => p.id === productId);
     if (!product) return;
     
-    if (product.stock <= 0) {
+    if (!product.is_composite && product.stock <= 0) {
         showError('Sin stock');
         return;
     }
     
     const existingItem = saleItems.find(item => item.id === productId);
     if (existingItem) {
-        if (existingItem.quantity < product.stock) {
+        if (product.is_composite || existingItem.quantity < product.stock) {
             existingItem.quantity++;
         } else {
             showError('Stock insuficiente');
@@ -649,7 +649,8 @@ function addToSale(productId) {
             name: product.descripcion,
             price: parseFloat(product.precio),
             quantity: 1,
-            stock: product.stock
+            stock: product.stock,
+            is_composite: product.is_composite || false
         });
     }
     
@@ -670,7 +671,7 @@ function decreaseQty(productId) {
 
 function increaseQty(productId) {
     const item = saleItems.find(item => item.id === productId);
-    if (item && item.quantity < item.stock) {
+    if (item && (item.is_composite || item.quantity < item.stock)) {
         item.quantity++;
         renderSaleItems();
     }

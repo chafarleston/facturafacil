@@ -159,7 +159,16 @@ class PosController extends Controller
             ]);
             
             if ($producto) {
-                $producto->decrement('stock', $item['quantity']);
+                if ($producto->is_composite) {
+                    foreach ($producto->components as $component) {
+                        $componentProduct = $component->component;
+                        if ($componentProduct) {
+                            $componentProduct->decrement('stock', $component->quantity * $item['quantity']);
+                        }
+                    }
+                } else {
+                    $producto->decrement('stock', $item['quantity']);
+                }
             }
         }
         

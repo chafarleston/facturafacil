@@ -11,6 +11,11 @@
         <div class="card-tools">
           <form method="GET" action="{{ route('products.index') }}" class="form-inline">
             <input type="hidden" name="company_id" value="{{ $companyId ?? null }}">
+            <select name="filter" class="form-control form-control-sm mr-1" style="width:auto;" onchange="this.form.submit()">
+              <option value="all" {{ ($filter ?? 'all') == 'all' ? 'selected' : '' }}>Todos</option>
+              <option value="simple" {{ ($filter ?? '') == 'simple' ? 'selected' : '' }}>Solo Simples</option>
+              <option value="composite" {{ ($filter ?? '') == 'composite' ? 'selected' : '' }}>Solo Compuestos</option>
+            </select>
             <select name="search_type" class="form-control form-control-sm mr-1" style="width:auto;" onchange="updateSearchPlaceholder(this)">
               <option value="descripcion" {{ request('search_type', 'descripcion') == 'descripcion' ? 'selected' : '' }}>Descripción</option>
               <option value="codigo" {{ request('search_type') == 'codigo' ? 'selected' : '' }}>Código</option>
@@ -32,6 +37,9 @@
           <a href="{{ route('products.create', ['company_id' => $companyId ?? null]) }}" class="btn btn-primary btn-sm ml-2">
             <i class="fas fa-plus"></i> Nuevo
           </a>
+          <a href="{{ route('products.composite.create', ['company_id' => $companyId ?? null]) }}" class="btn btn-warning btn-sm ml-1">
+            <i class="fas fa-boxes"></i> Producto Compuesto
+          </a>
           <a href="{{ route('products.import.form', ['company_id' => $companyId ?? null]) }}" class="btn btn-success btn-sm ml-1">
             <i class="fas fa-file-import"></i> Importar
           </a>
@@ -47,9 +55,11 @@
               <th>Código</th>
               <th>Cód. Barras</th>
               <th>Descripción</th>
+              <th>Tipo</th>
               <th>Categoría</th>
               <th>Precio</th>
               <th>Stock</th>
+              <th>Componentes</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -59,10 +69,19 @@
               <td>{{ $product->codigo }}</td>
               <td>{{ $product->codigo_barras ?? '-' }}</td>
               <td>{{ $product->descripcion }}</td>
+              <td>
+                @if($product->is_composite)
+                  <span class="badge badge-warning">Compuesto</span>
+                @else
+                  <span class="badge badge-info">Simple</span>
+                @endif
+              </td>
               <td>{{ $product->category->nombre ?? '-' }}</td>
               <td>S/ {{ number_format($product->precio, 2) }}</td>
               <td>
-                @if($product->stock < 0)
+                @if($product->is_composite)
+                  <span class="text-muted">-</span>
+                @elseif($product->stock < 0)
                   <span class="text-danger font-weight-bold">{{ $product->stock }}</span>
                 @elseif($product->stock == 0)
                   <span class="text-warning font-weight-bold">{{ $product->stock }}</span>
@@ -71,8 +90,19 @@
                 @endif
               </td>
               <td>
+                @if($product->is_composite)
+                  <span class="badge badge-secondary">{{ $product->components->count() }} prod.</span>
+                @else
+                  -
+                @endif
+              </td>
+              <td>
                 <a href="{{ route('products.show', $product) }}" class="btn btn-info btn-xs"><i class="fas fa-eye"></i></a>
-                <a href="{{ route('products.edit', $product) }}" class="btn btn-warning btn-xs"><i class="fas fa-edit"></i></a>
+                @if($product->is_composite)
+                  <a href="{{ route('products.composite.edit', $product) }}" class="btn btn-warning btn-xs"><i class="fas fa-edit"></i></a>
+                @else
+                  <a href="{{ route('products.edit', $product) }}" class="btn btn-warning btn-xs"><i class="fas fa-edit"></i></a>
+                @endif
                 <form action="{{ route('products.duplicate', $product) }}" method="POST" style="display:inline;">
                     @csrf
                     <button type="submit" class="btn btn-secondary btn-xs" title="Duplicar producto" onclick="return confirm('¿Duplicar este producto?')">
@@ -82,7 +112,7 @@
               </td>
             </tr>
             @empty
-            <tr><td colspan="8" class="text-center">No hay productos</td></tr>
+            <tr><td colspan="9" class="text-center">No hay productos</td></tr>
             @endforelse
           </tbody>
         </table>

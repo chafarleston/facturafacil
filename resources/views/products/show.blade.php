@@ -76,15 +76,19 @@
             </div>
             <div class="col-md-4">
                 <div class="info-box">
-                    <span class="info-box-icon {{ $product->stock < 0 ? 'bg-danger' : ($product->stock == 0 ? 'bg-warning' : 'bg-info') }}">
+                    <span class="info-box-icon {{ $product->is_composite ? 'bg-secondary' : ($product->stock < 0 ? 'bg-danger' : ($product->stock == 0 ? 'bg-warning' : 'bg-info')) }}">
                         <i class="fas fa-cubes"></i>
                     </span>
                     <div class="info-box-content">
                         <span class="info-box-text">Stock</span>
-                        <span class="info-box-number {{ $product->stock < 0 ? 'text-danger font-weight-bold' : '' }}">
-                            {{ $product->stock }}
-                            @if($product->stock < 0)
-                                <small class="text-muted">(Saldo negativo)</small>
+                        <span class="info-box-number">
+                            @if($product->is_composite)
+                                <span class="text-muted">N/A (Compuesto)</span>
+                            @else
+                                {{ $product->stock }}
+                                @if($product->stock < 0)
+                                    <small class="text-muted">(Saldo negativo)</small>
+                                @endif
                             @endif
                         </span>
                     </div>
@@ -105,13 +109,50 @@
                 </div>
             </div>
         </div>
+
+        @if($product->is_composite)
+        <hr>
+        <h5><i class="fas fa-puzzle-piece text-warning"></i> Componentes del Producto Compuesto</h5>
+        @if($product->components->count() > 0)
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Producto</th>
+                        <th>Código</th>
+                        <th>Cantidad</th>
+                        <th>Precio Unit.</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($product->components as $comp)
+                    <tr>
+                        <td>{{ $comp->component->descripcion ?? 'N/A' }}</td>
+                        <td>{{ $comp->component->codigo ?? '-' }}</td>
+                        <td>{{ $comp->quantity }}</td>
+                        <td>S/ {{ number_format($comp->component->precio ?? 0, 2) }}</td>
+                        <td>S/ {{ number_format(($comp->component->precio ?? 0) * $comp->quantity, 2) }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        @else
+        <p class="text-muted">Sin componentes</p>
+        @endif
+        @endif
     </div>
     <div class="card-footer d-flex justify-content-between">
         <div>
             @if($prev)
             <a href="{{ route('products.show', $prev) }}" class="btn btn-outline-primary"><i class="fas fa-chevron-left"></i> Anterior</a>
             @endif
-            <a href="{{ route('products.edit', $product) }}" class="btn btn-warning"><i class="fas fa-edit"></i> Editar</a>
+            @if($product->is_composite)
+              <a href="{{ route('products.composite.edit', $product) }}" class="btn btn-warning"><i class="fas fa-edit"></i> Editar</a>
+            @else
+              <a href="{{ route('products.edit', $product) }}" class="btn btn-warning"><i class="fas fa-edit"></i> Editar</a>
+            @endif
             <a href="{{ route('products.index') }}" class="btn btn-secondary">Volver</a>
             @if($next)
             <a href="{{ route('products.show', $next) }}" class="btn btn-outline-primary">Siguiente <i class="fas fa-chevron-right"></i></a>

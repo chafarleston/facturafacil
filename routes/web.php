@@ -79,6 +79,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/products/import/template', [ProductController::class, 'downloadTemplate'])->name('products.import.template');
         Route::post('/products/{product}/duplicate', [ProductController::class, 'duplicate'])->name('products.duplicate');
         Route::resource('products', ProductController::class);
+        Route::get('/products/composite/create', [ProductController::class, 'createComposite'])->name('products.composite.create');
+        Route::post('/products/composite/store', [ProductController::class, 'storeComposite'])->name('products.composite.store');
+        Route::get('/products/{product}/composite/edit', [ProductController::class, 'editComposite'])->name('products.composite.edit');
+        Route::put('/products/{product}/composite/update', [ProductController::class, 'updateComposite'])->name('products.composite.update');
         Route::resource('categories', CategoryController::class);
         Route::resource('suppliers', SupplierController::class);
         Route::resource('purchases', PurchaseController::class);

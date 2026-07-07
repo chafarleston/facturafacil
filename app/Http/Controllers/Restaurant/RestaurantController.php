@@ -999,7 +999,16 @@ class RestaurantController extends Controller
             foreach ($items as $item) {
                 $product = $products->get($item->product_id);
                 if ($product) {
-                    $product->decrement('stock', $item->quantity);
+                    if ($product->is_composite) {
+                        foreach ($product->components as $component) {
+                            $componentProduct = $component->component;
+                            if ($componentProduct) {
+                                $componentProduct->decrement('stock', $component->quantity * $item->quantity);
+                            }
+                        }
+                    } else {
+                        $product->decrement('stock', $item->quantity);
+                    }
                 }
             }
 

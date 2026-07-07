@@ -15,9 +15,12 @@ class ProductController extends Controller
         $companyId = $request->company_id ?? Company::first()->id;
         $search = $request->get('search');
         $searchType = $request->get('search_type', 'descripcion');
+        $filter = $request->get('filter', 'all');
         
         $products = Product::where('company_id', $companyId)
             ->where('estado', 'ACTIVO')
+            ->when($filter === 'simple', fn($q) => $q->where('is_composite', false))
+            ->when($filter === 'composite', fn($q) => $q->where('is_composite', true))
             ->when($search, function($q) use ($search, $searchType) {
                 if ($searchType === 'categoria') {
                     $q->whereHas('category', function($cq) use ($search) {
@@ -29,7 +32,7 @@ class ProductController extends Controller
             })
             ->paginate(15);
 
-        return view('products.index', compact('products', 'companyId'));
+        return view('products.index', compact('products', 'companyId', 'filter'));
     }
 
     public function create(Request $request)
@@ -170,6 +173,135 @@ class ProductController extends Controller
 
         return redirect()->route('products.edit', $duplicate)
             ->with('success', 'Producto duplicado correctamente. Revise los datos.');
+    }
+
+    public function createComposite(Request $request)
+    {
+        $companyId = $request->company_id ?? Company::first()->id;
+        $nextNumber = $this->getNextProductCode($companyId);
+        $codigo = 'PROD' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
+        
+        $categories = Category::where('company_id', $companyId)->whereIn('estado', ['ACTIVO', 'ACT'])->get();
+        
+        $availableProducts = Product::where('company_id', $companyId)
+            ->where('estado', 'ACTIVO')
+            ->where('is_composite', false)
+            ->get();
+        
+        return view('products.create_composite', compact('companyId', 'codigo', 'categories', 'availableProducts'));
+    }
+
+    public function storeComposite(Request $request)
+    {
+        $validated = $request->validate([
+            'company_id' => 'required|exists:companies,id',
+            'codigo' => 'required|max:50',
+            'codigo_barras' => 'nullable|max:50',
+            'descripcion' => 'required',
+            'codigo_sunat' => 'nullable|size:8',
+            'umedida_codigo' => 'nullable|size:3',
+            'precio' => 'required|numeric|min:0',
+            'tipo_afectacion' => 'required|in:GRA,EXO,INA,EXE',
+            'igv_percent' => 'nullable|numeric|min:0|max:100',
+            'category_id' => 'nullable|exists:categories,id',
+            'kds_destination' => 'nullable|in:cocina,cocina2,bar',
+            'components' => 'required|array|min:1',
+            'components.*.product_id' => 'required|exists:products,id',
+            'components.*.quantity' => 'required|numeric|min:0.01',
+        ]);
+
+        foreach ($request->components as $component) {
+            $componentProduct = Product::find($component['product_id']);
+            if ($componentProduct->is_composite) {
+                return back()->withErrors([
+                    'components' => 'Un producto compuesto no puede ser componente de otro producto compuesto.'
+                ])->withInput();
+            }
+        }
+
+        $validated['stock'] = 0;
+        $validated['is_composite'] = true;
+        $validated['umedida_codigo'] = $validated['umedida_codigo'] ?? 'NIU';
+        $validated['igv_percent'] = $validated['igv_percent'] ?? 18;
+
+        $product = Product::create($validated);
+
+        foreach ($request->components as $component) {
+            $product->components()->create([
+                'component_product_id' => $component['product_id'],
+                'quantity' => $component['quantity'],
+            ]);
+        }
+
+        Cache::forget('restaurant_products_' . $request->company_id);
+
+        return redirect()->route('products.index', ['company_id' => $request->company_id])
+            ->with('success', 'Producto compuesto creado correctamente');
+    }
+
+    public function editComposite(Product $product)
+    {
+        if (!$product->is_composite) {
+            abort(404);
+        }
+
+        $categories = Category::where('company_id', $product->company_id)->whereIn('estado', ['ACTIVO', 'ACT'])->get();
+        
+        $availableProducts = Product::where('company_id', $product->company_id)
+            ->where('estado', 'ACTIVO')
+            ->where('is_composite', false)
+            ->where('id', '!=', $product->id)
+            ->get();
+
+        $product->load('components.component');
+
+        return view('products.edit_composite', compact('product', 'categories', 'availableProducts'));
+    }
+
+    public function updateComposite(Request $request, Product $product)
+    {
+        if (!$product->is_composite) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'codigo' => 'required|max:50',
+            'codigo_barras' => 'nullable|max:50',
+            'descripcion' => 'required',
+            'codigo_sunat' => 'nullable|size:8',
+            'umedida_codigo' => 'nullable|size:3',
+            'precio' => 'required|numeric|min:0',
+            'tipo_afectacion' => 'required|in:GRA,EXO,INA,EXE',
+            'igv_percent' => 'nullable|numeric|min:0|max:100',
+            'category_id' => 'nullable|exists:categories,id',
+            'kds_destination' => 'nullable|in:cocina,cocina2,bar',
+            'components' => 'required|array|min:1',
+            'components.*.product_id' => 'required|exists:products,id',
+            'components.*.quantity' => 'required|numeric|min:0.01',
+        ]);
+
+        foreach ($request->components as $component) {
+            $componentProduct = Product::find($component['product_id']);
+            if ($componentProduct->is_composite) {
+                return back()->withErrors([
+                    'components' => 'Un producto compuesto no puede ser componente de otro producto compuesto.'
+                ])->withInput();
+            }
+        }
+
+        $product->update($validated);
+
+        $product->components()->delete();
+        foreach ($request->components as $component) {
+            $product->components()->create([
+                'component_product_id' => $component['product_id'],
+                'quantity' => $component['quantity'],
+            ]);
+        }
+
+        Cache::forget('restaurant_products_' . $product->company_id);
+
+        return redirect()->route('products.show', $product)->with('success', 'Producto compuesto actualizado');
     }
 
     public function importForm(Request $request)

@@ -13,6 +13,7 @@ class Product extends Model
         'company_id', 'codigo', 'codigo_barras', 'descripcion', 'codigo_sunat',
         'umedida_codigo', 'precio', 'precio_minimo', 'tipo_afectacion',
         'igv_percent', 'estado', 'category_id', 'stock', 'kds_destination',
+        'is_composite',
     ];
 
     protected $casts = [
@@ -32,5 +33,25 @@ class Product extends Model
     public function invoiceItems()
     {
         return $this->hasMany(InvoiceItem::class);
+    }
+
+    public function components()
+    {
+        return $this->hasMany(ProductComponent::class, 'parent_product_id');
+    }
+
+    public function isComposite()
+    {
+        return $this->is_composite;
+    }
+
+    public function scopeSimple($query)
+    {
+        return $query->where('is_composite', false);
+    }
+
+    public function scopeComposite($query)
+    {
+        return $query->where('is_composite', true);
     }
 }
