@@ -12,6 +12,7 @@
 /.phpunit.cache
 /.vscode
 /.zed
+/.gitnexus
 /auth.json
 /node_modules
 /public/build
