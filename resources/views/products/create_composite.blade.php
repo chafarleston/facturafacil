@@ -281,24 +281,29 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         timeout = setTimeout(() => {
-            fetch('/sunat-products/search?q=' + encodeURIComponent(q), {
-                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.length === 0) {
-                    resultsBox.innerHTML = '<div class="text-muted p-2">Sin resultados</div>';
-                } else {
-                    let html = '';
-                    data.forEach(item => {
-                        html += '<div class="p-2 border-bottom cursor-pointer" style="cursor:pointer" onclick="selectSunat(\'' + item.codigo + '\', \'' + (item.descripcion || '').replace(/'/g, "\\'") + '\')">' +
-                            '<strong>' + item.codigo + '</strong> - ' + (item.descripcion || '') + '</div>';
+            fetch('{{ route("sunat-products.search") }}?query=' + encodeURIComponent(q))
+                .then(r => r.json())
+                .then(list => {
+                    resultsBox.innerHTML = '';
+                    if (list.length === 0) {
+                        resultsBox.style.display = 'none';
+                        return;
+                    }
+                    list.forEach(item => {
+                        const div = document.createElement('div');
+                        div.textContent = item.codigo + ' - ' + item.descripcion;
+                        div.className = 'p-2 hover:bg-light cursor-pointer';
+                        div.style.cursor = 'pointer';
+                        div.onclick = () => {
+                            sunatSearch.value = item.codigo + ' - ' + item.descripcion;
+                            codigoSunat.value = item.codigo;
+                            resultsBox.style.display = 'none';
+                        };
+                        resultsBox.appendChild(div);
                     });
-                    resultsBox.innerHTML = html;
-                }
-                resultsBox.style.display = 'block';
-            });
-        }, 300);
+                    resultsBox.style.display = 'block';
+                });
+        }, 200);
     });
 
     document.addEventListener('click', function(e) {
