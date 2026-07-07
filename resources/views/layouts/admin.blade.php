@@ -140,6 +140,9 @@
                 <li class="nav-item">
                   <a href="{{ route('products.composite.create') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Productos Compuestos</p></a>
                 </li>
+                <li class="nav-item">
+                  <a href="{{ route('products.inventory.report') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Reporte de Inventario</p></a>
+                </li>
                 @can('permission', 'view_categories')
                 <li class="nav-item">
                   <a href="{{ route('categories.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Categorías</p></a>

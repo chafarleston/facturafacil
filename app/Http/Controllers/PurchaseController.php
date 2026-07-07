@@ -67,6 +67,7 @@ class PurchaseController extends Controller
             ]);
 
             $product = Product::find($item['product_id']);
+            $product->precio_compra = $item['precio'];
             $product->stock += $item['cantidad'];
             $product->save();
         }

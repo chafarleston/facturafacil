@@ -99,6 +99,19 @@
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group">
+                        <label>Precio de Compra</label>
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text">S/</span>
+                            </div>
+                            <input type="number" id="precio_compra" name="precio_compra" class="form-control" step="0.01" min="0" value="{{ $product->precio_compra ?? 0 }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
                         <label>Tipo Afectación IGV</label>
                         <select name="tipo_afectacion" class="form-control" required>
                             <option value="GRA" {{ $product->tipo_afectacion == 'GRA' ? 'selected' : '' }}>Gravado - 18%</option>

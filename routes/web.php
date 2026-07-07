@@ -77,6 +77,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/products/import', [ProductController::class, 'importStore'])->name('products.import.store');
         Route::post('/products/import-preview', [ProductController::class, 'previewImport'])->name('products.import.preview');
         Route::get('/products/import/template', [ProductController::class, 'downloadTemplate'])->name('products.import.template');
+        Route::get('/products/inventory-report', [ProductController::class, 'inventoryReport'])->name('products.inventory.report');
+        Route::get('/products/inventory-report/excel', [ProductController::class, 'inventoryReportExcel'])->name('products.inventory.report.excel');
+        Route::get('/products/inventory-report/pdf', [ProductController::class, 'inventoryReportPdf'])->name('products.inventory.report.pdf');
         Route::post('/products/{product}/duplicate', [ProductController::class, 'duplicate'])->name('products.duplicate');
         Route::resource('products', ProductController::class);
         Route::get('/products/composite/create', [ProductController::class, 'createComposite'])->name('products.composite.create');

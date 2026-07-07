@@ -13,7 +13,7 @@ class Product extends Model
         'company_id', 'codigo', 'codigo_barras', 'descripcion', 'codigo_sunat',
         'umedida_codigo', 'precio', 'precio_minimo', 'tipo_afectacion',
         'igv_percent', 'estado', 'category_id', 'stock', 'kds_destination',
-        'is_composite',
+        'is_composite', 'precio_compra',
     ];
 
     protected $casts = [

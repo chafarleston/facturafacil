@@ -58,6 +58,7 @@ class ProductController extends Controller
             'umedida_codigo' => 'nullable|size:3',
             'precio' => 'nullable|numeric|min:0',
             'precio_minimo' => 'nullable|numeric|min:0',
+            'precio_compra' => 'nullable|numeric|min:0',
             'tipo_afectacion' => 'required|in:GRA,EXO,INA,EXE',
             'igv_percent' => 'nullable|numeric|min:0|max:100',
             'category_id' => 'nullable|exists:categories,id',
@@ -76,6 +77,7 @@ class ProductController extends Controller
         }
 
         $validated['stock'] = $validated['stock'] ?? 0;
+        $validated['precio_compra'] = $validated['precio_compra'] ?? 0;
         $validated['umedida_codigo'] = $validated['umedida_codigo'] ?? 'NIU';
         $validated['igv_percent'] = $validated['igv_percent'] ?? 18;
 
@@ -118,6 +120,7 @@ class ProductController extends Controller
             'umedida_codigo' => 'nullable|size:3',
             'precio' => 'nullable|numeric|min:0',
             'precio_minimo' => 'nullable|numeric|min:0',
+            'precio_compra' => 'nullable|numeric|min:0',
             'tipo_afectacion' => 'required|in:GRA,EXO,INA,EXE',
             'igv_percent' => 'nullable|numeric|min:0|max:100',
             'category_id' => 'nullable|exists:categories,id',
@@ -702,6 +705,98 @@ class ProductController extends Controller
         $writer->save($tempFile);
 
         return response()->download($tempFile, $filename)->deleteFileAfterSend(true);
+    }
+
+    public function inventoryReport(Request $request)
+    {
+        $companyId = $request->company_id ?? Company::first()->id;
+        $categoryId = $request->get('category_id');
+        
+        $categories = Category::where('company_id', $companyId)
+            ->whereIn('estado', ['ACTIVO', 'ACT'])
+            ->orderBy('nombre')
+            ->get();
+        
+        $products = Product::with('category')
+            ->where('company_id', $companyId)
+            ->where('estado', 'ACTIVO')
+            ->when($categoryId, fn($q) => $q->where('category_id', $categoryId))
+            ->orderBy('descripcion')
+            ->get();
+        
+        $totalProductos = $products->count();
+        $totalStock = $products->sum('stock');
+        $totalValorVenta = $products->sum(fn($p) => $p->stock * $p->precio);
+        $totalValorCosto = $products->sum(fn($p) => $p->stock * $p->precio_compra);
+        
+        return view('products.inventory_report', compact(
+            'products', 'categories', 'categoryId', 'companyId',
+            'totalProductos', 'totalStock', 'totalValorVenta', 'totalValorCosto'
+        ));
+    }
+
+    public function inventoryReportExcel(Request $request)
+    {
+        $companyId = $request->company_id ?? Company::first()->id;
+        $categoryId = $request->get('category_id');
+        
+        $products = Product::with('category')
+            ->where('company_id', $companyId)
+            ->where('estado', 'ACTIVO')
+            ->when($categoryId, fn($q) => $q->where('category_id', $categoryId))
+            ->orderBy('descripcion')
+            ->get();
+        
+        $data = [['Código', 'Descripción', 'Categoría', 'Stock', 'Precio Compra', 'Precio Venta', 'Valor Total (Venta)', 'Valor Total (Costo)']];
+        
+        foreach ($products as $p) {
+            $data[] = [
+                $p->codigo,
+                $p->descripcion,
+                $p->category->nombre ?? 'Sin categoría',
+                $p->stock,
+                $p->precio_compra,
+                $p->precio,
+                $p->stock * $p->precio,
+                $p->stock * $p->precio_compra,
+            ];
+        }
+        
+        return $this->exportSpreadsheet($data, 'inventario_' . now()->format('Ymd_His') . '.xlsx');
+    }
+
+    public function inventoryReportPdf(Request $request)
+    {
+        $companyId = $request->company_id ?? Company::first()->id;
+        $categoryId = $request->get('category_id');
+        
+        $products = Product::with('category')
+            ->where('company_id', $companyId)
+            ->where('estado', 'ACTIVO')
+            ->when($categoryId, fn($q) => $q->where('category_id', $categoryId))
+            ->orderBy('descripcion')
+            ->get();
+        
+        $totalProductos = $products->count();
+        $totalStock = $products->sum('stock');
+        $totalValorVenta = $products->sum(fn($p) => $p->stock * $p->precio);
+        $totalValorCosto = $products->sum(fn($p) => $p->stock * $p->precio_compra);
+        
+        $pdf = new \Mpdf\Mpdf([
+            'mode' => 'utf-8',
+            'format' => 'A4',
+            'margin_top' => 15,
+            'margin_bottom' => 15,
+        ]);
+        
+        $html = view('products.inventory_report_pdf', compact(
+            'products', 'totalProductos', 'totalStock', 
+            'totalValorVenta', 'totalValorCosto'
+        ))->render();
+        
+        $pdf->WriteHTML($html);
+        
+        return $pdf->Output('inventario_' . now()->format('Ymd_His') . '.pdf', 'D');
     }
 
     private function getNextProductCode(int $companyId): int
