@@ -17,6 +17,7 @@
                 <li><strong>codigo_barras</strong> (opcional)</li>
                 <li><strong>descripcion</strong> (obligatorio)</li>
                 <li><strong>precio</strong> (opcional, valor por defecto: 0)</li>
+                <li><strong>precio_compra</strong> (opcional, valor por defecto: 0)</li>
                 <li><strong>stock</strong> (opcional, valor por defecto: 0)</li>
                 <li><strong>tipo_afectacion</strong> (opcional, valores: GRA, EXO, INA, EXE)</li>
                 <li><strong>umedida</strong> (opcional, valores: NIU, KGM, LTR, etc.)</li>
@@ -62,6 +63,7 @@
                     <th>codigo_barras</th>
                     <th>descripcion</th>
                     <th>precio</th>
+                    <th>precio_compra</th>
                     <th>stock</th>
                     <th>tipo_afectacion</th>
                     <th>umedida</th>
@@ -76,6 +78,7 @@
                     <td>7501234567890</td>
                     <td>Producto de ejemplo</td>
                     <td>100.00</td>
+                    <td>70.00</td>
                     <td>50</td>
                     <td>GRA</td>
                     <td>NIU</td>
@@ -88,6 +91,7 @@
                     <td>7501234567891</td>
                     <td>Galletas de chocolate</td>
                     <td>75.50</td>
+                    <td>50.00</td>
                     <td>30</td>
                     <td>GRA</td>
                     <td>NIU</td>
@@ -100,6 +104,7 @@
                     <td></td>
                     <td>Jugo de naranja</td>
                     <td>45.00</td>
+                    <td>30.00</td>
                     <td>100</td>
                     <td>GRA</td>
                     <td>NIU</td>
@@ -112,6 +117,7 @@
                     <td></td>
                     <td>Cerveza artesanal</td>
                     <td>35.00</td>
+                    <td>25.00</td>
                     <td>60</td>
                     <td>GRA</td>
                     <td>NIU</td>

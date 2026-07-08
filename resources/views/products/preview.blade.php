@@ -23,6 +23,7 @@
                         <th>Código</th>
                         <th>Descripción</th>
                         <th>Precio</th>
+                        <th>Precio Compra</th>
                         <th>Stock</th>
                         <th>Tipo</th>
                         <th>U.Medida</th>
@@ -39,6 +40,7 @@
                         <td>{{ $r['codigo'] }}</td>
                         <td>{{ \Illuminate\Support\Str::limit($r['descripcion'], 40) }}</td>
                         <td>{{ $r['precio'] > 0 ? 'S/ ' . number_format($r['precio'], 2) : '-' }}</td>
+                        <td>{{ $r['precio_compra'] > 0 ? 'S/ ' . number_format($r['precio_compra'], 2) : '-' }}</td>
                         <td>{{ $r['stock'] }}</td>
                         <td>{{ $r['tipo_afectacion'] }}</td>
                         <td>{{ $r['umedida'] }}</td>

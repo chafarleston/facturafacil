@@ -344,6 +344,7 @@ class ProductController extends Controller
                 'codigo_barras' => $this->findColumn($headerLower, ['codigo_barras', 'barras', 'barcode', 'ean']),
                 'descripcion' => $this->findColumn($headerLower, ['descripcion', 'descripcion', 'nombre', 'name', 'producto', 'detalle']),
                 'precio' => $this->findColumn($headerLower, ['precio', 'price', 'pvp', 'precio_venta']),
+                'precio_compra' => $this->findColumn($headerLower, ['precio_compra', 'costo', 'cost', 'precio_costo']),
                 'stock' => $this->findColumn($headerLower, ['stock', 'cantidad', 'quantity']),
                 'tipo_afectacion' => $this->findColumn($headerLower, ['tipo_afectacion', 'tipo_igv', 'afectacion']),
                 'umedida' => $this->findColumn($headerLower, ['umedida', 'unidad', 'uom', 'medida']),
@@ -357,6 +358,7 @@ class ProductController extends Controller
         $colCodigo = $colMap['codigo'];
         $colCodigoBarras = $colMap['codigo_barras'];
         $colPrecio = $colMap['precio'];
+        $colPrecioCompra = $colMap['precio_compra'];
         $colStock = $colMap['stock'];
         $colTipoAfectacion = $colMap['tipo_afectacion'];
         $colUndMedida = $colMap['umedida'];
@@ -413,6 +415,7 @@ class ProductController extends Controller
                 }
 
                 $precio = $colPrecio !== null ? floatval(str_replace(',', '.', preg_replace('/[^0-9.,]/', '', $row[$colPrecio] ?? '0'))) : 0;
+                $precioCompra = $colPrecioCompra !== null ? floatval(str_replace(',', '.', preg_replace('/[^0-9.,]/', '', $row[$colPrecioCompra] ?? '0'))) : 0;
                 $stock = $colStock !== null ? intval($row[$colStock] ?? 0) : 0;
 
                 $tipoAfectacion = 'GRA';
@@ -453,6 +456,7 @@ class ProductController extends Controller
                     'codigo_barras' => $colCodigoBarras !== null ? trim($row[$colCodigoBarras] ?? '') : null,
                     'descripcion' => $descripcion,
                     'precio' => $precio,
+                    'precio_compra' => $precioCompra,
                     'stock' => $stock,
                     'tipo_afectacion' => $tipoAfectacion,
                     'umedida_codigo' => $umedida,
@@ -502,6 +506,7 @@ class ProductController extends Controller
             'codigo_barras' => $this->findColumn($headerLower, ['codigo_barras', 'barras', 'barcode', 'ean']),
             'descripcion' => $this->findColumn($headerLower, ['descripcion', 'descripcion', 'nombre', 'name', 'producto', 'detalle']),
             'precio' => $this->findColumn($headerLower, ['precio', 'price', 'pvp', 'precio_venta']),
+            'precio_compra' => $this->findColumn($headerLower, ['precio_compra', 'costo', 'cost', 'precio_costo']),
             'stock' => $this->findColumn($headerLower, ['stock', 'cantidad', 'quantity']),
             'tipo_afectacion' => $this->findColumn($headerLower, ['tipo_afectacion', 'tipo_igv', 'afectacion']),
             'umedida' => $this->findColumn($headerLower, ['umedida', 'unidad', 'uom', 'medida']),
@@ -545,6 +550,7 @@ class ProductController extends Controller
 
             $codigo = $colMap['codigo'] !== null ? trim($row[$colMap['codigo']] ?? '') : '';
             $precioStr = $colMap['precio'] !== null ? trim($row[$colMap['precio']] ?? '') : '';
+            $precioCompraStr = $colMap['precio_compra'] !== null ? trim($row[$colMap['precio_compra']] ?? '') : '';
             $stockStr = $colMap['stock'] !== null ? trim($row[$colMap['stock']] ?? '') : '';
             $tipo = $colMap['tipo_afectacion'] !== null ? strtoupper(trim($row[$colMap['tipo_afectacion']] ?? '')) : '';
             $umedida = $colMap['umedida'] !== null ? strtoupper(trim($row[$colMap['umedida']] ?? '')) : '';
@@ -561,6 +567,7 @@ class ProductController extends Controller
                 $errors[] = 'Precio requerido o inválido';
             }
 
+            $precioCompraVal = $colMap['precio_compra'] !== null ? floatval(str_replace(',', '.', preg_replace('/[^0-9.,]/', '', $precioCompraStr))) : 0;
             $stockVal = $colMap['stock'] !== null ? intval(preg_replace('/[^0-9]/', '', $stockStr)) : 0;
 
             if (empty($codSunat)) {
@@ -610,6 +617,7 @@ class ProductController extends Controller
                 'codigo_barras' => $barras,
                 'descripcion' => $descripcion,
                 'precio' => $precioVal,
+                'precio_compra' => $precioCompraVal,
                 'stock' => $stockVal,
                 'tipo_afectacion' => $tipo ?: 'GRA',
                 'umedida' => $umedida ?: 'NIU',
@@ -656,7 +664,7 @@ class ProductController extends Controller
     public function downloadTemplate()
     {
         return $this->exportSpreadsheet([
-            ['codigo', 'codigo_barras', 'descripcion', 'precio', 'stock', 'tipo_afectacion', 'umedida', 'categoria', 'codigo_sunat', 'kds_destination'],
+            ['codigo', 'codigo_barras', 'descripcion', 'precio', 'precio_compra', 'stock', 'tipo_afectacion', 'umedida', 'categoria', 'codigo_sunat', 'kds_destination'],
         ], 'plantilla_productos.xlsx');
     }
 
