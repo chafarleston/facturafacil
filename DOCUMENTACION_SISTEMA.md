@@ -60,7 +60,8 @@
 | `companies` | Empresas (RUC, datos SUNAT, certificado, IGV) |
 | `users` | Usuarios del sistema (roles: admin, user, mozo, cajero, superadmin) |
 | `customers` | Clientes (DNI/RUC, dirección, ubigeo) |
-| `products` | Productos (código, precio, stock, IGV, kds_destination) |
+| `products` | Productos (código, precio, precio_compra, stock, IGV, kds_destination, is_composite) |
+| `product_components` | Componentes de productos compuestos (parent_product_id, component_product_id, quantity) |
 | `categories` | Categorías de productos |
 | `invoices` | Comprobantes emitidos (facturas, boletas, NV) |
 | `invoice_items` | Items de comprobantes |
@@ -87,6 +88,7 @@
 companies ──┬── users
             ├── customers
             ├── products ─── categories
+            │             └── product_components (self-referencing)
             ├── invoices ─── invoice_items ─── products
             ├── series
             ├── floors ─── restaurant_tables
@@ -118,6 +120,13 @@ companies ──┬── users
 | `2026_06_12_000002_add_fields_to_special_documents` | Campos extra docs especiales |
 | `2026_06_12_000003_update_summary_correlativo_length` | Ampliar correlativo summary |
 | `2026_06_19_000001_add_order_source_and_type` | order_source en invoices, order_type en restaurant_orders |
+| `2026_07_02_202441_add_is_for_kiosko_to_restaurant_tables` | Campo is_for_kiosko para mesa virtual del kiosko |
+| `2026_07_02_205824_add_pending_payment_to_restaurant_orders_status` | Status PENDING_PAYMENT para pedidos de kiosko |
+| `2026_07_03_085441_create_auxiliary_items_table` | Tabla de elementos auxiliares |
+| `2026_07_03_085509_add_auxiliary_items_to_restaurant_order_items` | Campo auxiliary_items en order_items |
+| `2026_07_05_000002_add_is_composite_to_products_table` | Campo is_composite para productos compuestos |
+| `2026_07_05_000003_create_product_components_table` | Tabla de componentes de productos compuestos |
+| `2026_07_07_181559_add_precio_compra_to_products_table` | Campo precio_compra para valorización de inventario |
 
 ---
 
@@ -164,9 +173,30 @@ getMainCompany()       // Empresa principal o primera activa
 company_id → companies
 category_id → categories
 codigo, codigo_barras, descripcion, codigo_sunat
-umedida_codigo, precio, precio_minimo
+umedida_codigo, precio, precio_minimo, precio_compra
 tipo_afectacion, igv_percent, estado
 stock, kds_destination (cocina | cocina2 | bar)
+is_composite (boolean)
+
+// Relaciones
+components() → hasMany(ProductComponent::class, 'parent_product_id')
+
+// Métodos
+isComposite(): bool
+scopeSimple($query)
+scopeComposite($query)
+```
+
+### 3.8 ProductComponent
+
+```php
+parent_product_id → products (producto compuesto)
+component_product_id → products (producto componente)
+quantity (decimal)
+
+// Relaciones
+parent() → belongsTo(Product::class, 'parent_product_id')
+component() → belongsTo(Product::class, 'component_product_id')
 ```
 
 ### 3.4 Invoice
@@ -356,11 +386,11 @@ close() [PHP]
 
 | Controlador | Propósito |
 |-------------|-----------|
-| `ProductController` | CRUD productos + importación + duplicado |
+| `ProductController` | CRUD productos + importación + duplicado + productos compuestos + reporte inventario |
 | `CategoryController` | CRUD categorías |
 | `CustomerController` | CRUD clientes |
 | `SupplierController` | CRUD proveedores |
-| `PurchaseController` | Compras (con incremento de stock) |
+| `PurchaseController` | Compras (con incremento de stock y actualización de precio_compra) |
 | `CompanyController` | CRUD empresas + certificado |
 | `FloorController` | CRUD pisos |
 | `TableController` | CRUD mesas |
@@ -377,6 +407,23 @@ close() [PHP]
 | `SummaryService` | Resumen diario de boletas (no es controlador) |
 | `SpecialDocumentService` | Documentos especiales SUNAT (no es controlador) |
 | `SunatQrService` | Generación de código QR para comprobantes (no es controlador) |
+
+#### ProductController - Métodos de Productos Compuestos
+
+| Método | Ruta | Propósito |
+|--------|------|-----------|
+| `createComposite()` | GET `/products/composite/create` | Formulario crear producto compuesto |
+| `storeComposite()` | POST `/products/composite/store` | Guardar producto compuesto |
+| `editComposite($product)` | GET `/products/{product}/composite/edit` | Formulario editar producto compuesto |
+| `updateComposite($product)` | PUT `/products/{product}/composite/update` | Actualizar producto compuesto |
+
+#### ProductController - Métodos de Reporte de Inventario
+
+| Método | Ruta | Propósito |
+|--------|------|-----------|
+| `inventoryReport()` | GET `/products/inventory-report` | Vista reporte de inventario |
+| `inventoryReportExcel()` | GET `/products/inventory-report/excel` | Exportar reporte a Excel |
+| `inventoryReportPdf()` | GET `/products/inventory-report/pdf` | Exportar reporte a PDF |
 
 ---
 
@@ -662,7 +709,14 @@ Se genera a partir de `restaurant_order_items` con:
 | Cobrar en restaurante | Decremento (permite negativo) | `RestaurantController::chargeOrder()` |
 | Vender en POS | Decremento | `PosController::store()` |
 | Facturar desde módulo | Decremento | `InvoiceController::store()` |
-| Comprar (ingresar) | Incremento | `PurchaseController::store()` |
+| Comprar (ingresar) | Incremento + actualiza precio_compra | `PurchaseController::store()` |
+| Vender producto compuesto | Decremento de cada componente | `PosController::store()`, `RestaurantController::chargeOrder()`, `InvoiceController::store()` |
+
+**Nota sobre productos compuestos:**
+- Los productos compuestos tienen `is_composite = true` y `stock = 0` (no manejan stock propio)
+- Al vender un producto compuesto, se descuenta automáticamente el stock de cada componente
+- Fórmula: `stock_componente -= cantidad_componente × cantidad_vendida`
+- Ejemplo: Si vendes 2 "Pan Cachanchas x 5 Und" (compuesto por 5 unidades de "Pan Cachangas"), se descuentan 10 unidades de "Pan Cachangas"
 
 ---
 
@@ -804,6 +858,13 @@ Usuario clickea "Caja" en restaurante o POS
 |--------|------|-----------|
 | GET | `/products` | Lista productos |
 | POST | `/products/{id}/duplicate` | Duplicar producto |
+| GET | `/products/composite/create` | Formulario crear producto compuesto |
+| POST | `/products/composite/store` | Guardar producto compuesto |
+| GET | `/products/{id}/composite/edit` | Formulario editar producto compuesto |
+| PUT | `/products/{id}/composite/update` | Actualizar producto compuesto |
+| GET | `/products/inventory-report` | Reporte de inventario |
+| GET | `/products/inventory-report/excel` | Exportar inventario a Excel |
+| GET | `/products/inventory-report/pdf` | Exportar inventario a PDF |
 | GET | `/invoices` | Lista comprobantes |
 | GET | `/invoices/{id}/send` | Enviar a SUNAT |
 | GET/POST | `/invoices/{id}/credit-note` | Nota de Crédito |
@@ -1252,6 +1313,27 @@ POST /products/import → ProductController::importStore()
    3. Por cada fila: crea producto o salta si ya existe
    4. Crea categorías automáticamente si no existen
    5. Reporta: creados, omitidos, errores
+
+Productos Compuestos:
+GET /products/composite/create → Formulario crear producto compuesto
+POST /products/composite/store → Guardar producto compuesto
+   1. Valida que los componentes no sean productos compuestos
+   2. Crea producto con is_composite = true, stock = 0
+   3. Crea registros en product_components (parent_product_id, component_product_id, quantity)
+   4. Cache: invalida restaurant_products_{companyId}
+
+GET /products/{id}/composite/edit → Formulario editar producto compuesto
+PUT /products/{id}/composite/update → Actualizar producto compuesto
+   1. Actualiza campos del producto
+   2. Elimina componentes antiguos
+   3. Crea nuevos componentes
+
+Lógica de descuento de stock en ventas:
+- Si producto.is_composite:
+    Por cada componente:
+      stock_componente -= cantidad_componente × cantidad_vendida
+- Si no es compuesto:
+    stock -= cantidad_vendida
 ```
 
 ---
@@ -1370,6 +1452,46 @@ php artisan db:seed → ejecuta en orden:
 7. PrinterSeeder       → 8 slots de impresora (cocina, bar, precuenta, caja, autopedido)
 8. UbigeoSeeder        → 1874 registros de ubigeos
 9. CustomerSeeder      → "Clientes Varios" (DNI 88888888)
+
+---
+
+### 19.13 Reporte de Inventario
+
+```
+Vista: GET /products/inventory-report
+Menú: Productos → Reporte de Inventario
+
+Muestra:
+- Tarjetas de resumen: Total Productos, Total Stock, Valor Venta, Valor Costo
+- Tabla con columnas: Código, Descripción, Categoría, Stock, Precio Compra, Precio Venta, Valor Total (Venta), Valor Total (Costo)
+- Filtro por categoría (select)
+- Botones de exportación: Excel, PDF
+
+Exportar a Excel:
+GET /products/inventory-report/excel
+→ inventoryReportExcel() [PHP]:
+   1. Obtiene productos activos filtrados por categoría
+   2. Genera archivo XLSX con PhpSpreadsheet
+   3. Descarga automática
+
+Exportar a PDF:
+GET /products/inventory-report/pdf
+→ inventoryReportPdf() [PHP]:
+   1. Obtiene productos activos filtrados por categoría
+   2. Genera PDF con Mpdf
+   3. Descarga automática
+
+Cálculos:
+- Valor Total (Venta) = stock × precio
+- Valor Total (Costo) = stock × precio_compra
+- Total Stock = SUM(stock)
+- Total Productos = COUNT(*)
+
+Campo precio_compra:
+- Se actualiza automáticamente en cada compra (PurchaseController::store)
+- Se puede ingresar manualmente al crear/editar producto
+- Default: 0
+```
 
 ---
 
@@ -2428,6 +2550,77 @@ Justificación:
 - No es buena práctica permitir edición manual del stock
 ```
 
+### 20.5 Productos Compuestos y Reporte de Inventario (Julio 2026)
+
+```
+Productos Compuestos:
+
+Propósito: Crear productos formados por uno o más productos simples (componentes).
+Al vender un producto compuesto, se descuenta automáticamente el stock de cada componente.
+
+Ejemplos:
+- "Pan Cachanchas x 5 Und" (S/ 4.00) = 5 × "Pan Cachangas xUnd" (S/ 1.00 c/u)
+- "Promoción de Navidad" (S/ 50.00) = 1 × "Panetón Donofrio 900gr" + 1 × "Champagne Royal" + 2 × "Leche Gloria azul" + 1 × "Chocolate Winter"
+
+Estructura de datos:
+- products.is_composite (boolean): Indica si el producto es compuesto
+- product_components: Tabla que relaciona productos compuestos con sus componentes
+  - parent_product_id: ID del producto compuesto
+  - component_product_id: ID del producto componente
+  - quantity: Cantidad del componente en el producto compuesto
+
+Restricciones:
+- Un producto compuesto NO puede ser componente de otro producto compuesto
+- Los productos compuestos tienen stock = 0 (no manejan stock propio)
+- El precio del producto compuesto se ingresa manualmente (no se calcula de los componentes)
+
+Flujo de creación:
+1. GET /products/composite/create → Formulario
+2. POST /products/composite/store → Guarda producto + componentes
+3. GET /products/{id}/composite/edit → Edita producto + componentes
+4. PUT /products/{id}/composite/update → Actualiza producto + componentes
+
+Flujo de venta (POS, Restaurante, Facturación):
+1. Usuario agrega producto compuesto al carrito
+2. Al procesar venta:
+   - Si producto.is_composite:
+       Por cada componente:
+         stock_componente -= cantidad_componente × cantidad_vendida
+   - Si no es compuesto:
+       stock -= cantidad_vendida
+
+Fix POS frontend:
+- Problema: Productos compuestos tienen stock = 0, validación stock <= 0 bloqueaba venta
+- Solución: Agregar condición !product.is_composite en validación de stock
+
+Reporte de Inventario:
+
+Propósito: Mostrar inventario actual con valor de venta y valor de costo.
+
+Campo precio_compra:
+- Se agrega a tabla products (default: 0)
+- Se actualiza automáticamente en cada compra (PurchaseController::store)
+- Se puede ingresar manualmente al crear/editar producto
+
+Vista: GET /products/inventory-report
+Menú: Productos → Reporte de Inventario
+
+Muestra:
+- Tarjetas de resumen: Total Productos, Total Stock, Valor Venta, Valor Costo
+- Tabla: Código, Descripción, Categoría, Stock, Precio Compra, Precio Venta, Valor Total (Venta), Valor Total (Costo)
+- Filtro por categoría
+- Botones: Exportar Excel, Exportar PDF
+
+Cálculos:
+- Valor Total (Venta) = stock × precio
+- Valor Total (Costo) = stock × precio_compra
+- Total Stock = SUM(stock)
+
+Exportación:
+- Excel: GET /products/inventory-report/excel (PhpSpreadsheet)
+- PDF: GET /products/inventory-report/pdf (Mpdf)
+```
+
 ---
 
 ## 21. Solución de Problemas Comunes (Actualizado)
@@ -2464,6 +2657,13 @@ Justificación:
 | Producto con stock negativo no se puede editar | min:0 en validación de update | Eliminar stock de validación de update |
 | SUNAT rechaza XML con "Por Consumo" | Código de producto incorrecto | Usar código 90101801 (servicios restaurante) |
 | Tildes y ñ se ven como caracteres extraños en ticket | Texto enviado como UTF-8 a impresora CP850 | Usar getEscPos() que convierte a CP850 vía utf8ToCp850() |
+| Command injection en CompanyController | Password certificado sin escape en exec() | Usar escapeshellarg() para todos los argumentos |
+| Command injection en BackupController | Path sin escape en exec() | Usar escapeshellarg() para el path |
+| Error fatal en NC/ND de facturas | Variable $client indefinida en GreenterService | Cambiar $client->direccion por $cd['direccion'] |
+| ND de boleta rechazada por SUNAT | sendDebitNote no ruteaba por Resumen Diario | Agregar validación tipo_documento === '03' |
+| Warning password indefinida | $password solo definida en else de setupSee() | Usar $company->certificado_password con null coalescing |
+| Producto compuesto no se puede vender en POS | Validación stock <= 0 bloqueaba | Agregar condición !product.is_composite en validación |
+| Reporte de inventario no muestra precio_compra | Campo no existía en BD | Agregar migración add_precio_compra_to_products_table |
 
 ---
 
@@ -2488,6 +2688,581 @@ Justificación:
 | `php artisan route:list` | Lista rutas |
 | `php artisan optimize` | Optimiza rendimiento |
 | `php artisan migrate:rollback --step=1` | Revierte última migración |
+
+---
+
+## 23. Productos Compuestos (Julio 2026)
+
+### 23.1 Descripción General
+
+Los productos compuestos permiten crear productos formados por uno o más productos simples (componentes). Al vender un producto compuesto, el sistema descuenta automáticamente el stock de cada componente.
+
+**Ejemplos:**
+- "Pan Cachanchas x 5 Und" (S/ 4.00) = 5 × "Pan Cachangas xUnd" (S/ 1.00 c/u)
+- "Promoción de Navidad" (S/ 50.00) = 1 × "Panetón Donofrio 900gr" + 1 × "Champagne Royal" + 2 × "Leche Gloria azul" + 1 × "Chocolate Winter"
+
+### 23.2 Estructura de Base de Datos
+
+**Tabla `products` (campo adicional):**
+- `is_composite` (boolean, default: false) - Indica si el producto es compuesto
+
+**Tabla `product_components`:**
+```sql
+CREATE TABLE product_components (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    parent_product_id BIGINT NOT NULL,
+    component_product_id BIGINT NOT NULL,
+    quantity DECIMAL(10,2) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    FOREIGN KEY (parent_product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (component_product_id) REFERENCES products(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_component (parent_product_id, component_product_id)
+);
+```
+
+**Migraciones:**
+- `2026_07_05_000002_add_is_composite_to_products_table.php`
+- `2026_07_05_000003_create_product_components_table.php`
+
+### 23.3 Modelo ProductComponent
+
+**Archivo:** `app/Models/ProductComponent.php`
+
+```php
+protected $fillable = [
+    'parent_product_id',
+    'component_product_id',
+    'quantity',
+];
+
+protected $casts = [
+    'quantity' => 'decimal:2',
+];
+
+public function parent()
+{
+    return $this->belongsTo(Product::class, 'parent_product_id');
+}
+
+public function component()
+{
+    return $this->belongsTo(Product::class, 'component_product_id');
+}
+```
+
+### 23.4 Actualizaciones en Modelo Product
+
+**Archivo:** `app/Models/Product.php`
+
+```php
+// En $fillable
+'is_composite',
+
+// Relaciones
+public function components()
+{
+    return $this->hasMany(ProductComponent::class, 'parent_product_id');
+}
+
+public function isComposite()
+{
+    return $this->is_composite;
+}
+
+// Scopes
+public function scopeSimple($query)
+{
+    return $query->where('is_composite', false);
+}
+
+public function scopeComposite($query)
+{
+    return $query->where('is_composite', true);
+}
+```
+
+### 23.5 Controlador ProductController
+
+**Métodos agregados:**
+
+```php
+public function createComposite(Request $request)
+{
+    $companyId = $request->company_id ?? Company::first()->id;
+    $codigo = 'PROD' . str_pad($this->getNextProductCode($companyId), 5, '0', STR_PAD_LEFT);
+    $categories = Category::where('company_id', $companyId)->whereIn('estado', ['ACTIVO', 'ACT'])->get();
+    $availableProducts = Product::where('company_id', $companyId)
+        ->where('estado', 'ACTIVO')
+        ->where('is_composite', false)
+        ->get();
+    
+    return view('products.create_composite', compact('companyId', 'codigo', 'categories', 'availableProducts'));
+}
+
+public function storeComposite(Request $request)
+{
+    $validated = $request->validate([
+        'company_id' => 'required|exists:companies,id',
+        'codigo' => 'required|max:50',
+        'descripcion' => 'required',
+        'precio' => 'required|numeric|min:0',
+        'tipo_afectacion' => 'required|in:GRA,EXO,INA,EXE',
+        'category_id' => 'nullable|exists:categories,id',
+        'components' => 'required|array|min:1',
+        'components.*.product_id' => 'required|exists:products,id',
+        'components.*.quantity' => 'required|numeric|min:0.01',
+    ]);
+
+    // Validar que los componentes no sean productos compuestos
+    foreach ($request->components as $component) {
+        if (Product::find($component['product_id'])->is_composite) {
+            return back()->withErrors([
+                'components' => 'Un producto compuesto no puede ser componente de otro producto compuesto.'
+            ])->withInput();
+        }
+    }
+
+    $validated['stock'] = 0;
+    $validated['is_composite'] = true;
+    $product = Product::create($validated);
+
+    foreach ($request->components as $component) {
+        $product->components()->create([
+            'component_product_id' => $component['product_id'],
+            'quantity' => $component['quantity'],
+        ]);
+    }
+
+    Cache::forget('restaurant_products_' . $request->company_id);
+    return redirect()->route('products.index', ['company_id' => $request->company_id])
+        ->with('success', 'Producto compuesto creado correctamente');
+}
+
+public function editComposite(Product $product)
+{
+    if (!$product->is_composite) abort(404);
+    
+    $categories = Category::where('company_id', $product->company_id)->whereIn('estado', ['ACTIVO', 'ACT'])->get();
+    $availableProducts = Product::where('company_id', $product->company_id)
+        ->where('estado', 'ACTIVO')
+        ->where('is_composite', false)
+        ->where('id', '!=', $product->id)
+        ->get();
+    $product->load('components.component');
+
+    return view('products.edit_composite', compact('product', 'categories', 'availableProducts'));
+}
+
+public function updateComposite(Request $request, Product $product)
+{
+    if (!$product->is_composite) abort(404);
+
+    $validated = $request->validate([
+        'codigo' => 'required|max:50',
+        'descripcion' => 'required',
+        'precio' => 'required|numeric|min:0',
+        'tipo_afectacion' => 'required|in:GRA,EXO,INA,EXE',
+        'category_id' => 'nullable|exists:categories,id',
+        'components' => 'required|array|min:1',
+        'components.*.product_id' => 'required|exists:products,id',
+        'components.*.quantity' => 'required|numeric|min:0.01',
+    ]);
+
+    $product->update($validated);
+    $product->components()->delete();
+    
+    foreach ($request->components as $component) {
+        $product->components()->create([
+            'component_product_id' => $component['product_id'],
+            'quantity' => $component['quantity'],
+        ]);
+    }
+
+    Cache::forget('restaurant_products_' . $product->company_id);
+    return redirect()->route('products.show', $product)->with('success', 'Producto compuesto actualizado');
+}
+```
+
+**Actualización en método `index()`:**
+```php
+$filter = $request->get('filter', 'all');
+$products = Product::where('company_id', $companyId)
+    ->where('estado', 'ACTIVO')
+    ->when($filter === 'simple', fn($q) => $q->where('is_composite', false))
+    ->when($filter === 'composite', fn($q) => $q->where('is_composite', true))
+    // ... resto del código
+```
+
+### 23.6 Rutas
+
+**Archivo:** `routes/web.php` (dentro del grupo `admin`)
+
+```php
+Route::get('/products/composite/create', [ProductController::class, 'createComposite'])->name('products.composite.create');
+Route::post('/products/composite/store', [ProductController::class, 'storeComposite'])->name('products.composite.store');
+Route::get('/products/{product}/composite/edit', [ProductController::class, 'editComposite'])->name('products.composite.edit');
+Route::put('/products/{product}/composite/update', [ProductController::class, 'updateComposite'])->name('products.composite.update');
+```
+
+### 23.7 Vistas
+
+**Archivos creados:**
+- `resources/views/products/create_composite.blade.php`
+- `resources/views/products/edit_composite.blade.php`
+
+**Características:**
+- Formulario con campos básicos del producto (código, descripción, precio, categoría)
+- Sección dinámica para agregar componentes
+- Selector de producto + cantidad por componente
+- Cálculo automático del total de componentes (solo informativo)
+- Validación JavaScript para evitar agregar productos compuestos como componentes
+- Botones para agregar/eliminar componentes dinámicamente
+
+**Actualizaciones en vistas existentes:**
+- `products/index.blade.php`:
+  - Botón "Producto Compuesto" agregado
+  - Filtro Todos/Simples/Compuestos
+  - Columna "Tipo" (badge Simple/Compuesto)
+  - Columna "Componentes" (cantidad de productos)
+  - Enlace de edición cambia según tipo de producto
+
+- `products/show.blade.php`:
+  - Sección "Componentes del Producto Compuesto" (solo si es compuesto)
+  - Tabla con componentes, cantidades y precios
+  - Badge de tipo en info-box de stock
+
+### 23.8 Lógica de Descuento de Stock
+
+**Actualizaciones en controladores de ventas:**
+
+**PosController.php (líneas 162-172):**
+```php
+if ($producto->is_composite) {
+    foreach ($producto->components as $component) {
+        $componentProduct = $component->component;
+        if ($componentProduct) {
+            $componentProduct->decrement('stock', $component->quantity * $item['quantity']);
+        }
+    }
+} else {
+    $producto->decrement('stock', $item['quantity']);
+}
+```
+
+**RestaurantController.php (líneas 1002-1012):**
+```php
+if ($product->is_composite) {
+    foreach ($product->components as $component) {
+        $componentProduct = $component->component;
+        if ($componentProduct) {
+            $componentProduct->decrement('stock', $component->quantity * $item->quantity);
+        }
+    }
+} else {
+    $product->decrement('stock', $item->quantity);
+}
+```
+
+**InvoiceController.php (líneas 157-168):**
+```php
+if ($product->is_composite) {
+    foreach ($product->components as $component) {
+        $componentProduct = $component->component;
+        if ($componentProduct) {
+            $componentProduct->stock = $componentProduct->stock - ($component->quantity * $item['cantidad']);
+            $componentProduct->save();
+        }
+    }
+} else {
+    $product->stock = $product->stock - $item['cantidad'];
+    $product->save();
+}
+```
+
+### 23.9 Fix POS Frontend
+
+**Archivo:** `resources/views/pos/index.blade.php`
+
+**Problema:** Los productos compuestos tienen `stock = 0` (siempre), por lo tanto NO se podían vender en el POS.
+
+**Solución (líneas 633-640, 674):**
+```javascript
+// Permitir productos compuestos aunque tengan stock = 0
+if (!product.is_composite && product.stock <= 0) {
+    showError('Sin stock');
+    return;
+}
+
+// En increaseQty:
+if (product.is_composite || existingItem.quantity < product.stock) {
+    existingItem.quantity++;
+}
+```
+
+### 23.10 Consideraciones Importantes
+
+- **Stock de productos compuestos:** Siempre es 0 (no manejan stock propio)
+- **Validación:** Un producto compuesto NO puede ser componente de otro producto compuesto
+- **Visibilidad:** Los productos compuestos aparecen en POS, Restaurante y Kiosko
+- **Precio:** Se ingresa manualmente (NO se calcula automáticamente de los componentes)
+- **Anidación:** NO se permite (un compuesto no puede ser componente de otro)
+
+---
+
+## 24. Campo precio_compra y Reporte de Inventario (Julio 2026)
+
+### 24.1 Campo precio_compra
+
+**Propósito:** Almacenar el último precio de compra de cada producto para calcular el valor del inventario.
+
+**Migración:** `2026_07_07_181559_add_precio_compra_to_products_table.php`
+
+```php
+Schema::table('products', function (Blueprint $table) {
+    $table->decimal('precio_compra', 12, 4)->default(0)->after('precio_minimo');
+});
+```
+
+**Actualización en modelo Product:**
+```php
+protected $fillable = [
+    // ... otros campos
+    'precio_compra',
+];
+```
+
+**Actualización en vistas:**
+- `products/create.blade.php`: Campo "Precio de Compra" agregado
+- `products/edit.blade.php`: Campo "Precio de Compra" agregado
+
+**Actualización en ProductController:**
+```php
+// store()
+$validated = $request->validate([
+    // ... otras validaciones
+    'precio_compra' => 'nullable|numeric|min:0',
+]);
+$validated['precio_compra'] = $validated['precio_compra'] ?? 0;
+
+// update()
+$validated = $request->validate([
+    // ... otras validaciones
+    'precio_compra' => 'nullable|numeric|min:0',
+]);
+```
+
+**Actualización en PurchaseController@store:**
+```php
+$product = Product::find($item['product_id']);
+$product->precio_compra = $item['precio'];  // Último precio de compra
+$product->stock += $item['cantidad'];
+$product->save();
+```
+
+### 24.2 Reporte de Inventario
+
+**Propósito:** Mostrar el inventario actual con valor de venta y valor de costo.
+
+**Rutas:**
+```php
+Route::get('/products/inventory-report', [ProductController::class, 'inventoryReport'])->name('products.inventory.report');
+Route::get('/products/inventory-report/excel', [ProductController::class, 'inventoryReportExcel'])->name('products.inventory.report.excel');
+Route::get('/products/inventory-report/pdf', [ProductController::class, 'inventoryReportPdf'])->name('products.inventory.report.pdf');
+```
+
+**Métodos en ProductController:**
+
+```php
+public function inventoryReport(Request $request)
+{
+    $companyId = $request->company_id ?? Company::first()->id;
+    $categoryId = $request->get('category_id');
+    
+    $categories = Category::where('company_id', $companyId)
+        ->whereIn('estado', ['ACTIVO', 'ACT'])
+        ->orderBy('nombre')
+        ->get();
+    
+    $products = Product::with('category')
+        ->where('company_id', $companyId)
+        ->where('estado', 'ACTIVO')
+        ->when($categoryId, fn($q) => $q->where('category_id', $categoryId))
+        ->orderBy('descripcion')
+        ->get();
+    
+    $totalProductos = $products->count();
+    $totalStock = $products->sum('stock');
+    $totalValorVenta = $products->sum(fn($p) => $p->stock * $p->precio);
+    $totalValorCosto = $products->sum(fn($p) => $p->stock * $p->precio_compra);
+    
+    return view('products.inventory_report', compact(
+        'products', 'categories', 'categoryId', 'companyId',
+        'totalProductos', 'totalStock', 'totalValorVenta', 'totalValorCosto'
+    ));
+}
+
+public function inventoryReportExcel(Request $request)
+{
+    $companyId = $request->company_id ?? Company::first()->id;
+    $categoryId = $request->get('category_id');
+    
+    $products = Product::with('category')
+        ->where('company_id', $companyId)
+        ->where('estado', 'ACTIVO')
+        ->when($categoryId, fn($q) => $q->where('category_id', $categoryId))
+        ->orderBy('descripcion')
+        ->get();
+    
+    $data = [['Código', 'Descripción', 'Categoría', 'Stock', 'Precio Compra', 'Precio Venta', 'Valor Total (Venta)', 'Valor Total (Costo)']];
+    
+    foreach ($products as $p) {
+        $data[] = [
+            $p->codigo,
+            $p->descripcion,
+            $p->category->nombre ?? 'Sin categoría',
+            $p->stock,
+            $p->precio_compra,
+            $p->precio,
+            $p->stock * $p->precio,
+            $p->stock * $p->precio_compra,
+        ];
+    }
+    
+    return $this->exportSpreadsheet($data, 'inventario_' . now()->format('Ymd_His') . '.xlsx');
+}
+
+public function inventoryReportPdf(Request $request)
+{
+    $companyId = $request->company_id ?? Company::first()->id;
+    $categoryId = $request->get('category_id');
+    
+    $products = Product::with('category')
+        ->where('company_id', $companyId)
+        ->where('estado', 'ACTIVO')
+        ->when($categoryId, fn($q) => $q->where('category_id', $categoryId))
+        ->orderBy('descripcion')
+        ->get();
+    
+    $totalProductos = $products->count();
+    $totalStock = $products->sum('stock');
+    $totalValorVenta = $products->sum(fn($p) => $p->stock * $p->precio);
+    $totalValorCosto = $products->sum(fn($p) => $p->stock * $p->precio_compra);
+    
+    $pdf = new \Mpdf\Mpdf([
+        'mode' => 'utf-8',
+        'format' => 'A4',
+        'margin_top' => 15,
+        'margin_bottom' => 15,
+    ]);
+    
+    $html = view('products.inventory_report_pdf', compact(
+        'products', 'totalProductos', 'totalStock', 
+        'totalValorVenta', 'totalValorCosto'
+    ))->render();
+    
+    $pdf->WriteHTML($html);
+    
+    return $pdf->Output('inventario_' . now()->format('Ymd_His') . '.pdf', 'D');
+}
+```
+
+**Vistas creadas:**
+- `resources/views/products/inventory_report.blade.php`
+- `resources/views/products/inventory_report_pdf.blade.php`
+
+**Características:**
+- Tabla con columnas: Código, Descripción, Categoría, Stock, Precio Compra, Precio Venta, Valor Total (Venta), Valor Total (Costo)
+- Filtro por categoría
+- Tarjetas de resumen: Total Productos, Total Stock, Valor Venta, Valor Costo
+- Botones de exportación: Excel, PDF
+- Resaltado en rojo para stock negativo
+- Resaltado en amarillo para stock cero
+- Formato PDF con estilos profesionales
+
+**Actualización en menú:**
+```blade
+<!-- resources/views/layouts/admin.blade.php -->
+<li class="nav-item">
+  <a href="{{ route('products.inventory.report') }}" class="nav-link">
+    <i class="far fa-circle nav-icon"></i>
+    <p>Reporte de Inventario</p>
+  </a>
+</li>
+```
+
+---
+
+## 25. Correcciones de Seguridad y Bugs (Julio 2026)
+
+### 25.1 Command Injection en CompanyController y BackupController
+
+**Problema:** Passwords y paths se interpolaban directamente en comandos shell sin escape.
+
+**Archivos afectados:**
+- `app/Http/Controllers/CompanyController.php` (líneas 107-108, 124, 160-161)
+- `app/Http/Controllers/BackupController.php` (línea 46)
+
+**Solución:** Uso de `escapeshellarg()` para escapar todos los argumentos.
+
+**Ejemplo (CompanyController.php:107):**
+```php
+// Antes (inseguro):
+$verifyCmd = "\"$opensslBin\" pkcs12 -in \"$tempPath\" -passin pass:$certPassword -noout 2>&1";
+
+// Después (seguro):
+$verifyCmd = escapeshellarg($opensslBin) . ' pkcs12 -in ' . escapeshellarg($tempPath) . ' -passin pass:' . escapeshellarg($certPassword) . ' -noout 2>&1';
+```
+
+### 25.2 Variable `$client` indefinida en GreenterService
+
+**Problema:** En `sendCreditNote()` y `sendDebitNote()`, se usaba `$client->direccion` pero `$client` no existía en ese scope.
+
+**Archivos afectados:**
+- `app/Services/GreenterService.php` (líneas 112, 298)
+
+**Solución:** Cambiar `$client->direccion` por `$cd['direccion']`.
+
+```php
+// Antes (error):
+$clientAddress->setDireccion($client->direccion);
+
+// Después (correcto):
+$clientAddress->setDireccion($cd['direccion']);
+```
+
+### 25.3 `sendDebitNote` no ruteaba boletas por Resumen Diario
+
+**Problema:** `sendDebitNote()` no tenía validación para detectar boletas y las enviaba por SOAP individual (SUNAT rechazaba).
+
+**Archivo afectado:** `app/Services/GreenterService.php` (línea 244-247)
+
+**Solución:** Agregar validación igual que en `sendCreditNote()`.
+
+```php
+// ND relacionada a Boleta debe ir por Resumen Diario
+if ($invoice->tipo_documento === '03') {
+    return $this->sendNoteViaSummary($invoice, $company, '08', $motivo, $descripcion);
+}
+```
+
+### 25.4 Variable `$password` indefinida en SummaryService y SpecialDocumentService
+
+**Problema:** `$password` se definía solo dentro del `else` (cuando NO existe PEM), pero se usaba fuera del if/else.
+
+**Archivos afectados:**
+- `app/Services/SummaryService.php` (línea 57)
+- `app/Services/SpecialDocumentService.php` (línea 57)
+
+**Solución:** Usar directamente `$company->certificado_password` con null coalescing.
+
+```php
+// Antes (error):
+$sunatPassword = $company->soap_password ?? $password;
+
+// Después (correcto):
+$sunatPassword = $company->soap_password ?? $company->certificado_password ?? '';
+```
 
 ---
 
