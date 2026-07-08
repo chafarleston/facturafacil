@@ -61,7 +61,7 @@ class PrintService
             $printer = $this->getPrinter($dest === 'cocina' ? 'cocina-1' : ($dest === 'cocina2' ? 'cocina-2' : 'bar-1'));
             if (!$printer) continue;
             $order->setRelation('items', collect($items));
-            $data = PlainTextTicket::kitchenTicket($order, 'escpos');
+            $data = PlainTextTicket::kitchenTicket($order, 'escpos', $dest);
             $this->queuePrint($printer, $data, 'kitchen', $refType, $order->id);
         }
         $this->processQueue();

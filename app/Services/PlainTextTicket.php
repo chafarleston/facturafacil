@@ -115,10 +115,10 @@ class PlainTextTicket
     {
     }
     
-    public static function kitchenTicket($order, string $format = 'text'): string
+    public static function kitchenTicket($order, string $format = 'text', string $dest = 'cocina'): string
     {
         $t = new self($format);
-        $t->buildKitchenHeader($order);
+        $t->buildKitchenHeader($order, $dest);
         $t->separator();
         $items = $order->items ?? $order->pendingItems ?? [];
         foreach ($items as $item) {
