@@ -1309,10 +1309,28 @@ POST /products/{id}/duplicate
 Importar desde Excel:
 POST /products/import → ProductController::importStore()
    1. Lee archivo .xlsx/.xls/.csv
-   2. Detecta columnas por nombre (codigo, descripcion, precio, stock, etc.)
+   2. Detecta columnas por nombre (codigo, descripcion, precio, precio_compra, stock, etc.)
    3. Por cada fila: crea producto o salta si ya existe
    4. Crea categorías automáticamente si no existen
    5. Reporta: creados, omitidos, errores
+
+Columnas aceptadas en importación:
+- codigo (opcional, se genera automáticamente si está vacío)
+- codigo_barras (opcional)
+- descripcion (obligatorio)
+- precio (opcional, valor por defecto: 0)
+- precio_compra (opcional, valor por defecto: 0)
+- stock (opcional, valor por defecto: 0)
+- tipo_afectacion (opcional, valores: GRA, EXO, INA, EXE)
+- umedida (opcional, valores: NIU, KGM, LTR, etc.)
+- categoria (opcional, se crea automáticamente si no existe)
+- codigo_sunat (opcional, ej: 53121801, 53121605, 51121701, etc.)
+- kds_destination (opcional, valores: cocina, cocina2, bar)
+
+Plantilla de importación:
+GET /products/import/template → downloadTemplate()
+   Genera archivo Excel con encabezados:
+   codigo, codigo_barras, descripcion, precio, precio_compra, stock, tipo_afectacion, umedida, categoria, codigo_sunat, kds_destination
 
 Productos Compuestos:
 GET /products/composite/create → Formulario crear producto compuesto
