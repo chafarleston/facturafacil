@@ -35,3 +35,4 @@ test_pdf.php
 /storage/framework/cache
 /.claude
 CLAUDE.md
+/.VSCodeCounter
