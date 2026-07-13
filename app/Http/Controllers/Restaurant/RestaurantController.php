@@ -1062,6 +1062,7 @@ class RestaurantController extends Controller
 
 private function updateOrderTotals(RestaurantOrder $order)
     {
+        $order->load('items');
         $items = $order->items->where('kitchen_status', '!=', 'CANCELLED');
         $company = Company::find($order->company_id);
         $igvRate = $company ? $company->getIgvRate() : 0.18;

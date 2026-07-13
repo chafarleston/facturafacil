@@ -176,7 +176,7 @@ class PlainTextTicket
     {
         $t = new self($format);
         $t->buildCancelHeader($order, $dest);
-        $items = $order->items->where('kds_destination', $dest)->where('kitchen_status', 'CANCELLED');
+        $items = $order->items->where('kds_destination', $dest);
         foreach ($items as $item) {
             $t->itemLine(number_format($item->quantity, 0), $item->product_name, '');
         }

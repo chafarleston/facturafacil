@@ -2682,6 +2682,8 @@ Exportación:
 | Warning password indefinida | $password solo definida en else de setupSee() | Usar $company->certificado_password con null coalescing |
 | Producto compuesto no se puede vender en POS | Validación stock <= 0 bloqueaba | Agregar condición !product.is_composite en validación |
 | Reporte de inventario no muestra precio_compra | Campo no existía en BD | Agregar migración add_precio_compra_to_products_table |
+| Ticket de bar muestra "COCINA" en vez de "BAR" | kitchenTicket() no pasaba $dest a buildKitchenHeader() | Agregar parámetro $dest a kitchenTicket() y pasarlo desde PrintService |
+| Ticket de anulación no muestra productos | Filtro where('kitchen_status', 'CANCELLED') se ejecutaba antes de marcar items | Eliminar filtro redundante en cancelNotificationGrouped() |
 
 ---
 
@@ -3281,6 +3283,72 @@ $sunatPassword = $company->soap_password ?? $password;
 // Después (correcto):
 $sunatPassword = $company->soap_password ?? $company->certificado_password ?? '';
 ```
+
+### 25.5 Header de comanda de bar mostraba "COCINA" en vez de "BAR"
+
+**Problema:** Al enviar un producto con `kds_destination = 'bar'` a la impresora de bar, la comanda imprimía "*** COCINA ***" en el header en lugar de "*** BAR ***".
+
+**Archivos afectados:**
+- `app/Services/PlainTextTicket.php` (línea 118-121)
+- `app/Services/PrintService.php` (línea 64)
+
+**Causa:** El método `kitchenTicket()` no aceptaba el parámetro `$dest` y siempre llamaba a `buildKitchenHeader($order)` sin especificar el destino, por lo que usaba el valor por defecto `'cocina'`.
+
+```php
+// Antes (roto):
+public static function kitchenTicket($order, string $format = 'text'): string
+{
+    $t = new self($format);
+    $t->buildKitchenHeader($order);  // ← siempre 'cocina'
+    // ...
+
+// Después (corregido):
+public static function kitchenTicket($order, string $format = 'text', string $dest = 'cocina'): string
+{
+    $t = new self($format);
+    $t->buildKitchenHeader($order, $dest);  // ← usa el destino correcto
+    // ...
+```
+
+**Solución:**
+1. `PlainTextTicket.php`: Agregar parámetro `$dest` a `kitchenTicket()` y pasarlo a `buildKitchenHeader()`
+2. `PrintService.php`: Pasar `$dest` al llamar `kitchenTicket()` (línea 64)
+
+**Resultado:**
+- Productos con `kds_destination = 'bar'` → Header muestra "*** BAR ***"
+- Productos con `kds_destination = 'cocina2'` → Header muestra "*** COCINA 2 ***"
+- Productos con `kds_destination = 'cocina'` → Header muestra "*** COCINA ***"
+
+### 25.6 Ticket de anulación no mostraba productos cancelados
+
+**Problema:** Al cancelar un pedido completo desde el restaurante, el ticket de anulación se imprimía pero no mostraba ningún producto. Solo aparecía el encabezado "*** ANULACIÓN COCINA ***" sin la lista de productos.
+
+**Archivo afectado:** `app/Services/PlainTextTicket.php` (línea 179)
+
+**Causa:** Error en el orden de ejecución. En el flujo de `cancelOrder()` (`RestaurantController.php:583-642`):
+
+```
+1. Se cargan los items (status SENT/READY/DELIVERED)
+2. Se llama a printCancelNotificationGrouped() → se imprime el ticket
+3. Recién después se marcan los items como CANCELLED en BD
+```
+
+El método `cancelNotificationGrouped()` filtraba los items con `where('kitchen_status', 'CANCELLED')`, pero en el momento de la impresión los items AÚN NO estaban marcados como cancelados.
+
+```php
+// Antes (roto):
+$items = $order->items->where('kds_destination', $dest)->where('kitchen_status', 'CANCELLED');
+//                                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//                                                                  No encuentra items (status = SENT/READY)
+
+// Después (corregido):
+$items = $order->items->where('kds_destination', $dest);
+//      ^^ Sin filtro de status, los items ya fueron filtrados antes
+```
+
+**Solución:** Eliminar el filtro `->where('kitchen_status', 'CANCELLED')` porque:
+- Los items ya fueron pre-filtrados en `printCancelNotificationGrouped()` (solo pasa items SENT/READY/DELIVERED)
+- La cancelación en BD ocurre después de la impresión
 
 ---
 
