@@ -221,22 +221,22 @@ class CashRegisterController extends Controller
                 $parts = explode(' + ', $pago);
                 foreach ($parts as $part) {
                     $amt = round($venta->total / count($parts), 2);
-                    $key = strtoupper(substr(trim($part), 0, 6));
-                    match ($key) {
-                        'EFECTI' => $ventasEfectivo += $amt,
-                        'TARJET' => $ventasTarjeta += $amt,
-                        'YAPE' => $ventasYape += $amt,
-                        'PLIN' => $ventasPlin += $amt,
+                    $key = strtoupper(explode('/', trim($part))[0]);
+                    match (true) {
+                        str_starts_with($key, 'EFECT') => $ventasEfectivo += $amt,
+                        str_starts_with($key, 'TARJ') => $ventasTarjeta += $amt,
+                        $key === 'YAPE' => $ventasYape += $amt,
+                        $key === 'PLIN' => $ventasPlin += $amt,
                         default => $ventasOtro += $amt,
                     };
                 }
             } else {
-                $key = strtoupper(substr($pago, 0, 6));
-                match ($key) {
-                    'EFECTI' => $ventasEfectivo += $venta->total,
-                    'TARJET' => $ventasTarjeta += $venta->total,
-                    'YAPE' => $ventasYape += $venta->total,
-                    'PLIN' => $ventasPlin += $venta->total,
+                $key = strtoupper(explode('/', $pago)[0]);
+                match (true) {
+                    str_starts_with($key, 'EFECT') => $ventasEfectivo += $venta->total,
+                    str_starts_with($key, 'TARJ') => $ventasTarjeta += $venta->total,
+                    $key === 'YAPE' => $ventasYape += $venta->total,
+                    $key === 'PLIN' => $ventasPlin += $venta->total,
                     default => $ventasOtro += $venta->total,
                 };
             }
@@ -398,22 +398,22 @@ class CashRegisterController extends Controller
                     $parts = explode(' + ', $pago);
                     foreach ($parts as $part) {
                         $amt = round($venta->total / count($parts), 2);
-                        $key = strtoupper(substr(trim($part), 0, 6));
-                        match ($key) {
-                            'EFECTI' => $data['efectivo'] += $amt,
-                            'TARJET' => $data['tarjeta'] += $amt,
-                            'YAPE' => $data['yape'] += $amt,
-                            'PLIN' => $data['plin'] += $amt,
+                        $key = strtoupper(explode('/', trim($part))[0]);
+                        match (true) {
+                            str_starts_with($key, 'EFECT') => $data['efectivo'] += $amt,
+                            str_starts_with($key, 'TARJ') => $data['tarjeta'] += $amt,
+                            $key === 'YAPE' => $data['yape'] += $amt,
+                            $key === 'PLIN' => $data['plin'] += $amt,
                             default => $data['otro'] += $amt,
                         };
                     }
                 } else {
-                    $key = strtoupper(substr($pago, 0, 6));
-                    match ($key) {
-                        'EFECTI' => $data['efectivo'] += $venta->total,
-                        'TARJET' => $data['tarjeta'] += $venta->total,
-                        'YAPE' => $data['yape'] += $venta->total,
-                        'PLIN' => $data['plin'] += $venta->total,
+                    $key = strtoupper(explode('/', $pago)[0]);
+                    match (true) {
+                        str_starts_with($key, 'EFECT') => $data['efectivo'] += $venta->total,
+                        str_starts_with($key, 'TARJ') => $data['tarjeta'] += $venta->total,
+                        $key === 'YAPE' => $data['yape'] += $venta->total,
+                        $key === 'PLIN' => $data['plin'] += $venta->total,
                         default => $data['otro'] += $venta->total,
                     };
                 }
