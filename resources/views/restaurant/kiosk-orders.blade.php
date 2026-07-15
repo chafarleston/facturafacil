@@ -52,7 +52,7 @@
                         <button class="btn btn-danger btn-sm" onclick="cancelKioskOrder({{ $order->id }})">
                             <i class="fas fa-trash"></i>
                         </button>
-                        @endif
+@endif
                     </td>
                 </tr>
                 @empty
@@ -60,6 +60,32 @@
                 @endforelse
             </tbody>
         </table>
+    </div>
+</div>
+
+{{-- Cancel Confirm Modal --}}
+<div class="cancel-overlay" id="cancelOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10001; align-items:center; justify-content:center;">
+    <div class="cancel-popup" style="background:white; padding:25px; border-radius:10px; min-width:380px; max-width:450px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h5 style="margin:0; color:#dc3545;"><i class="fas fa-exclamation-triangle"></i> Anular Pedido</h5>
+            <button onclick="closeCancelModal()" style="border:none; background:none; font-size:20px; cursor:pointer;">&times;</button>
+        </div>
+        <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:6px; padding:12px; margin-bottom:15px;">
+            <div style="font-size:13px; color:#856404; margin-bottom:4px;"><strong><i class="fas fa-info-circle"></i> Pedido:</strong> <span id="cancelOrderNumber">-</span></div>
+            <div style="font-size:13px; color:#856404;" id="cancelOrderItems"></div>
+        </div>
+        <p style="color:#666; font-size:13px; margin-bottom:10px;">¿Está seguro de anular este pedido? Esta acción no se puede deshacer.</p>
+        <div id="cancelAdminSection" style="display:none; margin-bottom:12px;">
+            <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Contraseña de Administrador</label>
+            <input type="password" id="cancelAdminPassword" class="form-control form-control-sm" placeholder="Requerida para pedidos en cocina" style="border-color:#dc3545;">
+        </div>
+        <div id="cancelError" style="display:none; color:#dc3545; font-size:12px; margin-bottom:10px;"></div>
+        <div style="display:flex; gap:8px;">
+            <button class="btn btn-secondary btn-sm" onclick="closeCancelModal()" style="flex:1;">Cancelar</button>
+            <button class="btn btn-danger btn-sm" id="btnConfirmCancel" onclick="confirmCancelKioskOrder()" style="flex:1;">
+                <i class="fas fa-trash"></i> Sí, Anular
+            </button>
+        </div>
     </div>
 </div>
 
@@ -141,47 +167,98 @@ function sendKioskToKitchen(orderId) {
     });
 }
 
-function cancelKioskOrder(orderId) {
-    if (!confirm('¿Anular este pedido?')) return;
+let pendingCancelOrderId = null;
+let pendingCancelRequiresAdmin = false;
 
-    fetch('/restaurant/orders/' + orderId + '/cancel', {
+function cancelKioskOrder(orderId) {
+    pendingCancelOrderId = orderId;
+    pendingCancelRequiresAdmin = false;
+    document.getElementById('cancelAdminSection').style.display = 'none';
+    document.getElementById('cancelAdminPassword').value = '';
+    document.getElementById('cancelError').style.display = 'none';
+    document.getElementById('btnConfirmCancel').disabled = false;
+    document.getElementById('btnConfirmCancel').innerHTML = '<i class="fas fa-trash"></i> Sí, Anular';
+
+    // Find order info from the table
+    const rows = document.querySelectorAll('tbody tr');
+    let orderNumber = '';
+    let itemsHtml = '';
+    let requiresAdmin = false;
+    rows.forEach(function(row) {
+        const btn = row.querySelector('button[onclick*="cancelKioskOrder(' + orderId + ')"]');
+        if (btn) {
+            const cells = row.querySelectorAll('td');
+            orderNumber = cells[0].textContent.trim();
+            itemsHtml = cells[1].innerHTML;
+            // Si tiene badge "En Cocina" requiere admin
+            requiresAdmin = cells[3].textContent.includes('En Cocina');
+        }
+    });
+
+    document.getElementById('cancelOrderNumber').textContent = orderNumber;
+    document.getElementById('cancelOrderItems').innerHTML = itemsHtml;
+
+    if (requiresAdmin) {
+        pendingCancelRequiresAdmin = true;
+        document.getElementById('cancelAdminSection').style.display = 'block';
+    }
+
+    document.getElementById('cancelOverlay').style.display = 'flex';
+}
+
+function closeCancelModal() {
+    document.getElementById('cancelOverlay').style.display = 'none';
+    pendingCancelOrderId = null;
+}
+
+function confirmCancelKioskOrder() {
+    if (!pendingCancelOrderId) return;
+    
+    const btn = document.getElementById('btnConfirmCancel');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Anulando...';
+    document.getElementById('cancelError').style.display = 'none';
+    
+    const payload = {};
+    if (pendingCancelRequiresAdmin) {
+        const pwd = document.getElementById('cancelAdminPassword').value;
+        if (!pwd) {
+            document.getElementById('cancelError').textContent = 'Debe ingresar la contraseña de administrador.';
+            document.getElementById('cancelError').style.display = 'block';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-trash"></i> Sí, Anular';
+            return;
+        }
+        payload.admin_password = pwd;
+    }
+
+    fetch('/restaurant/orders/' + pendingCancelOrderId + '/cancel', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         },
-        body: JSON.stringify({})
+        body: JSON.stringify(payload)
     })
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alert('Pedido anulado');
+            closeCancelModal();
             location.reload();
-        } else if (data.requires_admin) {
-            var pwd = prompt('Se requiere contraseña de administrador:');
-            if (pwd) {
-                fetch('/restaurant/orders/' + orderId + '/cancel', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ admin_password: pwd })
-                })
-                .then(r => r.json())
-                .then(d2 => {
-                    if (d2.success) { alert('Pedido anulado'); location.reload(); }
-                    else { alert(d2.message || 'Error'); }
-                })
-                .catch(err => alert('Error: ' + err.message));
-            }
         } else {
-            alert(data.message || 'Error');
+            document.getElementById('cancelError').textContent = data.message || 'Error al anular el pedido';
+            document.getElementById('cancelError').style.display = 'block';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-trash"></i> Sí, Anular';
         }
     })
-    .catch(err => alert('Error: ' + err.message));
+    .catch(err => {
+        document.getElementById('cancelError').textContent = 'Error: ' + err.message;
+        document.getElementById('cancelError').style.display = 'block';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-trash"></i> Sí, Anular';
+    });
 }
 
 function chargeKioskOrder(orderId, total) {

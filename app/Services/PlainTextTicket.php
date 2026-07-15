@@ -205,15 +205,62 @@ class PlainTextTicket
         $t->text('Apertura: ' . ($cashregister->fecha_apertura ? $cashregister->fecha_apertura->format('d/m H:i') : ''));
         $t->text('Cierre: ' . now()->format('d/m H:i'));
         $t->separator();
+        $t->center('RESUMEN POR DOCUMENTO');
+        $facturas = $data['facturas'] ?? collect();
+        $boletas = $data['boletas'] ?? collect();
+        $nvs = $data['nvs'] ?? collect();
+        if ($facturas->count() > 0) $t->twoColumns('Facturas:', $facturas->count() . ' und - S/ ' . number_format($facturas->sum('total'), 2));
+        if ($boletas->count() > 0) $t->twoColumns('Boletas:', $boletas->count() . ' und - S/ ' . number_format($boletas->sum('total'), 2));
+        if ($nvs->count() > 0) $t->twoColumns('Notas Venta:', $nvs->count() . ' und - S/ ' . number_format($nvs->sum('total'), 2));
+        $t->separator();
         $t->twoColumns('Total Ventas:', 'S/ ' . number_format($data['total_ventas'] ?? 0, 2));
         $t->separator();
-        $t->center('POR MÉTODO DE PAGO');
+        $t->center('POR METODO DE PAGO');
         foreach (['efectivo','tarjeta','yape','plin','otro'] as $met) {
             $label = ucfirst($met);
             $amount = $data[$met] ?? 0;
             if ($amount > 0) $t->twoColumns($label . ':', 'S/ ' . number_format($amount, 2));
         }
         $t->separator();
+
+        $ventas = $data['ventas'] ?? collect();
+        if ($ventas->count() > 0) {
+            $t->center('COMPROBANTES');
+            foreach ($ventas as $venta) {
+                $full = $venta->full_number ?? '';
+                $total = number_format($venta->total, 2);
+                $t->text($full . ' - S/ ' . $total);
+            }
+            $t->separator();
+        }
+
+        $categorias = $data['categoriasVentas'] ?? [];
+        if (count($categorias) > 0) {
+            $t->center('POR CATEGORIA');
+            foreach ($categorias as $cat => $d) {
+                $t->twoColumns($d['cantidad'] . 'x ' . $cat, 'S/ ' . number_format($d['total'], 2));
+            }
+            $t->separator();
+        }
+
+        $productos = $data['productosVendidos'] ?? [];
+        if (count($productos) > 0) {
+            $t->center('PRODUCTOS VENDIDOS');
+            foreach ($productos as $prod => $d) {
+                $t->twoColumns($d['cantidad'] . 'x ' . $prod, 'S/ ' . number_format($d['total'], 2));
+            }
+            $t->separator();
+        }
+
+        $lineas = $data['lineasEliminadas'] ?? collect();
+        if ($lineas->count() > 0) {
+            $t->center('LINEAS ELIMINADAS');
+            foreach ($lineas as $item) {
+                $t->text('x' . number_format($item->quantity, 0) . ' - ' . $item->product_name);
+            }
+            $t->separator();
+        }
+
         $t->text('Monto apertura: S/ ' . number_format($cashregister->monto_apertura ?? 0, 2));
         $t->text('Monto cierre: S/ ' . number_format($cashregister->monto_cierre ?? 0, 2));
         return $format === 'escpos' ? $t->getEscPos() : $t->getText();

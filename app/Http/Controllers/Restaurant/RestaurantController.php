@@ -973,6 +973,11 @@ class RestaurantController extends Controller
                     'igv' => round($igv, 2),
                     'tipo_afectacion' => '10',
                     'igv_percent' => round($igvRate * 100, 2),
+                    'detalle_consumo' => $items->map(fn($item) => [
+                        'product_name' => $item->product_name,
+                        'quantity' => $item->quantity,
+                        'total' => $item->total,
+                    ])->values()->toArray(),
                 ]);
             } else {
                 foreach ($items as $item) {

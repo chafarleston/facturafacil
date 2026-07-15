@@ -82,10 +82,25 @@ class CashRegisterController extends Controller
 
         $openTables = RestaurantOrder::where('company_id', $companyId)
             ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
+            ->where('order_type', '!=', 'kiosko')
             ->count();
 
-        if ($openTables > 0) {
-            return back()->with('error', "No se puede cerrar caja: hay {$openTables} mesa(s) con pedidos abiertos. Cierre o facture todos los pedidos antes de cerrar caja.");
+        $openKiosko = RestaurantOrder::where('company_id', $companyId)
+            ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
+            ->where('order_type', 'kiosko')
+            ->count();
+
+        if ($openTables > 0 || $openKiosko > 0) {
+            $mensaje = 'No se puede cerrar caja: ';
+            $partes = [];
+            if ($openTables > 0) {
+                $partes[] = "{$openTables} mesa(s) con pedidos abiertos";
+            }
+            if ($openKiosko > 0) {
+                $partes[] = "{$openKiosko} pedido(s) de kiosko pendientes";
+            }
+            $mensaje .= implode(' y ', $partes) . '. Cierre o facture todos los pedidos antes de cerrar caja.';
+            return back()->with('error', $mensaje);
         }
 
         $fechaApertura = $caja->fecha_apertura instanceof \Carbon\Carbon
@@ -191,42 +206,53 @@ class CashRegisterController extends Controller
 
     public function show(CashRegister $cashregister)
     {
-        if (!$cashregister->fecha_apertura) {
-            $cashregister->fecha_apertura = now();
-            $cashregister->save();
-        }
-        if (!$cashregister->fecha_cierre) {
-            $cashregister->fecha_cierre = now();
-        }
+        $data = $this->getCashRegisterData($cashregister);
+        extract($data);
         
-        $fechaApertura = $cashregister->fecha_apertura instanceof \Carbon\Carbon 
-            ? $cashregister->fecha_apertura 
-            : \Carbon\Carbon::parse($cashregister->fecha_apertura);
-        $fechaCierre = $cashregister->fecha_cierre instanceof \Carbon\Carbon 
-            ? $cashregister->fecha_cierre 
-            : \Carbon\Carbon::parse($cashregister->fecha_cierre);
+        $ventasEfectivo = 0;
+        $ventasTarjeta = 0;
+        $ventasYape = 0;
+        $ventasPlin = 0;
+        $ventasOtro = 0;
+
+        foreach ($ventas as $venta) {
+            $pago = $venta->metodo_pago ?? 'EFECTIVO';
+            if (str_contains($pago, ' + ')) {
+                $parts = explode(' + ', $pago);
+                foreach ($parts as $part) {
+                    $amt = round($venta->total / count($parts), 2);
+                    $key = strtoupper(substr(trim($part), 0, 6));
+                    match ($key) {
+                        'EFECTI' => $ventasEfectivo += $amt,
+                        'TARJET' => $ventasTarjeta += $amt,
+                        'YAPE' => $ventasYape += $amt,
+                        'PLIN' => $ventasPlin += $amt,
+                        default => $ventasOtro += $amt,
+                    };
+                }
+            } else {
+                $key = strtoupper(substr($pago, 0, 6));
+                match ($key) {
+                    'EFECTI' => $ventasEfectivo += $venta->total,
+                    'TARJET' => $ventasTarjeta += $venta->total,
+                    'YAPE' => $ventasYape += $venta->total,
+                    'PLIN' => $ventasPlin += $venta->total,
+                    default => $ventasOtro += $venta->total,
+                };
+            }
+        }
+        $totalMetodos = $ventasEfectivo + $ventasTarjeta + $ventasYape + $ventasPlin + $ventasOtro;
         
-        $ventas = Invoice::where('company_id', $cashregister->company_id)
-            ->where('fecha_emision', '>=', $fechaApertura->format('Y-m-d'))
-            ->where('fecha_emision', '<=', $fechaCierre->format('Y-m-d'))
-            ->where('sunat_estado', '!=', 'ANULADO')
-            ->with(['items.product.category', 'customer'])
-            ->get();
-
-        $ventas = $ventas->filter(function($venta) use ($fechaApertura, $fechaCierre) {
-            $horaVenta = !empty($venta->hora_emision) ? $venta->hora_emision : '00:00:00';
-            $fechaVenta = \Carbon\Carbon::parse($venta->fecha_emision . ' ' . $horaVenta);
-            return $fechaVenta->gte($fechaApertura) && $fechaVenta->lte($fechaCierre);
-        });
-
-        $facturas = $ventas->where('tipo_documento', '01');
-        $boletas = $ventas->where('tipo_documento', '03');
-        $nvs = $ventas->where('tipo_documento', 'NV');
         $kioskoVentas = $ventas->where('order_source', 'kiosko');
         $kioskoTotal = $kioskoVentas->sum('total');
         $kioskoCount = $kioskoVentas->count();
 
-        return view('cashregisters.show', compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventas', 'categoriasVentas', 'productosVendidos', 'ventasEfectivo', 'ventasTarjeta', 'ventasYape', 'ventasPlin', 'ventasOtro', 'totalMetodos', 'lineasEliminadas', 'kioskoTotal', 'kioskoCount'));
+        return view('cashregisters.show', compact(
+            'cashregister', 'facturas', 'boletas', 'nvs', 'ventas',
+            'categoriasVentas', 'productosVendidos',
+            'ventasEfectivo', 'ventasTarjeta', 'ventasYape', 'ventasPlin', 'ventasOtro',
+            'totalMetodos', 'lineasEliminadas', 'kioskoTotal', 'kioskoCount'
+        ));
     }
 
     private function getCashRegisterData(CashRegister $cashregister)
@@ -293,22 +319,23 @@ class CashRegisterController extends Controller
             }
 
             foreach ($venta->items as $item) {
-                $categoriaNombre = $item->product && $item->product->category 
-                    ? $item->product->category->nombre 
-                    : 'Sin Categoría';
-
-                if (!isset($categoriasVentas[$categoriaNombre])) {
-                    $categoriasVentas[$categoriaNombre] = ['cantidad' => 0, 'total' => 0];
+                if ($item->descripcion === 'POR CONSUMO' && !empty($item->detalle_consumo)) {
+                    foreach ($item->detalle_consumo as $detalle) {
+                        $nombre = $detalle['product_name'] ?? 'Producto';
+                        if (!isset($productosVendidos[$nombre])) {
+                            $productosVendidos[$nombre] = ['cantidad' => 0, 'total' => 0];
+                        }
+                        $productosVendidos[$nombre]['cantidad'] += $detalle['quantity'] ?? 0;
+                        $productosVendidos[$nombre]['total'] += $detalle['total'] ?? 0;
+                    }
+                } else {
+                    $productoNombre = $item->descripcion;
+                    if (!isset($productosVendidos[$productoNombre])) {
+                        $productosVendidos[$productoNombre] = ['cantidad' => 0, 'total' => 0];
+                    }
+                    $productosVendidos[$productoNombre]['cantidad'] += $item->cantidad;
+                    $productosVendidos[$productoNombre]['total'] += $item->precio_venta;
                 }
-                $categoriasVentas[$categoriaNombre]['cantidad']++;
-                $categoriasVentas[$categoriaNombre]['total'] += $item->precio_venta;
-
-                $productoNombre = $item->descripcion;
-                if (!isset($productosVendidos[$productoNombre])) {
-                    $productosVendidos[$productoNombre] = ['cantidad' => 0, 'total' => 0];
-                }
-                $productosVendidos[$productoNombre]['cantidad'] += $item->cantidad;
-                $productosVendidos[$productoNombre]['total'] += $item->precio_venta;
             }
         }
 
@@ -356,6 +383,42 @@ class CashRegisterController extends Controller
     {
         try {
             $data = $this->getCashRegisterData($cashregister);
+            
+            $ventas = $data['ventas'];
+            $data['total_ventas'] = $ventas->sum('total');
+            $data['efectivo'] = 0;
+            $data['tarjeta'] = 0;
+            $data['yape'] = 0;
+            $data['plin'] = 0;
+            $data['otro'] = 0;
+
+            foreach ($ventas as $venta) {
+                $pago = $venta->metodo_pago ?? 'EFECTIVO';
+                if (str_contains($pago, ' + ')) {
+                    $parts = explode(' + ', $pago);
+                    foreach ($parts as $part) {
+                        $amt = round($venta->total / count($parts), 2);
+                        $key = strtoupper(substr(trim($part), 0, 6));
+                        match ($key) {
+                            'EFECTI' => $data['efectivo'] += $amt,
+                            'TARJET' => $data['tarjeta'] += $amt,
+                            'YAPE' => $data['yape'] += $amt,
+                            'PLIN' => $data['plin'] += $amt,
+                            default => $data['otro'] += $amt,
+                        };
+                    }
+                } else {
+                    $key = strtoupper(substr($pago, 0, 6));
+                    match ($key) {
+                        'EFECTI' => $data['efectivo'] += $venta->total,
+                        'TARJET' => $data['tarjeta'] += $venta->total,
+                        'YAPE' => $data['yape'] += $venta->total,
+                        'PLIN' => $data['plin'] += $venta->total,
+                        default => $data['otro'] += $venta->total,
+                    };
+                }
+            }
+
             $text = \App\Services\PlainTextTicket::cashRegisterSummary($cashregister, $data, 'escpos');
             $printService = app(PrintService::class);
             $printer = \App\Models\Printer::where('assigned_to', 'caja')->where('active', true)->first();
