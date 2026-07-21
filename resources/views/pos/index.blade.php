@@ -299,6 +299,32 @@
         cursor: pointer;
         flex: 0 0 auto;
     }
+    
+    .tabs-bar {
+        display: flex; gap: 5px; overflow-x: auto; padding: 6px 8px 0;
+        background: #f5f5f5; border-bottom: 2px solid #ddd;
+        flex-shrink: 0; min-height: 44px; align-items: flex-end;
+    }
+    .tab-item {
+        display: flex; gap: 6px; align-items: center;
+        padding: 6px 10px; background: #e9e9e9; border-radius: 8px 8px 0 0;
+        cursor: pointer; font-size: 12px; white-space: nowrap;
+        border: 1px solid #ddd; border-bottom: none; min-width: 90px;
+    }
+    .tab-item.active {
+        background: #fff; font-weight: bold; border-color: #4e73df;
+        border-bottom: 2px solid #fff; margin-bottom: -1px;
+    }
+    .tab-item-name { max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
+    .tab-item-total { color: #28a745; font-weight: bold; }
+    .tab-item-close { color: #dc3545; cursor: pointer; font-weight: bold; font-size: 14px; padding: 0 2px; }
+    .tab-item-close:hover { color: #a71d2a; }
+    .tab-add {
+        background: #28a745; color: white; border: none; padding: 6px 12px;
+        border-radius: 8px 8px 0 0; cursor: pointer; font-size: 12px;
+        white-space: nowrap; font-weight: bold;
+    }
+    .tab-add:hover { background: #218838; }
 </style>
 @endpush
 
@@ -339,6 +365,9 @@
     </div>
     
     <div class="sale-section">
+        <div class="tabs-bar" id="tabsBar">
+            <button id="btnAddTab" class="tab-add" onclick="addNewTab()" title="Nueva venta">+ Nueva Venta</button>
+        </div>
         <div class="sale-items-panel">
             <div class="panel-title"><i class="fas fa-shopping-cart"></i> Productos</div>
             <div class="sale-items-list" id="saleItems">
@@ -494,139 +523,134 @@
 
 @push('scripts')
 <script>
-let saleItems = [];
 const igvPercent = {{ $mainCompany->getActiveIgvPercent() }};
 const productsData = @json($products->where('estado', 'ACTIVO'));
 const categoriesData = @json($categories);
 const customersData = @json($customers);
 const seriesData = @json($series);
 
-function searchCustomers(term) {
-    if (term.length < 2) {
-        document.getElementById('customerDropdown').style.display = 'none';
-        return;
-    }
-    
-    const termLower = term.toLowerCase();
-    const results = customersData.filter(c => {
-        const nombreMatch = c.nombre && c.nombre.toLowerCase().includes(termLower);
-        const documentoMatch = c.documento_numero && c.documento_numero.includes(term);
-        return nombreMatch || documentoMatch;
-    });
-    
-    if (results.length === 0) {
-        document.getElementById('customerDropdown').innerHTML = '<div class="customer-option"><span class="text-muted">Sin resultados</span></div>';
-        document.getElementById('customerDropdown').style.display = 'block';
-        return;
-    }
-    
-    let html = '';
-    results.slice(0, 10).forEach(customer => {
-        html += '<div class="customer-option" onclick="selectCustomer(' + customer.id + ', \'' + customer.nombre.replace(/'/g, "\\'") + '\')">' +
-            '<div class="customer-option-name">' + customer.nombre + '</div>' +
-            '<div class="customer-option-doc">' + (customer.documento_tipo || '') + ': ' + (customer.documento_numero || '') + '</div>' +
-        '</div>';
-    });
-    
-    document.getElementById('customerDropdown').innerHTML = html;
-    document.getElementById('customerDropdown').style.display = 'block';
+// === MULTI-TAB SYSTEM ===
+let saleTabs = [];
+let activeTabId = null;
+let nextTabId = 1;
+
+const STORAGE_KEY = 'pos_tabs';
+const STORAGE_ACTIVE = 'pos_activeTab';
+const STORAGE_NEXTID = 'pos_nextTabId';
+
+function saveTabsToStorage() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(saleTabs));
+    localStorage.setItem(STORAGE_ACTIVE, activeTabId);
+    localStorage.setItem(STORAGE_NEXTID, nextTabId);
 }
 
-function selectCustomer(id, nombre) {
-    document.getElementById('customerId').value = id;
-    document.getElementById('customerSearch').value = nombre;
-    document.getElementById('customerDropdown').style.display = 'none';
+function loadTabsFromStorage() {
+    try {
+        var saved = localStorage.getItem(STORAGE_KEY);
+        saleTabs = saved ? JSON.parse(saved) : [];
+        activeTabId = parseInt(localStorage.getItem(STORAGE_ACTIVE)) || null;
+        nextTabId = parseInt(localStorage.getItem(STORAGE_NEXTID)) || 1;
+    } catch(e) {
+        saleTabs = []; activeTabId = null; nextTabId = 1;
+    }
 }
 
-function updateSerieByType() {
-    const docType = document.getElementById('documentType').value;
-    const typePrefixes = { '01': 'F', '03': 'B', 'NV': 'NV' };
-    const prefix = typePrefixes[docType] || 'F';
-    let defaultSerie = prefix + '001';
-    
-    if (seriesData && seriesData.length > 0) {
-        const matchingSerie = seriesData.find(s => s.tipo_documento === docType);
-        if (matchingSerie && matchingSerie.serie) {
-            defaultSerie = matchingSerie.serie;
+function getActiveTab() {
+    return saleTabs.find(function(t) { return t.id === activeTabId; });
+}
+
+function addNewTab() {
+    var tab = {
+        id: nextTabId,
+        name: 'Venta ' + nextTabId,
+        items: [],
+        customerId: null,
+        customerName: '',
+        documentType: 'NV',
+        paymentMethod: 'EFECTIVO',
+        createdAt: new Date().toISOString()
+    };
+    nextTabId++;
+    saleTabs.push(tab);
+    switchToTab(tab.id);
+    saveTabsToStorage();
+}
+
+function switchToTab(tabId) {
+    // Save current tab's state from inputs
+    if (activeTabId) {
+        var cur = getActiveTab();
+        if (cur) {
+            cur.customerId = document.getElementById('customerId').value || null;
+            cur.customerName = document.getElementById('customerSearch').value || '';
+            cur.documentType = document.getElementById('documentType').value;
+            cur.paymentMethod = document.getElementById('paymentMethod').value;
         }
     }
+    activeTabId = tabId;
+    var tab = getActiveTab();
+    if (!tab) return;
     
-    document.getElementById('serieDisplay').value = defaultSerie;
+    // Restore tab state to inputs
+    document.getElementById('customerId').value = tab.customerId || '';
+    document.getElementById('customerSearch').value = tab.customerName || '';
+    document.getElementById('documentType').value = tab.documentType || 'NV';
+    document.getElementById('paymentMethod').value = tab.paymentMethod || 'EFECTIVO';
+    updateSerieByType();
+    
+    renderTabs();
+    renderSaleItems();
+    saveTabsToStorage();
 }
 
-function showProducts(categoryId, categoryName) {
-    document.getElementById('categoriesGrid').style.display = 'none';
-    document.getElementById('productsSection').style.display = 'flex';
-    document.getElementById('categoryTitle').textContent = categoryName;
+function closeTab(tabId) {
+    var tab = saleTabs.find(function(t) { return t.id === tabId; });
+    if (!tab) return;
+    if (tab.items.length > 0 && !confirm('La venta ' + tab.name + ' tiene productos. Eliminarla?')) return;
     
-    const products = productsData.filter(p => p.category_id === categoryId);
+    saleTabs = saleTabs.filter(function(t) { return t.id !== tabId; });
     
-    if (products.length === 0) {
-        document.getElementById('productsGrid').innerHTML = '<div class="empty-sale"><i class="fas fa-box-open"></i><p>Sin productos</p></div>';
-        return;
-    }
-    
-    let html = '';
-    products.forEach(product => {
-        html += '<div class="product-card" onclick="addToSale(' + product.id + ')">' +
-            '<div class="product-name">' + product.descripcion + '</div>' +
-            '<div class="product-price">S/ ' + parseFloat(product.precio).toFixed(2) + '</div>' +
-            '<div class="product-stock">Stock: ' + product.stock + '</div>' +
-        '</div>';
-    });
-    document.getElementById('productsGrid').innerHTML = html;
-}
-
-function searchPOSProducts(query) {
-    query = query.trim();
-    var categoriesGrid = document.getElementById('categoriesGrid');
-    var productsSection = document.getElementById('productsSection');
-    var categoryTitle = document.getElementById('categoryTitle');
-
-    if (!query) {
-        categoriesGrid.style.display = 'grid';
-        productsSection.style.display = 'none';
-        return;
-    }
-
-    var isNumeric = /^\d+$/.test(query);
-    var q = query.toLowerCase();
-
-    var results = productsData.filter(function(p) {
-        if (isNumeric) {
-            return (p.codigo_barras && p.codigo_barras.includes(q)) ||
-                   (p.codigo && p.codigo.toLowerCase().includes(q));
+    if (activeTabId === tabId) {
+        if (saleTabs.length > 0) {
+            switchToTab(saleTabs[saleTabs.length - 1].id);
+        } else {
+            activeTabId = null;
+            document.getElementById('customerId').value = '';
+            document.getElementById('customerSearch').value = '';
+            document.getElementById('documentType').value = 'NV';
+            document.getElementById('paymentMethod').value = 'EFECTIVO';
+            updateSerieByType();
+            renderTabs();
+            renderSaleItems();
         }
-        return p.descripcion && p.descripcion.toLowerCase().includes(q);
-    });
-
-    categoriesGrid.style.display = 'none';
-    productsSection.style.display = 'flex';
-    categoryTitle.textContent = 'Resultados: ' + results.length;
-
-    var grid = document.getElementById('productsGrid');
-    if (results.length === 0) {
-        grid.innerHTML = '<div class="empty-sale"><i class="fas fa-box-open"></i><p>Sin resultados</p></div>';
-        return;
+    } else {
+        renderTabs();
     }
+    saveTabsToStorage();
+}
 
+function renderTabs() {
+    var bar = document.getElementById('tabsBar');
     var html = '';
-    results.forEach(function(product) {
-        html += '<div class="product-card" onclick="addToSale(' + product.id + ')">' +
-            '<div class="product-name">' + product.descripcion + '</div>' +
-            '<div class="product-price">S/ ' + parseFloat(product.precio).toFixed(2) + '</div>' +
-            '<div class="product-stock">Stock: ' + product.stock + '</div>' +
-        '</div>';
+    saleTabs.forEach(function(tab) {
+        var total = tab.items.reduce(function(s, i) { return s + (i.price * i.quantity); }, 0);
+        var activeClass = tab.id === activeTabId ? ' active' : '';
+        html += '<div class="tab-item' + activeClass + '" onclick="switchToTab(' + tab.id + ')" title="' + tab.name + '">'
+            + '<span class="tab-item-name">' + tab.name + '</span>'
+            + '<span class="tab-item-total">S/ ' + total.toFixed(2) + '</span>'
+            + '<span class="tab-item-close" onclick="event.stopPropagation();closeTab(' + tab.id + ')">x</span>'
+            + '</div>';
     });
-    grid.innerHTML = html;
+    html += '<button id="btnAddTab" class="tab-add" onclick="addNewTab()" title="Nueva venta">+ Venta</button>';
+    bar.innerHTML = html;
 }
 
-function backToCategories() {
-    document.getElementById('categoriesGrid').style.display = 'grid';
-    document.getElementById('productsSection').style.display = 'none';
-}
-
+// === SALE FUNCTIONS (operate on active tab) ===
 function addToSale(productId) {
+    if (!activeTabId) { addNewTab(); }
+    var tab = getActiveTab();
+    if (!tab) return;
+    
     const product = productsData.find(p => p.id === productId);
     if (!product) return;
     
@@ -635,7 +659,7 @@ function addToSale(productId) {
         return;
     }
     
-    const existingItem = saleItems.find(item => item.id === productId);
+    const existingItem = tab.items.find(item => item.id === productId);
     if (existingItem) {
         if (product.is_composite || existingItem.quantity < product.stock) {
             existingItem.quantity++;
@@ -644,7 +668,7 @@ function addToSale(productId) {
             return;
         }
     } else {
-        saleItems.push({
+        tab.items.push({
             id: product.id,
             name: product.descripcion,
             price: parseFloat(product.precio),
@@ -655,51 +679,71 @@ function addToSale(productId) {
     }
     
     renderSaleItems();
+    renderTabs();
+    saveTabsToStorage();
 }
 
 function decreaseQty(productId) {
-    const item = saleItems.find(item => item.id === productId);
+    var tab = getActiveTab();
+    if (!tab) return;
+    const item = tab.items.find(item => item.id === productId);
     if (item) {
-        if (item.quantity > 1) {
-            item.quantity--;
-        } else {
-            saleItems = saleItems.filter(i => i.id !== productId);
-        }
+        if (item.quantity > 1) { item.quantity--; }
+        else { tab.items = tab.items.filter(i => i.id !== productId); }
     }
     renderSaleItems();
+    renderTabs();
+    saveTabsToStorage();
 }
 
 function increaseQty(productId) {
-    const item = saleItems.find(item => item.id === productId);
+    var tab = getActiveTab();
+    if (!tab) return;
+    const item = tab.items.find(item => item.id === productId);
     if (item && (item.is_composite || item.quantity < item.stock)) {
         item.quantity++;
         renderSaleItems();
+        renderTabs();
+        saveTabsToStorage();
     }
 }
 
 function removeItem(productId) {
-    saleItems = saleItems.filter(i => i.id !== productId);
+    var tab = getActiveTab();
+    if (!tab) return;
+    tab.items = tab.items.filter(i => i.id !== productId);
     renderSaleItems();
+    renderTabs();
+    saveTabsToStorage();
 }
 
 function cancelSale() {
-    if (saleItems.length > 0 && confirm('¿Cancelar venta?')) {
-        saleItems = [];
+    var tab = getActiveTab();
+    if (!tab || tab.items.length === 0) return;
+    if (confirm('Cancelar ' + tab.name + '?')) {
+        tab.items = [];
+        tab.customerId = null;
+        tab.customerName = '';
+        document.getElementById('customerId').value = '';
+        document.getElementById('customerSearch').value = '';
         renderSaleItems();
+        renderTabs();
+        saveTabsToStorage();
     }
 }
 
 function renderSaleItems() {
     const container = document.getElementById('saleItems');
+    var tab = getActiveTab();
     
-    if (saleItems.length === 0) {
+    if (!tab || tab.items.length === 0) {
         container.innerHTML = '<div class="empty-sale"><i class="fas fa-shopping-basket"></i><p>Agrega productos</p></div>';
         document.getElementById('btnPay').disabled = true;
         return;
     }
     
     let html = '';
-    saleItems.forEach(item => {
+    tab.items.forEach(item => {
         html += '<div class="sale-item">' +
             '<div class="sale-item-info">' +
                 '<div class="sale-item-name">' + item.name + '</div>' +
@@ -720,10 +764,11 @@ function renderSaleItems() {
 }
 
 function calculateTotals() {
+    var tab = getActiveTab();
+    if (!tab) { document.getElementById('total').textContent = 'S/ 0.00'; return; }
+    
     let total = 0;
-    saleItems.forEach(item => {
-        total += item.price * item.quantity;
-    });
+    tab.items.forEach(item => { total += item.price * item.quantity; });
     
     const base = total / (1 + igvPercent / 100);
     const igv = total - base;
@@ -734,16 +779,17 @@ function calculateTotals() {
 }
 
 function getTotal() {
+    var tab = getActiveTab();
+    if (!tab) return 0;
     let total = 0;
-    saleItems.forEach(item => {
-        total += item.price * item.quantity;
-    });
+    tab.items.forEach(item => { total += item.price * item.quantity; });
     return total;
 }
 
 function processSale() {
-    if (saleItems.length === 0) {
-        showError('No hay productos');
+    var tab = getActiveTab();
+    if (!tab || tab.items.length === 0) {
+        showError('No hay productos en esta venta');
         return;
     }
     
@@ -751,35 +797,106 @@ function processSale() {
     document.getElementById('documentTypeInput').value = document.getElementById('documentType').value;
     document.getElementById('paymentMethodInput').value = document.getElementById('paymentMethod').value;
     document.getElementById('referenceInput').value = document.getElementById('reference').value;
-    document.getElementById('itemsJson').value = JSON.stringify(saleItems);
+    document.getElementById('itemsJson').value = JSON.stringify(tab.items);
     document.getElementById('totalInput').value = getTotal();
     
     document.getElementById('saleForm').submit();
 }
 
-function showError(message) {
-    document.getElementById('errorMessage').textContent = message;
-    $('#errorModal').modal('show');
+// === CUSTOMER, SERIE ===
+function selectCustomer(id, nombre) {
+    document.getElementById('customerId').value = id;
+    document.getElementById('customerSearch').value = nombre;
+    document.getElementById('customerDropdown').style.display = 'none';
+    var tab = getActiveTab();
+    if (tab) { tab.customerId = id; tab.customerName = nombre; saveTabsToStorage(); }
 }
+
+function searchCustomers(term) {
+    if (term.length < 2) { document.getElementById('customerDropdown').style.display = 'none'; return; }
+    const termLower = term.toLowerCase();
+    const results = customersData.filter(c => (c.nombre && c.nombre.toLowerCase().includes(termLower)) || (c.documento_numero && c.documento_numero.includes(term)));
+    if (results.length === 0) { document.getElementById('customerDropdown').innerHTML = '<div class="customer-option"><span class="text-muted">Sin resultados</span></div>'; document.getElementById('customerDropdown').style.display = 'block'; return; }
+    let html = '';
+    results.slice(0, 10).forEach(customer => {
+        html += '<div class="customer-option" onclick="selectCustomer(' + customer.id + ', \'' + customer.nombre.replace(/'/g, "\\'") + '\')">' +
+            '<div class="customer-option-name">' + customer.nombre + '</div>' +
+            '<div class="customer-option-doc">' + (customer.documento_tipo || '') + ': ' + (customer.documento_numero || '') + '</div></div>';
+    });
+    document.getElementById('customerDropdown').innerHTML = html;
+    document.getElementById('customerDropdown').style.display = 'block';
+}
+
+function updateSerieByType() {
+    const docType = document.getElementById('documentType').value;
+    const typePrefixes = { '01': 'F', '03': 'B', 'NV': 'NV' };
+    const prefix = typePrefixes[docType] || 'F';
+    let defaultSerie = prefix + '001';
+    if (seriesData && seriesData.length > 0) {
+        const matchingSerie = seriesData.find(s => s.tipo_documento === docType);
+        if (matchingSerie && matchingSerie.serie) defaultSerie = matchingSerie.serie;
+    }
+    document.getElementById('serieDisplay').value = defaultSerie;
+    var tab = getActiveTab();
+    if (tab) { tab.documentType = docType; saveTabsToStorage(); }
+}
+
+// === PRODUCT SEARCH ===
+function showProducts(categoryId, categoryName) {
+    document.getElementById('categoriesGrid').style.display = 'none';
+    document.getElementById('productsSection').style.display = 'flex';
+    document.getElementById('categoryTitle').textContent = categoryName;
+    const products = productsData.filter(p => p.category_id === categoryId);
+    if (products.length === 0) { document.getElementById('productsGrid').innerHTML = '<div class="empty-sale"><i class="fas fa-box-open"></i><p>Sin productos</p></div>'; return; }
+    let html = '';
+    products.forEach(product => {
+        html += '<div class="product-card" onclick="addToSale(' + product.id + ')">' +
+            '<div class="product-name">' + product.descripcion + '</div>' +
+            '<div class="product-price">S/ ' + parseFloat(product.precio).toFixed(2) + '</div>' +
+            '<div class="product-stock">Stock: ' + product.stock + '</div></div>';
+    });
+    document.getElementById('productsGrid').innerHTML = html;
+}
+
+function searchPOSProducts(query) {
+    query = query.trim();
+    var categoriesGrid = document.getElementById('categoriesGrid');
+    var productsSection = document.getElementById('productsSection');
+    var categoryTitle = document.getElementById('categoryTitle');
+    if (!query) { categoriesGrid.style.display = 'grid'; productsSection.style.display = 'none'; return; }
+    var isNumeric = /^\d+$/.test(query);
+    var q = query.toLowerCase();
+    var results = productsData.filter(function(p) {
+        if (isNumeric) return (p.codigo_barras && p.codigo_barras.includes(q)) || (p.codigo && p.codigo.toLowerCase().includes(q));
+        return p.descripcion && p.descripcion.toLowerCase().includes(q);
+    });
+    categoriesGrid.style.display = 'none'; productsSection.style.display = 'flex';
+    categoryTitle.textContent = 'Resultados: ' + results.length;
+    var grid = document.getElementById('productsGrid');
+    if (results.length === 0) { grid.innerHTML = '<div class="empty-sale"><i class="fas fa-box-open"></i><p>Sin resultados</p></div>'; return; }
+    var html = '';
+    results.forEach(function(product) {
+        html += '<div class="product-card" onclick="addToSale(' + product.id + ')">' +
+            '<div class="product-name">' + product.descripcion + '</div>' +
+            '<div class="product-price">S/ ' + parseFloat(product.precio).toFixed(2) + '</div>' +
+            '<div class="product-stock">Stock: ' + product.stock + '</div></div>';
+    });
+    grid.innerHTML = html;
+}
+
+function backToCategories() {
+    document.getElementById('categoriesGrid').style.display = 'grid';
+    document.getElementById('productsSection').style.display = 'none';
+}
+
+// === MODALS ===
+function showError(message) { document.getElementById('errorMessage').textContent = message; $('#errorModal').modal('show'); }
 
 function sendToSunat() {
     const invoiceId = document.getElementById('lastInvoiceId').value;
     if (!invoiceId) return;
-    
-    fetch('/pos/sunat/' + invoiceId, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        alert(data.message || (data.success ? 'Enviado' : 'Error'));
-    })
-    .catch(error => {
-        alert('Error al enviar: ' + error);
-    });
+    fetch('/pos/sunat/' + invoiceId, { method: 'POST', headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Content-Type': 'application/json' } })
+    .then(r => r.json()).then(d => { alert(d.message || (d.success ? 'Enviado' : 'Error')); }).catch(e => { alert('Error: ' + e); });
 }
 
 function printInvoice(format) {
@@ -788,27 +905,8 @@ function printInvoice(format) {
     window.open('/pos/print/' + invoiceId + '/' + format, '_blank');
 }
 
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') cancelSale();
-});
-
-document.getElementById('customerSearch').addEventListener('input', function(e) {
-    searchCustomers(e.target.value);
-});
-
-document.getElementById('customerSearch').addEventListener('blur', function() {
-    setTimeout(() => {
-        document.getElementById('customerDropdown').style.display = 'none';
-    }, 200);
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-    updateSerieByType();
-});
-
 function openCustomerModal() {
-    const companyId = 1;
-    document.getElementById('customerFrame').src = '/customers/create?company_id=' + companyId;
+    document.getElementById('customerFrame').src = '/customers/create?company_id=1';
     $('#customerModal').modal('show');
 }
 
@@ -818,5 +916,30 @@ function onCustomerCreated(customer) {
     selectCustomer(customer.id, customer.nombre);
 }
 
+// === PAYMENT METHOD SAVE ===
+document.getElementById('paymentMethod').addEventListener('change', function() {
+    var tab = getActiveTab();
+    if (tab) { tab.paymentMethod = this.value; saveTabsToStorage(); }
+});
+
+// === INIT ===
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') cancelSale(); });
+
+document.getElementById('customerSearch').addEventListener('input', function(e) { searchCustomers(e.target.value); });
+document.getElementById('customerSearch').addEventListener('blur', function() { setTimeout(function() { document.getElementById('customerDropdown').style.display = 'none'; }, 200); });
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadTabsFromStorage();
+    renderTabs();
+    updateSerieByType();
+    
+    if (saleTabs.length > 0 && activeTabId && saleTabs.find(function(t) { return t.id === activeTabId; })) {
+        switchToTab(activeTabId);
+    } else if (saleTabs.length > 0) {
+        switchToTab(saleTabs[0].id);
+    } else {
+        addNewTab();
+    }
+});
 </script>
 @endpush
