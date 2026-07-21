@@ -228,8 +228,10 @@ class PlainTextTicket
             $t->center('COMPROBANTES');
             foreach ($ventas as $venta) {
                 $full = $venta->full_number ?? '';
-                $total = number_format($venta->total, 2);
-                $t->text($full . ' - S/ ' . $total);
+                $cliente = $venta->customer->nombre ?? 'Clientes Varios';
+                $pago = $venta->metodo_pago ?? 'EFECTIVO';
+                $t->text($full . ' - S/ ' . number_format($venta->total, 2));
+                $t->text('  ' . $cliente . ' (' . $pago . ')');
             }
             $t->separator();
         }
