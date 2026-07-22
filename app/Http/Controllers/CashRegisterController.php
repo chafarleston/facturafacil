@@ -14,7 +14,7 @@ class CashRegisterController extends Controller
 {
     public function index(Request $request)
     {
-        $companyId = $request->get('company_id', Auth::user()->company_id);
+        $companyId = \App\Models\Company::getMainCompany()->id;
         
         $cajaAbierta = CashRegister::where('company_id', $companyId)
             ->where('estado', 'ABIERTA')
@@ -35,11 +35,7 @@ class CashRegisterController extends Controller
             'monto_apertura' => 'required|numeric|min:0'
         ]);
 
-        $companyId = $request->get('company_id', Auth::user()->company_id);
-        if (!$companyId) {
-            $mainCompany = \App\Models\Company::where('estado', 'ACTIVO')->orWhere('estado', 1)->first();
-            $companyId = $mainCompany ? $mainCompany->id : \App\Models\Company::first()->id;
-        }
+        $companyId = \App\Models\Company::getMainCompany()->id;
         
         $cajaExistente = CashRegister::where('company_id', $companyId)
             ->where('estado', 'ABIERTA')
