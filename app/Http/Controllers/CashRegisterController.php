@@ -216,8 +216,15 @@ class CashRegisterController extends Controller
             if (str_contains($pago, ' + ')) {
                 $parts = explode(' + ', $pago);
                 foreach ($parts as $part) {
-                    $amt = round($venta->total / count($parts), 2);
-                    $key = strtoupper(explode('/', trim($part))[0]);
+                    $part = trim($part);
+                    if (str_contains($part, '/')) {
+                        [$metName, $metAmt] = explode('/', $part);
+                        $amt = min((float) $metAmt, $venta->total);
+                    } else {
+                        $metName = $part;
+                        $amt = round($venta->total / count($parts), 2);
+                    }
+                    $key = strtoupper($metName);
                     match (true) {
                         str_starts_with($key, 'EFECT') => $ventasEfectivo += $amt,
                         str_starts_with($key, 'TARJ') => $ventasTarjeta += $amt,
@@ -393,8 +400,15 @@ class CashRegisterController extends Controller
                 if (str_contains($pago, ' + ')) {
                     $parts = explode(' + ', $pago);
                     foreach ($parts as $part) {
-                        $amt = round($venta->total / count($parts), 2);
-                        $key = strtoupper(explode('/', trim($part))[0]);
+                        $part = trim($part);
+                        if (str_contains($part, '/')) {
+                            [$metName, $metAmt] = explode('/', $part);
+                            $amt = min((float) $metAmt, $venta->total);
+                        } else {
+                            $metName = $part;
+                            $amt = round($venta->total / count($parts), 2);
+                        }
+                        $key = strtoupper($metName);
                         match (true) {
                             str_starts_with($key, 'EFECT') => $data['efectivo'] += $amt,
                             str_starts_with($key, 'TARJ') => $data['tarjeta'] += $amt,
