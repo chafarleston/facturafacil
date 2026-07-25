@@ -2684,6 +2684,15 @@ Exportación:
 | Reporte de inventario no muestra precio_compra | Campo no existía en BD | Agregar migración add_precio_compra_to_products_table |
 | Ticket de bar muestra "COCINA" en vez de "BAR" | kitchenTicket() no pasaba $dest a buildKitchenHeader() | Agregar parámetro $dest a kitchenTicket() y pasarlo desde PrintService |
 | Ticket de anulación no muestra productos | Filtro where('kitchen_status', 'CANCELLED') se ejecutaba antes de marcar items | Eliminar filtro redundante en cancelNotificationGrouped() |
+| POS muestra S/ 0 en Yape y Plin | substr($pago,0,6) extraía "YAPE/5" en vez de "YAPE" | Usar explode('/', $pago)[0] con match(true) |
+| Pago mixto "YAPE/80 + EFECTIVO/15" suma mal | Código dividía total entre partes en vez de leer montos reales | Usar explode('/', $part) para leer monto individual |
+| Cajas no aparecen en el índice | index() usaba company_id del usuario en vez de empresa principal | Usar siempre Company::getMainCompany()->id |
+| Cierre de caja: "3 mesas abiertas" pero son pedidos kiosko | Contaba todos los pedidos sin distinguir order_type | Separar conteo: where('order_type','!=','kiosko') y where('order_type','kiosko') |
+| Ticket de caja impreso incompleto | Faltaban secciones (documentos, categorías, líneas eliminadas) | cashRegisterSummary() ahora incluye secciones completas |
+| POS pierde carrito al cerrar navegador | saleItems[] en memoria, sin persistencia | Sistema de tabs con localStorage (pos_tabs, pos_activeTab) |
+| Total de pedido incorrecto al agregar items | updateOrderTotals() usaba $order->items cacheado | Agregar $order->load('items') al inicio del método |
+| "POR CONSUMO" no muestra productos individuales | Solo se creaba 1 InvoiceItem sin desglose | Columna detalle_consumo (JSON) + populate al cobrar |
+| Modal cancelar kiosko usaba confirm() nativo | Sin feedback visual, sin info del pedido | Modal HTML con detalles y campo de contraseña admin |
 
 ---
 
@@ -3349,6 +3358,173 @@ $items = $order->items->where('kds_destination', $dest);
 **Solución:** Eliminar el filtro `->where('kitchen_status', 'CANCELLED')` porque:
 - Los items ya fueron pre-filtrados en `printCancelNotificationGrouped()` (solo pasa items SENT/READY/DELIVERED)
 - La cancelación en BD ocurre después de la impresión
+
+### 25.7 POS Multi-venta con Tabs y localStorage
+
+**Problema:** POS solo permitía una venta a la vez. Al cerrar el navegador, se perdía el carrito.
+
+**Archivo afectado:** `resources/views/pos/index.blade.php`
+
+**Solución:** Reemplazar `saleItems[]` por un sistema de tabs múltiples con persistencia en localStorage.
+
+**Estructura de datos:**
+```javascript
+let saleTabs = [{
+    id: 1, name: 'Venta 1',
+    items: [{id, name, price, quantity}],
+    customerId, customerName, documentType, paymentMethod
+}];
+let activeTabId = 1;
+```
+
+**Funcionalidades:**
+- Barra de tabs con botón "+" para nuevas ventas
+- Cada tab independiente con su propio carrito, cliente y método de pago
+- Al cambiar de tab se guarda el estado actual y se carga el nuevo
+- Cierre de tab con confirmación si tiene productos
+- Persistencia automática en localStorage (`pos_tabs`, `pos_activeTab`)
+- Al recargar la página o reabrir el navegador, se restauran todas las ventas
+
+### 25.8 Fix Método de Pago Yape y Plin
+
+**Problema:** Yape y Plin se contabilizaban como "Otro" porque el matcheo `substr($pago, 0, 6)` extraía "YAPE/5" (6 caracteres) que no coincidía con "YAPE" (4 caracteres).
+
+**Archivo afectado:** `app/Http/Controllers/CashRegisterController.php`
+
+**Solución:** Usar `explode('/', $pago)[0]` en vez de `substr($pago, 0, 6)` para extraer el nombre del método. Cambiar `match($key)` por `match(true)` con `str_starts_with()`.
+
+```php
+// Antes (roto):
+$key = strtoupper(substr($pago, 0, 6));
+match ($key) {
+    'EFECTI' => ...,
+    'YAPE' => ...,    // ← 'YAPE/5' != 'YAPE'
+    'PLIN' => ...,    // ← nunca matchea
+};
+
+// Después (corregido):
+$key = strtoupper(explode('/', $pago)[0]);
+match (true) {
+    str_starts_with($key, 'EFECT') => ...,
+    $key === 'YAPE' => ...,
+    $key === 'PLIN' => ...,
+};
+```
+
+**Aplicado en:** `show()`, `printCaja()` y `close()` del CashRegisterController.
+
+### 25.9 Fix Montos en Pagos Mixtos
+
+**Problema:** Pagos mixtos como "YAPE/80 + EFECTIVO/15" dividían el total entre las partes (S/ 47.50 cada uno) en vez de usar los montos reales (S/ 80 y S/ 15).
+
+**Ejemplo:** Venta NV01-00003829 de S/ 95 con pago "YAPE/80 + EFECTIVO/15":
+- Antes: Yape S/ 47.50 + Efectivo S/ 47.50 = S/ 95 (montos incorrectos)
+- Ahora: Yape S/ 80.00 + Efectivo S/ 15.00 = S/ 95 (montos correctos)
+
+**Archivo afectado:** `app/Http/Controllers/CashRegisterController.php`
+
+**Solución:** En `show()` y `printCaja()`, parsear el monto real de cada parte con `explode('/', $part)`:
+
+```php
+if (str_contains($part, '/')) {
+    [$metName, $metAmt] = explode('/', $part);  // Lee monto real
+    $amt = min((float) $metAmt, $venta->total);
+} else {
+    $metName = $part;
+    $amt = round($venta->total / count($parts), 2);
+}
+```
+
+### 25.10 Sistema Mono-Empresa
+
+**Problema:** El sistema tenía 2 empresas y usuarios asignados a diferentes `company_id`. El `index()` de caja usaba `Auth::user()->company_id` que podía ser null o 2, mientras todas las cajas eran de `company_id = 1`.
+
+**Archivo afectado:** `app/Http/Controllers/CashRegisterController.php`
+
+**Solución:**
+1. Marcar empresa #1 como `is_main = true`, desactivar empresa #2
+2. `index()` y `open()` usan siempre `Company::getMainCompany()->id`
+3. Eliminada la lógica de fallback basada en el `company_id` del usuario
+
+### 25.11 Modal de Cancelación en Kiosk Orders
+
+**Problema:** Cancelar pedidos kiosko usaba `confirm()` y `prompt()` nativos del navegador (muy simple).
+
+**Archivo afectado:** `resources/views/restaurant/kiosk-orders.blade.php`
+
+**Solución:** Modal HTML profesional con:
+- Número de pedido e items mostrados en caja amarilla informativa
+- Campo de contraseña de admin (visible solo si el pedido ya está en cocina)
+- Botón "Sí, Anular" con spinner de carga
+- Errores inline (sin alerts)
+- Confirmación: "¿Está seguro de anular este pedido? Esta acción no se puede deshacer."
+
+### 25.12 Cierre de Caja: Mensaje Específico Mesas vs Kiosko
+
+**Problema:** Al cerrar caja con pedidos abiertos, el mensaje decía "3 mesa(s) con pedidos abiertos" aunque fueran pedidos del kiosko.
+
+**Archivo afectado:** `app/Http/Controllers/CashRegisterController.php`
+
+**Solución:** Separar el conteo de pedidos por `order_type`:
+
+```php
+$openTables = RestaurantOrder::whereNotIn('status', ['COMPLETED','CANCELLED'])
+    ->where('order_type', '!=', 'kiosko')->count();
+$openKiosko = RestaurantOrder::whereNotIn('status', ['COMPLETED','CANCELLED'])
+    ->where('order_type', 'kiosko')->count();
+
+// Mensajes resultantes:
+// "2 mesa(s) con pedidos abiertos"
+// "3 pedido(s) de kiosko pendientes"
+// "2 mesa(s) con pedidos abiertos y 3 pedido(s) de kiosko pendientes"
+```
+
+### 25.13 Ticket de Cierre de Caja Completo
+
+**Problema:** El ticket impreso en "Imprimir en Caja" solo mostraba totales básicos (Total Ventas, Método Pago, Apertura/Cierre). Faltaban secciones del ticket 80mm.
+
+**Archivo afectado:** `app/Services/PlainTextTicket.php`
+
+**Solución:** `cashRegisterSummary()` ahora incluye:
+- RESUMEN POR DOCUMENTO (Facturas, Boletas, NV con conteo y total)
+- POR METODO DE PAGO (Efectivo, Tarjeta, Yape, Plin)
+- COMPROBANTES (número, total, cliente, método pago)
+- POR CATEGORIA
+- PRODUCTOS VENDIDOS
+- LINEAS ELIMINADAS
+
+```php
+// Sección comprobantes con cliente y método de pago
+foreach ($ventas as $venta) {
+    $cliente = $venta->customer->nombre ?? 'Clientes Varios';
+    $pago = $venta->metodo_pago ?? 'EFECTIVO';
+    $t->text($full . ' - S/ ' . number_format($venta->total, 2));
+    $t->text('  ' . $cliente . ' (' . $pago . ')');
+}
+```
+
+### 25.14 Fix `updateOrderTotals()` con Datos Stale
+
+**Problema:** `updateOrderTotals()` usaba `$order->items` (cacheado en memoria) que no reflejaba items recién creados/eliminados en el mismo request.
+
+**Archivo afectado:** `app/Http/Controllers/Restaurant/RestaurantController.php:1064`
+
+**Solución:** Forzar recarga desde BD con `$order->load('items')` al inicio del método.
+
+### 25.15 Desglose de Productos en "POR CONSUMO"
+
+**Problema:** Ventas con `soloConsumo = true` agrupaban todos los productos como "POR CONSUMO" en el reporte de caja, sin mostrar los productos individuales.
+
+**Archivos afectados:**
+- `database/migrations/2026_07_08_000001_add_detalle_consumo_to_invoice_items_table.php`
+- `app/Models/InvoiceItem.php`
+- `app/Http/Controllers/Restaurant/RestaurantController.php`
+- `app/Http/Controllers/CashRegisterController.php`
+
+**Solución:**
+1. Agregar columna `detalle_consumo` (JSON) a `invoice_items`
+2. Al cobrar con `soloConsumo`, guardar desglose de productos en el JSON
+3. En `getCashRegisterData()`, si encuentra `detalle_consumo`, usar el desglose en vez de "POR CONSUMO"
 
 ---
 
