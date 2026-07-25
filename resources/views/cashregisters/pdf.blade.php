@@ -38,7 +38,7 @@
         </tr>
         <tr>
             <td>Usuario:</td>
-            <td class="text-right">{{ $cashregister->user->name }}</td>
+            <td class="text-right">{{ $cashregister->user?->name ?? 'Eliminado' }}</td>
         </tr>
         <tr>
             <td>Monto Apertura:</td>

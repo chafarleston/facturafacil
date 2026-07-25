@@ -25,7 +25,7 @@
     <div class="border-bottom py-1 mb-1">
         <div>Apertura: {{ $cashregister->fecha_apertura->format('d/m/Y H:i') }}</div>
         <div>Cierre: {{ $cashregister->fecha_cierre ? $cashregister->fecha_cierre->format('d/m/Y H:i') : 'Ahora' }}</div>
-        <div>{{ $cashregister->user->name }}</div>
+        <div>{{ $cashregister->user?->name ?? 'Eliminado' }}</div>
     </div>
 
     <div class="border-top py-1 mb-1 bold">RESUMEN POR DOCUMENTO</div>

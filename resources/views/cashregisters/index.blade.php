@@ -88,7 +88,7 @@
                             <tr>
                                 <td><span class="badge badge-secondary">{{ $caja->referencia ?? '-' }}</span></td>
                                 <td>{{ $caja->fecha_apertura ? $caja->fecha_apertura->format('d/m/Y') : '-' }}</td>
-                            <td>{{ $caja->user->name }}</td>
+                            <td>{{ $caja->user?->name ?? 'Eliminado' }}</td>
                             <td>S/ {{ number_format($caja->monto_apertura, 2) }}</td>
                             <td>{{ $caja->monto_cierre ? 'S/ ' . number_format($caja->monto_cierre, 2) : '-' }}</td>
                             <td>{{ $caja->cantidad_ventas }}</td>

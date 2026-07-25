@@ -61,7 +61,7 @@
                             <span class="info-box-icon bg-primary"><i class="fas fa-users"></i></span>
                             <div class="info-box-content">
                                 <span class="info-box-text">Usuario</span>
-                                <span class="info-box-number">{{ $cashregister->user->name }}</span>
+                                <span class="info-box-number">{{ $cashregister->user?->name ?? 'Eliminado' }}</span>
                             </div>
                         </div>
                     </div>
