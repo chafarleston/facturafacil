@@ -183,6 +183,7 @@ class RestaurantController extends Controller
             $existingItem = RestaurantOrderItem::where('restaurant_order_id', $order->id)
                 ->where('product_id', $product->id)
                 ->where('kitchen_status', 'PENDING')
+                ->whereNull('paid_invoice_id')
                 ->where('notes', $validated['notes'] ?? null)
                 ->where('auxiliary_items', json_encode($validated['auxiliary_items'] ?? null))
                 ->first();
@@ -229,6 +230,13 @@ class RestaurantController extends Controller
     public function updateItem(Request $request, $itemId)
     {
         $item = RestaurantOrderItem::findOrFail($itemId);
+
+        if ($item->paid_invoice_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Este producto ya fue facturado y no se puede modificar.'
+            ], 400);
+        }
         
         $validated = $request->validate([
             'quantity' => 'nullable|numeric|min:0.01',
@@ -327,7 +335,8 @@ class RestaurantController extends Controller
         try {
             $order = RestaurantOrder::with('items')->findOrFail($orderId);
             
-            $pendingItems = $order->items()->where('kitchen_status', 'PENDING')->get();
+            $pendingItems = $order->items()->where('kitchen_status', 'PENDING')
+                ->whereNull('paid_invoice_id')->get();
             
             if ($pendingItems->isEmpty()) {
                 return response()->json([
@@ -379,7 +388,7 @@ class RestaurantController extends Controller
     public function printKitchenTicket(Request $request, $orderId)
     {
         $order = RestaurantOrder::with(['items' => function($q) {
-            $q->whereIn('kitchen_status', ['SENT']);
+            $q->whereIn('kitchen_status', ['SENT'])->whereNull('paid_invoice_id');
         }, 'table', 'user'])->findOrFail($orderId);
 
         if ($order->items->isEmpty()) {
@@ -792,11 +801,13 @@ class RestaurantController extends Controller
                 $orders = RestaurantOrder::where('company_id', $companyId)
                     ->whereIn('status', ['OPEN', 'SENT_TO_KITCHEN', 'READY'])
                     ->whereHas('items', function($q) use ($kds) {
-                        $q->whereIn('kitchen_status', ['SENT', 'READY'])
+                        $q->whereNull('paid_invoice_id')
+                          ->whereIn('kitchen_status', ['SENT', 'READY'])
                           ->where('kds_destination', $kds);
                     })
                     ->with(['items' => function($q) use ($kds) {
-                        $q->whereIn('kitchen_status', ['SENT', 'READY', 'CANCELLED'])
+                        $q->whereNull('paid_invoice_id')
+                          ->whereIn('kitchen_status', ['SENT', 'READY', 'CANCELLED'])
                           ->where('kds_destination', $kds);
                     }, 'table.floor', 'user'])
                     ->orderBy('created_at', 'asc')
@@ -1153,6 +1164,12 @@ class RestaurantController extends Controller
 
         $nextNumber = $serie->getNextNumber();
         $total = round($items->sum('total'), 2);
+
+        // Seguridad: si no hay pagos válidos, registrar EFECTIVO por el total
+        if (empty($payments) || collect($payments)->sum('amount') <= 0) {
+            $payments = [['method' => 'EFECTIVO', 'amount' => $total]];
+        }
+
         $igvRate = $mainCompany ? $mainCompany->getIgvRate() : 0.18;
         $subtotal = $total / (1 + $igvRate);
         $igv = $total - $subtotal;

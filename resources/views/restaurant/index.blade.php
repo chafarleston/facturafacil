@@ -1862,6 +1862,8 @@ function closeChargeModal() {
 let splitOrder = null;
 let splitSplits = [];
 let splitItemPool = [];
+let splitCounter = 0;
+let activeSplitCustomerIndex = null;
 
 function showSplitModal() {
     const order = window.currentOrderData;
@@ -1870,6 +1872,7 @@ function showSplitModal() {
     
     splitOrder = order;
     splitSplits = [];
+    activeSplitCustomerIndex = null;
     
     // Items disponibles: no cancelados y no pagados
     splitItemPool = (order.items || []).filter(function(it) {
@@ -1895,12 +1898,14 @@ function closeSplitModal() {
     splitOrder = null;
     splitSplits = [];
     splitItemPool = [];
+    activeSplitCustomerIndex = null;
 }
 
-function getSplitItemAvailable(itemId) {
-    // Sumar lo ya asignado en todas las splits
+function getSplitItemAvailable(itemId, excludeSplitId) {
+    // Sumar lo ya asignado en las otras splits (excluyendo la que se está editando)
     let allocated = 0;
     splitSplits.forEach(function(s) {
+        if (excludeSplitId !== undefined && s.splitId === excludeSplitId) return;
         s.items.forEach(function(si) {
             if (si.item_id === itemId) allocated += (parseFloat(si.quantity) || 0);
         });
@@ -1911,8 +1916,9 @@ function getSplitItemAvailable(itemId) {
 }
 
 function addSplit() {
-    const index = splitSplits.length;
+    const splitId = splitCounter++;
     splitSplits.push({
+        splitId: splitId,
         items: [],           // [{item_id, quantity}]
         customer_id: null,
         document_type: 'NV',
@@ -1924,75 +1930,106 @@ function addSplit() {
     const div = document.createElement('div');
     div.className = 'split-block';
     div.style.cssText = 'border:1px solid #ddd; border-radius:8px; padding:12px; margin-bottom:10px; background:#fafafa;';
-    div.id = 'splitBlock_' + index;
+    div.id = 'splitBlock_' + splitId;
     
     let itemsHtml = '';
     splitItemPool.forEach(function(item) {
         const avail = parseFloat(item.quantity) || 0;
         itemsHtml += '<div class="split-item-row" data-item-id="' + item.id + '" style="display:flex; gap:6px; align-items:center; margin-bottom:4px;">' +
             '<input type="number" min="0" max="' + avail + '" step="0.01" value="0" ' +
-            'onchange="updateSplitAllocation(' + index + ', ' + item.id + ', this.value)" ' +
+            'onchange="updateSplitAllocation(' + splitId + ', ' + item.id + ', this.value)" ' +
             'style="width:70px;" class="form-control form-control-sm split-qty">' +
             '<span style="flex:1; font-size:13px;">' + item.product_name + '</span>' +
             '<span style="font-size:11px; color:#999;">disp: ' + avail + '</span>' +
             '<span style="font-size:11px; color:#28a745; width:70px; text-align:right;" class="split-item-total">S/ 0.00</span>' +
         '</div>';
     });
+
+    // Cliente por defecto: Clientes Varios (DNI 88888888)
+    const defaultCustomer = customersData.find(function(c) { return c.documento_numero === '88888888'; });
+    const defaultCustomerId = defaultCustomer ? defaultCustomer.id : '';
+    const defaultCustomerName = defaultCustomer ? defaultCustomer.nombre : '';
+    splitSplits[splitSplits.length - 1].customer_id = defaultCustomerId || null;
     
     div.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
-        '<strong style="color:#6f42c1;">División ' + (index + 1) + '</strong>' +
-        '<button class="btn btn-danger btn-xs" onclick="removeSplit(' + index + ')" style="padding:2px 6px; font-size:11px;">×</button>' +
+        '<strong style="color:#6f42c1;">División ' + (splitSplits.length) + '</strong>' +
+        '<button class="btn btn-danger btn-xs" onclick="removeSplit(' + splitId + ')" style="padding:2px 6px; font-size:11px;">×</button>' +
         '</div>' +
         '<div class="split-items" style="margin-bottom:8px;">' + itemsHtml + '</div>' +
         '<div style="display:flex; gap:6px; margin-bottom:8px;">' +
-            '<div style="flex:1;"><label style="font-size:11px;">Cliente</label>' +
-                '<input type="text" class="form-control form-control-sm split-customer-search" placeholder="Buscar..." oninput="searchSplitCustomers(' + index + ', this.value)">' +
-                '<input type="hidden" class="split-customer-id" value="">' +
+            '<div style="flex:1; position:relative;"><label style="font-size:11px;">Cliente</label>' +
+                '<div style="display:flex; gap:4px;">' +
+                    '<input type="text" class="form-control form-control-sm split-customer-search" placeholder="Buscar..." value="' + defaultCustomerName + '" oninput="searchSplitCustomers(' + splitId + ', this.value)" autocomplete="off" style="flex:1;">' +
+                    '<input type="hidden" class="split-customer-id" value="' + defaultCustomerId + '">' +
+                    '<button type="button" class="btn btn-sm btn-success" onclick="openSplitCustomerModal(' + splitId + ')" title="Nuevo cliente" style="padding:4px 8px;"><i class="fas fa-plus"></i></button>' +
+                    '<div class="split-customer-dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid #ddd; border-radius:4px; max-height:150px; overflow-y:auto; z-index:999;"></div>' +
+                '</div>' +
             '</div>' +
             '<div style="flex:1;"><label style="font-size:11px;">Tipo Doc</label>' +
-                '<select class="form-control form-control-sm split-doc-type">' +
+                '<select class="form-control form-control-sm split-doc-type" onchange="updateSplitAllocation(' + splitId + ', null, null)">' +
                     '<option value="NV">NV</option><option value="03">BOLETA</option><option value="01">FACTURA</option>' +
                 '</select>' +
             '</div>' +
         '</div>' +
         '<div style="margin-bottom:6px;"><label style="font-size:11px;">Pago</label>' +
             '<div class="split-payment-row" style="display:flex; gap:4px;">' +
-                '<select class="form-control form-control-sm split-payment-method">' +
+                '<select class="form-control form-control-sm split-payment-method" onchange="updateSplitAllocation(' + splitId + ', null, null)">' +
                     '<option value="EFECTIVO">EFECTIVO</option><option value="TARJETA">TARJETA</option>' +
                     '<option value="YAPE">YAPE</option><option value="PLIN">PLIN</option>' +
                     '<option value="TRANSFERENCIA">TRANSFERENCIA</option>' +
                 '</select>' +
-                '<input type="number" class="form-control form-control-sm split-payment-amount" step="0.01" min="0" value="0" oninput="updateSplitAllocation(' + index + ', null, null)">' +
+                '<input type="number" class="form-control form-control-sm split-payment-amount" step="0.01" min="0" value="0" oninput="updateSplitAllocation(' + splitId + ', null, null)">' +
             '</div>' +
             '<div style="margin-top:4px;"><label class="custom-control custom-checkbox" style="font-size:11px;">' +
-                '<input type="checkbox" class="custom-control-input split-solo-consumo"><span class="custom-control-label">Solo Consumo</span>' +
+                '<input type="checkbox" class="custom-control-input split-solo-consumo" onchange="updateSplitAllocation(' + splitId + ', null, null)"><span class="custom-control-label">Solo Consumo</span>' +
             '</label></div>' +
         '</div>' +
         '<div style="text-align:right; font-weight:bold; font-size:13px;">Total División: <span class="split-block-total" style="color:#6f42c1;">S/ 0.00</span></div>';
     
     container.appendChild(div);
+    
+    // Blur: ocultar dropdown de clientes y guardar customer_id
+    const custSearch = div.querySelector('.split-customer-search');
+    const custDropdown = div.querySelector('.split-customer-dropdown');
+    custSearch.addEventListener('blur', function() {
+        setTimeout(function() { if (custDropdown) custDropdown.style.display = 'none'; }, 200);
+    });
+    custSearch.addEventListener('blur', function() {
+        setTimeout(function() { updateSplitCustomerId(splitId); }, 250);
+    });
 }
 
-function removeSplit(index) {
-    const el = document.getElementById('splitBlock_' + index);
+function removeSplit(splitId) {
+    const el = document.getElementById('splitBlock_' + splitId);
     if (el) el.remove();
-    splitSplits.splice(index, 1);
-    // Re-indexar bloques
-    const blocks = document.querySelectorAll('#splitSplitsContainer .split-block');
-    blocks.forEach(function(b, i) {
-        b.id = 'splitBlock_' + i;
-    });
+    splitSplits = splitSplits.filter(function(s) { return s.splitId !== splitId; });
     updateSplitTotals();
+}
+
+function openSplitCustomerModal(splitId) {
+    activeSplitCustomerIndex = splitId;
+    document.getElementById('splitOverlay').style.display = 'none';
+    document.getElementById('customerFrame').src = '/customers/create?company_id=' + companyId + '&modal=1';
+    document.getElementById('customerModalOverlay').style.display = 'flex';
 }
 
 function updateSplitAllocation(index, itemId, value) {
     const block = document.getElementById('splitBlock_' + index);
     if (!block) return;
     
-    const split = splitSplits[index];
+    const split = splitSplits.find(function(s) { return s.splitId === index; });
     if (!split) return;
     
-    // Limpiar items previos y reconstruir desde los inputs
+    // 1) Limitar cantidades por item (no exceder disponible considerando otras splits)
+    splitItemPool.forEach(function(item) {
+        const avail = getSplitItemAvailable(item.id, index);
+        block.querySelectorAll('.split-item-row[data-item-id="' + item.id + '"] .split-qty').forEach(function(q) {
+            q.max = Math.max(0, avail);
+            if (parseFloat(q.value) > avail) q.value = Math.max(0, avail);
+        });
+    });
+    
+    // 2) Reconstruir items desde los inputs (ya limitados)
     split.items = [];
     block.querySelectorAll('.split-item-row').forEach(function(row) {
         const id = parseInt(row.dataset.itemId);
@@ -2000,53 +2037,76 @@ function updateSplitAllocation(index, itemId, value) {
         if (qty > 0) split.items.push({item_id: id, quantity: qty});
     });
     
-    // Leer tipo doc, solo consumo
+    // 3) Leer tipo doc y solo consumo
     split.document_type = block.querySelector('.split-doc-type').value;
     split.solo_consumo = block.querySelector('.split-solo-consumo').checked;
     
-    // Calcular total de la división desde items del pool
+    // 4) Total previo (para detectar pago auto-sugerido) y nuevo total
+    const totalEl = block.querySelector('.split-block-total');
+    const prevTotal = parseFloat((totalEl.textContent || '0').replace(/[^0-9.]/g, '')) || 0;
     let total = 0;
     split.items.forEach(function(si) {
         const orig = splitItemPool.find(function(p) { return p.id === si.item_id; });
         if (orig) total += (parseFloat(si.quantity) || 0) * (parseFloat(orig.unit_price) || 0);
     });
-    block.querySelector('.split-block-total').textContent = 'S/ ' + total.toFixed(2);
+    totalEl.textContent = 'S/ ' + total.toFixed(2);
     
-    // Actualizar input de pago si era 0 o igual al total previo
+    // 5) Pago: si era auto-sugerido (igual al total previo) o 0, sugerir nuevo total
     const payInput = block.querySelector('.split-payment-amount');
-    const splitTotalEl = block.querySelector('.split-block-total');
-    // Dejar que el usuario ingrese monto; si es 0, sugerir el total
-    if ((parseFloat(payInput.value) || 0) === 0) {
+    const payVal = parseFloat(payInput.value) || 0;
+    if (payVal === 0 || (prevTotal > 0 && Math.abs(payVal - prevTotal) < 0.001)) {
         payInput.value = total.toFixed(2);
     }
     split.payments = [{'method': block.querySelector('.split-payment-method').value, 'amount': parseFloat(payInput.value) || 0}];
     
-    // Limitar cantidades por item (no exceder disponible)
-    splitItemPool.forEach(function(item) {
-        const avail = getSplitItemAvailable(item.id);
-        block.querySelectorAll('.split-item-row[data-item-id="' + item.id + '"] .split-qty').forEach(function(q) {
-            q.max = avail;
-            if (parseFloat(q.value) > avail) q.value = avail;
-        });
-    });
-    
     updateSplitTotals();
 }
 
-function searchSplitCustomers(index, term) {
-    const block = document.getElementById('splitBlock_' + index);
+function searchSplitCustomers(splitId, term) {
+    const block = document.getElementById('splitBlock_' + splitId);
     if (!block) return;
-    const input = block.querySelector('.split-customer-search');
-    if (term.length < 2) { input.dataset.dropdown = ''; return; }
+    const dropdown = block.querySelector('.split-customer-dropdown');
+    if (term.length < 2) { dropdown.style.display = 'none'; return; }
+    // El usuario está escribiendo una búsqueda nueva: invalidar cliente seleccionado
+    const split = splitSplits.find(function(s) { return s.splitId === splitId; });
+    if (split) split.customer_id = null;
+    block.querySelector('.split-customer-id').value = '';
+    const termLower = term.toLowerCase();
     const results = customersData.filter(function(c) {
-        return (c.nombre && c.nombre.toLowerCase().includes(term.toLowerCase())) ||
+        return (c.nombre && c.nombre.toLowerCase().includes(termLower)) ||
                (c.documento_numero && c.documento_numero.includes(term));
     });
-    // Mostrar sugerencias inline simples
-    if (results.length === 0) { input.dataset.dropdown = 'sin resultados'; return; }
-    const first = results[0];
-    block.querySelector('.split-customer-id').value = first.id;
-    input.value = first.nombre;
+    if (results.length === 0) {
+        dropdown.innerHTML = '<div style="padding:8px;color:#999;">Sin resultados</div>';
+        dropdown.style.display = 'block';
+        return;
+    }
+    let html = '';
+    results.slice(0, 10).forEach(function(customer) {
+        const safeName = (customer.nombre || '').replace(/'/g, "\\'");
+        html += '<div class="customer-option" onclick="selectSplitCustomer(' + splitId + ', ' + customer.id + ', \'' + safeName + '\')">' +
+            '<div class="customer-option-name">' + customer.nombre + '</div>' +
+            '<div class="customer-option-doc">' + (customer.documento_tipo || '') + ': ' + (customer.documento_numero || '') + '</div></div>';
+    });
+    dropdown.innerHTML = html;
+    dropdown.style.display = 'block';
+}
+
+function selectSplitCustomer(splitId, customerId, nombre) {
+    const block = document.getElementById('splitBlock_' + splitId);
+    if (!block) return;
+    block.querySelector('.split-customer-id').value = customerId;
+    block.querySelector('.split-customer-search').value = nombre;
+    block.querySelector('.split-customer-dropdown').style.display = 'none';
+    const split = splitSplits.find(function(s) { return s.splitId === splitId; });
+    if (split) split.customer_id = customerId;
+}
+
+function updateSplitCustomerId(splitId) {
+    const block = document.getElementById('splitBlock_' + splitId);
+    if (!block) return;
+    const split = splitSplits.find(function(s) { return s.splitId === splitId; });
+    if (split) split.customer_id = block.querySelector('.split-customer-id').value || null;
 }
 
 function updateSplitTotals() {
@@ -2214,13 +2274,32 @@ function openCustomerModal() {
 
 function closeCustomerModal() {
     document.getElementById('customerModalOverlay').style.display = 'none';
-    document.getElementById('chargeOverlay').style.display = 'flex';
+    if (activeSplitCustomerIndex !== null) {
+        document.getElementById('splitOverlay').style.display = 'flex';
+        activeSplitCustomerIndex = null;
+    } else {
+        document.getElementById('chargeOverlay').style.display = 'flex';
+    }
 }
 
 function onCustomerCreated(customer) {
     customersData.push(customer);
-    closeCustomerModal();
-    selectChargeCustomer(customer.id, customer.nombre);
+    if (activeSplitCustomerIndex !== null) {
+        const splitId = activeSplitCustomerIndex;
+        const block = document.getElementById('splitBlock_' + splitId);
+        if (block) {
+            block.querySelector('.split-customer-id').value = customer.id;
+            block.querySelector('.split-customer-search').value = customer.nombre;
+        }
+        const split = splitSplits.find(function(s) { return s.splitId === splitId; });
+        if (split) split.customer_id = customer.id;
+        activeSplitCustomerIndex = null;
+        document.getElementById('customerModalOverlay').style.display = 'none';
+        document.getElementById('splitOverlay').style.display = 'flex';
+    } else {
+        closeCustomerModal();
+        selectChargeCustomer(customer.id, customer.nombre);
+    }
 }
 
 function processCharge() {

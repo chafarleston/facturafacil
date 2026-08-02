@@ -3729,6 +3729,12 @@ Se extrajo el helper `createInvoiceFromItems()` que reutilizan `chargeOrder()` y
 | `updateOrderTotals()` | Excluye items con `paid_invoice_id` del total |
 | `cancelOrder()` | A4: bloquea anulación si hay items pagados |
 | `removeItem()` | A4: bloquea eliminación de items pagados |
+| `addItem()` | Fusiona items solo si `paid_invoice_id IS NULL` → no mezcla cantidad nueva con un clon ya facturado |
+| `updateItem()` | Bloquea modificación de items con `paid_invoice_id` (igual que `removeItem()`) |
+| `sendToKitchen()` | `whereNull('paid_invoice_id')` → no reenvía a cocina clones PENDING ya pagados |
+| `printKitchenTicket()` | Filtra `paid_invoice_id` → no reimprime tickets de items pagados |
+| `kitchenStream()` (SSE) | Filtra `paid_invoice_id` en `whereHas` e items → consistente con KDS polling |
+| `createInvoiceFromItems()` | Fallback: si `payments` está vacío o suma 0, registra EFECTIVO por el total → caja siempre cuadra |
 
 ### 27.10 Frontend
 
@@ -3741,6 +3747,27 @@ Se extrajo el helper `createInvoiceFromItems()` que reutilizan `chargeOrder()` y
 - Indicadores: Total pendiente / Repartido / Restante
 - Validación: no exceder cantidad disponible por item
 - Confirmar → POST `/restaurant/orders/{id}/split-charge`
+
+**Selección de cliente por división:**
+- **Cliente por defecto:** cada división nueva preselecciona "Clientes Varios" (DNI 88888888) si existe en `customersData` (`addSplit()` busca por `documento_numero === '88888888'`)
+- **Búsqueda con dropdown:** `searchSplitCustomers(splitId, term)` filtra por nombre o documento (mín. 2 caracteres) y muestra hasta 10 opciones clicables; `selectSplitCustomer()` asigna el `customer_id` y oculta el dropdown; al hacer blur se oculta y se persiste el id vía `updateSplitCustomerId()`
+- **Al escribir:** `searchSplitCustomers()` invalida el `customer_id` seleccionado (`null`) para que el nombre mostrado siempre corresponda al cliente del comprobante
+- **Botón "+" (crear cliente):** `openSplitCustomerModal(splitId)` oculta `splitOverlay`, guarda el split activo en `activeSplitCustomerIndex` y abre el iframe `/customers/create?company_id=X&modal=1`
+- **Retorno correcto del modal de cliente:**
+  - `closeCustomerModal()`: si `activeSplitCustomerIndex !== null` vuelve a `splitOverlay` (no a `chargeOverlay`) → no se rompe el flujo de división al cerrar sin crear
+  - `onCustomerCreated(customer)`: si venía de una división, asigna el nuevo cliente al bloque correcto y vuelve a `splitOverlay`; si venía del cobro, mantiene el flujo normal (`selectChargeCustomer`)
+
+**IDs estables de división (`splitId`):**
+- `splitCounter` genera un ID monotónico por división (en vez del índice del array)
+- Todos los handlers inline (`onchange`, `onclick`) y los bloques DOM usan `splitId`
+- `removeSplit(splitId)` filtra por id → al eliminar una división, los handlers de las restantes NO se rompen (antes se reindexaba el array y los handlers quedaban apuntando a la división equivocada)
+
+**Límite de cantidades por división:**
+- `getSplitItemAvailable(itemId, excludeSplitId)` devuelve lo disponible restando las OTRAS divisiones (excluye la que se edita)
+- `updateSplitAllocation()` primero limita los inputs (`max` = disponible, sin negativos) y LUEGO reconstruye `split.items` → la validación de `confirmSplit()` nunca muestra errores confusos con valores fuera de rango
+
+**Sugerencia de monto de pago:**
+- Si el pago es 0 o fue auto-sugerido (igual al total previo mostrado), se actualiza al nuevo total de la división → la caja siempre recibe el monto correcto aunque se agreguen items después
 
 **Badge "Pagado":** Items con `paid_invoice_id` se muestran con `opacity:0.6` y badge verde "Pagado", y sus botones de acción (qty, nota, eliminar) se ocultan.
 
@@ -3769,6 +3796,22 @@ Se extrajo el helper `createInvoiceFromItems()` que reutilizan `chargeOrder()` y
 - División A: 1 café (S/10) → NV
 - Remanente con "Cobrar": 1 café + 2 jugos = S/24 → NV
 - Resultado: 2 invoices, total S/34 cuadra, orden COMPLETED, sin doble cobro
+
+### 27.13 Auditoría de Bugs (Agosto 2026)
+
+Análisis exhaustivo del flujo de división + cliente. Correcciones aplicadas:
+
+| # | Severidad | Archivo | Bug | Fix |
+|---|-----------|---------|-----|-----|
+| 1 | **CRÍTICO** | `RestaurantController::addItem()` | Fusionaba el producto nuevo con un clon ya facturado (`kitchen_status=PENDING` + `paid_invoice_id`), cobrando cantidad sin emitir comprobante | `whereNull('paid_invoice_id')` en la consulta de fusión |
+| 2 | Media | `RestaurantController::updateItem()` | Permitía modificar items facturados vía API | Rechaza si `paid_invoice_id` existe |
+| 3 | Media | `RestaurantController::sendToKitchen()` | Reenviaba a cocina un clon PENDING pagado | `whereNull('paid_invoice_id')` |
+| 4 | Media | `printKitchenTicket()` / `kitchenStream()` | Mostraban/reimprimían items pagados en cocina | Filtro `paid_invoice_id` en ambos |
+| 5 | Media | `createInvoiceFromItems()` | División con `payments` vacío o suma 0 generaba invoice sin registrar pago en caja | Fallback a EFECTIVO por el total |
+| 6 | Media | `index.blade.php` `getSplitItemAvailable()` | Contaba la propia división → `max` negativo al sobre-asignar | Parámetro `excludeSplitId` |
+| 7 | Media | `index.blade.php` `updateSplitAllocation()` | Pago auto-sugerido quedaba obsoleto al agregar items (invoice < total) | Re-sugiere según total previo |
+| 8 | Baja | `index.blade.php` `searchSplitCustomers()` | Dejaba `customer_id` obsoleto al escribir búsqueda nueva | Invalida cliente al escribir |
+| 9 | Baja | `index.blade.php` `showSplitModal()`/`closeSplitModal()` | `activeSplitCustomerIndex` no se reseteaba | Reset en ambos |
 
 ---
 
