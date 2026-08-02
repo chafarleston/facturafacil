@@ -3528,6 +3528,250 @@ foreach ($ventas as $venta) {
 
 ---
 
+## 26. Verificación y Despliegue (Julio 2026)
+
+### 26.1 Verificación del Flujo de Caja
+
+Se realizaron pruebas automatizadas del flujo completo: abrir caja → 20 ventas en restaurante → eliminaciones de items → cerrar caja.
+
+**Prueba 1 (Caja #2):**
+- 20 ventas de 5-8 productos cada una
+- 13 items eliminados en 8 pedidos
+- 4 ventas con `soloConsumo` + desglose de productos
+- Resultado: 257 unidades COINCIDEN entre reporte y pedidos
+
+**Prueba 2 (Caja #4) — validación de métodos de pago:**
+- 20 ventas distribuidas equitativamente: 5 Efectivo, 5 Tarjeta, 5 Yape, 5 Plin
+- 8 items eliminados en 6 pedidos
+- Resultado verificado:
+
+| Método | Antes del fix | Después del fix |
+|--------|---------------|-----------------|
+| Efectivo | S/ 2,211.90 | S/ 2,211.90 ✅ |
+| Tarjeta | S/ 1,975.70 | S/ 1,975.70 ✅ |
+| Yape | S/ 0.00 ❌ | S/ 2,495.70 ✅ |
+| Plin | S/ 0.00 ❌ | S/ 1,866.60 ✅ |
+| Otro | S/ 4,362.30 ❌ | S/ 0.00 ✅ |
+
+**Scripts de prueba** (almacenados en `storage/app/tmp/`):
+- `test_caja.php` / `test_caja2.php` — generan ventas de prueba
+- `compare_products.php` — compara productos vendidos reporte vs pedidos
+- `compare_lines.php` — compara líneas eliminadas reporte vs pedidos
+- `clean_ventas.php` / `clean_productos.php` — limpian datos de prueba
+
+### 26.2 Restauración de Base de Datos de Cliente
+
+**Síntoma:** Al restaurar una BD de cliente, el historial de cierres de caja no aparecía en `/cashregisters`.
+
+**Causa:** El usuario logueado ("Administrador") tenía `company_id = 2` (Demo Company), pero las 113 cajas restauradas pertenecían a `company_id = 1` (NOLE GUERRERO DANIEL MESIAS). El `index()` filtraba por el `company_id` del usuario, resultando vacío.
+
+**Solución aplicada (ver sección 25.10):**
+1. Marcar empresa #1 como `is_main = true` y desactivar empresa #2
+2. `CashRegisterController@index` y `@open` usan siempre `Company::getMainCompany()->id`
+
+**Datos verificados tras el fix:**
+- 113 cajas en BD (112 CERRADAS + 1 ABIERTA)
+- Todas pertenecientes a `company_id = 1`
+
+### 26.3 Despliegue al Cliente
+
+**Proceso de actualización en el cliente:**
+
+```bash
+# En la máquina del cliente
+cd facturafacil
+git pull origin main        # Obtener últimos cambios
+php artisan view:clear       # Limpiar vistas compiladas
+php artisan config:clear     # Limpiar configuración cacheada
+php artisan migrate          # Aplicar migraciones nuevas (si las hay)
+```
+
+**Migraciones nuevas que debe aplicar el cliente:**
+- `2026_07_05_000002` — `is_composite` en products
+- `2026_07_05_000003` — tabla product_components
+- `2026_07_07_181559` — `precio_compra` en products
+- `2026_07_08_000001` — `detalle_consumo` en invoice_items
+
+**Importante:** Si el cliente tiene datos existentes:
+- Las ventas previas seguirán mostrando "POR CONSUMO" (sin `detalle_consumo`), solo las nuevas mostrarán desglose
+- Los productos existentes tendrán `precio_compra = 0` hasta que se registren nuevas compras
+- No es necesario borrar datos — todas las migraciones son aditivas
+
+### 26.4 Commits de Julio 2026
+
+| Commit | Contenido |
+|--------|-----------|
+| `c3ccc41` | Update CashRegisterController.php |
+| `f882022` | Eliminar ventas y productos (scripts de prueba) |
+| `56e810b` | Fix eliminar-ventas-productos |
+| `21d1068` | Update index.blade.php (POS multi-venta) |
+| `c276ee0` | Update PlainTextTicket.php |
+| `229930a` | Update CashRegisterController.php |
+| `2c73b92` | Update CashRegisterController.php (fix pagos mixtos) |
+
+---
+
+## 27. Dividir Cuenta (Agosto 2026)
+
+### 27.1 Descripción General
+
+Permite dividir la cuenta de un pedido en 2+ comprobantes independientes. Ejemplo: un pedido con 2 cafés, 1 hamburguesa clásica, 1 hamburguesa royal y 2 jugos, puede dividirse en:
+- División A: 1 café + 1 hamburguesa clásica + 1 jugo (NV)
+- División B: 1 café + 1 hamburguesa royal + 1 jugo (Boleta)
+
+### 27.2 Características
+
+| Característica | Descripción |
+|----------------|-------------|
+| **División por cantidad** | 2 cafés → 1 en división A, 1 en división B (o quedan pendientes) |
+| **Documento distinto por división** | Cada división puede ser NV, Boleta o Factura |
+| **Solo consumo por división** | Cada división activa su propio "POR CONSUMO" con desglose JSON |
+| **Badge "Pagado"** | Items ya facturados se muestran tachados/opacados con etiqueta "Pagado" en el POS |
+| **Remanente con "Cobrar"** | Los items no asignados en la división quedan pendientes y se cobran con el botón "Cobrar" |
+| **Desaparecen del KDS** | Items pagados salen del Kitchen Display System |
+
+### 27.3 Base de Datos
+
+**Migración:** `2026_07_24_000001_add_paid_invoice_id_to_restaurant_order_items_table.php`
+
+```php
+Schema::table('restaurant_order_items', function (Blueprint $table) {
+    $table->foreignId('paid_invoice_id')->nullable()->after('cancelled_by');
+});
+```
+
+- `paid_invoice_id = NULL` → item sin cobrar
+- `paid_invoice_id = <invoice_id>` → item ya cobrado en ese comprobante
+
+### 27.4 Modelo RestaurantOrderItem
+
+```php
+// Nuevo campo en fillable
+'paid_invoice_id',
+
+// Nueva relación
+public function paidInvoice(): BelongsTo
+{
+    return $this->belongsTo(Invoice::class, 'paid_invoice_id');
+}
+```
+
+### 27.5 Ruta
+
+```php
+Route::post('/restaurant/orders/{orderId}/split-charge', [RestaurantController::class, 'splitChargeOrder'])->name('restaurant.orders.splitCharge');
+```
+
+### 27.6 Endpoint `splitChargeOrder`
+
+**Payload:**
+```json
+{
+  "splits": [
+    {
+      "items": [{"item_id": 101, "quantity": 1}],
+      "customer_id": null,
+      "document_type": "NV",
+      "payments": [{"method": "EFECTIVO", "amount": 22.00}],
+      "solo_consumo": false
+    },
+    {
+      "items": [{"item_id": 101, "quantity": 1}, {"item_id": 102, "quantity": 1}],
+      "customer_id": null,
+      "document_type": "03",
+      "payments": [{"method": "YAPE", "amount": 30.00}],
+      "solo_consumo": false
+    }
+  ]
+}
+```
+
+**Lógica:**
+```
+1. Validar: usuario no mozo, caja abierta, orden no OPEN
+2. Cargar items activos (no CANCELLED, paid_invoice_id NULL)
+3. Validar que cada item no exceda la cantidad disponible
+4. Por cada split:
+   - Cantidad parcial → clon pagado + reducir item original
+   - Cantidad total → marcar item original
+   - Crear Invoice + InvoiceItems (detalle_consumo si solo_consumo)
+   - Descontar stock una vez por item
+   - Actualizar caja en vivo
+5. Si todos los items pagados → orden COMPLETED + mesa AVAILABLE
+6. Si quedan items → orden sigue activa, remaining_total > 0
+```
+
+### 27.7 Refactor de `chargeOrder()`
+
+Se extrajo el helper `createInvoiceFromItems()` que reutilizan `chargeOrder()` y `splitChargeOrder()`.
+
+**Cambios clave en `chargeOrder()`:**
+- A2/A5: solo cobra items con `paid_invoice_id = NULL` (remanente)
+- Marca items como pagados con el invoice generado
+- Marca la orden COMPLETED solo cuando no quedan items sin pagar
+
+### 27.8 Ajustes de Seguridad (A1-A5)
+
+| Ajuste | Proceso | Protección |
+|--------|---------|------------|
+| **A1** | `splitChargeOrder()` | Orden COMPLETED solo cuando todos items pagados → no bloquea cierre de caja |
+| **A2** | `chargeOrder()` remanente | Filtra `paid_invoice_id = NULL` → no duplica cobros |
+| **A3** | Cantidades parciales | Divide item en clon pagado → soporta "2 cafés → 1 y 1" |
+| **A4** | `cancelOrder()` / `removeItem()` | Bloquea operaciones sobre items pagados → integridad comprobantes |
+| **A5** | `chargeOrder()` setRelation | Excluye items pagados al cobrar remanente |
+
+### 27.9 Modificaciones en otros métodos
+
+| Método | Cambio |
+|--------|--------|
+| `getOrder()` | Devuelve `paid_invoice_id` por item, `paid_total`, `remaining_total` |
+| `getKitchenOrders()` | `whereNull('paid_invoice_id')` → items pagados fuera del KDS |
+| `updateOrderTotals()` | Excluye items con `paid_invoice_id` del total |
+| `cancelOrder()` | A4: bloquea anulación si hay items pagados |
+| `removeItem()` | A4: bloquea eliminación de items pagados |
+
+### 27.10 Frontend
+
+**Botón "Dividir"** (`fas fa-scissors`) junto al botón "Cobrar" en el modal del pedido. Solo visible para no-mozo.
+
+**Modal "Dividir Cuenta":**
+- Lista de items disponibles (no cancelados, no pagados) con cantidades
+- Botón "+ Agregar División" para múltiples splits
+- Cada división: cantidades por item, cliente, tipo documento, método de pago, solo consumo
+- Indicadores: Total pendiente / Repartido / Restante
+- Validación: no exceder cantidad disponible por item
+- Confirmar → POST `/restaurant/orders/{id}/split-charge`
+
+**Badge "Pagado":** Items con `paid_invoice_id` se muestran con `opacity:0.6` y badge verde "Pagado", y sus botones de acción (qty, nota, eliminar) se ocultan.
+
+### 27.11 Garantías de Integridad
+
+| Aspecto | Protección |
+|---------|-----------|
+| **Cierre de caja** | Cada split = invoice con su `metodo_pago`. `close()` recalcula desde invoices → montos correctos |
+| **Métodos de pago** | Cada división tiene su propio método → registrado por invoice |
+| **Stock** | Descuento UNA vez por item en el split que lo incluye |
+| **KDS/Cocina** | `whereNull('paid_invoice_id')` → items pagados desaparecen |
+| **SUNAT** | Cada invoice se envía independientemente |
+| **Series** | Cada split usa correlativo independiente |
+| **Sin doble cobro** | `paid_invoice_id` marca items facturados; remanente solo toma items NULL |
+
+### 27.12 Verificación (Pruebas)
+
+**Prueba 1 — División completa:**
+- Pedido: 2 cafés (S/20) + 1 hamb clásica (S/12) + 1 hamb royal (S/18) + 2 jugos (S/14) = S/64
+- División A (NV): 1 café + 1 hamb clásica + 1 jugo = S/29
+- División B (Boleta): 1 café + 1 hamb royal + 1 jugo = S/35
+- Resultado: 2 invoices, orden COMPLETED, cierre S/64 cuadra, stock correcto
+
+**Prueba 2 — División parcial + remanente:**
+- Pedido: 2 cafés (S/20) + 2 jugos (S/14) = S/34
+- División A: 1 café (S/10) → NV
+- Remanente con "Cobrar": 1 café + 2 jugos = S/24 → NV
+- Resultado: 2 invoices, total S/34 cuadra, orden COMPLETED, sin doble cobro
+
+---
+
 ## Anexo: Códigos de Error SUNAT
 
 El archivo `docs/sunat/codigos-error-sunat.txt` contiene el listado completo de códigos de error de SUNAT (anexo 2), utilizado para depurar respuestas al enviar comprobantes electrónicos.

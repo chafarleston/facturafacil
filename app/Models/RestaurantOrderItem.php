@@ -31,6 +31,7 @@ class RestaurantOrderItem extends Model
         'cancelled_at',
         'cancelled_by',
         'kds_destination',
+        'paid_invoice_id',
     ];
 
     protected $casts = [
@@ -55,6 +56,11 @@ class RestaurantOrderItem extends Model
     public function cancelledBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
+    public function paidInvoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class, 'paid_invoice_id');
     }
 
     public function scopePending($query)

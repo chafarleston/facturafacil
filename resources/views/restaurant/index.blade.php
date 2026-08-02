@@ -339,6 +339,8 @@
     .move-table-item .table-icon { font-size:20px; margin-right:12px; width:24px; text-align:center; }
     .btn-charge { background: #28a745; color: white; }
     .btn-charge:hover { background: #218838; }
+    .btn-split { background: #6f42c1; color: white; }
+    .btn-split:hover { background: #5a32a3; }
     .btn-prebill { background: #17a2b8; color: white; }
     .prebill-option { padding:8px 14px; cursor:pointer; font-size:13px; transition:background .15s; }
     .prebill-option:hover { background: #e3f2fd; color: #007bff; }
@@ -603,6 +605,7 @@
         @endif
         @if(!auth()->user()->isMozo())
         <button class="btn-action btn-charge" onclick="showChargeModal()" id="btnCharge" disabled><i class="fas fa-credit-card"></i><br>Cobrar</button>
+        <button class="btn-action btn-split" onclick="showSplitModal()" id="btnSplit" disabled><i class="fas fa-scissors"></i><br>Dividir</button>
         <button class="btn-action btn-cancel-order" onclick="cancelOrder()" id="btnCancelOrder" disabled><i class="fas fa-times"></i><br>Anular</button>
         @endif
         <button class="btn-action btn-move" onclick="showMoveTableModal()" id="btnMoveTable" disabled><i class="fas fa-arrows-alt"></i><br>Mover</button>
@@ -704,6 +707,37 @@
         <div style="display:flex; gap:8px;">
             <button class="btn btn-secondary btn-sm" onclick="closeChargeModal()" style="flex:0 0 80px;">Cancelar</button>
             <button class="btn btn-success btn-sm" id="btnProcessCharge" onclick="processCharge()" style="flex:1; padding:8px 0;"><i class="fas fa-credit-card"></i> COBRAR S/ 0.00</button>
+        </div>
+    </div>
+</div>
+
+{{-- Modal Dividir Cuenta --}}
+<div class="qty-overlay" id="splitOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+    <div style="background:white; padding:25px; border-radius:10px; min-width:600px; max-width:90%; max-height:90vh; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h5 style="margin:0; color:#6f42c1;"><i class="fas fa-scissors"></i> Dividir Cuenta <span id="splitOrderNumber" style="font-weight:normal; font-size:14px;"></span></h5>
+            <button onclick="closeSplitModal()" style="border:none; background:none; font-size:20px; cursor:pointer;">&times;</button>
+        </div>
+
+        <div style="background:#f3e8ff; border:1px solid #6f42c1; border-radius:6px; padding:10px; margin-bottom:15px; display:flex; justify-content:space-between; font-size:13px;">
+            <span>Total pendiente: <strong style="color:#6f42c1;" id="splitTotalPending">S/ 0.00</strong></span>
+            <span>Repartido: <strong style="color:#28a745;" id="splitTotalAllocated">S/ 0.00</strong></span>
+            <span>Restante: <strong style="color:#dc3545;" id="splitTotalRemaining">S/ 0.00</strong></span>
+        </div>
+
+        <div id="splitSplitsContainer"></div>
+
+        <button type="button" class="btn btn-primary btn-sm mb-2" onclick="addSplit()" style="margin-top:8px;">
+            <i class="fas fa-plus"></i> Agregar División
+        </button>
+
+        <div id="splitError" style="display:none; color:#dc3545; font-size:12px; margin:10px 0;"></div>
+
+        <div style="display:flex; gap:8px; margin-top:15px;">
+            <button class="btn btn-secondary btn-sm" onclick="closeSplitModal()" style="flex:1;">Cancelar</button>
+            <button class="btn btn-primary btn-sm" id="btnConfirmSplit" onclick="confirmSplit()" style="flex:1;">
+                <i class="fas fa-scissors"></i> Confirmar División
+            </button>
         </div>
     </div>
 </div>
@@ -982,6 +1016,8 @@ function loadOrder(orderId) {
         if (data.success) {
             currentOrderId = orderId;
             const order = data.order;
+            order.remaining_total = data.remaining_total;
+            order.paid_total = data.paid_total;
             window.currentOrderData = order;
             document.getElementById('modalOrderNumber').textContent = 'Pedido: ' + order.order_number;
             renderOrder(order);
@@ -1006,12 +1042,16 @@ function renderOrder(order) {
         document.getElementById('itemsCount').style.display = 'none';
         const chargeBtn = document.getElementById('btnCharge');
         if (chargeBtn) chargeBtn.disabled = true;
+        const splitBtn = document.getElementById('btnSplit');
+        if (splitBtn) splitBtn.disabled = true;
         document.getElementById('btnPrebill').disabled = true;
         return;
     }
     
     const chargeBtn = document.getElementById('btnCharge');
     if (chargeBtn) chargeBtn.disabled = order.status === 'OPEN';
+    const splitBtn = document.getElementById('btnSplit');
+    if (splitBtn) splitBtn.disabled = order.status === 'OPEN';
     document.getElementById('btnPrebill').disabled = false;
     
     let html = '';
@@ -1023,29 +1063,37 @@ function renderOrder(order) {
             'READY': 'Listo',
             'DELIVERED': 'Entregado'
         }[item.kitchen_status] || item.kitchen_status;
+        const isPaid = !!item.paid_invoice_id;
         
-        html += `<div class="order-item-row">
+        html += `<div class="order-item-row ${isPaid ? 'item-paid' : ''}" style="${isPaid ? 'opacity:0.6;' : ''}">
             <div class="order-item-info">
-                <div class="order-item-name">${item.product_name}</div>
+                <div class="order-item-name">${item.product_name} ${isPaid ? '<span class="badge badge-success" style="font-size:10px;">Pagado</span>' : ''}</div>
                 <div class="order-item-qty">${item.quantity} x S/ ${parseFloat(item.unit_price).toFixed(2)} = S/ ${parseFloat(item.total).toFixed(2)}</div>
                  ${item.notes ? `<div class="order-item-note"><i class="fas fa-sticky-note"></i> ${item.notes}</div>` : ''}
                  ${item.auxiliary_items && item.auxiliary_items.length > 0 ? `<div class="order-item-aux" style="font-size:11px;color:#9c27b0;margin-top:2px;"><i class="fas fa-tag"></i> ${item.auxiliary_items.map(function(id) { var n = window._auxNames && window._auxNames[id]; return n || ('#' + id); }).join(', ')}</div>` : ''}
                 ${item.kitchen_status !== 'PENDING' ? `<span class="badge badge-${statusClass === 'sent' ? 'warning' : statusClass === 'ready' ? 'success' : 'info'}" style="font-size:10px;">${statusLabel}</span>` : ''}
             </div>
             <div class="order-item-actions">
+                ${isPaid ? '' : `
                 <button class="btn-qty-change" onclick="changeItemQty(${item.id}, -1)">-</button>
                 <span>${item.quantity}</span>
                 <button class="btn-qty-change" onclick="changeItemQty(${item.id}, 1)">+</button>
                 <button class="btn-note-item" onclick="editItemNotes(${item.id}, '${item.notes || ''}')" title="Agregar nota"><i class="fas fa-edit"></i></button>
                 <button class="btn-remove-item" onclick="removeItem(${item.id})"><i class="fas fa-trash"></i></button>
+                `}
             </div>
         </div>`;
     });
     
     container.innerHTML = html;
-    document.getElementById('orderSubtotal').textContent = 'S/ ' + parseFloat(order.subtotal).toFixed(2);
-    document.getElementById('orderIgv').textContent = 'S/ ' + parseFloat(order.igv).toFixed(2);
-    document.getElementById('orderTotal').textContent = 'S/ ' + parseFloat(order.total).toFixed(2);
+    
+    // Mostrar total pendiente si hay paid_total/remaining_total
+    const remainingTotal = (typeof order.remaining_total !== 'undefined' && order.remaining_total !== null)
+        ? parseFloat(order.remaining_total)
+        : parseFloat(order.total);
+    document.getElementById('orderSubtotal').textContent = 'S/ ' + (remainingTotal / (1 + igvPercent / 100)).toFixed(2);
+    document.getElementById('orderIgv').textContent = 'S/ ' + (remainingTotal - remainingTotal / (1 + igvPercent / 100)).toFixed(2);
+    document.getElementById('orderTotal').textContent = 'S/ ' + remainingTotal.toFixed(2);
     const isOrderTab = document.getElementById('tabOrder').style.display !== 'none';
     const totals = document.getElementById('orderTotals');
     totals.dataset.hasItems = 'true';
@@ -1808,6 +1856,315 @@ function updatePaymentSummary() {
 
 function closeChargeModal() {
     document.getElementById('chargeOverlay').style.display = 'none';
+}
+
+// === DIVIDIR CUENTA ===
+let splitOrder = null;
+let splitSplits = [];
+let splitItemPool = [];
+
+function showSplitModal() {
+    const order = window.currentOrderData;
+    if (!order) return;
+    if (order.status === 'OPEN') { showError('Debe enviar el pedido a cocina antes de cobrar'); return; }
+    
+    splitOrder = order;
+    splitSplits = [];
+    
+    // Items disponibles: no cancelados y no pagados
+    splitItemPool = (order.items || []).filter(function(it) {
+        return it.kitchen_status !== 'CANCELLED' && !it.paid_invoice_id;
+    });
+    
+    if (splitItemPool.length === 0) {
+        showError('No hay productos pendientes para dividir');
+        return;
+    }
+    
+    document.getElementById('splitOrderNumber').textContent = '#' + (order.order_number || order.id);
+    document.getElementById('splitError').style.display = 'none';
+    document.getElementById('splitSplitsContainer').innerHTML = '';
+    
+    document.getElementById('splitOverlay').style.display = 'flex';
+    addSplit();
+    updateSplitTotals();
+}
+
+function closeSplitModal() {
+    document.getElementById('splitOverlay').style.display = 'none';
+    splitOrder = null;
+    splitSplits = [];
+    splitItemPool = [];
+}
+
+function getSplitItemAvailable(itemId) {
+    // Sumar lo ya asignado en todas las splits
+    let allocated = 0;
+    splitSplits.forEach(function(s) {
+        s.items.forEach(function(si) {
+            if (si.item_id === itemId) allocated += (parseFloat(si.quantity) || 0);
+        });
+    });
+    const orig = splitItemPool.find(function(p) { return p.id === itemId; });
+    const available = orig ? (parseFloat(orig.quantity) || 0) : 0;
+    return Math.max(0, available - allocated);
+}
+
+function addSplit() {
+    const index = splitSplits.length;
+    splitSplits.push({
+        items: [],           // [{item_id, quantity}]
+        customer_id: null,
+        document_type: 'NV',
+        payments: [{'method': 'EFECTIVO', 'amount': 0}],
+        solo_consumo: false
+    });
+    
+    const container = document.getElementById('splitSplitsContainer');
+    const div = document.createElement('div');
+    div.className = 'split-block';
+    div.style.cssText = 'border:1px solid #ddd; border-radius:8px; padding:12px; margin-bottom:10px; background:#fafafa;';
+    div.id = 'splitBlock_' + index;
+    
+    let itemsHtml = '';
+    splitItemPool.forEach(function(item) {
+        const avail = parseFloat(item.quantity) || 0;
+        itemsHtml += '<div class="split-item-row" data-item-id="' + item.id + '" style="display:flex; gap:6px; align-items:center; margin-bottom:4px;">' +
+            '<input type="number" min="0" max="' + avail + '" step="0.01" value="0" ' +
+            'onchange="updateSplitAllocation(' + index + ', ' + item.id + ', this.value)" ' +
+            'style="width:70px;" class="form-control form-control-sm split-qty">' +
+            '<span style="flex:1; font-size:13px;">' + item.product_name + '</span>' +
+            '<span style="font-size:11px; color:#999;">disp: ' + avail + '</span>' +
+            '<span style="font-size:11px; color:#28a745; width:70px; text-align:right;" class="split-item-total">S/ 0.00</span>' +
+        '</div>';
+    });
+    
+    div.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+        '<strong style="color:#6f42c1;">División ' + (index + 1) + '</strong>' +
+        '<button class="btn btn-danger btn-xs" onclick="removeSplit(' + index + ')" style="padding:2px 6px; font-size:11px;">×</button>' +
+        '</div>' +
+        '<div class="split-items" style="margin-bottom:8px;">' + itemsHtml + '</div>' +
+        '<div style="display:flex; gap:6px; margin-bottom:8px;">' +
+            '<div style="flex:1;"><label style="font-size:11px;">Cliente</label>' +
+                '<input type="text" class="form-control form-control-sm split-customer-search" placeholder="Buscar..." oninput="searchSplitCustomers(' + index + ', this.value)">' +
+                '<input type="hidden" class="split-customer-id" value="">' +
+            '</div>' +
+            '<div style="flex:1;"><label style="font-size:11px;">Tipo Doc</label>' +
+                '<select class="form-control form-control-sm split-doc-type">' +
+                    '<option value="NV">NV</option><option value="03">BOLETA</option><option value="01">FACTURA</option>' +
+                '</select>' +
+            '</div>' +
+        '</div>' +
+        '<div style="margin-bottom:6px;"><label style="font-size:11px;">Pago</label>' +
+            '<div class="split-payment-row" style="display:flex; gap:4px;">' +
+                '<select class="form-control form-control-sm split-payment-method">' +
+                    '<option value="EFECTIVO">EFECTIVO</option><option value="TARJETA">TARJETA</option>' +
+                    '<option value="YAPE">YAPE</option><option value="PLIN">PLIN</option>' +
+                    '<option value="TRANSFERENCIA">TRANSFERENCIA</option>' +
+                '</select>' +
+                '<input type="number" class="form-control form-control-sm split-payment-amount" step="0.01" min="0" value="0" oninput="updateSplitAllocation(' + index + ', null, null)">' +
+            '</div>' +
+            '<div style="margin-top:4px;"><label class="custom-control custom-checkbox" style="font-size:11px;">' +
+                '<input type="checkbox" class="custom-control-input split-solo-consumo"><span class="custom-control-label">Solo Consumo</span>' +
+            '</label></div>' +
+        '</div>' +
+        '<div style="text-align:right; font-weight:bold; font-size:13px;">Total División: <span class="split-block-total" style="color:#6f42c1;">S/ 0.00</span></div>';
+    
+    container.appendChild(div);
+}
+
+function removeSplit(index) {
+    const el = document.getElementById('splitBlock_' + index);
+    if (el) el.remove();
+    splitSplits.splice(index, 1);
+    // Re-indexar bloques
+    const blocks = document.querySelectorAll('#splitSplitsContainer .split-block');
+    blocks.forEach(function(b, i) {
+        b.id = 'splitBlock_' + i;
+    });
+    updateSplitTotals();
+}
+
+function updateSplitAllocation(index, itemId, value) {
+    const block = document.getElementById('splitBlock_' + index);
+    if (!block) return;
+    
+    const split = splitSplits[index];
+    if (!split) return;
+    
+    // Limpiar items previos y reconstruir desde los inputs
+    split.items = [];
+    block.querySelectorAll('.split-item-row').forEach(function(row) {
+        const id = parseInt(row.dataset.itemId);
+        const qty = parseFloat(row.querySelector('.split-qty').value) || 0;
+        if (qty > 0) split.items.push({item_id: id, quantity: qty});
+    });
+    
+    // Leer tipo doc, solo consumo
+    split.document_type = block.querySelector('.split-doc-type').value;
+    split.solo_consumo = block.querySelector('.split-solo-consumo').checked;
+    
+    // Calcular total de la división desde items del pool
+    let total = 0;
+    split.items.forEach(function(si) {
+        const orig = splitItemPool.find(function(p) { return p.id === si.item_id; });
+        if (orig) total += (parseFloat(si.quantity) || 0) * (parseFloat(orig.unit_price) || 0);
+    });
+    block.querySelector('.split-block-total').textContent = 'S/ ' + total.toFixed(2);
+    
+    // Actualizar input de pago si era 0 o igual al total previo
+    const payInput = block.querySelector('.split-payment-amount');
+    const splitTotalEl = block.querySelector('.split-block-total');
+    // Dejar que el usuario ingrese monto; si es 0, sugerir el total
+    if ((parseFloat(payInput.value) || 0) === 0) {
+        payInput.value = total.toFixed(2);
+    }
+    split.payments = [{'method': block.querySelector('.split-payment-method').value, 'amount': parseFloat(payInput.value) || 0}];
+    
+    // Limitar cantidades por item (no exceder disponible)
+    splitItemPool.forEach(function(item) {
+        const avail = getSplitItemAvailable(item.id);
+        block.querySelectorAll('.split-item-row[data-item-id="' + item.id + '"] .split-qty').forEach(function(q) {
+            q.max = avail;
+            if (parseFloat(q.value) > avail) q.value = avail;
+        });
+    });
+    
+    updateSplitTotals();
+}
+
+function searchSplitCustomers(index, term) {
+    const block = document.getElementById('splitBlock_' + index);
+    if (!block) return;
+    const input = block.querySelector('.split-customer-search');
+    if (term.length < 2) { input.dataset.dropdown = ''; return; }
+    const results = customersData.filter(function(c) {
+        return (c.nombre && c.nombre.toLowerCase().includes(term.toLowerCase())) ||
+               (c.documento_numero && c.documento_numero.includes(term));
+    });
+    // Mostrar sugerencias inline simples
+    if (results.length === 0) { input.dataset.dropdown = 'sin resultados'; return; }
+    const first = results[0];
+    block.querySelector('.split-customer-id').value = first.id;
+    input.value = first.nombre;
+}
+
+function updateSplitTotals() {
+    let allocatedTotal = 0;
+    let remainingTotal = 0;
+    let splitTotal = 0;
+    
+    splitSplits.forEach(function(s) {
+        let t = 0;
+        s.items.forEach(function(si) {
+            const orig = splitItemPool.find(function(p) { return p.id === si.item_id; });
+            if (orig) t += (parseFloat(si.quantity) || 0) * (parseFloat(orig.unit_price) || 0);
+        });
+        s.total = t;
+        splitTotal += t;
+    });
+    
+    // Total pendiente real = suma items del pool
+    splitItemPool.forEach(function(item) {
+        remainingTotal += (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
+    });
+    
+    allocatedTotal = splitTotal;
+    
+    document.getElementById('splitTotalPending').textContent = 'S/ ' + remainingTotal.toFixed(2);
+    document.getElementById('splitTotalAllocated').textContent = 'S/ ' + allocatedTotal.toFixed(2);
+    document.getElementById('splitTotalRemaining').textContent = 'S/ ' + Math.max(0, remainingTotal - allocatedTotal).toFixed(2);
+}
+
+function confirmSplit() {
+    const errorDiv = document.getElementById('splitError');
+    errorDiv.style.display = 'none';
+    
+    // Validar al menos una división con items
+    const validSplits = splitSplits.filter(function(s) { return s.items.length > 0; });
+    if (validSplits.length === 0) {
+        errorDiv.textContent = 'Debe asignar productos a al menos una división.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    
+    // Validar que no se exceda la cantidad disponible por item
+    let itemCheck = {};
+    validSplits.forEach(function(s) {
+        s.items.forEach(function(si) {
+            itemCheck[si.item_id] = (itemCheck[si.item_id] || 0) + (parseFloat(si.quantity) || 0);
+        });
+    });
+    
+    for (var i = 0; i < splitItemPool.length; i++) {
+        var item = splitItemPool[i];
+        var qty = parseFloat(item.quantity) || 0;
+        var allocated = itemCheck[item.id] || 0;
+        if (allocated > qty + 0.001) {
+            errorDiv.textContent = "La división de '" + item.product_name + "' excede lo disponible. Disponible: " + qty + ", solicitado: " + allocated;
+            errorDiv.style.display = 'block';
+            return;
+        }
+    }
+    // Los items no asignados quedan pendientes para el botón "Cobrar"
+    
+    // Construir payload
+    const payload = validSplits.map(function(s) {
+        return {
+            items: s.items,
+            customer_id: s.customer_id || null,
+            document_type: s.document_type || 'NV',
+            payments: s.payments && s.payments.length ? s.payments : [{'method': 'EFECTIVO', 'amount': s.total}],
+            solo_consumo: s.solo_consumo || false
+        };
+    });
+    
+    const btn = document.getElementById('btnConfirmSplit');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+    
+    fetch('/restaurant/orders/' + currentOrderId + '/split-charge', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ splits: payload })
+    })
+    .then(res => res.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-scissors"></i> Confirmar División';
+        if (data.success) {
+            closeSplitModal();
+            toastAlert('División procesada correctamente');
+            if (data.order_completed) {
+                // Pedido completo → recargar
+                setTimeout(function() { location.reload(); }, 800);
+            } else {
+                // Quedan items pendientes → recargar pedido
+                loadOrder(currentOrderId);
+            }
+        } else {
+            errorDiv.textContent = data.message || 'Error al dividir la cuenta';
+            errorDiv.style.display = 'block';
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-scissors"></i> Confirmar División';
+        errorDiv.textContent = 'Error: ' + err.message;
+        errorDiv.style.display = 'block';
+    });
+}
+
+function toastAlert(message) {
+    document.getElementById('toastMessage').textContent = message;
+    const el = document.getElementById('toastAlert');
+    el.style.display = 'block';
+    setTimeout(function() { el.style.display = 'none'; }, 2500);
 }
 
 function searchChargeCustomers(term) {

@@ -148,9 +148,15 @@ class RestaurantController extends Controller
             $order = RestaurantOrder::with(['items', 'table.floor', 'user'])
                 ->findOrFail($orderId);
 
+            $activeItems = $order->items->where('kitchen_status', '!=', 'CANCELLED');
+            $paidTotal = round($activeItems->whereNotNull('paid_invoice_id')->sum('total'), 2);
+            $remainingTotal = round($activeItems->whereNull('paid_invoice_id')->sum('total'), 2);
+
             return response()->json([
                 'success' => true,
                 'order' => $order,
+                'paid_total' => $paidTotal,
+                'remaining_total' => $remainingTotal,
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -255,6 +261,13 @@ class RestaurantController extends Controller
     {
         $item = RestaurantOrderItem::findOrFail($itemId);
         $order = $item->order;
+
+        if ($item->paid_invoice_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Este producto ya fue facturado y no se puede eliminar.'
+            ], 400);
+        }
 
         if (in_array($item->kitchen_status, ['SENT', 'READY', 'DELIVERED'])) {
             $adminPassword = $request->input('admin_password');
@@ -588,6 +601,14 @@ class RestaurantController extends Controller
         
         $order = RestaurantOrder::with('items')->findOrFail($orderId);
         
+        $hasPaidItems = $order->items->whereNotNull('paid_invoice_id')->isNotEmpty();
+        if ($hasPaidItems) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El pedido tiene items ya facturados. No se puede anular completamente. Elimine solo los items pendientes.'
+            ], 400);
+        }
+        
         $hasKitchenItems = $order->items->whereIn('kitchen_status', ['SENT', 'READY', 'DELIVERED'])->isNotEmpty();
 
         $company = Company::find($order->company_id);
@@ -671,11 +692,13 @@ class RestaurantController extends Controller
         $orders = RestaurantOrder::where('company_id', $companyId)
             ->whereIn('status', ['OPEN', 'SENT_TO_KITCHEN', 'READY'])
             ->whereHas('items', function($q) use ($kds) {
-                $q->whereIn('kitchen_status', ['SENT', 'READY'])
+                $q->whereNull('paid_invoice_id')
+                  ->whereIn('kitchen_status', ['SENT', 'READY'])
                   ->where('kds_destination', $kds);
             })
             ->with(['items' => function($q) use ($kds) {
-                $q->whereIn('kitchen_status', ['SENT', 'READY', 'CANCELLED'])
+                $q->whereNull('paid_invoice_id')
+                  ->whereIn('kitchen_status', ['SENT', 'READY', 'CANCELLED'])
                   ->where('kds_destination', $kds)
                   ->select('id', 'restaurant_order_id', 'product_name', 'quantity', 'unit_price', 'kitchen_status', 'notes', 'auxiliary_items', 'kds_destination');
             }, 'table' => function($q) {
@@ -895,130 +918,36 @@ class RestaurantController extends Controller
                 ], 400);
             }
 
-            $order->setRelation('items', $order->items->where('kitchen_status', '!=', 'CANCELLED'));
+            // A2/A5: solo items no cancelados y no pagados (remanente)
+            $order->setRelation('items', $order->items
+                ->where('kitchen_status', '!=', 'CANCELLED')
+                ->whereNull('paid_invoice_id'));
             
-            if ($order->items->isEmpty()) {
+            $items = $order->items;
+            
+            if ($items->isEmpty()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'El pedido no tiene productos'
+                    'message' => 'El pedido no tiene productos por cobrar'
                 ], 400);
             }
             
             $customerId = $request->customer_id;
             $documentType = $request->document_type ?? 'NV';
-            $payments = $request->payments ?? [['method' => 'EFECTIVO', 'amount' => $total]];
+            $payments = $request->payments ?? [['method' => 'EFECTIVO', 'amount' => $items->sum('total')]];
             $reference = $request->reference ?? '';
             $soloConsumo = $request->boolean('solo_consumo');
-            
-            $serie = Serie::where('company_id', $companyId)
-                ->where('tipo_documento', $documentType)
-                ->where('estado', 'ACTIVO')
-                ->first();
 
-            if (!$serie) {
-                $prefix = $documentType === 'NV' ? 'NV' : ($documentType === '01' ? 'F' : 'B');
-                $serie = Serie::create([
-                    'company_id' => $companyId,
-                    'tipo_documento' => $documentType,
-                    'serie' => $prefix . '001',
-                    'numero_actual' => 0,
-                    'estado' => 'ACTIVO',
-                ]);
-            }
+            $result = $this->createInvoiceFromItems(
+                $order, $items, $customerId, $documentType, $payments,
+                $soloConsumo, $reference, $cajaAbierta, $mainCompany, $companyId
+            );
+            $invoice = $result['invoice'];
 
-            $nextNumber = $serie->getNextNumber();
-            
-            $items = $order->items;
-            $total = $items->sum('total');
-            $company = $mainCompany;
-            $igvRate = $company ? $company->getIgvRate() : 0.18;
-            $subtotal = $total / (1 + $igvRate);
-            $igv = $total - $subtotal;
-            
-            $invoice = Invoice::create([
-                'company_id' => $companyId,
-                'customer_id' => $customerId ?: null,
-                'tipo_documento' => $documentType,
-                'serie' => $serie->serie,
-                'numero' => $nextNumber,
-                'full_number' => $serie->serie . '-' . str_pad($nextNumber, 8, '0', STR_PAD_LEFT),
-                'fecha_emision' => now()->format('Y-m-d'),
-                'hora_emision' => now()->format('H:i:s'),
-                'fecha_vencimiento' => now()->format('Y-m-d'),
-                'moneda' => 'PEN',
-                'gravado' => round($subtotal, 2),
-                'igv' => round($igv, 2),
-                'total' => round($total, 2),
-                'subtotal' => round($subtotal, 2),
-                'total_letras' => $this->numberToWords(round($total, 2)) . ' SOLES',
-                'metodo_pago' => collect($payments)->map(fn($p) => $p['method'] . '/' . $p['amount'])->implode(' + '),
-                'referencia_pago' => $reference,
-                'sunat_estado' => 'PENDIENTE',
-                'estado' => 'ACTIVO',
-            ]);
-            
-            $productIds = $items->pluck('product_id')->toArray();
-            $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
+            // Marcar items como pagados
+            RestaurantOrderItem::whereIn('id', $items->pluck('id'))
+                ->update(['paid_invoice_id' => $invoice->id]);
 
-            if ($soloConsumo) {
-                InvoiceItem::create([
-                    'invoice_id' => $invoice->id,
-                    'product_id' => null,
-                    'codigo' => '90101801',
-                    'descripcion' => 'POR CONSUMO',
-                    'cantidad' => 1,
-                    'umedida' => 'NIU',
-                    'precio_unitario' => round($subtotal, 2),
-                    'precio_venta' => round($total, 2),
-                    'igv' => round($igv, 2),
-                    'tipo_afectacion' => '10',
-                    'igv_percent' => round($igvRate * 100, 2),
-                    'detalle_consumo' => $items->map(fn($item) => [
-                        'product_name' => $item->product_name,
-                        'quantity' => $item->quantity,
-                        'total' => $item->total,
-                    ])->values()->toArray(),
-                ]);
-            } else {
-                foreach ($items as $item) {
-                    $unitBase = $item->unit_price / (1 + $igvRate);
-                    $itemIgv = $item->unit_price - $unitBase;
-                    
-                    InvoiceItem::create([
-                        'invoice_id' => $invoice->id,
-                        'product_id' => $item->product_id,
-                        'codigo' => $item->product_code ?? '',
-                        'descripcion' => $item->product_name,
-                        'cantidad' => $item->quantity,
-                        'umedida' => 'NIU',
-                        'precio_unitario' => round($unitBase, 2),
-                        'precio_venta' => $item->unit_price * $item->quantity,
-                        'igv' => round($itemIgv, 2),
-                        'tipo_afectacion' => '10',
-                        'igv_percent' => round($igvRate * 100, 2),
-                    ]);
-                }
-            }
-
-            // Stock: always deduct from real products regardless of solo_consumo
-            foreach ($items as $item) {
-                $product = $products->get($item->product_id);
-                if ($product) {
-                    if ($product->is_composite) {
-                        foreach ($product->components as $component) {
-                            $componentProduct = $component->component;
-                            if ($componentProduct) {
-                                $componentProduct->decrement('stock', $component->quantity * $item->quantity);
-                            }
-                        }
-                    } else {
-                        $product->decrement('stock', $item->quantity);
-                    }
-                }
-            }
-
-            $serie->increment('numero_actual');
-            
             $order->status = 'COMPLETED';
             $order->save();
             
@@ -1027,34 +956,14 @@ class RestaurantController extends Controller
             event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
             Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
-            
-            $fullNumber = $serie->serie . '-' . str_pad($nextNumber, 8, '0', STR_PAD_LEFT);
-            
-            $cajaAbierta->cantidad_ventas = ($cajaAbierta->cantidad_ventas ?? 0) + 1;
-            $cajaAbierta->total_ventas = ($cajaAbierta->total_ventas ?? 0) + round($total, 2);
-            
-            $totalPagado = collect($payments)->sum('amount');
-            $vuelto = max(0, $totalPagado - $total);
-
-            foreach ($payments as $payment) {
-                $paymentField = match($payment['method']) {
-                    'EFECTIVO' => 'ventas_efectivo',
-                    'TARJETA' => 'ventas_tarjeta',
-                    'YAPE' => 'ventas_yape',
-                    'PLIN' => 'ventas_plin',
-                    default => 'ventas_otro',
-                };
-                $cajaAbierta->$paymentField = ($cajaAbierta->$paymentField ?? 0) + $payment['amount'];
-            }
-            $cajaAbierta->save();
 
             return response()->json([
                 'success' => true,
                 'invoice_id' => $invoice->id,
-                'full_number' => $fullNumber,
-                'total' => round($total, 2),
-                'document_type' => $documentType,
-                'vuelto' => $vuelto,
+                'full_number' => $result['full_number'],
+                'total' => $result['total'],
+                'document_type' => $result['document_type'],
+                'vuelto' => $result['vuelto'],
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -1065,10 +974,307 @@ class RestaurantController extends Controller
         }
     }
 
+    public function splitChargeOrder(Request $request, $orderId)
+    {
+        if (auth()->user()->isMozo()) {
+            return response()->json(['success' => false, 'message' => 'No tienes permiso para cobrar'], 403);
+        }
+
+        try {
+            $mainCompany = Company::getMainCompany();
+            $companyId = $mainCompany->id;
+            
+            $cajaAbierta = CashRegister::where('company_id', $companyId)
+                ->where('estado', 'ABIERTA')
+                ->first();
+                
+            if (!$cajaAbierta) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hay caja abierta. Abra una caja antes de cobrar.'
+                ], 400);
+            }
+            
+            $order = RestaurantOrder::with('items')->findOrFail($orderId);
+
+            if ($order->status === 'OPEN') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Debe enviar el pedido a cocina antes de cobrar'
+                ], 400);
+            }
+
+            $availableItems = $order->items
+                ->where('kitchen_status', '!=', 'CANCELLED')
+                ->whereNull('paid_invoice_id');
+
+            if ($availableItems->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El pedido no tiene productos por dividir'
+                ], 400);
+            }
+
+            $splits = $request->splits ?? [];
+            if (empty($splits)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Debe especificar al menos una división'
+                ], 400);
+            }
+
+            // A3: validar repartición exacta por item
+            $requestedByItemId = [];
+            foreach ($splits as $split) {
+                foreach (($split['items'] ?? []) as $itemSel) {
+                    $itemId = $itemSel['item_id'] ?? null;
+                    if ($itemId === null) continue;
+                    $requestedByItemId[$itemId] = ($requestedByItemId[$itemId] ?? 0) + (float) ($itemSel['quantity'] ?? 0);
+                }
+            }
+
+            foreach ($availableItems as $item) {
+                $requested = $requestedByItemId[$item->id] ?? 0;
+                if ($requested > (float) $item->quantity + 0.001) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "La división de '{$item->product_name}' excede lo disponible. Disponible: {$item->quantity}, solicitado: {$requested}"
+                    ], 400);
+                }
+            }
+
+            $invoices = [];
+
+            foreach ($splits as $split) {
+                $customerId = $split['customer_id'] ?? null;
+                $documentType = $split['document_type'] ?? 'NV';
+                $soloConsumo = !empty($split['solo_consumo']);
+
+                $splitItems = collect();
+                foreach (($split['items'] ?? []) as $itemSel) {
+                    $origItem = $availableItems->firstWhere('id', $itemSel['item_id']);
+                    if (!$origItem) continue;
+                    $qty = (float) ($itemSel['quantity'] ?? 0);
+                    if ($qty <= 0) continue;
+
+                    if (abs($qty - (float) $origItem->quantity) > 0.001) {
+                        // A3: cantidad parcial → clon pagado + reducir original
+                        $clone = $origItem->replicate();
+                        $clone->quantity = $qty;
+                        $clone->total = round($qty * (float) $origItem->unit_price, 2);
+                        $clone->save();
+                        $splitItems->push($clone);
+
+                        $origItem->quantity = round((float) $origItem->quantity - $qty, 2);
+                        $origItem->total = round((float) $origItem->quantity * (float) $origItem->unit_price, 2);
+                        $origItem->save();
+                    } else {
+                        $splitItems->push($origItem);
+                    }
+                }
+
+                if ($splitItems->isEmpty()) continue;
+
+                $totalSplit = $splitItems->sum('total');
+                $payments = $split['payments'] ?? [['method' => 'EFECTIVO', 'amount' => $totalSplit]];
+
+                $result = $this->createInvoiceFromItems(
+                    $order, $splitItems, $customerId, $documentType, $payments,
+                    $soloConsumo, '', $cajaAbierta, $mainCompany, $companyId
+                );
+                $invoice = $result['invoice'];
+
+                // Marcar items pagados
+                RestaurantOrderItem::whereIn('id', $splitItems->pluck('id'))
+                    ->update(['paid_invoice_id' => $invoice->id]);
+
+                $invoices[] = [
+                    'id' => $invoice->id,
+                    'full_number' => $result['full_number'],
+                    'total' => $result['total'],
+                    'document_type' => $documentType,
+                    'vuelto' => $result['vuelto'],
+                ];
+            }
+
+            // A1: verificar si todos los items activos están pagados
+            $order->load('items');
+            $remainingItems = $order->items
+                ->where('kitchen_status', '!=', 'CANCELLED')
+                ->whereNull('paid_invoice_id');
+            $remainingTotal = round($remainingItems->sum('total'), 2);
+
+            $orderCompleted = false;
+            if ($remainingItems->isEmpty()) {
+                $order->status = 'COMPLETED';
+                $order->save();
+                $order->table->update(['status' => 'AVAILABLE']);
+                $orderCompleted = true;
+            } else {
+                $this->updateOrderTotals($order);
+            }
+
+            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
+            Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+            Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
+
+            return response()->json([
+                'success' => true,
+                'invoices' => $invoices,
+                'remaining_total' => $remainingTotal,
+                'order_completed' => $orderCompleted,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'line' => $e->getLine(),
+            ], 500);
+        }
+    }
+
+    private function createInvoiceFromItems($order, $items, $customerId, $documentType, $payments, $soloConsumo, $reference, $cajaAbierta, $mainCompany, $companyId)
+    {
+        $serie = Serie::where('company_id', $companyId)
+            ->where('tipo_documento', $documentType)
+            ->where('estado', 'ACTIVO')
+            ->first();
+
+        if (!$serie) {
+            $prefix = $documentType === 'NV' ? 'NV' : ($documentType === '01' ? 'F' : 'B');
+            $serie = Serie::create([
+                'company_id' => $companyId,
+                'tipo_documento' => $documentType,
+                'serie' => $prefix . '001',
+                'numero_actual' => 0,
+                'estado' => 'ACTIVO',
+            ]);
+        }
+
+        $nextNumber = $serie->getNextNumber();
+        $total = round($items->sum('total'), 2);
+        $igvRate = $mainCompany ? $mainCompany->getIgvRate() : 0.18;
+        $subtotal = $total / (1 + $igvRate);
+        $igv = $total - $subtotal;
+
+        $invoice = Invoice::create([
+            'company_id' => $companyId,
+            'customer_id' => $customerId ?: null,
+            'tipo_documento' => $documentType,
+            'serie' => $serie->serie,
+            'numero' => $nextNumber,
+            'full_number' => $serie->serie . '-' . str_pad($nextNumber, 8, '0', STR_PAD_LEFT),
+            'fecha_emision' => now()->format('Y-m-d'),
+            'hora_emision' => now()->format('H:i:s'),
+            'fecha_vencimiento' => now()->format('Y-m-d'),
+            'moneda' => 'PEN',
+            'gravado' => round($subtotal, 2),
+            'igv' => round($igv, 2),
+            'total' => $total,
+            'subtotal' => round($subtotal, 2),
+            'total_letras' => $this->numberToWords($total) . ' SOLES',
+            'metodo_pago' => collect($payments)->map(fn($p) => $p['method'] . '/' . $p['amount'])->implode(' + '),
+            'referencia_pago' => $reference,
+            'sunat_estado' => 'PENDIENTE',
+            'estado' => 'ACTIVO',
+        ]);
+
+        $productIds = $items->pluck('product_id')->filter()->toArray();
+        $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
+
+        if ($soloConsumo) {
+            InvoiceItem::create([
+                'invoice_id' => $invoice->id,
+                'product_id' => null,
+                'codigo' => '90101801',
+                'descripcion' => 'POR CONSUMO',
+                'cantidad' => 1,
+                'umedida' => 'NIU',
+                'precio_unitario' => round($subtotal, 2),
+                'precio_venta' => $total,
+                'igv' => round($igv, 2),
+                'tipo_afectacion' => '10',
+                'igv_percent' => round($igvRate * 100, 2),
+                'detalle_consumo' => $items->map(fn($item) => [
+                    'product_name' => $item->product_name,
+                    'quantity' => $item->quantity,
+                    'total' => $item->total,
+                ])->values()->toArray(),
+            ]);
+        } else {
+            foreach ($items as $item) {
+                $unitBase = $item->unit_price / (1 + $igvRate);
+                $itemIgv = $item->unit_price - $unitBase;
+
+                InvoiceItem::create([
+                    'invoice_id' => $invoice->id,
+                    'product_id' => $item->product_id,
+                    'codigo' => $item->product_code ?? '',
+                    'descripcion' => $item->product_name,
+                    'cantidad' => $item->quantity,
+                    'umedida' => 'NIU',
+                    'precio_unitario' => round($unitBase, 2),
+                    'precio_venta' => $item->unit_price * $item->quantity,
+                    'igv' => round($itemIgv, 2),
+                    'tipo_afectacion' => '10',
+                    'igv_percent' => round($igvRate * 100, 2),
+                ]);
+            }
+        }
+
+        // Stock: deduct once per item
+        foreach ($items as $item) {
+            $product = $products->get($item->product_id);
+            if ($product) {
+                if ($product->is_composite) {
+                    foreach ($product->components as $component) {
+                        $componentProduct = $component->component;
+                        if ($componentProduct) {
+                            $componentProduct->decrement('stock', $component->quantity * $item->quantity);
+                        }
+                    }
+                } else {
+                    $product->decrement('stock', $item->quantity);
+                }
+            }
+        }
+
+        $serie->increment('numero_actual');
+        $fullNumber = $serie->serie . '-' . str_pad($nextNumber, 8, '0', STR_PAD_LEFT);
+
+        $cajaAbierta->cantidad_ventas = ($cajaAbierta->cantidad_ventas ?? 0) + 1;
+        $cajaAbierta->total_ventas = ($cajaAbierta->total_ventas ?? 0) + $total;
+
+        foreach ($payments as $payment) {
+            $paymentField = match($payment['method']) {
+                'EFECTIVO' => 'ventas_efectivo',
+                'TARJETA' => 'ventas_tarjeta',
+                'YAPE' => 'ventas_yape',
+                'PLIN' => 'ventas_plin',
+                default => 'ventas_otro',
+            };
+            $cajaAbierta->$paymentField = ($cajaAbierta->$paymentField ?? 0) + $payment['amount'];
+        }
+        $cajaAbierta->save();
+
+        $totalPagado = collect($payments)->sum('amount');
+        $vuelto = max(0, $totalPagado - $total);
+
+        return [
+            'invoice' => $invoice,
+            'full_number' => $fullNumber,
+            'total' => $total,
+            'document_type' => $documentType,
+            'vuelto' => $vuelto,
+        ];
+    }
+
 private function updateOrderTotals(RestaurantOrder $order)
     {
         $order->load('items');
-        $items = $order->items->where('kitchen_status', '!=', 'CANCELLED');
+        $items = $order->items
+            ->where('kitchen_status', '!=', 'CANCELLED')
+            ->whereNull('paid_invoice_id');
         $company = Company::find($order->company_id);
         $igvRate = $company ? $company->getIgvRate() : 0.18;
         
