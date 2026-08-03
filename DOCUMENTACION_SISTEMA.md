@@ -267,7 +267,7 @@ observaciones, referencia
 | `getOrder($orderId)` | GET `/restaurant/orders/{id}` | Obtiene orden con items |
 | `addItem($orderId)` | POST `/restaurant/orders/{id}/items` | Agrega producto al pedido |
 | `updateItem($itemId)` | PUT `/restaurant/orders/items/{id}` | Actualiza cantidad/notas |
-| `removeItem($itemId)` | DELETE `/restaurant/orders/items/{id}` | Cancela item (marca CANCELLED) |
+| `removeItem($itemId)` | DELETE `/restaurant/orders/items/{id}` | Elimina item. PENDING → borra físicamente; SENT/READY/DELIVERED → marca CANCELLED (exige password admin + auditoría + ticket) |
 | `sendToKitchen($orderId)` | POST `/restaurant/orders/{id}/send-to-kitchen` | Envía items a cocina |
 | `closeOrder($orderId)` | POST `/restaurant/orders/{id}/close` | Cierra pedido (COMPLETED) |
 | `cancelOrder($orderId)` | POST `/restaurant/orders/{id}/cancel` | Anula pedido completo |
@@ -1076,14 +1076,16 @@ PUT /restaurant/orders/items/{id}
 ```
 DELETE /restaurant/orders/items/{id}
 → removeItem() [PHP]:
-   1. Si el item está SENT/READY/DELIVERED: requiere admin_password
-   2. Verifica contraseña con Hash::check()
-   3. cancelled_from = estado actual (ej: SENT)
-   4. cancelled_at = now()
-   5. cancelled_by = auth()->id()
-   6. kitchen_status = CANCELLED
-   7. Si modo impresión: genera ticket de anulación
-   8. Si todos los items cancelados: orden → CANCELLED, mesa → AVAILABLE
+   0. Si el item tiene paid_invoice_id: se bloquea (ya facturado, A4)
+   1. Si el item está PENDING (no enviado a cocina): se elimina físicamente (DELETE), sin rastro
+   2. Si el item está SENT/READY/DELIVERED: requiere admin_password
+   3. Verifica contraseña con Hash::check()
+   4. cancelled_from = estado actual (ej: SENT)
+   5. cancelled_at = now()
+   6. cancelled_by = auth()->id()
+   7. kitchen_status = CANCELLED
+   8. Si modo impresión: genera ticket de anulación
+   9. Si todos los items cancelados: orden → CANCELLED, mesa → AVAILABLE
 ```
 
 #### 19.2.7 Enviar a Cocina
