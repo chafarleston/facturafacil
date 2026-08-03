@@ -474,7 +474,9 @@ sendDebitNote($invoice, ...)   // Envía ND (08) - Factura→BillSender, Boleta�
 voidInvoice($invoice)          // Da de baja factura (Voided)
 generatePdf($invoice)          // Genera PDF A4
 generateTicketPdf($invoice)    // Genera PDF ticket 80mm
-buildInvoice($invoice)         // Construye objeto Greenter para XML
+
+// Helpers privados (no parte de la API pública):
+private buildInvoice($invoice, $company)  // Construye objeto Greenter Invoice para el XML (emisor + comprobante)
 ```
 
 setupSee() PEM-first: busca {ruc}_certificate.pem, si no existe usa .p12 con contraseña.

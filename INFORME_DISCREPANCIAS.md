@@ -9,13 +9,13 @@
 | Severidad | Cantidad | Estado |
 |-----------|----------|--------|
 | 🔴 ALTA | 1 | ✅ **Resuelto** (ítem #1) |
-| 🟠 MEDIA | 20 | 9 resueltos (#2–#10) · 11 pendientes |
+| 🟠 MEDIA | 20 | 10 resueltos (#2–#11) · 10 pendientes |
 | 🟡 BAJA | 12 | Pendiente |
 | 🔵 INFO / NO VERIFICABLE | 10 | Informativo |
 
 **Capítulos 100% COINCIDE:** 9, 10, 12, 16, 18, 22, 23, 24, 25, 27 (y 15 parcialmente).
 
-> **Actualización (2026-08-02):** ítem #1 (apertura de cajón) corregido en el código. Ítems #2 (pivot), #3 (isAdmin), #4 (estado de Invoice), #5, #6 (enums), #7 (caja por permisos), #8 (SUNAT por permiso `send_sunat`), #9 (removeItem) y #10 (invoiceTicket) corregidos. Ver sección "Cambios aplicados" al final.
+> **Actualización (2026-08-02):** ítem #1 (apertura de cajón) corregido en el código. Ítems #2 (pivot), #3 (isAdmin), #4 (estado de Invoice), #5, #6 (enums), #7 (caja por permisos), #8 (SUNAT por permiso `send_sunat`), #9 (removeItem), #10 (invoiceTicket) y #11 (buildInvoice) corregidos. Ver sección "Cambios aplicados" al final.
 
 ---
 
@@ -40,7 +40,7 @@
 | 8 | 15 | `/invoices*`, `/sunat-summaries*`, `/documents/{tipo}` en grupo auth+admin | Estaban fuera del grupo admin → **solo auth** (cualquier autenticado, incl. mozo, alcanzaba envío/anulación SUNAT). **Corregido** con enfoque por permiso `send_sunat` (cajero puede enviar; user/mozo bloqueados) | `routes/web.php`, `InvoiceController.php`, `SummaryController.php`, `DocumentController.php` | ✅ RESUELTO |
 | 9 | 4 | `removeItem()` siempre marca CANCELLED | PENDING se elimina físicamente (`$item->delete()`); CANCELLED solo para SENT/READY/DELIVERED (con password admin + auditoría + ticket). **Corregido** §4.1 y §19.2.6 | `app/Http/Controllers/Restaurant/RestaurantController.php:268-331` | ✅ RESUELTO (doc) |
 | 10 | 5.2, 19.9.3 | `invoiceTicket($invoice)` genera ticket | Es un **stub** que devuelve `''` → `PrintService::printInvoice()` encolaba un trabajo de impresión vacío. **Corregido** (Opción B): guard para no encolar datos vacíos + doc actualizado | `app/Services/PlainTextTicket.php:156-159`, `app/Services/PrintService.php:113` | ✅ RESUELTO |
-| 11 | 5.3 | `buildInvoice($invoice)` público, 1 parámetro | Es **`private` con 2 parámetros obligatorios** `($invoice, $company)` | `app/Services/GreenterService.php:1316` |
+| 11 | 5.3 | `buildInvoice($invoice)` público, 1 parámetro | Es **`private` con 2 parámetros obligatorios** `($invoice, $company)`. **Corregido** §5.3 | `app/Services/GreenterService.php:1316` | ✅ RESUELTO (doc) |
 | 12 | 5.2, 19.9.3 | `cancelNotificationGrouped($order, $dest)` | Firma real `($order, $format='text', $dest='cocina')`; además **no incluye el usuario** anulador (solo la variante individual `cancelNotification` lo muestra) | `app/Services/PlainTextTicket.php:175` |
 | 13 | 8 | Precuenta usa `$company->getActiveIgvPercent()` | Usa `$order->igvPercent ?? 18` (atributo **nunca asignado**) → siempre imprime "IGV (18%)" aunque la empresa esté en modo restaurante (10.5%) | `app/Services/PlainTextTicket.php:150-151` |
 | 14 | 6 | Tabla de 7 slots de impresora | Son **8**: falta el slot `autopedido` ("Auto Pedido") | `database/seeders/PrinterSeeder.php:10-19` |
@@ -139,3 +139,4 @@ La mayoría de discrepancias requieren **actualizar la documentación** (redacci
 | 2026-08-02 | #8 | `PermissionsSeeder.php`, `InvoiceController.php`, `SummaryController.php`, `DocumentController.php`, `invoices/show.blade.php`, `DOCUMENTACION_SISTEMA.md` §15.3 | SUNAT protegido por permiso `send_sunat`: agregado al rol **cajero**; `authorize('permission','send_sunat')` en send/destroy/NC/ND/resúmenes/documentos; `view_invoices` en lecturas de comprobantes; botones de SUNAT ocultos sin `@can('permission','send_sunat')`. Rol **user** perdió `view_invoices` y `view_cashregisters` (no ve esos módulos). Efecto: cajero+admin envían a SUNAT; user/mozo bloqueados. |
 | 2026-08-02 | #9 | `DOCUMENTACION_SISTEMA.md` §4.1 y §19.2.6 | Opción A (doc): `removeItem()` documentado con su comportamiento real — PENDING → elimina físicamente; SENT/READY/DELIVERED → CANCELLED con password admin, auditoría y ticket; items pagados bloqueados (A4). Sin cambios de código (comportamiento intencional). |
 | 2026-08-02 | #10 | `app/Services/PrintService.php:113`, `DOCUMENTACION_SISTEMA.md` §5.2 y §19.9.3 | Opción B: `printInvoice()` ya no encola cuando `invoiceTicket()` devuelve vacío (`if ($data === '') return;`). Doc: `invoiceTicket()` marcado como stub/no-op; el comprobante se imprime por PDF de Greenter. Sin impacto en el flujo PDF real. Sintaxis OK, tests OK. |
+| 2026-08-02 | #11 | `DOCUMENTACION_SISTEMA.md` §5.3 | `buildInvoice()` movido a la lista de helpers privados con su firma real `($invoice, $company)` y comentario aclaratorio. Solo documentación. |
