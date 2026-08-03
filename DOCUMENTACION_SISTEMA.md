@@ -3571,7 +3571,7 @@ Se realizaron pruebas automatizadas del flujo completo: abrir caja → 20 ventas
 - `test_caja.php` / `test_caja2.php` — generan ventas de prueba
 - `compare_products.php` — compara productos vendidos reporte vs pedidos
 - `compare_lines.php` — compara líneas eliminadas reporte vs pedidos
-- `clean_ventas.php` / `clean_productos.php` — limpian datos de prueba
+- `clean_ventas.php` / `clean_productos.php` — limpian datos de prueba (scripts destructivos de reset; están en `eliminar-ventas-productos/`, ver su `readme.md`)
 
 ### 26.2 Restauración de Base de Datos de Cliente
 
