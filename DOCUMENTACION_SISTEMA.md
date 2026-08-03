@@ -1865,8 +1865,9 @@ Esto evita que Laravel redirija a login (HTML) cuando la sesión expira,
 permitiendo que los errores se manejen como JSON correctamente.
 
 Archivos modificados:
-- resources/views/restaurant/index.blade.php (7 calls)
-- resources/views/restaurant/kds.blade.php (3 calls)
+- resources/views/restaurant/index.blade.php (24 calls)
+- resources/views/restaurant/kds.blade.php (4 calls)
+(El número de calls crece conforme se añaden features; todos incluyen los headers JSON)
 ```
 
 ### 20.8 Resumen Diario (SummaryService)

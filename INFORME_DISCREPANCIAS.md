@@ -10,7 +10,7 @@
 |-----------|----------|--------|
 | 🔴 ALTA | 1 | ✅ **Resuelto** (ítem #1) |
 | 🟠 MEDIA | 20 | 20 resueltos (#2–#21) · 0 pendientes |
-| 🟡 BAJA | 12 | 7 resueltos (#22–#28) · 5 pendientes |
+| 🟡 BAJA | 12 | 8 resueltos (#22–#29) · 4 pendientes |
 | 🔵 INFO / NO VERIFICABLE | 10 | Informativo |
 
 **Capítulos 100% COINCIDE:** 9, 10, 12, 16, 18, 22, 23, 24, 25, 27 (y 15 parcialmente).
@@ -65,7 +65,7 @@
 | 26 | 4 | Flujo envío a cocina: "7. Responder JSON con tickets" | El JSON solo devuelve `success` y `items_sent`; los tickets se imprimen internamente vía `printKitchenOrder()`. **Corregido** §4.1 | `app/Http/Controllers/Restaurant/RestaurantController.php:375-379` | ✅ RESUELTO (doc) |
 | 27 | 19.5 | "Todos los comprobantes se envían con `sendInvoice`" y "carga certificado .p12" | Las boletas (03) van por **Resumen Diario** (`SummaryService`); las NV no se envían; `setupSee()` es **PEM-first** (busca `.pem`, fallback a PKCS12). **Corregido** §19.5 | `app/Http/Controllers/InvoiceController.php:344-386`, `app/Services/GreenterService.php:1232-1266` | ✅ RESUELTO (doc) |
 | 28 | 20.3 | Padrón SUNAT "extrae y limpia automáticamente" | El comando descargaba y extraía el ZIP pero **no lo eliminaba**. **Corregido** (Opción A): el ZIP se borra tras extraer (el `.txt` del padrón se conserva) | `app/Console/Commands/DownloadSunatPadron.php:28-53` | ✅ RESUELTO |
-| 29 | 20.7 | "index.blade.php (7 calls); kds.blade.php (3 calls)" | Hoy hay **24** calls en index y **4** en KDS (conteo desactualizado) | `resources/views/restaurant/index.blade.php`, `kds.blade.php` |
+| 29 | 20.7 | "index.blade.php (7 calls); kds.blade.php (3 calls)" | Hay **24** calls en index y **4** en KDS (conteo desactualizado). **Corregido** §20.7 | `resources/views/restaurant/index.blade.php`, `kds.blade.php` | ✅ RESUELTO (doc) |
 | 30 | 20.4 | Lista de dependencias Greenter 5.2.0 (core/ws/xml/lite) | Instalado **5.3.0** (la propia sección 20.16 documenta la actualización) | `composer.lock` |
 | 31 | 20.4 | Requiere `ext-soap`, `ext-intl` | `composer.json` solo declara `ext-openssl`, `ext-xml`, `ext-zip` | `composer.json:9-11` |
 | 32 | 20.16 | Campo `fechaEntrega` en modelo `Shipment` | Se llama **`fecEntregaBienes`** | `vendor/greenter/core/src/Core/Model/Despatch/Shipment.php:93` |
@@ -159,6 +159,7 @@ Nota #12: en `cancelOrder()` la impresión agrupada ocurre ANTES de marcar los i
 | 2026-08-02 | #26 | `DOCUMENTACION_SISTEMA.md` §4.1 | Corregido el paso 7 del flujo de envío a cocina: "Responder JSON con tickets" → "Responder JSON (success + items_sent)" y aclarado que los tickets se imprimen internamente por cola (paso 6). Solo documentación. |
 | 2026-08-02 | #27 | `DOCUMENTACION_SISTEMA.md` §19.5 | Bloque "Enviar a SUNAT" reescrito: NV no se envía; Boleta (03) → Resumen Diario (`sendBoletaToSummary`); Factura (01) → `sendInvoice`; `setupSee()` PEM-first (`.pem`, fallback `.p12`); PDF/QR bajo demanda. Solo documentación. |
 | 2026-08-02 | #28 | `app/Console/Commands/DownloadSunatPadron.php:38-45` | Opción A: tras extraer el ZIP del padrón, se elimina `sunat_padron.zip` (el `.txt` extraído se conserva, lo usa la vista del padrón). El doc §20.3 "extrae y limpia" queda correcto. Sintaxis OK. |
+| 2026-08-02 | #29 | `DOCUMENTACION_SISTEMA.md` §20.7 | Actualizados los conteos de `fetch`: index = 24, kds = 4 (con nota de que el número crece con features). Solo documentación. |
 
 ---
 
