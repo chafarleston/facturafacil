@@ -147,7 +147,8 @@ class PlainTextTicket
         }
         $t->separator();
         $t->twoColumns('SUBTOTAL:', 'S/ ' . number_format($order->subtotal ?? $order->total, 2));
-        $igvPercent = $order->igvPercent ?? 18;
+        $igvPercent = $order->igvPercent
+            ?? (\App\Models\Company::find($order->company_id)?->getActiveIgvPercent() ?? 18);
         $t->twoColumns('IGV (' . $igvPercent . '%):', 'S/ ' . number_format($order->igv ?? 0, 2));
         $t->twoColumns('TOTAL:', 'S/ ' . number_format($order->total, 2));
         return $format === 'escpos' ? $t->getEscPos() : $t->getText();
