@@ -10,7 +10,7 @@
 |-----------|----------|--------|
 | 🔴 ALTA | 1 | ✅ **Resuelto** (ítem #1) |
 | 🟠 MEDIA | 20 | 20 resueltos (#2–#21) · 0 pendientes |
-| 🟡 BAJA | 12 | 1 resuelto (#22) · 11 pendientes |
+| 🟡 BAJA | 12 | 2 resueltos (#22, #23) · 10 pendientes |
 | 🔵 INFO / NO VERIFICABLE | 10 | Informativo |
 
 **Capítulos 100% COINCIDE:** 9, 10, 12, 16, 18, 22, 23, 24, 25, 27 (y 15 parcialmente).
@@ -59,7 +59,7 @@
 | # | Cap. | Afirmación del doc | Realidad | Ubicación |
 |---|------|--------------------|----------|-----------|
 | 22 | 14, 19.12 | PermissionsSeeder "50+ permisos" | Define **46** permisos. **Corregido** §14 y §19.12 | `database/seeders/PermissionsSeeder.php:14-59` | ✅ RESUELTO (doc) |
-| 23 | 14 | `SunatProductSeeder` puebla "productos" | Puebla la tabla catálogo `sunat_products` (modelo `SunatProduct`), no `products` | `database/seeders/SunatProductSeeder.php:7` |
+| 23 | 14 | `SunatProductSeeder` puebla "productos" | Puebla la tabla catálogo `sunat_products` (modelo `SunatProduct`), no `products`. **Corregido** §14 y §19.12 | `database/seeders/SunatProductSeeder.php` | ✅ RESUELTO (doc) |
 | 24 | 6 | `1D 56 00` = "Corte parcial" | `1D 56 00` es **corte total**; el parcial es `1D 56 01`. El byte coincide con el código, pero la etiqueta es errónea | `print-server-node/server.js:54-55`, `app/Services/PlainTextTicket.php:83` |
 | 25 | 11 | "Usuario clickea 'Caja' en restaurante **o POS**" | `openCashDrawer()` solo existe en la vista de restaurante; la vista POS no tiene botón ni fetch al print server | `resources/views/restaurant/index.blade.php:613,1516` vs `resources/views/pos/index.blade.php` |
 | 26 | 4 | Flujo envío a cocina: "7. Responder JSON con tickets" | El JSON solo devuelve `success` y `items_sent`; los tickets se imprimen internamente vía `printKitchenOrder()` | `app/Http/Controllers/Restaurant/RestaurantController.php:375-379` |
@@ -153,6 +153,7 @@ Nota #12: en `cancelOrder()` la impresión agrupada ocurre ANTES de marcar los i
 | 2026-08-02 | #20 | `DOCUMENTACION_SISTEMA.md` §20.4 | Corregida la línea 1640: `FE_HOMOLOGACION` → **`FE_PRODUCCION`** (el código y §20.4.1 ya usaban FE_PRODUCCION para soap_type_id=2). Solo documentación; sin impacto en SUNAT. |
 | 2026-08-02 | #21 | `DOCUMENTACION_SISTEMA.md` §26.1 | Corregida la ubicación de los scripts: `clean_ventas.php` / `clean_productos.php` (destructivos de reset) están en **`eliminar-ventas-productos/`** (con `readme.md`), no en `storage/app/tmp/`. Nota: una primera corrección los cambió por error a `clean_split_products.php`; revertida a la referencia real. Solo documentación. |
 | 2026-08-02 | #22 | `DOCUMENTACION_SISTEMA.md` §14 y §19.12 | Contado el seeder: son **46** permisos (no "50"/"50+"). Corregidas las dos referencias. Solo documentación. |
+| 2026-08-02 | #23 | `DOCUMENTACION_SISTEMA.md` §14 y §19.12 | `SunatProductSeeder` descrito como catálogo de productos SUNAT (`sunat_products`, usado en el XML), no "productos de ejemplo". Solo documentación. |
 
 ---
 
