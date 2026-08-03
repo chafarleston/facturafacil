@@ -456,7 +456,7 @@ Genera texto ESC/POS para tickets térmicos.
 kitchenTicket($order)           // Ticket de cocina
 prebillTicket($order)           // Precuenta
 cancelNotification($order, $item)           // Anulación individual
-cancelNotificationGrouped($order, $dest)    // Anulación agrupada
+cancelNotificationGrouped($order, $format='text', $dest='cocina')    // Anulación agrupada (incluye "Anulado por")
 invoiceTicket($invoice)         // STUB (no-op): comprobante se imprime por PDF de Greenter (generatePdf / generateTicketPdf). PrintService::printInvoice() no encola si el ticket es vacío
 cashRegisterSummary($cashregister, $data)   // Resumen de caja
 ```

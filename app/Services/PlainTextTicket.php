@@ -177,6 +177,10 @@ class PlainTextTicket
         $t = new self($format);
         $t->buildCancelHeader($order, $dest);
         $items = $order->items->where('kds_destination', $dest);
+        $firstItem = $items->first();
+        if ($firstItem && $firstItem->cancelledBy) {
+            $t->text('Anulado por: ' . $firstItem->cancelledBy->name);
+        }
         foreach ($items as $item) {
             $t->itemLine(number_format($item->quantity, 0), $item->product_name, '');
         }
