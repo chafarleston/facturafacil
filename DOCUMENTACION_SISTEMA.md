@@ -1043,11 +1043,9 @@ selectTable(tableId) [JS]:
 
 ```
 searchProducts(query) [JS] — filtra productsData en tiempo real:
-   - Letras: busca en descripcion
-   - Números: busca en codigo (código interno)
+   - Busca SOLO en descripcion (nombre del producto)
    - Compatible con filtro por categoría (ambos se aplican simultáneamente)
-
-filterProducts(categoryId) [JS] — muestra/oculta productos por categoría
+   - (Nota: la búsqueda por código / código de barras solo existe en el POS, §19.3)
 ```
 
 #### 19.2.4 Agregar Producto al Pedido
