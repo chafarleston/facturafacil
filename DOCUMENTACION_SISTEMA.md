@@ -817,7 +817,7 @@ Usuario clickea "Caja" en restaurante o POS
 | `TestUsersSeeder` | Usuarios demo (admin, mozo, user) + roles en pivot |
 | `SeriesSeeder` | Series F001, B001, NV01, FC01, BC01, FD01, BD01 |
 | `SunatProductSeeder` | Productos de ejemplo |
-| `PermissionsSeeder` | 50+ permisos + roles (admin, mozo, cajero, user) |
+| `PermissionsSeeder` | 46 permisos + roles (admin, mozo, cajero, user) |
 | `PrinterSeeder` | 8 slots de impresora: cocina-1, cocina-2, bar-1, precuenta, precuenta2, precuenta3, caja, autopedido |
 | `UbigeoSeeder` | 1874 registros de ubigeos |
 | `CustomerSeeder` | Cliente "Clientes Varios" (DNI 88888888) |
@@ -1480,7 +1480,7 @@ php artisan db:seed → ejecuta en orden:
 3. TestUsersSeeder     → Usuarios demo (admin, mozo, user)
 4. SeriesSeeder        → F001, B001, NV01, FC01, BC01, FD01, BD01
 5. SunatProductSeeder  → Productos de ejemplo
-6. PermissionsSeeder   → 50 permisos + roles (admin, mozo, cajero, user)
+6. PermissionsSeeder   → 46 permisos + roles (admin, mozo, cajero, user)
 7. PrinterSeeder       → 8 slots de impresora (cocina, bar, precuenta, caja, autopedido)
 8. UbigeoSeeder        → 1874 registros de ubigeos
 9. CustomerSeeder      → "Clientes Varios" (DNI 88888888)
