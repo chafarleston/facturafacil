@@ -139,11 +139,11 @@ role: admin | user | mozo | cajero | superadmin
 company_id → companies
 
 // Métodos clave:
-isAdmin()          // role === 'admin' || role === 'superadmin'
+isAdmin()          // role === 'admin' (el superadmin tiene su propio isSuperAdmin())
 isUser()           // role === 'user'
 isMozo()           // role === 'mozo'
 isSuperAdmin()     // role === 'superadmin'
-hasPermission($slug)  // Verifica permisos vía roles o role string
+hasPermission($slug)  // admin/superadmin → true; si no, verifica vía roles o role string
 ```
 
 ### 3.2 Company

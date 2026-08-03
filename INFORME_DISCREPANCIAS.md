@@ -9,13 +9,13 @@
 | Severidad | Cantidad | Estado |
 |-----------|----------|--------|
 | 🔴 ALTA | 1 | ✅ **Resuelto** (ítem #1) |
-| 🟠 MEDIA | 20 | 1 resuelto (#2) · 19 pendientes |
+| 🟠 MEDIA | 20 | 2 resueltos (#2, #3) · 18 pendientes |
 | 🟡 BAJA | 12 | Pendiente |
 | 🔵 INFO / NO VERIFICABLE | 10 | Informativo |
 
 **Capítulos 100% COINCIDE:** 9, 10, 12, 16, 18, 22, 23, 24, 25, 27 (y 15 parcialmente).
 
-> **Actualización (2026-08-02):** ítem #1 (apertura de cajón) corregido en el código. Ítem #2 (pivot) corregido en la documentación. Ver sección "Cambios aplicados" al final.
+> **Actualización (2026-08-02):** ítem #1 (apertura de cajón) corregido en el código. Ítems #2 (pivot) y #3 (isAdmin) corregidos en la documentación. Ver sección "Cambios aplicados" al final.
 
 ---
 
@@ -32,7 +32,7 @@
 | # | Cap. | Afirmación del doc | Realidad | Ubicación |
 |---|------|--------------------|----------|-----------|
 | 2 | 2, 7 | Pivot `permission_role` | La tabla real es **`role_permission`** (migración + modelos). **Corregido** en `DOCUMENTACION_SISTEMA.md` y `TRD_FACTURAFACIL.md` | `database/migrations/2026_05_13_000001_create_roles_permissions_tables.php:31`, `app/Models/Role.php:22`, `app/Models/Permission.php:17` | ✅ RESUELTO |
-| 3 | 3.1 | `isAdmin()` = admin \|\| superadmin | Solo devuelve true para `admin`; superadmin se maneja en `hasPermission()`/middleware `IsAdmin` | `app/Models/User.php:45-48` |
+| 3 | 3.1 | `isAdmin()` = admin \|\| superadmin | `isAdmin()` solo devuelve true para `admin`; superadmin se maneja en `hasPermission()`/middleware `IsAdmin`. **Corregido** el comentario del doc | `app/Models/User.php:45-48` | ✅ RESUELTO |
 | 4 | 3.4 | Invoice campo `estado: ACTIVO\|ANULADO` | **No existe columna `estado`**; solo `sunat_estado`. El `'estado'=>'ACTIVO'` en `createInvoiceFromItems()` se ignora silenciosamente (no está en fillable) | `database/migrations/2024_01_01_000005_create_invoices_table.php:35`, `app/Models/Invoice.php:12-20` |
 | 5 | 3.5 | `status` en español (ABIERTO/ENVIADO A COCINA/LISTO/ENTREGADO/COMPLETADO/ANULADO) | Enum real en inglés: `OPEN/SENT_TO_KITCHEN/READY/DELIVERED/COMPLETED/CANCELLED` + **`PENDING_PAYMENT`** (kiosko) omitido en el doc | `database/migrations/2026_05_12_104627_create_restaurant_orders_table.php:17`, `2026_07_02_205824_add_pending_payment_to_restaurant_orders_status.php:14` |
 | 6 | 3.6 | `kitchen_status` en español (PENDIENTE/ENVIADO/LISTO/ENTREGADO/ANULADO) | Enum real: `PENDING/SENT/READY/DELIVERED/CANCELLED` (español solo como etiquetas) | `database/migrations/2026_05_13_210541_add_cancelled_to_kitchen_status_enum.php:10` |
@@ -130,3 +130,4 @@ La mayoría de discrepancias requieren **actualizar la documentación** (redacci
 |-------|------|---------|--------|
 | 2026-08-02 | #1 | `app/Http/Controllers/PosController.php:274` | `openDrawer()` ahora genera `"\x1B\x40\x1B\x70\x00\x32\xFF"` (base64 `G0AbcAAy/w==` = INIT + drawer kick pin 2, 50ms/255ms), alineado con `print-server-node/server.js:412-415` y con el capítulo 11 del doc. Sintaxis OK, tests OK (falla solo el trivial pre-existente). |
 | 2026-08-02 | #2 | `DOCUMENTACION_SISTEMA.md:83,603` · `TRD_FACTURAFACIL.md:71` | Tabla pivote corregida: `permission_role` → **`role_permission`** (el nombre real de la migración y de los modelos). Solo documentación; sin cambios de código. |
+| 2026-08-02 | #3 | `DOCUMENTACION_SISTEMA.md:142` | Comentario de `isAdmin()` corregido: ya no dice "admin \|\| superadmin" sino que aclara que solo cubre `admin` y que `hasPermission()` otorga true a admin/superadmin. Solo documentación. |
