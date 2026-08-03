@@ -457,7 +457,7 @@ kitchenTicket($order)           // Ticket de cocina
 prebillTicket($order)           // Precuenta
 cancelNotification($order, $item)           // Anulación individual
 cancelNotificationGrouped($order, $dest)    // Anulación agrupada
-invoiceTicket($invoice)         // Factura
+invoiceTicket($invoice)         // STUB (no-op): comprobante se imprime por PDF de Greenter (generatePdf / generateTicketPdf). PrintService::printInvoice() no encola si el ticket es vacío
 cashRegisterSummary($cashregister, $data)   // Resumen de caja
 ```
 
@@ -1436,7 +1436,7 @@ Encoding: detecta UTF-8, convierte a CP850, inserta ESC t 0x02
 | `kitchenTicket()` | **COCINA** + pedido, mesa, hora, items |
 | `prebillTicket()` | **PRECUENTA** + items, subtotal, IGV dinámico, total |
 | `cancelNotificationGrouped()` | **ANULACIÓN COCINA** + items + usuario |
-| `invoiceTicket()` | Factura completa para impresora |
+| `invoiceTicket()` | No usado (stub, devuelve vacío). El comprobante se imprime por PDF de Greenter (`generatePdf`/`generateTicketPdf`); `PrintService::printInvoice()` no encola si el ticket es vacío |
 | `cashRegisterSummary()` | Resumen completo de caja |
 
 ---

@@ -111,6 +111,7 @@ class PrintService
         $printer = $this->getPrinter('caja');
         if (!$printer) return;
         $data = PlainTextTicket::invoiceTicket($invoice, 'escpos');
+        if ($data === '') return;
         $this->queuePrint($printer, $data, 'invoice', get_class($invoice), $invoice->id);
         $this->processQueue();
     }
