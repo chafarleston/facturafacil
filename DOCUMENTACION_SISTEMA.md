@@ -233,7 +233,10 @@ subtotal, igv, total, notes
 restaurant_order_id → orders
 product_id → products
 product_name, quantity (decimal), unit_price, total
-kitchen_status: PENDIENTE | ENVIADO | LISTO | ENTREGADO | ANULADO
+kitchen_status (ENUM, almacenado en inglés):
+  PENDING | SENT | READY | DELIVERED | CANCELLED
+  (los nombres en español —PENDIENTE, ENVIADO, etc.— son SOLO etiquetas de
+   RestaurantOrderItem::kitchenStatusLabel(), no valores guardados)
 notes, kds_destination
 cancelled_from, cancelled_at, cancelled_by → users
 sent_to_kitchen_at
