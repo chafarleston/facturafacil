@@ -19,6 +19,7 @@ class InvoiceController extends Controller
 {
     public function index(Request $request)
     {
+        $this->authorize('permission', 'view_invoices');
         $companyId = $request->company_id ?? \App\Models\Company::getMainCompany()->id;
         $tipoDocumento = $request->type;
         
@@ -37,6 +38,7 @@ class InvoiceController extends Controller
 
     public function create(Request $request)
     {
+        $this->authorize('permission', 'create_invoices');
         $mainCompany = \App\Models\Company::getMainCompany();
         if (!$mainCompany) {
             abort(400, 'No hay empresa principal configurada');
@@ -64,6 +66,7 @@ class InvoiceController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('permission', 'create_invoices');
         $itemsInput = $request->input('items');
         
         $itemsArray = [];
@@ -270,6 +273,7 @@ class InvoiceController extends Controller
 
     public function show(Invoice $invoice)
     {
+        $this->authorize('permission', 'view_invoices');
         $invoice->load(['company', 'customer', 'items']);
         return view('invoices.show', compact('invoice'));
     }
@@ -277,6 +281,7 @@ class InvoiceController extends Controller
     // Ensure PDF generation uses proper PDF headers
     public function generatePdf(Invoice $invoice)
     {
+        $this->authorize('permission', 'view_invoices');
         $greenterService = new \App\Services\GreenterService();
         $pdfContent = $greenterService->generatePdf($invoice);
         return response($pdfContent)
@@ -286,6 +291,7 @@ class InvoiceController extends Controller
 
     public function generateTicketPdf(Invoice $invoice)
     {
+        $this->authorize('permission', 'view_invoices');
         $greenterService = new \App\Services\GreenterService();
         $pdfContent = $greenterService->generateTicketPdf($invoice);
         return response($pdfContent)
@@ -295,6 +301,7 @@ class InvoiceController extends Controller
 
     public function downloadXml(Invoice $invoice)
     {
+        $this->authorize('permission', 'view_invoices');
         if ($invoice->xml_firmado) {
             $filename = $invoice->serie . '-' . str_pad($invoice->numero, 8, '0', STR_PAD_LEFT) . '.xml';
             return response()->make($invoice->xml_firmado, 200, [
@@ -313,6 +320,7 @@ class InvoiceController extends Controller
 
     public function downloadCdr(Invoice $invoice)
     {
+        $this->authorize('permission', 'view_invoices');
         // Check database cdr_path
         $cdrPath = $invoice->cdr_path;
         
@@ -343,6 +351,7 @@ class InvoiceController extends Controller
 
     public function sendToSunat(Invoice $invoice)
     {
+        $this->authorize('permission', 'send_sunat');
         // Nota de Venta no se envía a SUNAT
         if (isset($invoice->tipo_documento) && $invoice->tipo_documento === 'NV') {
             return back()->with('success', 'Nota de Venta no se envía a SUNAT');
@@ -389,6 +398,7 @@ class InvoiceController extends Controller
     
     public function destroy(Invoice $invoice)
     {
+        $this->authorize('permission', 'send_sunat');
         try {
             // Boletas se anulan mediante Resumen Diario
             if ($invoice->tipo_documento === '03') {
@@ -418,12 +428,14 @@ class InvoiceController extends Controller
     
     public function creditNoteForm(Invoice $invoice)
     {
+        $this->authorize('permission', 'send_sunat');
         return view('invoices.credit-note', compact('invoice'));
     }
 
     // Nota de Venta impresiones
     public function printNvA4(Invoice $invoice)
     {
+        $this->authorize('permission', 'view_invoices');
         if ($invoice->tipo_documento !== 'NV') {
             abort(404);
         }
@@ -432,6 +444,7 @@ class InvoiceController extends Controller
 
     public function printNvTicket(Invoice $invoice)
     {
+        $this->authorize('permission', 'view_invoices');
         if ($invoice->tipo_documento !== 'NV') {
             abort(404);
         }
@@ -447,6 +460,7 @@ class InvoiceController extends Controller
     
     public function sendCreditNote(Request $request, Invoice $invoice)
     {
+        $this->authorize('permission', 'send_sunat');
         $request->validate([
             'motivo' => 'required',
             'descripcion' => 'required'
@@ -469,11 +483,13 @@ class InvoiceController extends Controller
 
     public function debitNoteForm(Invoice $invoice)
     {
+        $this->authorize('permission', 'send_sunat');
         return view('invoices.debit-note', compact('invoice'));
     }
 
     public function sendDebitNote(Request $request, Invoice $invoice)
     {
+        $this->authorize('permission', 'send_sunat');
         $request->validate([
             'motivo' => 'required',
             'descripcion' => 'required'

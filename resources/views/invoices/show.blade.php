@@ -174,25 +174,32 @@
     @endif
 
     @if($invoice->sunat_estado == 'ACEPTADO' && !$invoice->credit_note_id && $invoice->tipo_documento != '07')
-    <a href="{{ route('invoices.creditNoteForm', $invoice) }}" class="btn btn-warning"><i class="fas fa-minus-circle"></i> Nota de Crédito</a>
-    <a href="{{ route('invoices.debitNoteForm', $invoice) }}" class="btn btn-danger"><i class="fas fa-plus-circle"></i> Nota de Débito</a>
+        @can('permission', 'send_sunat')
+        <a href="{{ route('invoices.creditNoteForm', $invoice) }}" class="btn btn-warning"><i class="fas fa-minus-circle"></i> Nota de Crédito</a>
+        <a href="{{ route('invoices.debitNoteForm', $invoice) }}" class="btn btn-danger"><i class="fas fa-plus-circle"></i> Nota de Débito</a>
+        @endcan
     @endif
 
     @if(in_array($invoice->tipo_documento, ['01', '03']))
-    <a href="{{ route('invoices.generateDespatch', $invoice) }}" class="btn btn-info"><i class="fas fa-truck"></i> Guía de Remisión</a>
+        @can('permission', 'send_sunat')
+        <a href="{{ route('invoices.generateDespatch', $invoice) }}" class="btn btn-info"><i class="fas fa-truck"></i> Guía de Remisión</a>
+        @endcan
     @endif
 
     @if($invoice->sunat_estado != 'ACEPTADO' && $invoice->sunat_estado != 'ENVIADO' && $invoice->tipo_documento != 'NV')
-    <a href="{{ route('invoices.send', $invoice) }}" class="btn btn-success"><i class="fas fa-paper-plane"></i> Enviar a SUNAT</a>
+        @can('permission', 'send_sunat')
+        <a href="{{ route('invoices.send', $invoice) }}" class="btn btn-success"><i class="fas fa-paper-plane"></i> Enviar a SUNAT</a>
+        @endcan
     @endif
 
     @if(($invoice->sunat_estado == 'ACEPTADO' || $invoice->sunat_estado == 'ENVIADO') && $invoice->tipo_documento != '07')
-
-    <form action="{{ route('invoices.destroy', $invoice) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de dar de baja este documento en SUNAT?');">
-        @csrf
-        @method('DELETE')
-        <button type="submit" class="btn btn-danger"><i class="fas fa-power-off"></i> Dar de Baja</button>
-    </form>
+        @can('permission', 'send_sunat')
+        <form action="{{ route('invoices.destroy', $invoice) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de dar de baja este documento en SUNAT?');">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="btn btn-danger"><i class="fas fa-power-off"></i> Dar de Baja</button>
+        </form>
+        @endcan
     @endif
 
     <a href="{{ route('invoices.index') }}" class="btn btn-secondary">Volver</a>

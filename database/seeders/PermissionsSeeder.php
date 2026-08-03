@@ -110,7 +110,7 @@ class PermissionsSeeder extends Seeder
         ]);
         $cajeroRole->syncPermissions(Permission::whereIn('slug', [
             'view_dashboard',
-            'view_invoices', 'create_invoices',
+            'view_invoices', 'create_invoices', 'send_sunat',
             'view_pos', 'use_pos',
             'view_cashregisters', 'open_cashregister', 'close_cashregister',
         ])->pluck('id')->toArray());
@@ -123,9 +123,7 @@ class PermissionsSeeder extends Seeder
         ]);
         $userRole->syncPermissions(Permission::whereIn('slug', [
             'view_dashboard',
-            'view_invoices',
             'view_pos', 'use_pos',
-            'view_cashregisters',
             'view_products', 'view_categories',
             'view_customers',
         ])->pluck('id')->toArray());

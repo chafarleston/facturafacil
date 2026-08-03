@@ -13,6 +13,7 @@ class DocumentController extends Controller
 {
     public function index($tipo)
     {
+        $this->authorize('permission', 'send_sunat');
         $companyId = Company::getMainCompany()->id;
         $tipos = ['R' => '20', 'T' => '09', 'P' => '40'];
         $codigos = ['R' => '20', 'T' => '09', 'P' => '40'];
@@ -35,6 +36,7 @@ class DocumentController extends Controller
 
     public function create($tipo)
     {
+        $this->authorize('permission', 'send_sunat');
         $companyId = Company::getMainCompany()->id;
         $company = Company::find($companyId);
         $title = match($tipo) {
@@ -64,6 +66,7 @@ class DocumentController extends Controller
 
     public function store(Request $request, $tipo)
     {
+        $this->authorize('permission', 'send_sunat');
         $companyId = Company::getMainCompany()->id;
         $tipos = ['R' => '20', 'T' => '09', 'P' => '40'];
 
@@ -126,6 +129,7 @@ class DocumentController extends Controller
 
     public function show($tipo, SpecialDocument $document)
     {
+        $this->authorize('permission', 'send_sunat');
         $title = match($tipo) {
             'R' => 'Retención',
             'T' => 'Guía de Remisión',
@@ -137,6 +141,7 @@ class DocumentController extends Controller
 
     public function send($tipo, SpecialDocument $document, SpecialDocumentService $service)
     {
+        $this->authorize('permission', 'send_sunat');
         $result = match($tipo) {
             'R' => $service->sendRetention($document),
             'T' => $service->sendDespatch($document),
@@ -154,6 +159,7 @@ class DocumentController extends Controller
 
     public function createFromInvoice(Invoice $invoice)
     {
+        $this->authorize('permission', 'send_sunat');
         $companyId = Company::getMainCompany()->id;
         $company = Company::find($companyId);
         $customer = $invoice->customer;
@@ -210,6 +216,7 @@ class DocumentController extends Controller
 
     public function getInvoiceData($id)
     {
+        $this->authorize('permission', 'send_sunat');
         $invoice = Invoice::with(['customer', 'items'])->find($id);
         if (!$invoice) {
             return response()->json(['error' => 'No encontrado'], 404);

@@ -11,6 +11,7 @@ class SummaryController extends Controller
 {
     public function index(Request $request)
     {
+        $this->authorize('permission', 'send_sunat');
         $status = $request->get('status', '');
         $companyId = $request->get('company_id', \App\Models\Company::getMainCompany()->id);
 
@@ -35,6 +36,7 @@ class SummaryController extends Controller
 
     public function checkStatus(SummaryDocument $summary)
     {
+        $this->authorize('permission', 'send_sunat');
         if (!$summary->ticket) {
             return back()->with('error', 'Este resumen no tiene ticket asignado');
         }
@@ -57,6 +59,7 @@ class SummaryController extends Controller
 
     public function checkAllPending()
     {
+        $this->authorize('permission', 'send_sunat');
         try {
             $summaryService = new SummaryService();
             $pending = SummaryDocument::pending()->whereNotNull('ticket')->get();
@@ -87,6 +90,7 @@ class SummaryController extends Controller
 
     public function retryPending(GreenterService $greenterService, SummaryService $summaryService)
     {
+        $this->authorize('permission', 'send_sunat');
         $invoices = \App\Models\Invoice::whereIn('sunat_estado', ['PENDIENTE', 'ERROR', 'RECHAZADO'])
             ->whereIn('tipo_documento', ['01', '03'])
             ->get();
@@ -126,6 +130,7 @@ class SummaryController extends Controller
 
     public function sendDaily(SummaryService $summaryService)
     {
+        $this->authorize('permission', 'send_sunat');
         $result = $summaryService->sendDailySummary();
 
         if ($result['success']) {

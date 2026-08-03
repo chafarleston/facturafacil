@@ -94,12 +94,6 @@ Route::middleware('auth')->group(function () {
         Route::resource('stock-outputs', StockOutputController::class);
         Route::get('/stock-outputs/{stock_output}/print/a4', [\App\Http\Controllers\StockOutputController::class, 'printA4'])->name('stock-outputs.print.a4');
         Route::get('/stock-outputs/{stock_output}/print/ticket', [\App\Http\Controllers\StockOutputController::class, 'printTicket'])->name('stock-outputs.print.ticket');
-        Route::resource('cashregisters', CashRegisterController::class);
-        Route::get('/cashregisters/{cashregister}/pdf', [CashRegisterController::class, 'pdf'])->name('cashregisters.pdf');
-        Route::get('/cashregisters/{cashregister}/ticket', [CashRegisterController::class, 'ticketPdf'])->name('cashregisters.ticket');
-        Route::post('/cashregisters/{cashregister}/print-caja', [CashRegisterController::class, 'printCaja'])->name('cashregisters.printCaja');
-        Route::post('/cashregister/open', [CashRegisterController::class, 'open'])->name('cashregisters.open');
-        Route::post('/cashregister/close', [CashRegisterController::class, 'close'])->name('cashregisters.close');
         Route::resource('series', SerieController::class)->parameters(['series' => 'serie']);
         Route::resource('users', \App\Http\Controllers\UserController::class);
         Route::resource('roles', \App\Http\Controllers\RoleController::class);
@@ -116,6 +110,14 @@ Route::middleware('auth')->group(function () {
         Route::delete('/printers/queue/{printJob}', [\App\Http\Controllers\Admin\PrinterController::class, 'destroy'])->name('printers.queue.destroy');
         Route::put('/printers/{printer}', [\App\Http\Controllers\Admin\PrinterController::class, 'update'])->name('printers.update');
     });
+
+    // Caja: accesible por permisos (view_cashregisters / open_cashregister / close_cashregister)
+    Route::resource('cashregisters', CashRegisterController::class)->only(['index', 'show']);
+    Route::get('/cashregisters/{cashregister}/pdf', [CashRegisterController::class, 'pdf'])->name('cashregisters.pdf');
+    Route::get('/cashregisters/{cashregister}/ticket', [CashRegisterController::class, 'ticketPdf'])->name('cashregisters.ticket');
+    Route::post('/cashregisters/{cashregister}/print-caja', [CashRegisterController::class, 'printCaja'])->name('cashregisters.printCaja');
+    Route::post('/cashregister/open', [CashRegisterController::class, 'open'])->name('cashregisters.open');
+    Route::post('/cashregister/close', [CashRegisterController::class, 'close'])->name('cashregisters.close');
     
     Route::get('/invoices/{invoice}/send', [InvoiceController::class, 'sendToSunat'])->name('invoices.send');
     Route::get('/invoices/nv', [InvoiceController::class, 'nvIndex'])->name('invoices.nv');
@@ -130,7 +132,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/invoices/{invoice}/credit-note', [InvoiceController::class, 'sendCreditNote'])->name('invoices.sendCreditNote');
     Route::get('/invoices/{invoice}/debit-note', [InvoiceController::class, 'debitNoteForm'])->name('invoices.debitNoteForm');
     Route::post('/invoices/{invoice}/debit-note', [InvoiceController::class, 'sendDebitNote'])->name('invoices.sendDebitNote');
-    Route::resource('invoices', InvoiceController::class);
+    Route::resource('invoices', InvoiceController::class)->only(['index', 'show', 'create', 'store', 'destroy']);
     Route::get('/invoices/{invoice}/generate-despatch', [\App\Http\Controllers\DocumentController::class, 'createFromInvoice'])->name('invoices.generateDespatch');
     Route::get('/sunat-summaries', [\App\Http\Controllers\SummaryController::class, 'index'])->name('sunat-summaries.index');
     Route::post('/sunat-summaries/check-all', [\App\Http\Controllers\SummaryController::class, 'checkAllPending'])->name('sunat-summaries.checkAll');

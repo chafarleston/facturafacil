@@ -14,6 +14,7 @@ class CashRegisterController extends Controller
 {
     public function index(Request $request)
     {
+        $this->authorize('permission', 'view_cashregisters');
         $companyId = \App\Models\Company::getMainCompany()->id;
         
         $cajaAbierta = CashRegister::where('company_id', $companyId)
@@ -202,6 +203,7 @@ class CashRegisterController extends Controller
 
     public function show(CashRegister $cashregister)
     {
+        $this->authorize('permission', 'view_cashregisters');
         $data = $this->getCashRegisterData($cashregister);
         extract($data);
         
@@ -350,6 +352,7 @@ class CashRegisterController extends Controller
 
     public function pdf(CashRegister $cashregister)
     {
+        $this->authorize('permission', 'view_cashregisters');
         $data = $this->getCashRegisterData($cashregister);
 
         $pdf = new \Mpdf\Mpdf([
@@ -367,6 +370,7 @@ class CashRegisterController extends Controller
 
     public function ticketPdf(CashRegister $cashregister)
     {
+        $this->authorize('permission', 'view_cashregisters');
         $data = $this->getCashRegisterData($cashregister);
 
         $pdf = new \Mpdf\Mpdf([
@@ -384,6 +388,7 @@ class CashRegisterController extends Controller
 
     public function printCaja(CashRegister $cashregister)
     {
+        $this->authorize('permission', 'view_cashregisters');
         try {
             $data = $this->getCashRegisterData($cashregister);
             

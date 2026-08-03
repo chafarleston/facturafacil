@@ -9,13 +9,13 @@
 | Severidad | Cantidad | Estado |
 |-----------|----------|--------|
 | 🔴 ALTA | 1 | ✅ **Resuelto** (ítem #1) |
-| 🟠 MEDIA | 20 | 5 resueltos (#2, #3, #4, #5, #6) · 15 pendientes |
+| 🟠 MEDIA | 20 | 7 resueltos (#2–#8) · 13 pendientes |
 | 🟡 BAJA | 12 | Pendiente |
 | 🔵 INFO / NO VERIFICABLE | 10 | Informativo |
 
 **Capítulos 100% COINCIDE:** 9, 10, 12, 16, 18, 22, 23, 24, 25, 27 (y 15 parcialmente).
 
-> **Actualización (2026-08-02):** ítem #1 (apertura de cajón) corregido en el código. Ítems #2 (pivot), #3 (isAdmin), #4 (estado de Invoice), #5 y #6 (enums de pedidos) corregidos. Ver sección "Cambios aplicados" al final.
+> **Actualización (2026-08-02):** ítem #1 (apertura de cajón) corregido en el código. Ítems #2 (pivot), #3 (isAdmin), #4 (estado de Invoice), #5, #6 (enums), #7 (caja por permisos) y #8 (SUNAT por permiso `send_sunat`) corregidos. Ver sección "Cambios aplicados" al final.
 
 ---
 
@@ -36,8 +36,8 @@
 | 4 | 3.4 | Invoice campo `estado: ACTIVO\|ANULADO` | **No existe columna `estado`**; solo `sunat_estado`. **Corregido**: eliminadas las 2 asignaciones muertas (`'estado'=>'ACTIVO'` sobre Invoice), quitado `estado_sunat` del fillable y ajustado §3.4 del doc | `database/migrations/2024_01_01_000005_create_invoices_table.php:35`, `app/Models/Invoice.php:12-20` | ✅ RESUELTO |
 | 5 | 3.5 | `status` en español (ABIERTO/ENVIADO A COCINA/LISTO/ENTREGADO/COMPLETADO/ANULADO) | Enum real en inglés: `OPEN/SENT_TO_KITCHEN/READY/DELIVERED/COMPLETED/CANCELLED` + **`PENDING_PAYMENT`** (kiosko) omitido en el doc. **Corregido** §3.5 | `database/migrations/2026_05_12_104627_create_restaurant_orders_table.php:17`, `2026_07_02_205824_add_pending_payment_to_restaurant_orders_status.php:14` | ✅ RESUELTO |
 | 6 | 3.6 | `kitchen_status` en español (PENDIENTE/ENVIADO/LISTO/ENTREGADO/ANULADO) | Enum real: `PENDING/SENT/READY/DELIVERED/CANCELLED` (español solo como etiquetas). **Corregido** §3.6 | `database/migrations/2026_05_13_210541_add_cancelled_to_kitchen_status_enum.php:10` | ✅ RESUELTO |
-| 7 | 15 | `/cashregisters`, `/cashregister/open`, `/cashregister/close` en grupo auth | Están en el sub-grupo **`admin`** | `routes/web.php:97,101-102` |
-| 8 | 15 | `/invoices*`, `/sunat-summaries*`, `/documents/{tipo}` en grupo auth+admin | Están fuera del grupo admin → **solo auth** (cualquier usuario autenticado, incl. mozo, alcanza envío/anulación SUNAT) | `routes/web.php:120-145` |
+| 7 | 15 | `/cashregisters`, `/cashregister/open`, `/cashregister/close` en grupo auth | Estaban en el sub-grupo **`admin`** (middleware `IsAdmin`), bloqueando al cajero pese a tener `open_cashregister`/`close_cashregister`. **Corregido**: rutas movidas a `auth` + autorización por permiso (`view_cashregisters`/`open_cashregister`/`close_cashregister`) | `routes/web.php`, `CashRegisterController.php` | ✅ RESUELTO |
+| 8 | 15 | `/invoices*`, `/sunat-summaries*`, `/documents/{tipo}` en grupo auth+admin | Estaban fuera del grupo admin → **solo auth** (cualquier autenticado, incl. mozo, alcanzaba envío/anulación SUNAT). **Corregido** con enfoque por permiso `send_sunat` (cajero puede enviar; user/mozo bloqueados) | `routes/web.php`, `InvoiceController.php`, `SummaryController.php`, `DocumentController.php` | ✅ RESUELTO |
 | 9 | 4 | `removeItem()` siempre marca CANCELLED | Si el item está **PENDING se elimina físicamente** (`$item->delete()`); CANCELLED solo para SENT/READY/DELIVERED (requiere password admin) | `app/Http/Controllers/Restaurant/RestaurantController.php:280-316` |
 | 10 | 5.2, 19.9.3 | `invoiceTicket($invoice)` genera ticket | Es un **stub** que devuelve `''` → `PrintService::printInvoice()` encola un trabajo de impresión vacío | `app/Services/PlainTextTicket.php:156-159` |
 | 11 | 5.3 | `buildInvoice($invoice)` público, 1 parámetro | Es **`private` con 2 parámetros obligatorios** `($invoice, $company)` | `app/Services/GreenterService.php:1316` |
@@ -134,3 +134,6 @@ La mayoría de discrepancias requieren **actualizar la documentación** (redacci
 | 2026-08-02 | #4 | `PosController.php:138`, `RestaurantController.php:1196`, `Invoice.php:20`, `DOCUMENTACION_SISTEMA.md:213` | Limpieza del campo fantasma `estado` en Invoice: eliminadas las 2 asignaciones muertas `'estado'=>'ACTIVO'` sobre `Invoice::create` (las de `GreenterService` eran de `Serie::create` y se conservaron), quitado `'estado_sunat'` del fillable y eliminada la línea `estado: ACTIVO\|ANULADO` de §3.4. Sin impacto en facturación electrónica (usa `sunat_estado`). Sintaxis OK, tests OK. |
 | 2026-08-02 | #5 | `DOCUMENTACION_SISTEMA.md:222` | §3.5 corregido: `status` ahora muestra el enum real en inglés (`OPEN/SENT_TO_KITCHEN/READY/DELIVERED/COMPLETED/CANCELLED/PENDING_PAYMENT`), aclara que `PENDING_PAYMENT` es del kiosko y que los nombres en español son solo etiquetas de `statusLabel()`. Solo documentación. |
 | 2026-08-02 | #6 | `DOCUMENTACION_SISTEMA.md:236` | §3.6 corregido: `kitchen_status` ahora muestra el enum real (`PENDING/SENT/READY/DELIVERED/CANCELLED`) y aclara que los nombres en español son solo etiquetas de `kitchenStatusLabel()`. Solo documentación. |
+| 2026-08-02 | #7 | `DOCUMENTACION_SISTEMA.md` §15.2/§15.3 | Rutas de caja (`/cashregisters`, `/cashregister/open`, `/cashregister/close`) movidas de §15.2 (auth) a §15.3 (admin), marcadas "(admin)" — el código real las protege con middleware `IsAdmin`. Solo documentación. |
+| 2026-08-02 | #7 (código) | `routes/web.php`, `CashRegisterController.php` | Caja pasa de middleware admin a **permisos**: rutas movidas al grupo auth; `authorize('permission','view_cashregisters')` en index/show/pdf/ticketPdf/printCaja. Ahora el **cajero puede abrir y cerrar caja** (tiene open/close_cashregister); user conserva solo vista; mozo → 403. |
+| 2026-08-02 | #8 | `PermissionsSeeder.php`, `InvoiceController.php`, `SummaryController.php`, `DocumentController.php`, `invoices/show.blade.php`, `DOCUMENTACION_SISTEMA.md` §15.3 | SUNAT protegido por permiso `send_sunat`: agregado al rol **cajero**; `authorize('permission','send_sunat')` en send/destroy/NC/ND/resúmenes/documentos; `view_invoices` en lecturas de comprobantes; botones de SUNAT ocultos sin `@can('permission','send_sunat')`. Rol **user** perdió `view_invoices` y `view_cashregisters` (no ve esos módulos). Efecto: cajero+admin envían a SUNAT; user/mozo bloqueados. |

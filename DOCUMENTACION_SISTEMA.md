@@ -854,11 +854,13 @@ Usuario clickea "Caja" en restaurante o POS
 | GET | `/pos` | Vista POS |
 | POST | `/pos` | Procesar venta |
 | POST | `/pos/open-drawer` | Abrir cajón |
-| GET | `/cashregisters` | Gestión de caja |
-| POST | `/cashregister/open` | Abrir caja |
-| POST | `/cashregister/close` | Cerrar caja |
+| GET | `/cashregisters` | Gestión de caja (permiso `view_cashregisters`) |
+| POST | `/cashregister/open` | Abrir caja (permiso `open_cashregister`) |
+| POST | `/cashregister/close` | Cerrar caja (permiso `close_cashregister`) |
 
-### 15.3 Administrativas (auth + admin)
+### 15.3 Administrativas (middleware admin o permisos)
+
+> **Nota de permisos:** las rutas de comprobantes (`/invoices*`), resúmenes diarios (`/sunat-summaries*`) y documentos especiales (`/documents/{tipo}`) NO usan middleware admin: se protegen con el Gate `permission` (`$this->authorize('permission', '...')`). Roles: `admin`/`superadmin` siempre pasan; **cajero** tiene `view_invoices`, `create_invoices` y `send_sunat`; **mozo/user** no tienen estos permisos (user ya no ve el módulo). El resto de rutas de esta sección usan middleware `admin` (`IsAdmin`).
 
 | Método | Ruta | Propósito |
 |--------|------|-----------|
@@ -871,17 +873,17 @@ Usuario clickea "Caja" en restaurante o POS
 | GET | `/products/inventory-report` | Reporte de inventario |
 | GET | `/products/inventory-report/excel` | Exportar inventario a Excel |
 | GET | `/products/inventory-report/pdf` | Exportar inventario a PDF |
-| GET | `/invoices` | Lista comprobantes |
-| GET | `/invoices/{id}/send` | Enviar a SUNAT |
-| GET/POST | `/invoices/{id}/credit-note` | Nota de Crédito |
-| GET/POST | `/invoices/{id}/debit-note` | Nota de Débito |
-| DELETE | `/invoices/{id}` | Dar de baja en SUNAT |
-| GET | `/invoices/{id}/generate-despatch` | Generar guía desde factura |
-| GET | `/sunat-summaries` | Resúmenes diarios |
-| POST | `/sunat-summaries/check-all` | Consultar tickets pendientes |
-| POST | `/sunat-summaries/send-daily` | Enviar resumen diario |
-| POST | `/sunat-summaries/retry-pending` | Reenviar pendientes |
-| GET/POST | `/documents/{tipo}` | Documentos especiales (R/T/P) |
+| GET | `/invoices` | Lista comprobantes (permiso `view_invoices`) |
+| GET | `/invoices/{id}/send` | Enviar a SUNAT (permiso `send_sunat`) |
+| GET/POST | `/invoices/{id}/credit-note` | Nota de Crédito (permiso `send_sunat`) |
+| GET/POST | `/invoices/{id}/debit-note` | Nota de Débito (permiso `send_sunat`) |
+| DELETE | `/invoices/{id}` | Dar de baja en SUNAT (permiso `send_sunat`) |
+| GET | `/invoices/{id}/generate-despatch` | Generar guía desde factura (permiso `send_sunat`) |
+| GET | `/sunat-summaries` | Resúmenes diarios (permiso `send_sunat`) |
+| POST | `/sunat-summaries/check-all` | Consultar tickets pendientes (permiso `send_sunat`) |
+| POST | `/sunat-summaries/send-daily` | Enviar resumen diario (permiso `send_sunat`) |
+| POST | `/sunat-summaries/retry-pending` | Reenviar pendientes (permiso `send_sunat`) |
+| GET/POST | `/documents/{tipo}` | Documentos especiales (R/T/P) (permiso `send_sunat`) |
 | GET | `/printers` | Configurar impresoras |
 | GET | `/printers/queue` | Cola de impresión |
 | POST | `/companies/{id}/certificate` | Subir certificado |
