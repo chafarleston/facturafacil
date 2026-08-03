@@ -9,6 +9,8 @@
         "ext-openssl": "*",
         "ext-xml": "*",
         "ext-zip": "*",
+        "ext-soap": "*",
+        "ext-intl": "*",
         "barryvdh/laravel-dompdf": "^3.1",
         "doctrine/dbal": "^4.0",
         "endroid/qr-code": "^6.1",

@@ -10,7 +10,7 @@
 |-----------|----------|--------|
 | 🔴 ALTA | 1 | ✅ **Resuelto** (ítem #1) |
 | 🟠 MEDIA | 20 | 20 resueltos (#2–#21) · 0 pendientes |
-| 🟡 BAJA | 12 | 9 resueltos (#22–#30) · 3 pendientes |
+| 🟡 BAJA | 12 | 10 resueltos (#22–#31) · 2 pendientes |
 | 🔵 INFO / NO VERIFICABLE | 10 | Informativo |
 
 **Capítulos 100% COINCIDE:** 9, 10, 12, 16, 18, 22, 23, 24, 25, 27 (y 15 parcialmente).
@@ -67,7 +67,7 @@
 | 28 | 20.3 | Padrón SUNAT "extrae y limpia automáticamente" | El comando descargaba y extraía el ZIP pero **no lo eliminaba**. **Corregido** (Opción A): el ZIP se borra tras extraer (el `.txt` del padrón se conserva) | `app/Console/Commands/DownloadSunatPadron.php:28-53` | ✅ RESUELTO |
 | 29 | 20.7 | "index.blade.php (7 calls); kds.blade.php (3 calls)" | Hay **24** calls en index y **4** en KDS (conteo desactualizado). **Corregido** §20.7 | `resources/views/restaurant/index.blade.php`, `kds.blade.php` | ✅ RESUELTO (doc) |
 | 30 | 20.4 | Lista de dependencias Greenter 5.2.0 (core/ws/xml/lite) | Instalado **5.3.0** (la propia sección 20.16 documenta la actualización). **Corregido** §20.4 | `composer.lock` | ✅ RESUELTO (doc) |
-| 31 | 20.4 | Requiere `ext-soap`, `ext-intl` | `composer.json` solo declara `ext-openssl`, `ext-xml`, `ext-zip` | `composer.json:9-11` |
+| 31 | 20.4 | Requiere `ext-soap`, `ext-intl` | `composer.json` solo declaraba `ext-openssl`, `ext-xml`, `ext-zip`. **Corregido** (Opción A): añadidas `ext-soap` y `ext-intl` (ambas usadas y cargadas) | `composer.json:9-11` | ✅ RESUELTO |
 | 32 | 20.16 | Campo `fechaEntrega` en modelo `Shipment` | Se llama **`fecEntregaBienes`** | `vendor/greenter/core/src/Core/Model/Despatch/Shipment.php:93` |
 
 ---
@@ -161,6 +161,7 @@ Nota #12: en `cancelOrder()` la impresión agrupada ocurre ANTES de marcar los i
 | 2026-08-02 | #28 | `app/Console/Commands/DownloadSunatPadron.php:38-45` | Opción A: tras extraer el ZIP del padrón, se elimina `sunat_padron.zip` (el `.txt` extraído se conserva, lo usa la vista del padrón). El doc §20.3 "extrae y limpia" queda correcto. Sintaxis OK. |
 | 2026-08-02 | #29 | `DOCUMENTACION_SISTEMA.md` §20.7 | Actualizados los conteos de `fetch`: index = 24, kds = 4 (con nota de que el número crece con features). Solo documentación. |
 | 2026-08-02 | #30 | `DOCUMENTACION_SISTEMA.md` §20.4 | Actualizada la lista de dependencias Greenter: core/ws/xml/lite = 5.3.0 (xmldsig 5.0.3, report/htmltopdf 5.2.0, + gre-api 1.0.2). Verificado contra composer.lock. Solo documentación. |
+| 2026-08-02 | #31 | `composer.json` | Opción A: añadidas `"ext-soap": "*"` y `"ext-intl": "*"` al `require` (ambas se usan: SOAP en SUNAT, intl en NumberFormatter del total en letras; verificadas cargadas con `php -m`). Lock sincronizado con `composer update --lock`. El doc §20.4 quedó correcto sin cambios. Sintaxis JSON OK, tests OK. |
 
 ---
 
