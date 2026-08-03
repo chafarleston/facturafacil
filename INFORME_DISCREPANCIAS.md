@@ -10,7 +10,7 @@
 |-----------|----------|--------|
 | 🔴 ALTA | 1 | ✅ **Resuelto** (ítem #1) |
 | 🟠 MEDIA | 20 | 20 resueltos (#2–#21) · 0 pendientes |
-| 🟡 BAJA | 12 | 3 resueltos (#22, #23, #24) · 9 pendientes |
+| 🟡 BAJA | 12 | 4 resueltos (#22–#25) · 8 pendientes |
 | 🔵 INFO / NO VERIFICABLE | 10 | Informativo |
 
 **Capítulos 100% COINCIDE:** 9, 10, 12, 16, 18, 22, 23, 24, 25, 27 (y 15 parcialmente).
@@ -61,7 +61,7 @@
 | 22 | 14, 19.12 | PermissionsSeeder "50+ permisos" | Define **46** permisos. **Corregido** §14 y §19.12 | `database/seeders/PermissionsSeeder.php:14-59` | ✅ RESUELTO (doc) |
 | 23 | 14 | `SunatProductSeeder` puebla "productos" | Puebla la tabla catálogo `sunat_products` (modelo `SunatProduct`), no `products`. **Corregido** §14 y §19.12 | `database/seeders/SunatProductSeeder.php` | ✅ RESUELTO (doc) |
 | 24 | 6 | `1D 56 00` = "Corte parcial" | `1D 56 00` es **corte total**; el parcial es `1D 56 01`. El byte coincide con el código, pero la etiqueta era errónea. **Corregido** §6 | `print-server-node/server.js:54-55`, `app/Services/PlainTextTicket.php:83` | ✅ RESUELTO (doc) |
-| 25 | 11 | "Usuario clickea 'Caja' en restaurante **o POS**" | `openCashDrawer()` solo existe en la vista de restaurante; la vista POS no tiene botón ni fetch al print server | `resources/views/restaurant/index.blade.php:613,1516` vs `resources/views/pos/index.blade.php` |
+| 25 | 11 | "Usuario clickea 'Caja' en restaurante **o POS**" | `openCashDrawer()` solo existía en la vista de restaurante. **Corregido** (Opción B): botón + función agregados al POS, y apertura automática del cajón en pagos EFECTIVO | `resources/views/restaurant/index.blade.php:613,1516` vs `resources/views/pos/index.blade.php` | ✅ RESUELTO |
 | 26 | 4 | Flujo envío a cocina: "7. Responder JSON con tickets" | El JSON solo devuelve `success` y `items_sent`; los tickets se imprimen internamente vía `printKitchenOrder()` | `app/Http/Controllers/Restaurant/RestaurantController.php:375-379` |
 | 27 | 19.5 | "Todos los comprobantes se envían con `sendInvoice`" y "carga certificado .p12" | Las boletas (03) van por **Resumen Diario** (`SummaryService`); `setupSee()` es **PEM-first** (busca `.pem`, fallback a PKCS12) | `app/Http/Controllers/InvoiceController.php:344-386`, `app/Services/GreenterService.php:1232-1266` |
 | 28 | 20.3 | Padrón SUNAT "extrae y limpia automáticamente" | El comando descarga y extrae el ZIP pero **no lo elimina** ni limpia | `app/Console/Commands/DownloadSunatPadron.php:28-53` |
@@ -155,6 +155,7 @@ Nota #12: en `cancelOrder()` la impresión agrupada ocurre ANTES de marcar los i
 | 2026-08-02 | #22 | `DOCUMENTACION_SISTEMA.md` §14 y §19.12 | Contado el seeder: son **46** permisos (no "50"/"50+"). Corregidas las dos referencias. Solo documentación. |
 | 2026-08-02 | #23 | `DOCUMENTACION_SISTEMA.md` §14 y §19.12 | `SunatProductSeeder` descrito como catálogo de productos SUNAT (`sunat_products`, usado en el XML), no "productos de ejemplo". Solo documentación. |
 | 2026-08-02 | #24 | `DOCUMENTACION_SISTEMA.md` §6 | Corregida la etiqueta del comando CUT: `1D 56 00` = corte total (parcial = `1D 56 01`). Solo documentación. |
+| 2026-08-02 | #25 | `resources/views/pos/index.blade.php`, `app/Http/Controllers/PosController.php`, `DOCUMENTACION_SISTEMA.md` §11 | Opción B (ambas): (1) botón manual "Caja" + función `openCashDrawer()` en el POS (misma lógica del restaurante, con `showError`); (2) apertura automática del cajón al pagar en EFECTIVO vía `GET http://localhost:9100/open-drawer` desde `PosController::store()` (try/catch + guard de impresora; no rompe la venta). Doc §11 actualizado. Sintaxis OK, tests OK. |
 
 ---
 

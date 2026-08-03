@@ -744,6 +744,11 @@ Usuario clickea "Caja" en restaurante o POS
       → mode: no-cors
       → Content-Type: application/x-www-form-urlencoded
       → body: printer=NAME&data=BASE64&mode=escpos
+
+Apertura automática en POS:
+  → PosController::store() con payment_method = EFECTIVO
+      → abre el cajón vía GET http://localhost:9100/open-drawer (printer=NAME o ip+port)
+      → try/catch: si no hay print server o impresora caja, no rompe la venta
 ```
 
 ### Comando ESC/POS
