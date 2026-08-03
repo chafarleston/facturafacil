@@ -313,8 +313,8 @@ sendToKitchen() [JS]
             3. Asignar kds_destination desde producto
             4. Actualizar orden a SENT_TO_KITCHEN
             5. Disparar evento KitchenOrderUpdated
-            6. Si modo impresión: generar tickets ESC/POS
-            7. Responder JSON con tickets
+            6. Si modo impresión: generar tickets ESC/POS (impresión interna por cola)
+            7. Responder JSON (success + items_sent)
 ```
 
 #### Flujo de Cobro
