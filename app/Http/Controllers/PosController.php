@@ -174,6 +174,20 @@ class PosController extends Controller
         $serie->numero_actual = $nextNumber;
         $serie->save();
 
+        // Actualizar caja registradora en vivo (misma lógica que createInvoiceFromItems)
+        $cajaAbierta->cantidad_ventas = ($cajaAbierta->cantidad_ventas ?? 0) + 1;
+        $cajaAbierta->total_ventas = ($cajaAbierta->total_ventas ?? 0) + $total;
+        $paymentMethod = $request->payment_method ?? 'EFECTIVO';
+        $paymentField = match ($paymentMethod) {
+            'EFECTIVO' => 'ventas_efectivo',
+            'TARJETA' => 'ventas_tarjeta',
+            'YAPE' => 'ventas_yape',
+            'PLIN' => 'ventas_plin',
+            default => 'ventas_otro',
+        };
+        $cajaAbierta->$paymentField = ($cajaAbierta->$paymentField ?? 0) + $total;
+        $cajaAbierta->save();
+
         try {
             $printService = app(PrintService::class);
             $invoice->load('items', 'customer');
