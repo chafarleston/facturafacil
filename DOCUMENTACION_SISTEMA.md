@@ -1647,9 +1647,9 @@ setupSee() PEM-first:
 - soap_type_id=2 → SunatEndpoints::FE_PRODUCCION
 
 Dependencias (Greenter 5.x):
-- greenter/core 5.2.0, greenter/ws 5.2.0, greenter/xml 5.2.0
-- greenter/xmldsig 5.0.3, greenter/report 5.2.0
-- greenter/htmltopdf 5.2.0, greenter/lite 5.2.0
+- greenter/core 5.3.0, greenter/ws 5.3.0, greenter/xml 5.3.0, greenter/lite 5.3.0
+- greenter/xmldsig 5.0.3, greenter/report 5.2.0, greenter/htmltopdf 5.2.0
+- greenter/gre-api 1.0.2
 
 Extensiones PHP requeridas: ext-soap, ext-openssl, ext-xml, ext-zip, ext-intl
 ```
