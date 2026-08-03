@@ -1637,7 +1637,7 @@ setupSee() PEM-first:
 - Si no existe PEM → usa .p12 con contraseña via X509Certificate
 - soap_username + soap_password (fallback: RUC + cert password)
 - soap_type_id=1 → SunatEndpoints::FE_BETA
-- soap_type_id=2 → SunatEndpoints::FE_HOMOLOGACION
+- soap_type_id=2 → SunatEndpoints::FE_PRODUCCION
 
 Dependencias (Greenter 5.x):
 - greenter/core 5.2.0, greenter/ws 5.2.0, greenter/xml 5.2.0
