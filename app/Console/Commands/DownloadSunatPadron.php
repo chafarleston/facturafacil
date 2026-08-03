@@ -34,6 +34,12 @@ class DownloadSunatPadron extends Command
                 if ($zip->open($zipPath) === TRUE) {
                     $zip->extractTo($extractPath);
                     $zip->close();
+
+                    // Limpiar: eliminar el ZIP tras extraer (el .txt del padrón se conserva)
+                    if (File::exists($zipPath)) {
+                        File::delete($zipPath);
+                        $this->info('Archivo ZIP eliminado');
+                    }
                     
                     $files = glob(storage_path('app/*.txt'));
                     foreach ($files as $file) {
