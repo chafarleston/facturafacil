@@ -10,7 +10,7 @@
 |-----------|----------|--------|
 | 🔴 ALTA | 1 | ✅ **Resuelto** (ítem #1) |
 | 🟠 MEDIA | 20 | 20 resueltos (#2–#21) · 0 pendientes |
-| 🟡 BAJA | 12 | 5 resueltos (#22–#26) · 7 pendientes |
+| 🟡 BAJA | 12 | 6 resueltos (#22–#27) · 6 pendientes |
 | 🔵 INFO / NO VERIFICABLE | 10 | Informativo |
 
 **Capítulos 100% COINCIDE:** 9, 10, 12, 16, 18, 22, 23, 24, 25, 27 (y 15 parcialmente).
@@ -63,7 +63,7 @@
 | 24 | 6 | `1D 56 00` = "Corte parcial" | `1D 56 00` es **corte total**; el parcial es `1D 56 01`. El byte coincide con el código, pero la etiqueta era errónea. **Corregido** §6 | `print-server-node/server.js:54-55`, `app/Services/PlainTextTicket.php:83` | ✅ RESUELTO (doc) |
 | 25 | 11 | "Usuario clickea 'Caja' en restaurante **o POS**" | `openCashDrawer()` solo existía en la vista de restaurante. **Corregido** (Opción B): botón + función agregados al POS, y apertura automática del cajón en pagos EFECTIVO | `resources/views/restaurant/index.blade.php:613,1516` vs `resources/views/pos/index.blade.php` | ✅ RESUELTO |
 | 26 | 4 | Flujo envío a cocina: "7. Responder JSON con tickets" | El JSON solo devuelve `success` y `items_sent`; los tickets se imprimen internamente vía `printKitchenOrder()`. **Corregido** §4.1 | `app/Http/Controllers/Restaurant/RestaurantController.php:375-379` | ✅ RESUELTO (doc) |
-| 27 | 19.5 | "Todos los comprobantes se envían con `sendInvoice`" y "carga certificado .p12" | Las boletas (03) van por **Resumen Diario** (`SummaryService`); `setupSee()` es **PEM-first** (busca `.pem`, fallback a PKCS12) | `app/Http/Controllers/InvoiceController.php:344-386`, `app/Services/GreenterService.php:1232-1266` |
+| 27 | 19.5 | "Todos los comprobantes se envían con `sendInvoice`" y "carga certificado .p12" | Las boletas (03) van por **Resumen Diario** (`SummaryService`); las NV no se envían; `setupSee()` es **PEM-first** (busca `.pem`, fallback a PKCS12). **Corregido** §19.5 | `app/Http/Controllers/InvoiceController.php:344-386`, `app/Services/GreenterService.php:1232-1266` | ✅ RESUELTO (doc) |
 | 28 | 20.3 | Padrón SUNAT "extrae y limpia automáticamente" | El comando descarga y extrae el ZIP pero **no lo elimina** ni limpia | `app/Console/Commands/DownloadSunatPadron.php:28-53` |
 | 29 | 20.7 | "index.blade.php (7 calls); kds.blade.php (3 calls)" | Hoy hay **24** calls en index y **4** en KDS (conteo desactualizado) | `resources/views/restaurant/index.blade.php`, `kds.blade.php` |
 | 30 | 20.4 | Lista de dependencias Greenter 5.2.0 (core/ws/xml/lite) | Instalado **5.3.0** (la propia sección 20.16 documenta la actualización) | `composer.lock` |
@@ -157,6 +157,7 @@ Nota #12: en `cancelOrder()` la impresión agrupada ocurre ANTES de marcar los i
 | 2026-08-02 | #24 | `DOCUMENTACION_SISTEMA.md` §6 | Corregida la etiqueta del comando CUT: `1D 56 00` = corte total (parcial = `1D 56 01`). Solo documentación. |
 | 2026-08-02 | #25 | `resources/views/pos/index.blade.php`, `app/Http/Controllers/PosController.php`, `DOCUMENTACION_SISTEMA.md` §11 | Opción B (ambas): (1) botón manual "Caja" + función `openCashDrawer()` en el POS (misma lógica del restaurante, con `showError`); (2) apertura automática del cajón al pagar en EFECTIVO vía `GET http://localhost:9100/open-drawer` desde `PosController::store()` (try/catch + guard de impresora; no rompe la venta). Doc §11 actualizado. Sintaxis OK, tests OK. |
 | 2026-08-02 | #26 | `DOCUMENTACION_SISTEMA.md` §4.1 | Corregido el paso 7 del flujo de envío a cocina: "Responder JSON con tickets" → "Responder JSON (success + items_sent)" y aclarado que los tickets se imprimen internamente por cola (paso 6). Solo documentación. |
+| 2026-08-02 | #27 | `DOCUMENTACION_SISTEMA.md` §19.5 | Bloque "Enviar a SUNAT" reescrito: NV no se envía; Boleta (03) → Resumen Diario (`sendBoletaToSummary`); Factura (01) → `sendInvoice`; `setupSee()` PEM-first (`.pem`, fallback `.p12`); PDF/QR bajo demanda. Solo documentación. |
 
 ---
 

@@ -1293,13 +1293,15 @@ POST /invoices → InvoiceController::store()
    5. Crea Invoice + InvoiceItems con IGV dinámico
 
 Enviar a SUNAT:
-GET /invoices/{id}/send
-→ GreenterService::sendInvoice($invoice)
-   1. Carga empresa (certificado .p12 + SOAP credentials)
+GET /invoices/{id}/send → InvoiceController::sendToSunat()
+   - NV: no se envía a SUNAT
+   - Boleta (03): SummaryService::sendBoletaToSummary() (Resumen Diario)
+   - Factura (01): GreenterService::sendInvoice() (BillSender)
+   1. setupSee() carga certificado PEM-first (busca {ruc}_certificate.pem; fallback .p12 con contraseña) + SOAP credentials
    2. Construye XML firmado con Greenter
    3. Envía vía SOAP según entorno (Beta/Producción)
    4. Recibe CDR, extrae digest value
-   5. Genera PDF con código QR
+   5. PDF/QR se generan bajo demanda: /invoices/{id}/pdf y /invoices/{id}/ticket
    6. Actualiza estado del comprobante
 
 PDF: GET /invoices/{id}/pdf → A4
