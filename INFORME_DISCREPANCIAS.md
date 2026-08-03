@@ -9,13 +9,13 @@
 | Severidad | Cantidad | Estado |
 |-----------|----------|--------|
 | 🔴 ALTA | 1 | ✅ **Resuelto** (ítem #1) |
-| 🟠 MEDIA | 20 | 14 resueltos (#2–#15) · 6 pendientes |
+| 🟠 MEDIA | 20 | 15 resueltos (#2–#16) · 5 pendientes |
 | 🟡 BAJA | 12 | Pendiente |
 | 🔵 INFO / NO VERIFICABLE | 10 | Informativo |
 
 **Capítulos 100% COINCIDE:** 9, 10, 12, 16, 18, 22, 23, 24, 25, 27 (y 15 parcialmente).
 
-> **Actualización (2026-08-02):** ítem #1 (apertura de cajón) corregido en el código. Ítems #2 (pivot), #3 (isAdmin), #4 (estado de Invoice), #5, #6 (enums), #7 (caja por permisos), #8 (SUNAT por permiso `send_sunat`), #9 (removeItem), #10 (invoiceTicket), #11 (buildInvoice), #12 (cancelNotificationGrouped), #13 (IGV precuenta), #14 (slot autopedido) y #15 (comandos DOUBLE) corregidos. Ver sección "Cambios aplicados" al final.
+> **Actualización (2026-08-02):** ítem #1 (apertura de cajón) corregido en el código. Ítems #2 (pivot), #3 (isAdmin), #4 (estado de Invoice), #5, #6 (enums), #7 (caja por permisos), #8 (SUNAT por permiso `send_sunat`), #9 (removeItem), #10 (invoiceTicket), #11 (buildInvoice), #12 (cancelNotificationGrouped), #13 (IGV precuenta), #14 (slot autopedido), #15 (comandos DOUBLE) y #16 (superadmin) corregidos. Ver sección "Cambios aplicados" al final.
 
 ---
 
@@ -45,7 +45,7 @@
 | 13 | 8 | Precuenta usa `$company->getActiveIgvPercent()` | Usaba `$order->igvPercent ?? 18` (atributo **nunca asignado**) → siempre imprimía "IGV (18%)" aunque la empresa esté en modo restaurante (10.5%). **Corregido** (Opción B) | `app/Services/PlainTextTicket.php:150-151` | ✅ RESUELTO |
 | 14 | 6 | Tabla de 7 slots de impresora | Son **8**: faltaba el slot `autopedido` ("Auto Pedido"), usado por `printAutoPedidoTicket()`. **Corregido** §6 | `database/seeders/PrinterSeeder.php:10-19` | ✅ RESUELTO (doc) |
 | 15 | 6 | Comandos `DOUBLE ON/OFF` (`1B 21 30` / `1B 21 00`) | **No implementados** en `server.js` ni en `PlainTextTicket::getEscPos()` ni en ningún PHP del repo. **Corregido** (Opción A): filas eliminadas de §6 | `print-server-node/server.js:44-57`, `app/Services/PlainTextTicket.php:72-85` | ✅ RESUELTO (doc) |
-| 16 | 7 | Rol `superadmin` | **No existe registro** en la tabla `roles`; solo lógica hardcodeada en `User::hasPermission()` (`isAdmin() || isSuperAdmin()`). `SuperAdminSeeder` crea un usuario con `role='cajero'` | `database/seeders/PermissionsSeeder.php:66-131`, `app/Models/User.php:72` |
+| 16 | 7 | Rol `superadmin` | **No existe registro** en la tabla `roles`; solo lógica hardcodeada en `User::hasPermission()` (`isAdmin() || isSuperAdmin()`). `SuperAdminSeeder` crea un usuario con `role='cajero'`. **Corregido** (Opción A) §7 | `database/seeders/PermissionsSeeder.php:66-131`, `app/Models/User.php:72` | ✅ RESUELTO (doc) |
 | 17 | 19.2.3 | Búsqueda numérica por código interno en restaurante | Solo filtra por **nombre** del producto; las tarjetas no exponen código | `resources/views/restaurant/index.blade.php:1116-1128,568-573` |
 | 18 | 19.3 | `PosController::store()` "actualiza caja registradora" (paso 7) | **No toca la caja**; solo verifica que exista caja abierta. La actualización real está en `RestaurantController::createInvoiceFromItems()` | `app/Http/Controllers/PosController.php:54-187` |
 | 19 | 19.8 | Ventas del mes "excluye NV" | `currentMonthSales` suma **todas** las invoices (solo excluye `sunat_estado='ANULADO'`); las NV sí cuentan | `app/Http/Controllers/DashboardController.php:91-99` |
@@ -146,3 +146,4 @@ La mayoría de discrepancias requieren **actualizar la documentación** (redacci
 Nota #12: en `cancelOrder()` la impresión agrupada ocurre ANTES de marcar los items CANCELLED, por lo que "Anulado por" no se renderiza ahí (el guard evita error). Pendiente opcional: reordenar `cancelOrder()` para imprimir tras cancelar (ver conversación).
 | 2026-08-02 | #14 | `DOCUMENTACION_SISTEMA.md` §6 | Añadida la fila `Auto Pedido / autopedido / Autoservicio (kiosko)` a la tabla de slots de impresora (el seeder crea 8). Solo documentación. |
 | 2026-08-02 | #15 | `DOCUMENTACION_SISTEMA.md` §6 | Opción A: eliminadas las filas `DOUBLE ON/OFF` de la tabla de comandos ESC/POS (no implementados en server.js ni PHP). Solo documentación. |
+| 2026-08-02 | #16 | `DOCUMENTACION_SISTEMA.md` §7 | Opción A: `superadmin` retirado de la tabla de roles reales y documentado como valor reservado en la lógica (isSuperAdmin/hasPermission/IsAdmin) que no existe en la tabla `roles`, no se asigna por UI (`in:admin,user,mozo,cajero`) y no tiene usuario por defecto; acceso total efectivo vía `admin`. Solo documentación. |

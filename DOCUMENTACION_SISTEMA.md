@@ -600,10 +600,15 @@ Laravel (servidor) ─── HTTP POST ───→ Print Server (localhost:9100
 | Rol (slug) | Descripción |
 |-------------|-------------|
 | `admin` | Acceso completo a todas las funcionalidades |
-| `cajero` | POS, facturación, caja (abrir + cerrar) |
+| `cajero` | POS, facturación, caja (abrir + cerrar), envío a SUNAT |
 | `mozo` | Restaurante, cocina (sin cobrar ni anular) |
 | `user` | POS, consultas, sin gestión de caja |
-| `superadmin` | Acceso completo (equivalente a admin) |
+
+> **Nota sobre `superadmin`:** es un **valor reservado en la lógica**, no un rol de la BD. `User::isSuperAdmin()` y `hasPermission()` (además del middleware `IsAdmin` y el Gate `admin`) reconocen `users.role = 'superadmin'`, pero:
+> - NO se crea en la tabla `roles` (el seeder crea solo admin/mozo/cajero/user).
+> - NO se puede asignar por la UI de usuarios (`UserController` valida `in:admin,user,mozo,cajero`).
+> - No hay usuario por defecto con ese rol (`SuperAdminSeeder`, pese al nombre, crea `Caja@gmail.com` con `role='cajero'`).
+> En la práctica el acceso total se ejerce con el rol `admin`.
 
 ### 7.2 Permisos
 
