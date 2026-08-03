@@ -80,7 +80,7 @@
 | `roles` | Roles del sistema |
 | `permissions` | Permisos del sistema |
 | `role_user` | Asignación de roles a usuarios |
-| `permission_role` | Asignación de permisos a roles |
+| `role_permission` | Asignación de permisos a roles |
 
 ### 2.2 Relaciones Clave
 
@@ -600,7 +600,7 @@ Laravel (servidor) ─── HTTP POST ───→ Print Server (localhost:9100
 
 ### 7.2 Permisos
 
-Los permisos se asignan a roles en la tabla `permission_role`. La verificación se realiza mediante `$this->authorize('permission', 'slug')` o `@can('permission', 'slug')` en las vistas.
+Los permisos se asignan a roles en la tabla `role_permission`. La verificación se realiza mediante `$this->authorize('permission', 'slug')` o `@can('permission', 'slug')` en las vistas.
 
 **Mecanismo de verificación (`User::hasPermission`):**
 

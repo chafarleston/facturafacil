@@ -68,7 +68,7 @@
 | 3 | `roles` | Roles (admin, cajero, mozo, user) | 4 |
 | 4 | `permissions` | Permisos del sistema | 50+ |
 | 5 | `role_user` | Pivot: rol ↔ usuario | 5-10 |
-| 6 | `permission_role` | Pivot: permiso ↔ rol | 200+ |
+| 6 | `role_permission` | Pivot: permiso ↔ rol | 200+ |
 | 7 | `customers` | Clientes | 100-1000 |
 | 8 | `categories` | Categorías de productos | 20-50 |
 | 9 | `products` | Productos (catálogo) | 100-500 |
