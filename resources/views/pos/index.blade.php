@@ -442,6 +442,9 @@
             </div>
             
             <div style="display: flex; gap: 8px; margin-top: 10px;">
+                <button class="btn-cancel" onclick="openCashDrawer()" title="Abrir cajón de efectivo" style="flex: 0 0 auto; padding: 10px 16px;">
+                    <i class="fas fa-cash-register"></i>
+                </button>
                 <button class="btn-cancel" onclick="cancelSale()" style="flex: 0 0 100px;">
                     <i class="fas fa-trash"></i> Cancelar
                 </button>
@@ -891,6 +894,33 @@ function backToCategories() {
 
 // === MODALS ===
 function showError(message) { document.getElementById('errorMessage').textContent = message; $('#errorModal').modal('show'); }
+
+function openCashDrawer() {
+    fetch('/pos/open-drawer', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+            'Accept': 'application/json'
+        }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(config) {
+        if (!config.success) { showError(config.message || 'Error'); return; }
+        var body = 'mode=escpos&data=' + encodeURIComponent(config.data);
+        if (config.printer) body += '&printer=' + encodeURIComponent(config.printer);
+        else if (config.ip) { body += '&ip=' + config.ip + '&port=' + config.port; }
+        fetch('http://localhost:9100/print', {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body
+        })
+        .catch(function() {});
+    })
+    .catch(function() {
+        showError('Error al obtener configuración');
+    });
+}
 
 function sendToSunat() {
     const invoiceId = document.getElementById('lastInvoiceId').value;

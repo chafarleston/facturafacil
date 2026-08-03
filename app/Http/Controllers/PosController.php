@@ -188,6 +188,23 @@ class PosController extends Controller
         $cajaAbierta->$paymentField = ($cajaAbierta->$paymentField ?? 0) + $total;
         $cajaAbierta->save();
 
+        // Abrir cajón automáticamente en pagos en efectivo (necesita dar vuelto)
+        if ($paymentMethod === 'EFECTIVO') {
+            try {
+                $printer = \App\Models\Printer::where('assigned_to', 'caja')->where('active', true)->first();
+                if ($printer) {
+                    $http = \Illuminate\Support\Facades\Http::timeout(3);
+                    if ($printer->type === 'network' && $printer->ip_address) {
+                        $http->get('http://localhost:9100/open-drawer', ['ip' => $printer->ip_address, 'port' => $printer->port]);
+                    } else {
+                        $http->get('http://localhost:9100/open-drawer', ['printer' => $printer->printer_name]);
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::error('POS drawer open error: ' . $e->getMessage());
+            }
+        }
+
         try {
             $printService = app(PrintService::class);
             $invoice->load('items', 'customer');
