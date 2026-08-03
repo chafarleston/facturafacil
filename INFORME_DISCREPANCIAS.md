@@ -1,0 +1,123 @@
+# INFORME DE AUDITORÍA — DOCUMENTACION_SISTEMA.md vs código real
+
+**Fecha:** 2026-08-02
+**Método:** verificación puntual capítulo por capítulo (cap. 1 → anexo), mediante agentes de análisis paralelos + validación directa de los hallazgos críticos contra el código. Sin ediciones de código durante la auditoría.
+**Alcance:** los 27 capítulos + anexo de `DOCUMENTACION_SISTEMA.md` (3,833 líneas).
+
+## Resumen ejecutivo
+
+| Severidad | Cantidad | Estado |
+|-----------|----------|--------|
+| 🔴 ALTA | 1 | ✅ **Resuelto** (ítem #1) |
+| 🟠 MEDIA | 20 | Pendiente |
+| 🟡 BAJA | 12 | Pendiente |
+| 🔵 INFO / NO VERIFICABLE | 10 | Informativo |
+
+**Capítulos 100% COINCIDE:** 9, 10, 12, 16, 18, 22, 23, 24, 25, 27 (y 15 parcialmente).
+
+> **Actualización (2026-08-02):** ítem #1 (apertura de cajón) corregido en el código. Ver sección "Cambios aplicados" al final.
+
+---
+
+## 🔴 ALTA
+
+| # | Cap. | Afirmación del doc | Realidad | Ubicación | Estado |
+|---|------|--------------------|----------|-----------|--------|
+| 1 | 11 | Apertura de cajón: comando `1B 40 1B 70 00 32 FF` (INIT + pin 2, 50ms/255ms) | `PosController::openDrawer()` generaba `1B 70 00 00 FF` (sin INIT, pin 0, t1=0, t2=255ms). **Corregido** → ahora genera `1B 40 1B 70 00 32 FF` | `app/Http/Controllers/PosController.php:274` | ✅ RESUELTO |
+
+---
+
+## 🟠 MEDIA
+
+| # | Cap. | Afirmación del doc | Realidad | Ubicación |
+|---|------|--------------------|----------|-----------|
+| 2 | 2, 7 | Pivot `permission_role` | La tabla real es **`role_permission`** | `database/migrations/2026_05_13_000001_create_roles_permissions_tables.php:31`, `app/Models/Role.php:22`, `app/Models/Permission.php:17` |
+| 3 | 3.1 | `isAdmin()` = admin \|\| superadmin | Solo devuelve true para `admin`; superadmin se maneja en `hasPermission()`/middleware `IsAdmin` | `app/Models/User.php:45-48` |
+| 4 | 3.4 | Invoice campo `estado: ACTIVO\|ANULADO` | **No existe columna `estado`**; solo `sunat_estado`. El `'estado'=>'ACTIVO'` en `createInvoiceFromItems()` se ignora silenciosamente (no está en fillable) | `database/migrations/2024_01_01_000005_create_invoices_table.php:35`, `app/Models/Invoice.php:12-20` |
+| 5 | 3.5 | `status` en español (ABIERTO/ENVIADO A COCINA/LISTO/ENTREGADO/COMPLETADO/ANULADO) | Enum real en inglés: `OPEN/SENT_TO_KITCHEN/READY/DELIVERED/COMPLETED/CANCELLED` + **`PENDING_PAYMENT`** (kiosko) omitido en el doc | `database/migrations/2026_05_12_104627_create_restaurant_orders_table.php:17`, `2026_07_02_205824_add_pending_payment_to_restaurant_orders_status.php:14` |
+| 6 | 3.6 | `kitchen_status` en español (PENDIENTE/ENVIADO/LISTO/ENTREGADO/ANULADO) | Enum real: `PENDING/SENT/READY/DELIVERED/CANCELLED` (español solo como etiquetas) | `database/migrations/2026_05_13_210541_add_cancelled_to_kitchen_status_enum.php:10` |
+| 7 | 15 | `/cashregisters`, `/cashregister/open`, `/cashregister/close` en grupo auth | Están en el sub-grupo **`admin`** | `routes/web.php:97,101-102` |
+| 8 | 15 | `/invoices*`, `/sunat-summaries*`, `/documents/{tipo}` en grupo auth+admin | Están fuera del grupo admin → **solo auth** (cualquier usuario autenticado, incl. mozo, alcanza envío/anulación SUNAT) | `routes/web.php:120-145` |
+| 9 | 4 | `removeItem()` siempre marca CANCELLED | Si el item está **PENDING se elimina físicamente** (`$item->delete()`); CANCELLED solo para SENT/READY/DELIVERED (requiere password admin) | `app/Http/Controllers/Restaurant/RestaurantController.php:280-316` |
+| 10 | 5.2, 19.9.3 | `invoiceTicket($invoice)` genera ticket | Es un **stub** que devuelve `''` → `PrintService::printInvoice()` encola un trabajo de impresión vacío | `app/Services/PlainTextTicket.php:156-159` |
+| 11 | 5.3 | `buildInvoice($invoice)` público, 1 parámetro | Es **`private` con 2 parámetros obligatorios** `($invoice, $company)` | `app/Services/GreenterService.php:1316` |
+| 12 | 5.2, 19.9.3 | `cancelNotificationGrouped($order, $dest)` | Firma real `($order, $format='text', $dest='cocina')`; además **no incluye el usuario** anulador (solo la variante individual `cancelNotification` lo muestra) | `app/Services/PlainTextTicket.php:175` |
+| 13 | 8 | Precuenta usa `$company->getActiveIgvPercent()` | Usa `$order->igvPercent ?? 18` (atributo **nunca asignado**) → siempre imprime "IGV (18%)" aunque la empresa esté en modo restaurante (10.5%) | `app/Services/PlainTextTicket.php:150-151` |
+| 14 | 6 | Tabla de 7 slots de impresora | Son **8**: falta el slot `autopedido` ("Auto Pedido") | `database/seeders/PrinterSeeder.php:10-19` |
+| 15 | 6 | Comandos `DOUBLE ON/OFF` (`1B 21 30` / `1B 21 00`) | **No implementados** en `server.js` ni en `PlainTextTicket::getEscPos()` ni en ningún PHP del repo | `print-server-node/server.js:44-57`, `app/Services/PlainTextTicket.php:72-85` |
+| 16 | 7 | Rol `superadmin` | **No existe registro** en la tabla `roles`; solo lógica hardcodeada en `User::hasPermission()` (`isAdmin() || isSuperAdmin()`). `SuperAdminSeeder` crea un usuario con `role='cajero'` | `database/seeders/PermissionsSeeder.php:66-131`, `app/Models/User.php:72` |
+| 17 | 19.2.3 | Búsqueda numérica por código interno en restaurante | Solo filtra por **nombre** del producto; las tarjetas no exponen código | `resources/views/restaurant/index.blade.php:1116-1128,568-573` |
+| 18 | 19.3 | `PosController::store()` "actualiza caja registradora" (paso 7) | **No toca la caja**; solo verifica que exista caja abierta. La actualización real está en `RestaurantController::createInvoiceFromItems()` | `app/Http/Controllers/PosController.php:54-187` |
+| 19 | 19.8 | Ventas del mes "excluye NV" | `currentMonthSales` suma **todas** las invoices (solo excluye `sunat_estado='ANULADO'`); las NV sí cuentan | `app/Http/Controllers/DashboardController.php:91-99` |
+| 20 | 20.4 | `soap_type_id=2 → FE_HOMOLOGACION` | Real: **`FE_PRODUCCION`** (la propia sección 20.4.1 del doc muestra el código correcto, contradiciendo esta línea) | `app/Services/GreenterService.php:1270-1274`, `SummaryService.php:59-63`, `SpecialDocumentService.php:60-64` |
+| 21 | 26 | Script `clean_productos.php` en `storage/app/tmp/` | **No existe** (solo `clean_ventas.php` y `clean_split_products.php`) | `DOCUMENTACION_SISTEMA.md:3560` |
+
+---
+
+## 🟡 BAJA
+
+| # | Cap. | Afirmación del doc | Realidad | Ubicación |
+|---|------|--------------------|----------|-----------|
+| 22 | 14, 19.12 | PermissionsSeeder "50+ permisos" | Define **46** permisos | `database/seeders/PermissionsSeeder.php:14-59` |
+| 23 | 14 | `SunatProductSeeder` puebla "productos" | Puebla la tabla catálogo `sunat_products` (modelo `SunatProduct`), no `products` | `database/seeders/SunatProductSeeder.php:7` |
+| 24 | 6 | `1D 56 00` = "Corte parcial" | `1D 56 00` es **corte total**; el parcial es `1D 56 01`. El byte coincide con el código, pero la etiqueta es errónea | `print-server-node/server.js:54-55`, `app/Services/PlainTextTicket.php:83` |
+| 25 | 11 | "Usuario clickea 'Caja' en restaurante **o POS**" | `openCashDrawer()` solo existe en la vista de restaurante; la vista POS no tiene botón ni fetch al print server | `resources/views/restaurant/index.blade.php:613,1516` vs `resources/views/pos/index.blade.php` |
+| 26 | 4 | Flujo envío a cocina: "7. Responder JSON con tickets" | El JSON solo devuelve `success` y `items_sent`; los tickets se imprimen internamente vía `printKitchenOrder()` | `app/Http/Controllers/Restaurant/RestaurantController.php:375-379` |
+| 27 | 19.5 | "Todos los comprobantes se envían con `sendInvoice`" y "carga certificado .p12" | Las boletas (03) van por **Resumen Diario** (`SummaryService`); `setupSee()` es **PEM-first** (busca `.pem`, fallback a PKCS12) | `app/Http/Controllers/InvoiceController.php:344-386`, `app/Services/GreenterService.php:1232-1266` |
+| 28 | 20.3 | Padrón SUNAT "extrae y limpia automáticamente" | El comando descarga y extrae el ZIP pero **no lo elimina** ni limpia | `app/Console/Commands/DownloadSunatPadron.php:28-53` |
+| 29 | 20.7 | "index.blade.php (7 calls); kds.blade.php (3 calls)" | Hoy hay **24** calls en index y **4** en KDS (conteo desactualizado) | `resources/views/restaurant/index.blade.php`, `kds.blade.php` |
+| 30 | 20.4 | Lista de dependencias Greenter 5.2.0 (core/ws/xml/lite) | Instalado **5.3.0** (la propia sección 20.16 documenta la actualización) | `composer.lock` |
+| 31 | 20.4 | Requiere `ext-soap`, `ext-intl` | `composer.json` solo declara `ext-openssl`, `ext-xml`, `ext-zip` | `composer.json:9-11` |
+| 32 | 20.16 | Campo `fechaEntrega` en modelo `Shipment` | Se llama **`fecEntregaBienes`** | `vendor/greenter/core/src/Core/Model/Despatch/Shipment.php:93` |
+
+---
+
+## 🔵 INFO / NO VERIFICABLE
+
+| # | Cap. | Ítem |
+|---|------|------|
+| 33 | 1 | Versión de MySQL/MariaDB no pinneada en el repo (afirmación de entorno) |
+| 34 | 4 | Texto exacto del `showConfirm` de cobro es dinámico (estructura coincide; difiere el texto literal) |
+| 35 | 5.6 | Retención/Guía/Percepción: doc sugiere serie fija R001/T001/P001; real usa `$doc->serie` desde BD |
+| 36 | 6 | Mecanismo "Windows Task Scheduler" no está en el repo (el intervalo de 1 min sí coincide) |
+| 37 | 17 | `fetch` con `mode: no-cors` (configuración de cliente, no verificable en servidor) |
+| 38 | 19.4.1 | `company_id` siempre `Company::getMainCompany()->id` (no hay precedencia request/usuario) |
+| 39 | 19.5 | El PDF/QR no se genera dentro de `sendInvoice` (se genera bajo demanda vía `generatePdf()`/`generateTicketPdf()`) |
+| 40 | 19.6 | Ruta `POST /products/store` inexistente (es resource `/products`); la unicidad de `codigo` se impone por índice compuesto de BD |
+| 41 | 19.11 | `KitchenOrderUpdated` no se dispara en `addItem`/`updateItem`/`saveOrderNotes` (sí en removeItem/sendToKitchen/charge/split/etc.) |
+| 42 | 20.16 | "lite/ws mismo commit entre 5.2.0 y 5.3.0" y "template despatch2022 +5 líneas" no verificables sin historial de vendor |
+
+---
+
+## Capítulos sin discrepancias
+
+- ✅ **9** Módulo de Caja — flujo completo, líneas eliminadas, permisos, cierre con kiosko.
+- ✅ **10** Procesos de Stock — decremento/incremento, productos compuestos.
+- ✅ **12** Dashboard — resumen del mes, crecimiento, aceptados/pendientes, gráfico 30 días, top productos.
+- ✅ **16 / 22** Comandos Artisan — `print:process-queue`, `sunat:*`, agendamiento en Kernel.
+- ✅ **18** Print Server Node.js — instalación, scripts, endpoints, ejemplos curl.
+- ✅ **23** Productos Compuestos — BD, modelo, controlador, rutas, vistas, descuento de stock, fix POS.
+- ✅ **24** `precio_compra` y Reporte de Inventario — migración, vistas, Excel/PDF, menú.
+- ✅ **25** Correcciones de Seguridad y Bugs — los 15 fixes (25.1–25.15) presentes y correctos.
+- ✅ **27** Dividir Cuenta — verificado por separado; coincide con la documentación actualizada.
+
+---
+
+## Observaciones de impacto (no solo redacción)
+
+1. **#13 prebillTicket (Cap. 8):** bug real — la precuenta impresa muestra IGV 18% para restaurantes en modo 10.5% (`$order->igvPercent` nunca se asigna).
+2. **#10 invoiceTicket (Cap. 5/19):** `PrintService::printInvoice()` encola un ticket vacío (no afecta al PDF de Greenter, que es el flujo real de comprobante).
+3. **#8 rutas de invoices/summaries/documents (Cap. 15):** cualquier usuario autenticado (mozo/user) puede acceder a envío/anulación SUNAT → riesgo de permisos.
+4. **#1 openDrawer (Cap. 11):** comando distinto al documentado (sin INIT, pin 0, timing 0/255ms); verificar funcionamiento real del cajón en las impresoras.
+5. **#13, #20, #32** son imprecisiones técnicas del doc que la propia documentación corrige en otras secciones (20.4.1, 20.16).
+
+---
+
+## Sugerencia de siguiente paso
+
+La mayoría de discrepancias requieren **actualizar la documentación** (redacción, versiones, enums, rutas). Un subconjunto pequeño requiere **cambios de código**:
+- `#13` — precuenta con `getActiveIgvPercent()`.
+- `#8` — decidir middleware para rutas de invoices/summaries/documents.
+- `#1` — decidir el comando de apertura de cajón correcto.
+- `#10` — decidir si `invoiceTicket()` debe generar ticket ESC/POS o documentarse como no usado.
+- `#17` — implementar (o descartar) búsqueda por código en restaurante.

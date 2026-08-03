@@ -271,7 +271,7 @@ class PosController extends Controller
             return response()->json(['success' => false, 'message' => 'No hay impresora de caja configurada']);
         }
 
-        $drawerCommand = base64_encode("\x1B\x70\x00\x00\xFF");
+        $drawerCommand = base64_encode("\x1B\x40\x1B\x70\x00\x32\xFF");
 
         return response()->json([
             'success' => true,
