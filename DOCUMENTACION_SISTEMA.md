@@ -587,8 +587,6 @@ Laravel (servidor) ─── HTTP POST ───→ Print Server (localhost:9100
 | ALIGN LEFT | 1B 61 00 | Alinear izquierda |
 | ALIGN CENTER | 1B 61 01 | Centrar |
 | ALIGN RIGHT | 1B 61 02 | Alinear derecha |
-| DOUBLE ON | 1B 21 30 | Doble altura/ancho |
-| DOUBLE OFF | 1B 21 00 | Fin doble |
 | CUT | 1D 56 00 | Corte parcial |
 | FEED | 1B 64 05 | Avanzar 5 líneas |
 | DRAWER KICK | 1B 70 00 32 FF | Abrir cajón |
