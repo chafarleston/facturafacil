@@ -9,13 +9,13 @@
 | Severidad | Cantidad | Estado |
 |-----------|----------|--------|
 | 🔴 ALTA | 1 | ✅ **Resuelto** (ítem #1) |
-| 🟠 MEDIA | 20 | 12 resueltos (#2–#13) · 8 pendientes |
+| 🟠 MEDIA | 20 | 13 resueltos (#2–#14) · 7 pendientes |
 | 🟡 BAJA | 12 | Pendiente |
 | 🔵 INFO / NO VERIFICABLE | 10 | Informativo |
 
 **Capítulos 100% COINCIDE:** 9, 10, 12, 16, 18, 22, 23, 24, 25, 27 (y 15 parcialmente).
 
-> **Actualización (2026-08-02):** ítem #1 (apertura de cajón) corregido en el código. Ítems #2 (pivot), #3 (isAdmin), #4 (estado de Invoice), #5, #6 (enums), #7 (caja por permisos), #8 (SUNAT por permiso `send_sunat`), #9 (removeItem), #10 (invoiceTicket), #11 (buildInvoice), #12 (cancelNotificationGrouped) y #13 (IGV precuenta) corregidos. Ver sección "Cambios aplicados" al final.
+> **Actualización (2026-08-02):** ítem #1 (apertura de cajón) corregido en el código. Ítems #2 (pivot), #3 (isAdmin), #4 (estado de Invoice), #5, #6 (enums), #7 (caja por permisos), #8 (SUNAT por permiso `send_sunat`), #9 (removeItem), #10 (invoiceTicket), #11 (buildInvoice), #12 (cancelNotificationGrouped), #13 (IGV precuenta) y #14 (slot autopedido) corregidos. Ver sección "Cambios aplicados" al final.
 
 ---
 
@@ -43,7 +43,7 @@
 | 11 | 5.3 | `buildInvoice($invoice)` público, 1 parámetro | Es **`private` con 2 parámetros obligatorios** `($invoice, $company)`. **Corregido** §5.3 | `app/Services/GreenterService.php:1316` | ✅ RESUELTO (doc) |
 | 12 | 5.2, 19.9.3 | `cancelNotificationGrouped($order, $dest)` | Firma real `($order, $format='text', $dest='cocina')`; y no incluía el usuario anulador. **Corregido** (Opción B): doc + "Anulado por" en el ticket agrupado | `app/Services/PlainTextTicket.php:175` | ✅ RESUELTO |
 | 13 | 8 | Precuenta usa `$company->getActiveIgvPercent()` | Usaba `$order->igvPercent ?? 18` (atributo **nunca asignado**) → siempre imprimía "IGV (18%)" aunque la empresa esté en modo restaurante (10.5%). **Corregido** (Opción B) | `app/Services/PlainTextTicket.php:150-151` | ✅ RESUELTO |
-| 14 | 6 | Tabla de 7 slots de impresora | Son **8**: falta el slot `autopedido` ("Auto Pedido") | `database/seeders/PrinterSeeder.php:10-19` |
+| 14 | 6 | Tabla de 7 slots de impresora | Son **8**: faltaba el slot `autopedido` ("Auto Pedido"), usado por `printAutoPedidoTicket()`. **Corregido** §6 | `database/seeders/PrinterSeeder.php:10-19` | ✅ RESUELTO (doc) |
 | 15 | 6 | Comandos `DOUBLE ON/OFF` (`1B 21 30` / `1B 21 00`) | **No implementados** en `server.js` ni en `PlainTextTicket::getEscPos()` ni en ningún PHP del repo | `print-server-node/server.js:44-57`, `app/Services/PlainTextTicket.php:72-85` |
 | 16 | 7 | Rol `superadmin` | **No existe registro** en la tabla `roles`; solo lógica hardcodeada en `User::hasPermission()` (`isAdmin() || isSuperAdmin()`). `SuperAdminSeeder` crea un usuario con `role='cajero'` | `database/seeders/PermissionsSeeder.php:66-131`, `app/Models/User.php:72` |
 | 17 | 19.2.3 | Búsqueda numérica por código interno en restaurante | Solo filtra por **nombre** del producto; las tarjetas no exponen código | `resources/views/restaurant/index.blade.php:1116-1128,568-573` |
@@ -144,3 +144,4 @@ La mayoría de discrepancias requieren **actualizar la documentación** (redacci
 | 2026-08-02 | #13 | `app/Services/PlainTextTicket.php:150` | Opción B: `prebillTicket()` ahora resuelve el IGV real con `Company::find($order->company_id)?->getActiveIgvPercent()` (fallback `?? 18`). La precuenta imprime "IGV (10.5%)" coherente con el monto para empresas en modo restaurante; sin cambio para empresas generales (18%). El doc §8.2 ya describía este comportamiento → queda correcto. Sintaxis OK, tests OK. |
 
 Nota #12: en `cancelOrder()` la impresión agrupada ocurre ANTES de marcar los items CANCELLED, por lo que "Anulado por" no se renderiza ahí (el guard evita error). Pendiente opcional: reordenar `cancelOrder()` para imprimir tras cancelar (ver conversación).
+| 2026-08-02 | #14 | `DOCUMENTACION_SISTEMA.md` §6 | Añadida la fila `Auto Pedido / autopedido / Autoservicio (kiosko)` a la tabla de slots de impresora (el seeder crea 8). Solo documentación. |

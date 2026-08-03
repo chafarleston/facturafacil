@@ -556,6 +556,7 @@ Laravel (servidor) ─── HTTP POST ───→ Print Server (localhost:9100
 | Precuenta 2 | precuenta2 | Precuenta 2 |
 | Precuenta 3 | precuenta3 | Precuenta 3 |
 | Caja | caja | Cajón + tickets |
+| Auto Pedido | autopedido | Autoservicio (kiosko) |
 
 **Archivos del Print Server:**
 
