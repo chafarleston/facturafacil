@@ -1392,7 +1392,7 @@ POST /purchases → PurchaseController::store()
 
 ```
 GET /dashboard → DashboardController::index()
-   - Ventas del mes (SUM de invoices, excluye NV)
+   - Ventas del mes (SUM de invoices no anuladas; incluye NV — son ventas reales, documento por defecto del restaurante)
    - Crecimiento vs mes anterior (%)
    - Total documentos, Aceptados SUNAT, Pendientes
    - Distribución: Facturas, Boletas, NV

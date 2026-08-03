@@ -9,13 +9,13 @@
 | Severidad | Cantidad | Estado |
 |-----------|----------|--------|
 | 🔴 ALTA | 1 | ✅ **Resuelto** (ítem #1) |
-| 🟠 MEDIA | 20 | 17 resueltos (#2–#18) · 3 pendientes |
+| 🟠 MEDIA | 20 | 18 resueltos (#2–#19) · 2 pendientes |
 | 🟡 BAJA | 12 | Pendiente |
 | 🔵 INFO / NO VERIFICABLE | 10 | Informativo |
 
 **Capítulos 100% COINCIDE:** 9, 10, 12, 16, 18, 22, 23, 24, 25, 27 (y 15 parcialmente).
 
-> **Actualización (2026-08-02):** ítem #1 (apertura de cajón) corregido en el código. Ítems #2 (pivot), #3 (isAdmin), #4 (estado de Invoice), #5, #6 (enums), #7 (caja por permisos), #8 (SUNAT por permiso `send_sunat`), #9 (removeItem), #10 (invoiceTicket), #11 (buildInvoice), #12 (cancelNotificationGrouped), #13 (IGV precuenta), #14 (slot autopedido), #15 (comandos DOUBLE), #16 (superadmin), #17 (búsqueda restaurante) y #18 (POS actualiza caja) corregidos. Ver sección "Cambios aplicados" al final.
+> **Actualización (2026-08-02):** ítem #1 (apertura de cajón) corregido en el código. Ítems #2 (pivot), #3 (isAdmin), #4 (estado de Invoice), #5, #6 (enums), #7 (caja por permisos), #8 (SUNAT por permiso `send_sunat`), #9 (removeItem), #10 (invoiceTicket), #11 (buildInvoice), #12 (cancelNotificationGrouped), #13 (IGV precuenta), #14 (slot autopedido), #15 (comandos DOUBLE), #16 (superadmin), #17 (búsqueda restaurante), #18 (POS actualiza caja) y #19 (dashboard incluye NV) corregidos. Ver sección "Cambios aplicados" al final.
 
 ---
 
@@ -48,7 +48,7 @@
 | 16 | 7 | Rol `superadmin` | **No existe registro** en la tabla `roles`; solo lógica hardcodeada en `User::hasPermission()` (`isAdmin() || isSuperAdmin()`). `SuperAdminSeeder` crea un usuario con `role='cajero'`. **Corregido** (Opción A) §7 | `database/seeders/PermissionsSeeder.php:66-131`, `app/Models/User.php:72` | ✅ RESUELTO (doc) |
 | 17 | 19.2.3 | Búsqueda numérica por código interno en restaurante | Solo filtra por **nombre** del producto; las tarjetas no exponen código. **Corregido** (Opción A): §19.2.3 ahora indica que la búsqueda es solo por descripción | `resources/views/restaurant/index.blade.php:1116-1128,568-573` | ✅ RESUELTO (doc) |
 | 18 | 19.3 | `PosController::store()` "actualiza caja registradora" (paso 7) | No tocaba la caja; solo verificaba que exista caja abierta. **Corregido** (Opción B): ahora incrementa los contadores en vivo igual que `createInvoiceFromItems` | `app/Http/Controllers/PosController.php:54-187` | ✅ RESUELTO |
-| 19 | 19.8 | Ventas del mes "excluye NV" | `currentMonthSales` suma **todas** las invoices (solo excluye `sunat_estado='ANULADO'`); las NV sí cuentan | `app/Http/Controllers/DashboardController.php:91-99` |
+| 19 | 19.8 | Ventas del mes "excluye NV" | `currentMonthSales` suma **todas** las invoices (solo excluye `sunat_estado='ANULADO'`); las NV sí cuentan. **Corregido** (Opción A): §19.8 documenta que incluye NV (ventas reales) | `app/Http/Controllers/DashboardController.php:91-99` | ✅ RESUELTO (doc) |
 | 20 | 20.4 | `soap_type_id=2 → FE_HOMOLOGACION` | Real: **`FE_PRODUCCION`** (la propia sección 20.4.1 del doc muestra el código correcto, contradiciendo esta línea) | `app/Services/GreenterService.php:1270-1274`, `SummaryService.php:59-63`, `SpecialDocumentService.php:60-64` |
 | 21 | 26 | Script `clean_productos.php` en `storage/app/tmp/` | **No existe** (solo `clean_ventas.php` y `clean_split_products.php`) | `DOCUMENTACION_SISTEMA.md:3560` |
 
@@ -149,3 +149,4 @@ Nota #12: en `cancelOrder()` la impresión agrupada ocurre ANTES de marcar los i
 | 2026-08-02 | #16 | `DOCUMENTACION_SISTEMA.md` §7 | Opción A: `superadmin` retirado de la tabla de roles reales y documentado como valor reservado en la lógica (isSuperAdmin/hasPermission/IsAdmin) que no existe en la tabla `roles`, no se asigna por UI (`in:admin,user,mozo,cajero`) y no tiene usuario por defecto; acceso total efectivo vía `admin`. Solo documentación. |
 | 2026-08-02 | #17 | `DOCUMENTACION_SISTEMA.md` §19.2.3 | Opción A: el doc ya indica que la búsqueda del restaurante es SOLO por descripción (se eliminó "Números: busca en codigo") y aclara que la búsqueda por código/código de barras solo existe en el POS (§19.3). Solo documentación. |
 | 2026-08-02 | #18 | `app/Http/Controllers/PosController.php:177-192` | Opción B: `PosController::store()` ahora actualiza la caja en vivo tras crear la invoice: `cantidad_ventas +1`, `total_ventas += total`, y el campo del método de pago según `payment_method` (mismo mapeo que el recálculo: EFECTIVO/TARJETA/YAPE/PLIN → sus campos, default → ventas_otro). Sin riesgo de descuadre: `close()` recalcula desde invoices y sobrescribe. El doc §19.3 (paso 7) queda correcto. Sintaxis OK. |
+| 2026-08-02 | #19 | `DOCUMENTACION_SISTEMA.md` §19.8 | Opción A: corregido "excluye NV" → el dashboard cuenta TODAS las invoices no anuladas (incluye NV, documento por defecto del restaurante). Verificado con datos reales del mes: S/ 8,159 incluye S/ 6,889 en NV (84%); excluirlas dejaría S/ 1,270. Sin cambios de código (el dashboard es correcto). |
