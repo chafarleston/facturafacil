@@ -1193,7 +1193,6 @@ class RestaurantController extends Controller
             'metodo_pago' => collect($payments)->map(fn($p) => $p['method'] . '/' . $p['amount'])->implode(' + '),
             'referencia_pago' => $reference,
             'sunat_estado' => 'PENDIENTE',
-            'estado' => 'ACTIVO',
         ]);
 
         $productIds = $items->pluck('product_id')->filter()->toArray();

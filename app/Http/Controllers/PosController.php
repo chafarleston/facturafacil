@@ -135,7 +135,6 @@ class PosController extends Controller
             'metodo_pago' => $request->payment_method ?? 'EFECTIVO',
             'referencia_pago' => $request->reference ?? null,
             'sunat_estado' => 'PENDIENTE',
-            'estado' => 'ACTIVO',
         ]);
         
         $itemIds = collect($items)->pluck('id')->toArray();

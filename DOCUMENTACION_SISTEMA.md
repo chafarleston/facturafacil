@@ -210,7 +210,6 @@ fecha_emision, hora_emision, fecha_vencimiento
 moneda, subtotal, gravado, igv, total, total_letras
 metodo_pago, referencia_pago
 sunat_estado: PENDIENTE | ENVIADO | ACEPTADO | RECHAZADO | ANULADO
-estado: ACTIVO | ANULADO
 codigo_hash (para QR)
 ```
 
@@ -220,7 +219,11 @@ codigo_hash (para QR)
 company_id, table_id → tables
 user_id → users
 order_number
-status: ABIERTO | ENVIADO A COCINA | LISTO | ENTREGADO | COMPLETADO | ANULADO
+status (ENUM, almacenado en inglés):
+  OPEN | SENT_TO_KITCHEN | READY | DELIVERED | COMPLETED | CANCELLED | PENDING_PAYMENT
+  PENDING_PAYMENT = pedido kiosko pendiente de pago (agregado 2026-07-02)
+  (los nombres en español —ABIERTO, ENVIADO A COCINA, etc.— son SOLO etiquetas de
+   RestaurantOrder::statusLabel(), no valores guardados)
 subtotal, igv, total, notes
 ```
 

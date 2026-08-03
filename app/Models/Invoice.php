@@ -17,7 +17,7 @@ class Invoice extends Model
         'observaciones', 'codigo_hash', 'xml_path', 'pdf_path', 'cdr_path',
         'sunat_response', 'sunat_estado', 'sunat_ticket', 'sunat_cdr',
         'sunat_serie', 'sunat_numero', 'sunat_fecha',
-        'sunat_code', 'sunat_description', 'xml_firmado', 'estado_sunat',
+        'sunat_code', 'sunat_description', 'xml_firmado',
         'metodo_pago', 'referencia_pago', 'exclude_from_totals',
     ];
 
