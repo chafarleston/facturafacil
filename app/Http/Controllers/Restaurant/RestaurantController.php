@@ -171,7 +171,11 @@ class RestaurantController extends Controller
         try {
             $validated = $request->validate([
                 'product_id' => 'required|exists:products,id',
-                'quantity' => 'required|numeric|min:0.01',
+                'quantity' => ['required', 'numeric', 'min:1', function ($attr, $value, $fail) {
+                    if ((float) $value != floor((float) $value)) {
+                        $fail('La cantidad debe ser un número entero (1, 2, 3...).');
+                    }
+                }],
                 'notes' => 'nullable|string|max:500',
                 'auxiliary_items' => 'nullable|array',
                 'auxiliary_items.*' => 'integer|exists:auxiliary_items,id',
@@ -246,8 +250,8 @@ class RestaurantController extends Controller
 
         if (isset($validated['quantity_delta'])) {
             $item->quantity += $validated['quantity_delta'];
-            if ($item->quantity < 0.1) {
-                $item->quantity = 0.1;
+            if ($item->quantity < 1) {
+                $item->quantity = 1;
             }
         } elseif (isset($validated['quantity'])) {
             $item->quantity = $validated['quantity'];

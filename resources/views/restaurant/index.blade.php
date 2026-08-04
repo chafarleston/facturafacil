@@ -486,7 +486,7 @@
 <div class="qty-overlay" id="qtyOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
     <div class="qty-popup" style="background:white; padding:20px; border-radius:10px; min-width:300px; max-width:90%;">
         <h5 style="margin:0 0 15px 0;">Cantidad</h5>
-        <input type="number" id="itemQtyInput" class="form-control" value="1" min="0.1" step="0.1" style="margin-bottom:10px;">
+        <input type="number" id="itemQtyInput" class="form-control" value="1" min="1" step="1" style="margin-bottom:10px;">
         <textarea id="itemNotesInput" class="form-control" rows="2" placeholder="Nota para cocina (opcional)..." style="margin-bottom:10px;"></textarea>
         <div id="auxiliaryContainer" style="margin-bottom:10px; display:none;">
             <small class="text-muted d-block mb-1">Elementos Auxiliares:</small>
@@ -751,55 +751,6 @@
         <div style="display:flex; gap:10px; justify-content:center;">
             <button type="button" class="btn btn-secondary" id="confirmCancelBtn" onclick="closeConfirm()">Cancelar</button>
             <button type="button" class="btn btn-primary" id="confirmOkBtn" onclick="confirmOk()">Aceptar</button>
-        </div>
-    </div>
-</div>
-
-<div id="toastAlert" style="display:none; position:fixed; top:20px; right:20px; z-index:99999; background:#28a745; color:white; padding:15px 25px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.2); font-weight:bold; font-size:14px;">
-    <i class="fas fa-check-circle mr-2"></i> <span id="toastMessage">Operación exitosa</span>
-</div>
-
-{{-- Modal Cantidad --}}
-<div class="qty-overlay" id="qtyOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
-    <div class="qty-popup" style="background:white; padding:20px; border-radius:10px; min-width:300px; max-width:90%;">
-        <h5 style="margin:0 0 15px 0;">Cantidad</h5>
-        <input type="number" id="itemQtyInput" class="form-control" value="1" min="0.1" step="0.1" style="margin-bottom:10px;">
-        <textarea id="itemNotesInput" class="form-control" rows="2" placeholder="Nota para cocina (opcional)..." style="margin-bottom:10px;"></textarea>
-        <div id="auxiliaryContainer" style="margin-bottom:10px; display:none;">
-            <small class="text-muted d-block mb-1">Elementos Auxiliares:</small>
-            <div id="auxiliaryChips" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
-        </div>
-        <small class="text-muted d-block mb-2">Producto: <span id="modalProductName"></span></small>
-        <div style="display:flex; gap:10px; justify-content:flex-end;">
-            <button type="button" class="btn btn-secondary" onclick="closeQtyModal()">Cancelar</button>
-            <button type="button" class="btn btn-primary" onclick="confirmAddItem()">Agregar</button>
-        </div>
-    </div>
-</div>
-
-{{-- Modal Editar Nota Item --}}
-<div class="qty-overlay" id="itemNotesOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
-    <div class="qty-popup" style="background:white; padding:20px; border-radius:10px; min-width:300px; max-width:90%;">
-        <h5 style="margin:0 0 15px 0;">Nota del Producto</h5>
-        <input type="hidden" id="editItemNotesItemId">
-        <textarea id="editItemNotesInput" class="form-control" rows="2" placeholder="Nota para cocina..." style="margin-bottom:10px;"></textarea>
-        <div style="display:flex; gap:10px; justify-content:flex-end;">
-            <button type="button" class="btn btn-secondary" onclick="closeItemNotesModal()">Cancelar</button>
-            <button type="button" class="btn btn-primary" onclick="saveItemNotes()">Guardar</button>
-        </div>
-    </div>
-</div>
-
-{{-- Modal Contraseña Admin --}}
-<div class="qty-overlay" id="adminPasswordOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
-    <div class="qty-popup" style="background:white; padding:20px; border-radius:10px; min-width:320px; max-width:90%;">
-        <h5 style="margin:0 0 5px 0;">Autorización requerida</h5>
-        <p style="font-size:13px; color:#666; margin-bottom:15px;">Ingrese su contraseña de administrador para eliminar este producto</p>
-        <input type="hidden" id="adminPasswordItemId">
-        <input type="password" id="adminPasswordInput" class="form-control" placeholder="Contraseña" style="margin-bottom:10px;" autocomplete="off">
-        <div style="display:flex; gap:10px; justify-content:flex-end;">
-            <button type="button" class="btn btn-secondary" onclick="closeAdminPasswordModal()">Cancelar</button>
-            <button type="button" class="btn btn-danger" onclick="confirmAdminPassword()">Eliminar</button>
         </div>
     </div>
 </div>
@@ -1171,8 +1122,8 @@ function closeQtyModal() {
 
 function confirmAddItem() {
     const quantity = parseFloat(document.getElementById('itemQtyInput').value);
-    if (!quantity || quantity <= 0) {
-        showError('Ingrese una cantidad válida');
+    if (!Number.isInteger(quantity) || quantity < 1) {
+        showError('La cantidad debe ser un número entero (1, 2, 3...)');
         return;
     }
     
