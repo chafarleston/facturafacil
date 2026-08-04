@@ -11,7 +11,7 @@
 | 🔴 ALTA | 1 | ✅ **Resuelto** (ítem #1) |
 | 🟠 MEDIA | 20 | 20 resueltos (#2–#21) · 0 pendientes |
 | 🟡 BAJA | 12 | 11 resueltos (#22–#32) · 1 pendiente |
-| 🔵 INFO / NO VERIFICABLE | 10 | 8 documentados (#33–#40) · 2 pendientes |
+| 🔵 INFO / NO VERIFICABLE | 10 | 9 documentados (#33–#41) · 1 pendiente |
 
 **Capítulos 100% COINCIDE:** 9, 10, 12, 16, 18, 22, 23, 24, 25, 27 (y 15 parcialmente).
 
@@ -84,7 +84,7 @@
 | 38 | 19.4.1 | `company_id` siempre `Company::getMainCompany()->id` (no hay precedencia request/usuario) | Aclarado §19.4.1: el código usa siempre `getMainCompany()->id` (mono-empresa); el `company_id` del request se ignora. **Documentado** | `app/Http/Controllers/CashRegisterController.php:18,38` | ✅ RESUELTO (doc) |
 | 39 | 19.5 | El PDF/QR no se genera dentro de `sendInvoice` (se genera bajo demanda vía `generatePdf()`/`generateTicketPdf()`) | Cubierto por el #27: §19.5 ya dice "PDF/QR se generan bajo demanda". `sendInvoice` solo hace XML/SOAP/CDR/estado. **Resuelto** | `app/Services/GreenterService.php:1139,582,603` | ✅ RESUELTO (cubierto por #27) |
 | 40 | 19.6 | Ruta `POST /products/store` inexistente (es resource `/products`); la unicidad de `codigo` se impone por índice compuesto de BD | Corregido §19.6: ruta = `POST /products`; unicidad por índice `unique(['company_id','codigo'])`, no por regla `unique`. **Documentado** | `routes/web.php:84`, `ProductController.php:54`, `2024_01_01_000003_create_products_table.php:25` | ✅ RESUELTO (doc) |
-| 41 | 19.11 | `KitchenOrderUpdated` no se dispara en `addItem`/`updateItem`/`saveOrderNotes` (sí en removeItem/sendToKitchen/charge/split/etc.) |
+| 41 | 19.11 | `KitchenOrderUpdated` no se dispara en `addItem`/`updateItem`/`saveOrderNotes` (sí en removeItem/sendToKitchen/charge/split/etc.) | Aclarado §19.11: el evento se dispara en la mayoría de métodos; addItem/updateItem/saveOrderNotes no (el poll del KDS cada 5s los cubre). **Documentado** | `app/Http/Controllers/Restaurant/RestaurantController.php` | ✅ RESUELTO (doc) |
 | 42 | 20.16 | "lite/ws mismo commit entre 5.2.0 y 5.3.0" y "template despatch2022 +5 líneas" no verificables sin historial de vendor |
 
 ---
@@ -171,6 +171,7 @@ Nota #12: en `cancelOrder()` la impresión agrupada ocurre ANTES de marcar los i
 | 2026-08-02 | #38 | `DOCUMENTACION_SISTEMA.md` §19.4.1 | Corregido: `company_id` se obtiene siempre de `Company::getMainCompany()->id` (sistema mono-empresa); el `company_id` del request se envía pero se ignora. Solo documentación. |
 | 2026-08-02 | #39 | — | Ítem INFO resuelto (cubierto por el #27): §19.5 ya indica que el PDF/QR se genera bajo demanda; `sendInvoice` no genera PDF. Sin cambios adicionales. |
 | 2026-08-02 | #40 | `DOCUMENTACION_SISTEMA.md` §19.6 | Opción A (solo doc): ruta corregida a `POST /products`; aclarado que la unicidad de `codigo` la impone el índice compuesto único `(company_id, codigo)` en BD (no regla `unique`). Sin cambios de código (se evitó la regla `unique` para no romper la edición de productos). |
+| 2026-08-02 | #41 | `DOCUMENTACION_SISTEMA.md` §19.11 | Opción A (solo doc): aclarado que `KitchenOrderUpdated` se dispara en la mayoría de métodos que modifican pedidos (lista) y que `addItem`/`updateItem`/`saveOrderNotes` NO lo disparan (el polling del KDS cada 5s los cubre). Solo documentación. |
 
 ---
 

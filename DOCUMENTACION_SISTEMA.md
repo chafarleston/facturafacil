@@ -1475,7 +1475,10 @@ Cache usado para señalización:
 
 ```
 KitchenOrderUpdated:
-   - Se dispara via event() en todos los métodos que modifican pedidos
+   - Se dispara via event() en la mayoría de métodos que modifican pedidos
+     (removeItem, sendToKitchen, markItemReady, moveTable, cancelOrder,
+      markKitchenReady, deliverKitchenOrder, chargeOrder, splitChargeOrder, kioskSendToKitchen)
+   - addItem, updateItem y saveOrderNotes NO lo disparan (el polling del KDS cada 5s los cubre)
    - Ya no implementa ShouldBroadcast (eliminado para evitar error de conexión)
    - El polling del frontend es el único mecanismo de tiempo real
 ```
