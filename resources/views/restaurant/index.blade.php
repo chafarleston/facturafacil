@@ -742,18 +742,6 @@
     </div>
 </div>
 
-{{-- Modal Confirmación --}}
-<div class="qty-overlay" id="confirmOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
-    <div class="qty-popup" style="background:white; padding:25px; border-radius:10px; min-width:350px; max-width:90%; text-align:center;">
-        <div style="font-size:40px; margin-bottom:10px;" id="confirmIcon"><i class="fas fa-question-circle" style="color:#ffc107;"></i></div>
-        <h5 style="margin:0 0 10px 0;" id="confirmTitle">Confirmar</h5>
-        <p style="color:#666; margin-bottom:20px;" id="confirmMessage">¿Está seguro?</p>
-        <div style="display:flex; gap:10px; justify-content:center;">
-            <button type="button" class="btn btn-secondary" id="confirmCancelBtn" onclick="closeConfirm()">Cancelar</button>
-            <button type="button" class="btn btn-primary" id="confirmOkBtn" onclick="confirmOk()">Aceptar</button>
-        </div>
-    </div>
-</div>
 @endsection
 
 @push('scripts')
