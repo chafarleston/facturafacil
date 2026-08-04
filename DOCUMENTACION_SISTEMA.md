@@ -2471,6 +2471,12 @@ Cambios reales (solo en core + xml):
 - Template XML despatch2022.xml.twig actualizado con 5 líneas nuevas.
 - No hay cambios en APIs existentes. Actualización segura.
 - Comando: composer update greenter/core greenter/lite greenter/ws greenter/xml
+
+(Nota: la actualización a Greenter v5.3.0 fue necesaria para mantener la facturación
+electrónica (SUNAT) funcionando. Los detalles "mismo commit" en lite/ws y "5 líneas
+nuevas" del template no son verificables desde el repo: requieren historial git de los
+paquetes vendor, que composer no incluye. Sí se verifica que las versiones instaladas
+son v5.3.0 en composer.lock.)
 ```
 
 ### 20.13 Mejoras en Polling y Fetch
