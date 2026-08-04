@@ -1887,7 +1887,7 @@ function addSplit() {
     splitItemPool.forEach(function(item) {
         const avail = parseFloat(item.quantity) || 0;
         itemsHtml += '<div class="split-item-row" data-item-id="' + item.id + '" style="display:flex; gap:6px; align-items:center; margin-bottom:4px;">' +
-            '<input type="number" min="0" max="' + avail + '" step="0.01" value="0" ' +
+            '<input type="number" min="0" max="' + avail + '" step="1" value="0" ' +
             'onchange="updateSplitAllocation(' + splitId + ', ' + item.id + ', this.value)" ' +
             'style="width:70px;" class="form-control form-control-sm split-qty">' +
             '<span style="flex:1; font-size:13px;">' + item.product_name + '</span>' +
@@ -2111,11 +2111,20 @@ function confirmSplit() {
     
     // Validar que no se exceda la cantidad disponible por item
     let itemCheck = {};
+    let qtyError = false;
     validSplits.forEach(function(s) {
         s.items.forEach(function(si) {
-            itemCheck[si.item_id] = (itemCheck[si.item_id] || 0) + (parseFloat(si.quantity) || 0);
+            const q = parseFloat(si.quantity) || 0;
+            if (q < 0 || q != Math.floor(q)) qtyError = true;
+            itemCheck[si.item_id] = (itemCheck[si.item_id] || 0) + q;
         });
     });
+    
+    if (qtyError) {
+        errorDiv.textContent = 'Las cantidades deben ser números enteros (0, 1, 2...).';
+        errorDiv.style.display = 'block';
+        return;
+    }
     
     for (var i = 0; i < splitItemPool.length; i++) {
         var item = splitItemPool[i];
