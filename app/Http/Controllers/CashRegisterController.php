@@ -434,12 +434,12 @@ class CashRegisterController extends Controller
                 }
             }
 
-            $text = \App\Services\PlainTextTicket::cashRegisterSummary($cashregister, $data, 'escpos');
-            $printService = app(PrintService::class);
             $printer = \App\Models\Printer::where('assigned_to', 'caja')->where('active', true)->first();
             if (!$printer) {
                 return back()->with('error', 'No hay impresora Caja configurada');
             }
+            $width = \App\Services\PlainTextTicket::widthForPaper($printer->paper_size);
+            $text = \App\Services\PlainTextTicket::cashRegisterSummary($cashregister, $data, 'escpos', $width);
             app(\App\Services\PrintServerService::class)->printText($printer, $text);
             return back()->with('success', 'Resumen enviado a impresora Caja');
         } catch (\Exception $e) {

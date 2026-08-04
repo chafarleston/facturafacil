@@ -12,6 +12,7 @@ class Printer extends Model
         'printer_name',
         'ip_address',
         'port',
+        'paper_size',
         'assigned_to',
         'active',
     ];
@@ -20,4 +21,9 @@ class Printer extends Model
         'active' => 'boolean',
         'port' => 'integer',
     ];
+
+    public function widthChars(): int
+    {
+        return $this->paper_size === '58mm' ? 32 : 48;
+    }
 }

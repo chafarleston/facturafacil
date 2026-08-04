@@ -35,6 +35,7 @@
                             <th>Punto</th>
                             <th>Impresora</th>
                             <th>Tipo</th>
+                            <th>Papel</th>
                             <th>Estado</th>
                             <th>Acción</th>
                         </tr>
@@ -45,6 +46,7 @@
                             <td><strong>{{ $slot->name }}</strong></td>
                             <td>{{ $slot->printer_name ?? ($slot->ip_address ? $slot->ip_address.':'.$slot->port : '—') }}</td>
                             <td><span class="badge badge-{{ $slot->type === 'local' ? 'info' : 'warning' }}">{{ $slot->type === 'local' ? 'Local' : 'Red' }}</span></td>
+                            <td><span class="badge badge-{{ $slot->paper_size === '58mm' ? 'secondary' : 'dark' }}">{{ $slot->paper_size }}</span></td>
                             <td><span class="badge badge-{{ $slot->active ? 'success' : 'secondary' }}">{{ $slot->active ? 'Activo' : 'Inactivo' }}</span></td>
                             <td>
                                 <button class="btn btn-xs btn-primary" onclick="document.getElementById('editSlot{{ $slot->id }}').style.display='flex'">
@@ -148,6 +150,14 @@
                         </select>
                     </div>
                 </div>
+            </div>
+            <div class="form-group">
+                <label>Tamaño de papel</label>
+                <select name="paper_size" class="form-control">
+                    <option value="80mm" {{ ($slot->paper_size ?? '80mm') == '80mm' ? 'selected' : '' }}>80mm (48 caracteres)</option>
+                    <option value="58mm" {{ ($slot->paper_size ?? '80mm') == '58mm' ? 'selected' : '' }}>58mm (32 caracteres)</option>
+                </select>
+                <small class="text-muted">Ancho de los tickets ESC/POS de este punto de impresión.</small>
             </div>
             <div style="display:flex; gap:10px; justify-content:flex-end;">
                 <button type="button" class="btn btn-secondary" onclick="document.getElementById('editSlot{{ $slot->id }}').style.display='none'">Cancelar</button>

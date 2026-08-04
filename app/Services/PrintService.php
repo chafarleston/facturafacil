@@ -26,7 +26,8 @@ class PrintService
             \Log::warning('No hay impresora configurada para autopedido');
             return;
         }
-        $text = PlainTextTicket::autoPedidoTicket($order, 'escpos');
+        $width = PlainTextTicket::widthForPaper($printer->paper_size);
+        $text = PlainTextTicket::autoPedidoTicket($order, 'escpos', $width);
         $this->queuePrint($printer, $text, 'autopedido', get_class($order), $order->id);
         $this->processQueue();
     }
@@ -61,7 +62,8 @@ class PrintService
             $printer = $this->getPrinter($dest === 'cocina' ? 'cocina-1' : ($dest === 'cocina2' ? 'cocina-2' : 'bar-1'));
             if (!$printer) continue;
             $order->setRelation('items', collect($items));
-            $data = PlainTextTicket::kitchenTicket($order, 'escpos', $dest);
+            $width = PlainTextTicket::widthForPaper($printer->paper_size);
+            $data = PlainTextTicket::kitchenTicket($order, 'escpos', $dest, $width);
             $this->queuePrint($printer, $data, 'kitchen', $refType, $order->id);
         }
         $this->processQueue();
@@ -71,7 +73,8 @@ class PrintService
     {
         $printer = $this->getPrinter($printerKey);
         if (!$printer) return;
-        $data = PlainTextTicket::prebillTicket($order, 'escpos');
+        $width = PlainTextTicket::widthForPaper($printer->paper_size);
+        $data = PlainTextTicket::prebillTicket($order, 'escpos', $width);
         $this->queuePrint($printer, $data, 'prebill', get_class($order), $order->id);
         $this->processQueue();
     }
@@ -89,7 +92,8 @@ class PrintService
             $printer = $this->getPrinter($printerKey);
             if (!$printer) continue;
             $order->setRelation('items', collect($groupItems));
-            $data = PlainTextTicket::cancelNotificationGrouped($order, 'escpos', $dest);
+            $width = PlainTextTicket::widthForPaper($printer->paper_size);
+            $data = PlainTextTicket::cancelNotificationGrouped($order, 'escpos', $dest, $width);
             $this->queuePrint($printer, $data, 'cancel', get_class($order), $order->id);
         }
         $this->processQueue();
@@ -101,7 +105,8 @@ class PrintService
         $printerKey = $dest === 'cocina' ? 'cocina-1' : ($dest === 'cocina2' ? 'cocina-2' : 'bar-1');
         $printer = $this->getPrinter($printerKey);
         if (!$printer) return;
-        $data = PlainTextTicket::cancelNotification($order, $item, 'escpos', $dest);
+        $width = PlainTextTicket::widthForPaper($printer->paper_size);
+        $data = PlainTextTicket::cancelNotification($order, $item, 'escpos', $dest, $width);
         $this->queuePrint($printer, $data, 'cancel', get_class($order), $order->id);
         $this->processQueue();
     }

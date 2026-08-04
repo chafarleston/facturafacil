@@ -5,15 +5,22 @@ class PlainTextTicket
 {
     private $text = '';
     private $format = 'text';
+    private $width = 48;
     
-    public function __construct(string $format = 'text')
+    public function __construct(string $format = 'text', int $width = 48)
     {
         $this->format = $format;
+        $this->width = max(20, min(64, $width));
+    }
+
+    public static function widthForPaper(string $paperSize = '80mm'): int
+    {
+        return $paperSize === '58mm' ? 32 : 48;
     }
     
     public function center(string $text, string $char = ' '): void
     {
-        $pad = intval((32 - strlen($this->clean($text))) / 2);
+        $pad = intval(($this->width - strlen($this->clean($text))) / 2);
         if ($pad < 0) $pad = 0;
         $this->text .= str_repeat($char, $pad) . $text . "\n";
     }
@@ -26,7 +33,7 @@ class PlainTextTicket
     public function right(string $text): void
     {
         $clean = $this->clean($text);
-        $pad = 32 - strlen($clean);
+        $pad = $this->width - strlen($clean);
         if ($pad < 0) $pad = 0;
         $this->text .= str_repeat(' ', $pad) . $text . "\n";
     }
@@ -35,7 +42,7 @@ class PlainTextTicket
     {
         $cleanL = $this->clean($left);
         $cleanR = $this->clean($right);
-        $dots = 32 - strlen($cleanL) - strlen($cleanR);
+        $dots = $this->width - strlen($cleanL) - strlen($cleanR);
         if ($dots < 1) $dots = 1;
         $this->text .= $left . str_repeat($glue, $dots) . $right . "\n";
     }
@@ -44,14 +51,14 @@ class PlainTextTicket
     {
         $line = $qty . ' ' . $name;
         $clean = $this->clean($line);
-        $pad = 32 - strlen($clean) - strlen($this->clean($total));
+        $pad = $this->width - strlen($clean) - strlen($this->clean($total));
         if ($pad < 0) { $line = substr($line, 0, $pad - 3) . '...'; $pad = 1; }
         $this->text .= $line . str_repeat(' ', $pad) . $total . "\n";
     }
     
     public function separator(string $char = '-'): void
     {
-        $this->text .= str_repeat($char, 32) . "\n";
+        $this->text .= str_repeat($char, $this->width) . "\n";
     }
     
     public function blank(): void
@@ -73,6 +80,7 @@ class PlainTextTicket
     {
         $lines = explode("\n", $this->text);
         $out = "\x1B\x40"; // INIT
+        $out .= "\x1B\x21\x00"; // Fuente A + modo normal (evita fuente condensada/pequeña)
         $out .= "\x1B\x74\x02"; // CP850
         foreach ($lines as $line) {
             $trimmed = rtrim($line, " \t\r\n");
@@ -115,9 +123,9 @@ class PlainTextTicket
     {
     }
     
-    public static function kitchenTicket($order, string $format = 'text', string $dest = 'cocina'): string
+    public static function kitchenTicket($order, string $format = 'text', string $dest = 'cocina', int $width = 48): string
     {
-        $t = new self($format);
+        $t = new self($format, $width);
         $t->buildKitchenHeader($order, $dest);
         $t->separator();
         $items = $order->items ?? $order->pendingItems ?? [];
@@ -135,9 +143,9 @@ class PlainTextTicket
         return $format === 'escpos' ? $t->getEscPos() : $t->getText();
     }
     
-    public static function prebillTicket($order, string $format = 'text'): string
+    public static function prebillTicket($order, string $format = 'text', int $width = 48): string
     {
-        $t = new self($format);
+        $t = new self($format, $width);
         $t->buildPrebillHeader($order);
         $t->separator();
         foreach ($order->items as $item) {
@@ -159,9 +167,9 @@ class PlainTextTicket
         return ''; // Use Greenter PDF instead
     }
     
-    public static function cancelNotification($order, $item, string $format = 'text', string $dest = 'cocina'): string
+    public static function cancelNotification($order, $item, string $format = 'text', string $dest = 'cocina', int $width = 48): string
     {
-        $t = new self($format);
+        $t = new self($format, $width);
         $t->center('*** ANULACIÓN ***', '*');
         $t->blank();
         $t->text('Pedido: ' . $order->order_number);
@@ -173,9 +181,9 @@ class PlainTextTicket
         return $format === 'escpos' ? $t->getEscPos() : $t->getText();
     }
     
-    public static function cancelNotificationGrouped($order, string $format = 'text', string $dest = 'cocina'): string
+    public static function cancelNotificationGrouped($order, string $format = 'text', string $dest = 'cocina', int $width = 48): string
     {
-        $t = new self($format);
+        $t = new self($format, $width);
         $t->buildCancelHeader($order, $dest);
         $items = $order->items->where('kds_destination', $dest);
         $firstItem = $items->first();
@@ -201,9 +209,9 @@ class PlainTextTicket
         $this->text('Hora: ' . now()->format('H:i:s'));
     }
     
-    public static function cashRegisterSummary($cashregister, array $data, string $format = 'text'): string
+    public static function cashRegisterSummary($cashregister, array $data, string $format = 'text', int $width = 48): string
     {
-        $t = new self($format);
+        $t = new self($format, $width);
         $t->center('*** CIERRE DE CAJA ***', '*');
         $t->blank();
         $t->text('Caja #' . $cashregister->id);
@@ -273,9 +281,9 @@ class PlainTextTicket
         return $format === 'escpos' ? $t->getEscPos() : $t->getText();
     }
 
-    public static function autoPedidoTicket($order, string $format = 'text'): string
+    public static function autoPedidoTicket($order, string $format = 'text', int $width = 48): string
     {
-        $t = new self($format);
+        $t = new self($format, $width);
         $t->center('*** AUTO PEDIDO ***', '*');
         $t->center('FacturaFacil');
         $t->blank();

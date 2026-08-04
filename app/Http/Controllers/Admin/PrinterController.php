@@ -71,6 +71,7 @@ class PrinterController extends Controller
             'printer_name' => 'nullable|max:255',
             'ip_address' => 'nullable|ip',
             'port' => 'nullable|integer|min:1|max:65535',
+            'paper_size' => 'required|in:58mm,80mm',
             'type' => 'required|in:local,network',
             'active' => 'boolean',
         ]);
