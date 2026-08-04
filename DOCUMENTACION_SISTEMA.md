@@ -1249,7 +1249,8 @@ POST /pos/open-drawer → devuelve { data: base64, printer, ip, port, type }
 POST /cashregister/open
 → open() [PHP]:
    1. Autoriza: permiso open_cashregister
-   2. Obtiene company_id (request > user > empresa principal)
+   2. company_id = Company::getMainCompany()->id
+      (sistema mono-empresa; el campo company_id del request se envía pero se ignora)
    3. Verifica que no haya otra caja abierta en la empresa
    4. Crea registro con: monto_apertura, referencia, user_id, fecha_apertura, estado=ABIERTA
 ```
