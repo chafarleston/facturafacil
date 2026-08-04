@@ -335,8 +335,8 @@ processCharge() [JS]
             8. Marcar orden COMPLETED, mesa AVAILABLE
             9. Actualizar caja registradora
             10. Responder JSON
-    → showConfirm("¿Desea imprimir?")
-        → Sí: window.open /pos/print/{invoice}/80mm
+    → showConfirm("Total: S/ X [\nVuelto: S/ Y]\n\n¿Desea imprimir el comprobante?")
+        → Sí: window.open /pos/print/{invoice}/80mm + location.reload()
         → No: location.reload()
 ```
 
