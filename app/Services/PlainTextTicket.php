@@ -20,9 +20,12 @@ class PlainTextTicket
     
     public function center(string $text, string $char = ' '): void
     {
-        $pad = intval(($this->width - strlen($this->clean($text))) / 2);
-        if ($pad < 0) $pad = 0;
-        $this->text .= str_repeat($char, $pad) . $text . "\n";
+        $len = strlen($this->clean($text));
+        $total = $this->width - $len;
+        if ($total < 0) $total = 0;
+        $left = intval($total / 2);
+        $right = $total - $left;
+        $this->text .= str_repeat($char, $left) . $text . str_repeat($char, $right) . "\n";
     }
     
     public function left(string $text): void
@@ -170,7 +173,7 @@ class PlainTextTicket
     public static function cancelNotification($order, $item, string $format = 'text', string $dest = 'cocina', int $width = 48): string
     {
         $t = new self($format, $width);
-        $t->center('*** ANULACIÓN ***', '*');
+        $t->center('*** ANULACIÓN ' . self::destLabel($dest) . ' ***', '*');
         $t->blank();
         $t->text('Pedido: ' . $order->order_number);
         $t->text('Producto: ' . $item->product_name);
@@ -198,7 +201,7 @@ class PlainTextTicket
     
     protected function buildCancelHeader($order, string $dest = 'cocina'): void
     {
-        $this->center('*** ANULACIÓN COCINA ***', '*');
+        $this->center('*** ANULACIÓN ' . self::destLabel($dest) . ' ***', '*');
         $this->blank();
         $this->text('Pedido: ' . $order->order_number);
         if ($order->order_type === 'kiosko') {
@@ -302,10 +305,14 @@ class PlainTextTicket
         return $format === 'escpos' ? $t->getEscPos() : $t->getText();
     }
 
+    protected static function destLabel(string $dest): string
+    {
+        return match($dest) { 'cocina2' => 'COCINA 2', 'bar' => 'BAR', default => 'COCINA' };
+    }
+
     protected function buildKitchenHeader($order, string $dest = 'cocina'): void
     {
-        $label = match($dest) { 'cocina2' => 'COCINA 2', 'bar' => 'BAR', default => 'COCINA' };
-        $this->center('*** ' . $label . ' ***', '*');
+        $this->center('*** ' . self::destLabel($dest) . ' ***', '*');
         $this->blank();
         $this->text('Pedido: ' . $order->order_number);
         if ($order->order_type === 'kiosko') {
