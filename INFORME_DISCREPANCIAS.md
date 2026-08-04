@@ -11,7 +11,7 @@
 | 🔴 ALTA | 1 | ✅ **Resuelto** (ítem #1) |
 | 🟠 MEDIA | 20 | 20 resueltos (#2–#21) · 0 pendientes |
 | 🟡 BAJA | 12 | 11 resueltos (#22–#32) · 1 pendiente |
-| 🔵 INFO / NO VERIFICABLE | 10 | 2 documentados (#33, #34) · 8 pendientes |
+| 🔵 INFO / NO VERIFICABLE | 10 | 3 documentados (#33, #34, #35) · 7 pendientes |
 
 **Capítulos 100% COINCIDE:** 9, 10, 12, 16, 18, 22, 23, 24, 25, 27 (y 15 parcialmente).
 
@@ -78,7 +78,7 @@
 |---|------|------|
 | 33 | 1 | Versión de MySQL/MariaDB no pinneada en el repo (afirmación de entorno) | Aclarado en §1: el repo no pinnea la versión; el entorno del cliente usa MySQL 8.0.30 (ruta mysqldump en `BackupController.php:67`). **Documentado** | — | ✅ DOCUMENTADO |
 | 34 | 4 | Texto exacto del `showConfirm` de cobro es dinámico (estructura coincide; difiere el texto literal) | Ajustado §4.1: mensaje dinámico (Total/Vuelto), "Sí" abre 80mm + recarga, "No" recarga. **Documentado** | `resources/views/restaurant/index.blade.php:2344-2354` | ✅ RESUELTO (doc) |
-| 35 | 5.6 | Retención/Guía/Percepción: doc sugiere serie fija R001/T001/P001; real usa `$doc->serie` desde BD |
+| 35 | 5.6 | Retención/Guía/Percepción: doc sugiere serie fija R001/T001/P001; real usa `$doc->serie` desde BD | Aclarado §5.6: el servicio usa `$doc->serie` (asignada al crear desde series de BD con prefijo R/T/P); 20/09/40 son códigos SUNAT. **Documentado** | `app/Services/SpecialDocumentService.php:113,164,231` | ✅ RESUELTO (doc) |
 | 36 | 6 | Mecanismo "Windows Task Scheduler" no está en el repo (el intervalo de 1 min sí coincide) |
 | 37 | 17 | `fetch` con `mode: no-cors` (configuración de cliente, no verificable en servidor) |
 | 38 | 19.4.1 | `company_id` siempre `Company::getMainCompany()->id` (no hay precedencia request/usuario) |

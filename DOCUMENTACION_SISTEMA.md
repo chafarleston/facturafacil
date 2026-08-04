@@ -500,9 +500,10 @@ checkTicketStatus($ticket)             // Consulta estado del ticket
 Documentos especiales SUNAT.
 
 ```php
-sendRetention($doc)           // Envía retención (R001, código 20)
-sendDespatch($doc)            // Envía guía de remisión (T001, código 09)
-sendPerception($doc)          // Envía percepción (P001, código 40)
+sendRetention($doc)           // Envía retención (serie $doc->serie, prefijo R; código SUNAT 20)
+sendDespatch($doc)            // Envía guía de remisión (serie $doc->serie, prefijo T; código SUNAT 09)
+sendPerception($doc)          // Envía percepción (serie $doc->serie, prefijo P; código SUNAT 40)
+// La serie se asigna al crear el documento desde las series configuradas en BD (prefijo R/T/P)
 ```
 
 ### 5.7 PrintServerService (`app/Services/PrintServerService.php`)
