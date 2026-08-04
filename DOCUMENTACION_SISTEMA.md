@@ -1319,7 +1319,8 @@ Nota de Crédito: GET/POST /invoices/{id}/credit-note
 
 ```
 Crear: GET /products/create → genera código PRODxxxxx automático
-Store: POST /products/store → guarda con validaciones (código unique, precio min 0)
+Store: POST /products → guarda con validaciones (codigo required|max:50; la unicidad de codigo
+se impone por el índice compuesto único (company_id, codigo) en BD, no por regla unique)
 
 Duplicar:
 POST /products/{id}/duplicate
