@@ -29,6 +29,14 @@
                             <option value="mozo" {{ $user->role === 'mozo' ? 'selected' : '' }}>Mozo</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>Nueva Contraseña</label>
+                        <input type="password" name="password" class="form-control" minlength="8" autocomplete="new-password" placeholder="Dejar vacío para no cambiar">
+                    </div>
+                    <div class="form-group">
+                        <label>Confirmar Contraseña</label>
+                        <input type="password" name="password_confirmation" class="form-control" minlength="8" autocomplete="new-password">
+                    </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">

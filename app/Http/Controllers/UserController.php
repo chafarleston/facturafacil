@@ -63,13 +63,20 @@ class UserController extends Controller
                 \Illuminate\Validation\Rule::unique('users')->ignore($user->id)],
             'role' => ['required', 'in:admin,user,mozo,cajero'],
             'roles' => ['array'],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ]);
 
-        $user->update([
+        $data = [
             'name' => $validated['name'],
             'email' => $validated['email'],
             'role' => $validated['role'],
-        ]);
+        ];
+
+        if (!empty($validated['password'])) {
+            $data['password'] = Hash::make($validated['password']);
+        }
+
+        $user->update($data);
 
         $user->roles()->sync($validated['roles'] ?? []);
 
