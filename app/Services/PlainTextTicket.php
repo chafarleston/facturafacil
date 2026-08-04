@@ -131,6 +131,7 @@ class PlainTextTicket
         $t = new self($format, $width);
         $t->buildKitchenHeader($order, $dest);
         $t->separator();
+        $t->itemLine('CANT.', 'DESCRIPCIÓN', '');
         $items = $order->items ?? $order->pendingItems ?? [];
         foreach ($items as $item) {
             if ($item->kitchen_status === 'CANCELLED') continue;
@@ -193,6 +194,8 @@ class PlainTextTicket
         if ($firstItem && $firstItem->cancelledBy) {
             $t->text('Anulado por: ' . $firstItem->cancelledBy->name);
         }
+        $t->separator();
+        $t->itemLine('CANT.', 'DESCRIPCIÓN', '');
         foreach ($items as $item) {
             $t->itemLine(number_format($item->quantity, 0), $item->product_name, '');
         }
