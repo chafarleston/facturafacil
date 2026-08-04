@@ -14,9 +14,6 @@ class Kernel extends ConsoleKernel
 
         // Reintentar impresiones fallidas cada minuto
         $schedule->command('print:process-queue')->everyMinute();
-
-        // Reintentar impresiones fallidas cada minuto
-        $schedule->command('print:process-queue')->everyMinute();
     }
 
     protected function commands()

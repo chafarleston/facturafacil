@@ -576,7 +576,7 @@ Laravel (servidor) ─── HTTP POST ───→ Print Server (localhost:9100
 
 **Reintentos Automáticos:**
 - Comando: `php artisan print:process-queue`
-- Programado: cada 1 minuto vía Windows Task Scheduler
+- Programado: cada 1 minuto (Kernel.php → everyMinute → php artisan schedule:run). La invocación de schedule:run se hace vía scheduler.vbs o una tarea de Windows creada fuera del repo (el repo no incluye el registro de Task Scheduler; README solo referencia schtasks /run)
 - Máximo: 3 intentos por trabajo
 
 ### 6.3 Comandos ESC/POS Soportados

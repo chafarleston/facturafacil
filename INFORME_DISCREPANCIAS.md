@@ -11,7 +11,7 @@
 | 🔴 ALTA | 1 | ✅ **Resuelto** (ítem #1) |
 | 🟠 MEDIA | 20 | 20 resueltos (#2–#21) · 0 pendientes |
 | 🟡 BAJA | 12 | 11 resueltos (#22–#32) · 1 pendiente |
-| 🔵 INFO / NO VERIFICABLE | 10 | 3 documentados (#33, #34, #35) · 7 pendientes |
+| 🔵 INFO / NO VERIFICABLE | 10 | 4 documentados (#33–#36) · 6 pendientes |
 
 **Capítulos 100% COINCIDE:** 9, 10, 12, 16, 18, 22, 23, 24, 25, 27 (y 15 parcialmente).
 
@@ -165,6 +165,7 @@ Nota #12: en `cancelOrder()` la impresión agrupada ocurre ANTES de marcar los i
 | 2026-08-02 | #32 | `DOCUMENTACION_SISTEMA.md` §20.16 | Corregido el nombre del campo del vendor: `fechaEntrega` → **`fecEntregaBienes`** (propiedad + getter/setter reales de Shipment). Solo documentación. |
 | 2026-08-02 | #33 | `DOCUMENTACION_SISTEMA.md` §1 | Añadida nota: la versión de BD no está pinneada en el repo; el entorno del cliente usa MySQL 8.0.30 (ruta mysqldump en `BackupController.php:67`); código compatible con MySQL 8 / MariaDB 10.4. Ítem INFO documentado. |
 | 2026-08-02 | #34 | `DOCUMENTACION_SISTEMA.md` §4.1 | Actualizado el paso `showConfirm` del flujo de cobro: mensaje dinámico (Total/Vuelto + "¿Desea imprimir el comprobante?"), "Sí" → abre 80mm + `location.reload()`, "No" → `location.reload()`. Solo documentación. |
+| 2026-08-02 | #35 | `DOCUMENTACION_SISTEMA.md` §5.6 | Aclarado que `sendRetention/sendDespatch/sendPerception` usan `$doc->serie` (asignada al crear desde series de BD con prefijo R/T/P) y que 20/09/40 son códigos SUNAT (no serie hardcodeada). Solo documentación. |
 
 ---
 
