@@ -465,7 +465,7 @@
 </div>
 
 {{-- Modal Confirmación --}}
-<div class="qty-overlay" id="confirmOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+<div class="qty-overlay" id="confirmOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10010; align-items:center; justify-content:center;">
     <div class="qty-popup" style="background:white; padding:25px; border-radius:10px; min-width:350px; max-width:90%; text-align:center;">
         <div style="font-size:40px; margin-bottom:10px;" id="confirmIcon"><i class="fas fa-question-circle" style="color:#ffc107;"></i></div>
         <h5 style="margin:0 0 10px 0;" id="confirmTitle">Confirmar</h5>
@@ -2158,12 +2158,35 @@ function confirmSplit() {
         if (data.success) {
             closeSplitModal();
             toastAlert('División procesada correctamente');
-            if (data.order_completed) {
-                // Pedido completo → recargar
-                setTimeout(function() { location.reload(); }, 800);
+            var invoices = data.invoices || [];
+            
+            var finishSplit = function() {
+                document.getElementById('confirmCancelBtn').onclick = closeConfirm;
+                if (data.order_completed) {
+                    // Pedido completo → recargar
+                    setTimeout(function() { location.reload(); }, 600);
+                } else {
+                    // Quedan items pendientes → recargar pedido
+                    loadOrder(currentOrderId);
+                }
+            };
+            
+            if (invoices.length > 0) {
+                showConfirm('División procesada (' + invoices.length + ' comprobante(s)). ¿Desea imprimirlos?', function() {
+                    invoices.forEach(function(inv, i) {
+                        setTimeout(function() {
+                            window.open('/pos/print/' + inv.id + '/80mm', '_blank', 'width=400,height=600');
+                        }, i * 400);
+                    });
+                    finishSplit();
+                });
+                document.getElementById('confirmCancelBtn').onclick = function() {
+                    document.getElementById('confirmOverlay').style.display = 'none';
+                    confirmCallback = null;
+                    finishSplit();
+                };
             } else {
-                // Quedan items pendientes → recargar pedido
-                loadOrder(currentOrderId);
+                finishSplit();
             }
         } else {
             errorDiv.textContent = data.message || 'Error al dividir la cuenta';
