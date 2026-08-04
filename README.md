@@ -8,9 +8,9 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 
 ### Facturación Electrónica SUNAT
 - Emisión de **Facturas** (01), **Boletas** (03), **Notas de Venta** (NV), **Notas de Crédito** (07), **Notas de Débito** (08)
-- Envío automático a SUNAT vía Greenter (propio) o **API externa pro51**
-- Firma digital con certificado .p12
-- PDF en formato A4 y Ticket 80mm con código QR
+- Envío a SUNAT por tipo de documento: **Facturas** → Greenter (BillSender); **Boletas** → Resumen Diario (`SummaryService`); **NV** no se envían a SUNAT
+- Firma digital con certificado **PEM-first** (busca `{ruc}_certificate.pem`; fallback a `.p12/.pfx` con contraseña)
+- PDF en formato A4 y Ticket 80mm con código QR (generados bajo demanda)
 - Descarga de XML firmado y CDR
 - Series configurables por tipo de documento
 - **Integración pro51**: modo híbrido que permite elegir entre facturación propia (Greenter) o externa (pro51) por empresa. Incluye sincronización de productos, series y cola de reintentos.
@@ -21,16 +21,19 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 - Selección de cliente con búsqueda y creación rápida
 - Múltiples métodos de pago: Efectivo, Tarjeta, Yape, Plin, Transferencia, Mixto
 - Control de caja (apertura/cierre con arqueo)
-- Apertura de cajón de efectivo desde el POS y Restaurante
+- Apertura de cajón de efectivo desde el POS y Restaurante (botón manual) y **apertura automática al cobrar en efectivo**
 
 ### Restaurante
 - Gestión de **Pisos** y **Mesas** con estado visual (Disponible/Ocupada)
-- Pedidos con productos, cantidades, notas y precios
-- **Búsqueda de productos** en tiempo real (letras → descripción, números → código)
+- Pedidos con productos, cantidades, notas, precios y **elementos auxiliares** (chips tipo "Mayonesa", "Kétchup")
+- **Búsqueda de productos** en tiempo real (solo por descripción/nombre; la búsqueda por código y código de barras existe en el POS)
 - Envío a cocina (modo **KDS** en pantalla o **Impresión 80mm** a impresora térmica)
-- **KDS (Kitchen Display System)**: pantalla en tiempo real con alertas sonoras al recibir nuevos pedidos, colores por estado
-- Precuenta con selección de impresora (Precuenta 1, 2 o 3)
+- **KDS (Kitchen Display System)**: pantalla en tiempo real con alertas sonoras al recibir nuevos pedidos, colores por estado y secciones MOZO / KIOSKO
+- Precuenta con selección de impresora (Precuenta 1, 2 o 3) e **IGV dinámico** según empresa
+- **Dividir Cuenta**: reparte el pedido en 2+ comprobantes (NV/Boleta/Factura) por cantidades, cada división con su cliente, método de pago y solo consumo; los items pagados se marcan "Pagado" y desaparecen del KDS
+- **Kiosko / Autoservicio**: pedidos por pantalla táctil (`/autopedido`), numeración A-XXX ligada a la caja abierta, estados Pendiente/En Cocina y cobro en el cajero
 - Cobro con **cliente por defecto** (Cliente Varios DNI 88888888) y **confirmación de impresión**
+- **Solo consumo**: cobrar todo el pedido como "POR CONSUMO" con desglose de productos
 - **Mover pedido** entre mesas
 - Anulación de productos con autorización de administrador para items enviados a cocina
 - Notas por producto y por pedido
@@ -46,7 +49,7 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 ### Impresión Térmica ESC/POS
 - **Arquitectura híbrida**: el servidor Laravel encola los trabajos, los envía vía HTTP al Print Server local
 - **Print Server Node.js** local en cada máquina cliente (Windows/Linux/Mac)
-- 8 slots fijos de impresora: Cocina 1, Cocina 2, Bar 1, Precuenta 1/2/3, Caja
+- 8 slots fijos de impresora: Cocina 1, Cocina 2, Bar 1, Precuenta 1/2/3, Caja, Auto Pedido (kiosko)
 - Soporte para impresoras **locales** (USB/paralelo vía raw-print.ps1) y **red** (socket TCP puerto 9100)
 - Encoding CP850 con caracteres ñ, tildes, mayúsculas
 - **Cola de impresión** con reintentos automáticos (hasta 3 intentos)
@@ -56,8 +59,8 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 - Comando de apertura de cajón de efectivo
 
 ### Roles y Permisos
-- Roles: **Administrador**, **Cajero**, **Mozo**, **Usuario**
-- Permisos granulares: Abrir Caja y Cerrar Caja como permisos separados
+- Roles: **Administrador**, **Cajero**, **Mozo**, **Usuario** (`superadmin` es un valor reservado en la lógica, no un rol de la BD)
+- Permisos granulares: Abrir Caja y Cerrar Caja como permisos separados; **Enviar a SUNAT** para cajero/admin
 - Control de acceso a funcionalidades del restaurante (Cobrar/Anular restringido a no-mozos)
 - **Auto-check de permisos** al seleccionar rol principal en creación de usuarios
 
@@ -71,6 +74,13 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 ### Compras
 - Búsqueda de productos en **tiempo real** al agregar items (letras → descripción, números → código)
 - Gestión de proveedores
+- Cada compra actualiza **stock** y **precio de compra** del producto
+
+### Productos
+- Productos **simples** y **compuestos** (un compuesto descuenta stock de sus componentes; no maneja stock propio)
+- **Precio de compra** (`precio_compra`) para valorar inventario a costo
+- **Reporte de Inventario** (`/products/inventory-report`) con totales a precio venta y costo, filtro por categoría y exportación Excel/PDF
+- Importación/exportación de productos y duplicado con código secuencial automático
 
 ### Consumo Interno (Salidas de Stock)
 - Registro de consumos de cocina sin generar venta (mermas, degustaciones, consumo interno)
@@ -109,17 +119,17 @@ Navegador (cliente)
 - **Quick Edit Mode desactivado** para evitar congelamiento por clic
 - **start-hidden.vbs** para ejecución en segundo plano sin ventana
 
-**Reintentos automáticos**: el comando `php artisan print:process-queue` se ejecuta cada minuto vía Tarea Programada de Windows (`FacturaFacilScheduler`) para reintentar trabajos fallidos (hasta 3 intentos).
+**Reintentos automáticos**: el comando `php artisan print:process-queue` está programado cada minuto en `Kernel.php` (`everyMinute`). Se invoca ejecutando `php artisan schedule:run` vía `scheduler.vbs` o una tarea de Windows creada fuera del repo (`FacturaFacilScheduler`).
 
 ---
 
 ## Requisitos
 
 - **PHP** 8.2+
-- **MySQL** 8.0+ / MariaDB 10.4+
+- **MySQL** 8.0+ / MariaDB 10.4+ (entorno del cliente: MySQL 8.0.30 — Laragon)
 - **Composer**
 - **Node.js** 18+ (para Print Server)
-- Extensiones PHP: `openssl`, `xml`, `zip`, `mbstring`, `pdo_mysql`, `curl`
+- Extensiones PHP: `openssl`, `xml`, `zip`, `soap`, `intl`, `mbstring`, `pdo_mysql`, `curl`
 
 ---
 
@@ -204,7 +214,7 @@ install.bat
 
 ### Tarea Programada (Windows)
 
-Se crea automáticamente al ejecutar el comando de activación. Ejecuta `php artisan schedule:run` cada minuto para procesar la cola de impresión.
+El comando `php artisan schedule:run` se ejecuta cada minuto para procesar la cola de impresión. Puede invocarse con `scheduler.vbs` o creando una tarea de Windows (`schtasks /create`) que lo llame; el registro de la tarea se crea en el sistema (fuera del repo).
 
 ---
 
@@ -218,6 +228,7 @@ Los slots de impresora se configuran en `/printers`:
 - **Bar 1** (bar-1) — Barra
 - **Precuenta / Precuenta 2 / Precuenta 3** — Precuentas
 - **Caja** — Cajón registrador + apertura de efectivo
+- **Auto Pedido** (autopedido) — Ticket del kiosko/autoservicio
 
 Cada slot permite:
 - Tipo: `local` (USB) o `network` (IP+puerto)
@@ -235,9 +246,9 @@ En `/companies/{id}/edit`:
 
 En `/roles` se gestionan los roles. Por defecto:
 - **Administrador**: acceso completo
-- **Cajero**: POS, facturación, caja (abrir + cerrar como permisos separados)
+- **Cajero**: POS, facturación, **envío a SUNAT**, caja (abrir + cerrar como permisos separados)
 - **Mozo**: restaurante, cocina
-- **Usuario**: POS, consultas, sin gestión de caja
+- **Usuario**: POS, consultas; **sin comprobantes ni caja**
 
 ---
 
@@ -250,7 +261,8 @@ En `/roles` se gestionan los roles. Por defecto:
 4. Enviar a cocina (modo KDS o impresión)
 5. Precuenta → seleccionar impresora (Precuenta 1/2/3)
 6. Cobrar → se selecciona automáticamente "Clientes Varios", confirma si desea imprimir
-7. Mover pedido a otra mesa si es necesario
+7. **Dividir Cuenta** → reparte items en 2+ comprobantes (cantidades, cliente, método de pago y solo consumo por división)
+8. Mover pedido a otra mesa si es necesario
 
 ### POS
 1. `/pos` — Punto de venta

@@ -66,7 +66,7 @@
 | 1 | `companies` | Empresa (RUC, certificado, IGV) | 1 |
 | 2 | `users` | Usuarios del sistema | 5-10 |
 | 3 | `roles` | Roles (admin, cajero, mozo, user) | 4 |
-| 4 | `permissions` | Permisos del sistema | 50+ |
+| 4 | `permissions` | Permisos del sistema | 46 |
 | 5 | `role_user` | Pivot: rol ↔ usuario | 5-10 |
 | 6 | `role_permission` | Pivot: permiso ↔ rol | 200+ |
 | 7 | `customers` | Clientes | 100-1000 |
@@ -84,7 +84,7 @@
 | 19 | `purchases` | Compras a proveedores | 10-50/mes |
 | 20 | `purchase_items` | Items de compras | 50-200/mes |
 | 21 | `suppliers` | Proveedores | 5-20 |
-| 22 | `printers` | Configuración de impresoras | 7 |
+| 22 | `printers` | Configuración de impresoras | 8 |
 | 23 | `print_jobs` | Cola de impresión | 100-500/día |
 | 24 | `ubigeos` | Catálogo ubigeos SUNAT | 1874 |
 | 25 | `sunat_products` | Catálogo productos SUNAT | ~5000 |
@@ -181,6 +181,7 @@ CREATE TABLE restaurant_order_items (
     cancelled_from VARCHAR(20) NULL,
     cancelled_at TIMESTAMP NULL,
     cancelled_by BIGINT NULL,
+    paid_invoice_id BIGINT NULL,   -- Dividir Cuenta: invoice que pagó el item
     FOREIGN KEY (restaurant_order_id) REFERENCES restaurant_orders(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id),
     FOREIGN KEY (cancelled_by) REFERENCES users(id),
@@ -210,7 +211,6 @@ CREATE TABLE invoices (
     metodo_pago VARCHAR(100) DEFAULT 'EFECTIVO',
     referencia_pago VARCHAR(100) NULL,
     sunat_estado VARCHAR(20) DEFAULT 'PENDIENTE',
-    estado VARCHAR(20) DEFAULT 'ACTIVO',
     order_source VARCHAR(20) NULL,
     created_at TIMESTAMP,
     updated_at TIMESTAMP,
@@ -396,7 +396,7 @@ public function cancelledBy(): BelongsTo  // User
 'restaurant_order_id', 'product_id', 'product_name', 'quantity',
 'unit_price', 'total', 'kitchen_status', 'notes', 'auxiliary_items',
 'kds_destination', 'sent_to_kitchen_at', 'cancelled_from',
-'cancelled_at', 'cancelled_by'
+'cancelled_at', 'cancelled_by', 'paid_invoice_id'
 ```
 
 ### 3.5 InvoiceItem
@@ -435,13 +435,13 @@ protected $casts = [
 
 | Método | Ruta | Método HTTP | Auth |
 |--------|------|-------------|------|
-| `index()` | `/cashregisters` | GET | auth |
-| `open()` | `/cashregister/open` | POST | auth + permission |
-| `close()` | `/cashregister/close` | POST | auth + permission |
-| `show()` | `/cashregisters/{id}` | GET | auth |
-| `pdf()` | `/cashregisters/{id}/pdf` | GET | auth |
-| `ticketPdf()` | `/cashregisters/{id}/ticket` | GET | auth |
-| `printCaja()` | `/cashregisters/{id}/print-caja` | POST | auth |
+| `index()` | `/cashregisters` | GET | auth + permission `view_cashregisters` |
+| `open()` | `/cashregister/open` | POST | auth + permission `open_cashregister` |
+| `close()` | `/cashregister/close` | POST | auth + permission `close_cashregister` |
+| `show()` | `/cashregisters/{id}` | GET | auth + permission `view_cashregisters` |
+| `pdf()` | `/cashregisters/{id}/pdf` | GET | auth + permission `view_cashregisters` |
+| `ticketPdf()` | `/cashregisters/{id}/ticket` | GET | auth + permission `view_cashregisters` |
+| `printCaja()` | `/cashregisters/{id}/print-caja` | POST | auth + permission `view_cashregisters` |
 
 **Lógica de cierre (`close()`):**
 ```
@@ -487,9 +487,10 @@ foreach ($ventas as $venta) {
 | `openTable($id)` | POST `/restaurant/tables/{id}/open` | Abrir mesa (crea orden) |
 | `addItem($id)` | POST `/restaurant/orders/{id}/items` | Agregar producto al pedido |
 | `updateItem($id)` | PUT `/restaurant/orders/items/{id}` | Modificar cantidad/notas |
-| `removeItem($id)` | DELETE `/restaurant/orders/items/{id}` | Eliminar item (CANCELLED) |
+| `removeItem($id)` | DELETE `/restaurant/orders/items/{id}` | Eliminar item (PENDING→delete; SENT/READY/DELIVERED→CANCELLED con password admin) |
 | `sendToKitchen($id)` | POST `/restaurant/orders/{id}/send-to-kitchen` | Enviar a cocina |
 | `chargeOrder($id)` | POST `/restaurant/orders/{id}/charge` | Cobrar pedido |
+| `splitChargeOrder($id)` | POST `/restaurant/orders/{id}/split-charge` | Dividir cuenta en 2+ comprobantes |
 | `cancelOrder($id)` | POST `/restaurant/orders/{id}/cancel` | Anular pedido completo |
 | `getActiveOrders()` | GET `/restaurant/active-orders` | Polling |
 | `getTableLocks()` | GET `/restaurant/locks` | Polling bloqueos |
@@ -549,7 +550,7 @@ foreach ($ventas as $venta) {
 | `sendDebitNote($invoice, ...)` | Nota de débito (08) | BillSender / Summary |
 | `voidInvoice($invoice)` | Baja de factura | Voided |
 | `setupSee($company)` | Configura certificado | PEM-first |
-| `buildInvoice($invoice)` | Construye XML Greenter | - |
+| `buildInvoice($invoice, $company)` | Construye XML Greenter (helper privado) | - |
 | `generatePdf($invoice)` | PDF A4 | mPDF |
 | `getClientData($invoice)` | Datos del cliente | - |
 
@@ -585,7 +586,7 @@ Baja Boleta  → voidBoleta() → Summary estado=3
 | `printPrebill($order, $key)` | Precuenta |
 | `printCancelNotification($order, $item)` | Anulación individual |
 | `printCancelNotificationGrouped($order, $items)` | Anulación agrupada |
-| `printInvoice($invoice)` | Factura |
+| `printInvoice($invoice)` | No-op (invoiceTicket es stub; comprobante por PDF Greenter) |
 | `printAutoPedidoTicket($order)` | Ticket kiosko |
 | `processQueue()` | Procesa cola de impresión |
 | `queuePrint($printer, $data, ...)` | Encola trabajo |
@@ -609,7 +610,8 @@ Genera tickets en texto plano con formato ESC/POS.
 | `kitchenTicket($order, $format, $dest)` | cocina-1/2, bar-1 | Header + items |
 | `prebillTicket($order, $format)` | precuenta | Items + total + IGV |
 | `cancelNotification($order, $item, ...)` | cocina/bar | Item cancelado |
-| `cancelNotificationGrouped($order, ...)` | cocina/bar | Items cancelados agrupados |
+| `cancelNotificationGrouped($order, ...)` | cocina/bar | Items cancelados agrupados (incluye "Anulado por") |
+| `invoiceTicket($invoice, $format)` | caja | Stub (no-op); comprobante por PDF Greenter |
 | `cashRegisterSummary($cash, $data, ...)` | caja | Cierre completo |
 
 **Encoding:** CP850 con tabla de mapeo manual para caracteres especiales (ñ, tildes).
@@ -764,6 +766,8 @@ headers: {
 | `print:process-queue` | Procesa cola de impresión | Cada 1 min (scheduler) |
 | `sunat:send-daily-summary` | Agrupa boletas en resumen diario | Manual / scheduler |
 | `sunat:check-summaries` | Consulta estado de tickets | Manual / scheduler |
+| `sunat:retry-pending` | Reintenta comprobantes PENDIENTE/RECHAZADO | Manual |
+| `sunat:download-padron` | Descarga y extrae el padrón SUNAT (elimina el ZIP) | Semanal (domingo 02:00) |
 
 ### 9.2 Limpieza de Caché
 
@@ -792,7 +796,7 @@ php artisan migrate:status     # Ver estado
 
 | Componente | Requisito |
 |-----------|-----------|
-| PHP | 8.2+ con extensiones: bcmath, gd, mbstring, openssl, pdo_mysql, xml, zip |
+| PHP | 8.2+ con extensiones: bcmath, gd, mbstring, openssl, pdo_mysql, xml, zip, soap, intl |
 | MySQL | 8.0+ o MariaDB 10.4+ |
 | Node.js | 18+ (solo para print server) |
 | Composer | 2.x |
@@ -831,3 +835,4 @@ CreateObject("WScript.Shell").Run "node print-server-node/server.js", 0
 |---------|-------|-----------------|
 | 1.0 | Junio 2026 | Laravel 13.x base, Greenter 5.x, print server Node.js |
 | 2.0 | Julio 2026 | is_composite + product_components, precio_compra, detalle_consumo (JSON), POS multi-tab localStorage, fix método pago Yape/Plin, ticket caja completo, fix command injection, fix $dest en kitchenTicket |
+| 2.1 | Agosto 2026 | Dividir Cuenta (paid_invoice_id + split-charge), permisos SUNAT (send_sunat a cajero; user sin comprobantes/caja), rutas de caja por permiso, apertura de cajón en POS (manual + automática en efectivo), IGV dinámico en precuenta, Greenter v5.3.0 |

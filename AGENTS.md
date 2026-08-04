@@ -13,23 +13,32 @@
 - `php artisan print:process-queue` — process pending print jobs (runs every min via scheduler)
 - `php artisan sunat:send-daily-summary` — batch boletas into daily summary
 - `php artisan sunat:check-summaries` — check pending summary tickets
+- `php artisan sunat:retry-pending` — retry PENDIENTE/RECHAZADO invoices (boletas→summary, facturas→sendInvoice)
+- `php artisan sunat:download-padron` — download+extract SUNAT padrón (deletes the ZIP after extracting; scheduled weekly Sunday 02:00 in Kernel.php)
 - `php artisan cache:clear && php artisan view:clear && php artisan route:clear` — full cache flush (do this after any route/view change)
 - `php -l path/to/file.php` — PHP syntax check (no linter configured)
 - `php artisan tinker --execute="..."` — inline tinker (avoid heredoc in PowerShell)
 - Tests: `php artisan test` (uses SQLite :memory:, no DB needed)
 
 ## Architecture notes
-- **Routes**: `web.php` ~210 lines. Public routes (no auth) at top, then `auth` group, then `admin` sub-group. Restaurant routes are in the `auth` group.
+- **Routes**: `web.php` ~222 lines. Public routes (no auth) at top, then `auth` group, then `admin` sub-group. Restaurant routes are in the `auth` group. Las rutas de caja están en `auth` (con `authorize` por permiso), no en el grupo admin.
 - **Kiosko**: Mesa virtual en `restaurant_tables` con `is_for_kiosko=true`. No aparece en floor plan ni gestión. Usa `scopeExcludeKiosko()`.
   - Flujo de 2 pasos: "Enviar a Cocina" → `SENT_TO_KITCHEN`, luego "Cobrar" → `COMPLETED`
   - Numeración `A-001` ligada a caja abierta actual (resetea al cerrar/abrir caja)
   - `confirmOrder()` valida que haya caja abierta antes de crear pedido
   - Botón "Eliminar" disponible; pide admin password si ya fue enviado a cocina
 - **SUNAT**: Boletas (03), NC/ND de boletas, and boleta voids go via **Resumen Diario** (SummaryService). Facturas (01) and their NC/ND go via **BillSender** (GreenterService). NV never sent to SUNAT.
+- **Permisos (roles)**: `cajero` tiene `view_invoices`, `create_invoices`, `send_sunat` (envía a SUNAT) y `view/open/close_cashregister` (abre y cierra caja). El rol `user` NO tiene `view_invoices` ni `view_cashregisters` (no ve Comprobantes ni Caja). `superadmin` es un valor reservado en la lógica (`isSuperAdmin()`, `hasPermission`, `IsAdmin`), NO un rol de la BD; el acceso total efectivo es vía `admin`.
+- **Rutas por permiso (no middleware admin)**: las rutas de comprobantes (`/invoices*`, `/sunat-summaries*`, `/documents/{tipo}`) y de caja (`/cashregisters*`, `/cashregister/open|close`) se protegen con `$this->authorize('permission', 'send_sunat'|'view_invoices'|'create_invoices'|'view_cashregisters'|'open_cashregister'|'close_cashregister')`. El middleware `admin` (IsAdmin) se usa para productos/usuarios/series/empresas/etc.
+- **Dividir Cuenta**: modal en el pedido (no-mozo). Reparte items por cantidad en 2+ comprobantes (NV/Boleta/Factura), cada división con su cliente ("Clientes Varios" DNI 88888888 por defecto), tipo doc, método de pago y solo consumo. Marca items pagados con `paid_invoice_id`; el remanente se cobra con "Cobrar"; si no quedan items sin pagar → orden COMPLETED + mesa AVAILABLE.
 - **PEM-first certificate**: All Greenter services (`setupSee()`) search for `.pem` file first (OpenSSL 3.0 compatible). Falls back to PKCS12. PEM extracted at upload via OpenSSL 1.1.1 CLI (Git Bash).
 - **SOAP username**: Must be only the user part (e.g. `FACTURA1`) without RUC prefix. Greenter concatenates RUC+user automatically (`$ruc.$user`).
 - **Series numbering**: Always use `Serie::getNextNumber()`, never query last invoice+1.
 - **Clientes Varios**: Fallback DNI 88888888, name "CLIENTES VARIOS" when no customer selected.
+- **Búsqueda de productos**: en el Restaurante es SOLO por descripción/nombre (no por código); la búsqueda por `codigo`/`codigo_barras` existe solo en el POS.
+- **POS → caja**: `PosController::store()` actualiza la caja en vivo (`cantidad_ventas`, `total_ventas`, campo del método de pago). La apertura automática del cajón ocurre en pagos EFECTIVO (server-side `GET http://localhost:9100/open-drawer`); también hay botón manual "Caja" en POS y Restaurante.
+- **Precuenta IGV**: `PlainTextTicket::prebillTicket()` usa `Company::getActiveIgvPercent()` (dinámico: 18% general / 10.5% restaurante), NO un valor fijo.
+- **removeItem()**: item PENDING (no enviado a cocina) se borra físicamente; SENT/READY/DELIVERED se marca CANCELLED con `cancelled_from/at/by` y requiere password admin.
 - **Polling**: `pollActiveOrders` + `pollTableLocks` every 10s, `pollPrintServer` every 10s, `loadKitchenOrders` every 5s. Silent `.catch()` for polling, `showError()` for user actions.
 - **8 printer slots**: cocina-1, cocina-2, bar-1, precuenta, precuenta2, precuenta3, caja, autopedido.
 
@@ -40,13 +49,19 @@
 - Table locks expire after 5 minutes. `unlockAllTables` endpoint available for admins.
 - KDS has separate sections: "MOZO — Pedidos de Mesas" vs "KIOSKO — Autoservicio". Determined by `order_type` field.
 - The `PENDING_PAYMENT` status for kiosko orders is in the `status` ENUM of `restaurant_orders` (added via migration, not in original ENUM).
-- `DOCUMENTACION_SISTEMA.md` contains detailed docs (~2400 lines). Read it for SUNAT error codes, module docs, and troubleshooting.
 - **Elementos Auxiliares**: New module with CRUD at Restaurante → Elementos Auxiliares. Chips appear in product modal (POS + autopedido). Stored as JSON array in `restaurant_order_items.auxiliary_items`. Displayed in KDS and kitchen tickets.
 - **Autopedido modal**: Product selection opens a modal with quantity (+/−), kitchen notes (with virtual keyboard), and auxiliary items chips. Cart stores notes + aux items per product.
 - **Virtual keyboard**: Used for search input AND modal notes textarea. Driven by `activeInput` variable — `openKeyboard(input)` sets it, `pressKey`/`pressBackspace` write to `activeInput.value` using `selectionStart/End`.
 - **Emojis in thermal tickets**: Do NOT use emojis (🧾, ✅, etc.) in ESC/POS tickets. Printers use CP850 encoding which garbles UTF-8 emojis. Use plain text alternatives.
 - **Print autopedido ticket**: `PrintService::printAutoPedidoTicket()` was missing `$this->processQueue()` — always verify that print methods call `processQueue()` after `queuePrint()`.
 - **PlainTextTicket::kitchenTicket**: Had a broken `$dests` filter that skipped ALL items (`$dests = ['cocina'=>'', ...]` where `$dest !== ''` was always true). Removed since `printKitchenOrder` already groups by destination.
+- **PrintService::printInvoice()**: `invoiceTicket()` is a stub (returns `''`); `printInvoice()` does NOT queue empty data (`if ($data === '') return;`). El comprobante se imprime por PDF de Greenter (`/pos/print/{id}/{format}`).
+- **buildInvoice()**: private helper con firma `($invoice, $company)` — no es parte de la API pública.
+- **cancelNotificationGrouped()**: imprime "Anulado por" (usa `cancelledBy` del primer item del grupo). Firma: `($order, $format='text', $dest='cocina')`.
+- **Extensions**: composer.json requiere `ext-openssl`, `ext-xml`, `ext-zip`, `ext-soap`, `ext-intl` (soap = SUNAT SOAP; intl = NumberFormatter del total en letras).
+- **Kernel.php**: `print:process-queue` agendado UNA vez (`everyMinute()`). `schedule:run` se invoca vía `scheduler.vbs` o una tarea de Windows creada fuera del repo.
+- **`sunat:download-padron`**: elimina el ZIP tras extraer (el `.txt` del padrón se conserva).
+- `DOCUMENTACION_SISTEMA.md` contains detailed docs (~3860 lines). Read it for SUNAT error codes, module docs, and troubleshooting. La auditoría doc↔código está en `INFORME_DISCREPANCIAS.md` (42 ítems, todos los accionables resueltos).
 
 ## Testing
 - `php artisan test` — Unit + Feature (SQLite in-memory)

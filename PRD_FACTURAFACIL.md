@@ -27,7 +27,7 @@ FacturaFácil es un sistema integral para restaurantes peruanos que unifica:
 | Rol | Permisos Clave | Uso Principal |
 |-----|---------------|---------------|
 | **Admin** | Todo | Configuración, productos, usuarios, reportes |
-| **Cajero** | POS, facturación, caja (abrir + cerrar), cobros | Caja, cobros, cierre de caja |
+| **Cajero** | POS, facturación, envío a SUNAT, caja (abrir + cerrar), cobros | Caja, cobros, cierre de caja |
 | **Mozo** | Restaurante, cocina (sin cobrar ni anular) | Tomar pedidos, enviar a cocina |
 | **Cliente** | Solo kiosko de autopedidos | Hacer pedidos sin intervención |
 
@@ -50,9 +50,10 @@ FacturaFácil es un sistema integral para restaurantes peruanos que unifica:
 | POS-07 | Cálculo automático de IGV según tipo de empresa | P0 | ✅ |
 | POS-08 | Impresión de comprobante (A4 y 80mm) | P0 | ✅ |
 | POS-09 | Envío a SUNAT desde el modal de éxito | P1 | ✅ |
-| POS-10 | Apertura de cajón de efectivo | P1 | ✅ |
+| POS-10 | Apertura de cajón de efectivo (botón manual) | P1 | ✅ |
 | POS-11 | Persistencia de tabs al cerrar navegador | P1 | ✅ |
 | POS-12 | Venta de productos compuestos con descuento de stock | P2 | ✅ |
+| POS-13 | Apertura automática del cajón al cobrar en efectivo | P1 | ✅ |
 
 ### 3.2 Restaurante
 
@@ -76,6 +77,7 @@ FacturaFácil es un sistema integral para restaurantes peruanos que unifica:
 | RES-14 | Polling de bloqueos de mesas cada 10s | P1 | ✅ |
 | RES-15 | Cierre de pedido (COMPLETED) desde KDS | P2 | ✅ |
 | RES-16 | Venta de productos compuestos con descuento de stock de componentes | P2 | ✅ |
+| RES-17 | **Dividir Cuenta**: repartir el pedido en 2+ comprobantes (NV/Boleta/Factura) por cantidades, con cliente, método de pago y solo consumo por división; items pagados se marcan "Pagado" y desaparecen del KDS | P1 | ✅ |
 
 ### 3.3 Cocina (KDS)
 
@@ -205,7 +207,7 @@ FacturaFácil es un sistema integral para restaurantes peruanos que unifica:
 
 | ID | Requisito | Prioridad | Estado |
 |----|-----------|-----------|--------|
-| IMP-01 | 7 slots de impresora: cocina-1, cocina-2, bar-1, precuenta, precuenta2, precuenta3, caja | P0 | ✅ |
+| IMP-01 | 8 slots de impresora: cocina-1, cocina-2, bar-1, precuenta, precuenta2, precuenta3, caja, autopedido | P0 | ✅ |
 | IMP-02 | Impresión de comandas agrupadas por destino (cocina, cocina2, bar) | P0 | ✅ |
 | IMP-03 | Header de comanda muestra destino correcto (BAR, COCINA, COCINA 2) | P0 | ✅ |
 | IMP-04 | Notificación de anulación de items en cocina | P1 | ✅ |
@@ -238,8 +240,9 @@ FacturaFácil es un sistema integral para restaurantes peruanos que unifica:
 | **ORD-01** | Número de pedido restaurante: `P-YYYYMMDD-NNNN` (secuencial diario) |
 | **ORD-02** | Número de pedido kiosko: `A-NNN` (secuencial por caja abierta) |
 | **ORD-03** | Pedido kiosko requiere caja abierta para crearse |
-| **ORD-04** | Eliminar item SENT/READY/DELIVERED requiere contraseña admin |
+| **ORD-04** | Eliminar item PENDING → borrado físico; SENT/READY/DELIVERED → CANCELLED con password admin |
 | **ORD-05** | Pedido con solo items CANCELLED se marca como CANCELADO automáticamente |
+| **ORD-06** | Dividir cuenta: no exceder cantidades disponibles; items pagados se marcan `paid_invoice_id`; remanente queda pendiente para "Cobrar"; si no quedan items sin pagar → COMPLETED + mesa AVAILABLE |
 
 ### Caja
 | Regla | Descripción |
@@ -308,6 +311,18 @@ FacturaFácil es un sistema integral para restaurantes peruanos que unifica:
 5. Cierra caja → muestra resumen → opción PDF/Ticket/Imprimir
 ```
 
+### 5.5 Flujo de Dividir Cuenta
+```
+1. No-mozo abre "Dividir" en un pedido enviado a cocina
+2. Asigna cantidades por item a 2+ divisiones (cliente, tipo doc, método pago, solo consumo por división)
+3. Cliente por defecto: "Clientes Varios" (DNI 88888888); permite crear cliente nuevo por división
+4. Valida: no exceder la cantidad disponible por item
+5. Confirmar → POST /restaurant/orders/{id}/split-charge
+6. Por división: crea Invoice (NV/Boleta/Factura) + marca items pagados (paid_invoice_id)
+7. Si no quedan items sin pagar → pedido COMPLETED + mesa AVAILABLE
+8. Si quedan → remanente se cobra con el botón "Cobrar"
+```
+
 ---
 
 ## 6. Modelo de Datos (Alto Nivel)
@@ -341,7 +356,7 @@ companies (1)
 | `companies` | ruc, razon_social, soap_username, soap_password, tax_type, igv_percent |
 | `products` | codigo, descripcion, precio, precio_compra, stock, is_composite, kds_destination |
 | `restaurant_orders` | order_number, status, order_type (mozo/kiosko), table_id |
-| `restaurant_order_items` | product_name, quantity, kitchen_status, cancelled_from/at/by |
+| `restaurant_order_items` | product_name, quantity, kitchen_status, cancelled_from/at/by, paid_invoice_id |
 | `invoices` | tipo_documento, full_number, metodo_pago, sunat_estado |
 | `invoice_items` | descripcion, cantidad, detalle_consumo (JSON) |
 | `cashregisters` | estado, monto_apertura/cierre, ventas_efectivo/tarjeta/yape/plin |
@@ -405,3 +420,4 @@ companies (1)
 |---------|-------|---------|
 | 1.0 | Junio 2026 | Versión inicial: POS, Restaurante, KDS, Kiosko, Caja |
 | 2.0 | Julio 2026 | Productos compuestos, precio_compra, reporte inventario, POS multi-venta, fix método de pago Yape/Plin, ticket caja completo |
+| 2.1 | Agosto 2026 | **Dividir Cuenta** (paid_invoice_id + split-charge), permisos SUNAT (cajero con envío), apertura de cajón en POS (manual + automática en efectivo), IGV dinámico en precuenta, 8º slot de impresora (autopedido) |
