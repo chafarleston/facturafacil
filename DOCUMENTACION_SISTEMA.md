@@ -2458,7 +2458,7 @@ Paquetes actualizados:
 - greenter/xml: v5.2.0 → v5.3.0
 
 Cambios reales (solo en core + xml):
-- Agregado campo "fecha de entrega de bienes" (fechaEntrega) al modelo
+- Agregado campo "fecha de entrega de bienes" (fecEntregaBienes) al modelo
   Shipment de guía de remisión.
 - Template XML despatch2022.xml.twig actualizado con 5 líneas nuevas.
 - No hay cambios en APIs existentes. Actualización segura.
