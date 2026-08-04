@@ -1940,6 +1940,7 @@ function addSplit() {
             'onchange="updateSplitAllocation(' + splitId + ', ' + item.id + ', this.value)" ' +
             'style="width:70px;" class="form-control form-control-sm split-qty">' +
             '<span style="flex:1; font-size:13px;">' + item.product_name + '</span>' +
+            '<span style="font-size:11px; color:#6f42c1; width:80px; text-align:right;">S/ ' + parseFloat(item.unit_price || 0).toFixed(2) + '</span>' +
             '<span style="font-size:11px; color:#999;">disp: ' + avail + '</span>' +
             '<span style="font-size:11px; color:#28a745; width:70px; text-align:right;" class="split-item-total">S/ 0.00</span>' +
         '</div>';
@@ -2035,6 +2036,15 @@ function updateSplitAllocation(index, itemId, value) {
         const id = parseInt(row.dataset.itemId);
         const qty = parseFloat(row.querySelector('.split-qty').value) || 0;
         if (qty > 0) split.items.push({item_id: id, quantity: qty});
+    });
+    
+    // 2b) Actualizar el total por línea de cada fila (qty × precio unitario)
+    block.querySelectorAll('.split-item-row').forEach(function(row) {
+        const id = parseInt(row.dataset.itemId);
+        const qty = parseFloat(row.querySelector('.split-qty').value) || 0;
+        const orig = splitItemPool.find(function(p) { return p.id === id; });
+        const rowTotal = orig ? qty * (parseFloat(orig.unit_price) || 0) : 0;
+        row.querySelector('.split-item-total').textContent = 'S/ ' + rowTotal.toFixed(2);
     });
     
     // 3) Leer tipo doc y solo consumo
