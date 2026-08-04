@@ -11,7 +11,7 @@
 | 🔴 ALTA | 1 | ✅ **Resuelto** (ítem #1) |
 | 🟠 MEDIA | 20 | 20 resueltos (#2–#21) · 0 pendientes |
 | 🟡 BAJA | 12 | 11 resueltos (#22–#32) · 1 pendiente |
-| 🔵 INFO / NO VERIFICABLE | 10 | Informativo |
+| 🔵 INFO / NO VERIFICABLE | 10 | 1 documentado (#33) · 9 pendientes |
 
 **Capítulos 100% COINCIDE:** 9, 10, 12, 16, 18, 22, 23, 24, 25, 27 (y 15 parcialmente).
 
@@ -76,7 +76,7 @@
 
 | # | Cap. | Ítem |
 |---|------|------|
-| 33 | 1 | Versión de MySQL/MariaDB no pinneada en el repo (afirmación de entorno) |
+| 33 | 1 | Versión de MySQL/MariaDB no pinneada en el repo (afirmación de entorno) | Aclarado en §1: el repo no pinnea la versión; el entorno del cliente usa MySQL 8.0.30 (ruta mysqldump en `BackupController.php:67`). **Documentado** | — | ✅ DOCUMENTADO |
 | 34 | 4 | Texto exacto del `showConfirm` de cobro es dinámico (estructura coincide; difiere el texto literal) |
 | 35 | 5.6 | Retención/Guía/Percepción: doc sugiere serie fija R001/T001/P001; real usa `$doc->serie` desde BD |
 | 36 | 6 | Mecanismo "Windows Task Scheduler" no está en el repo (el intervalo de 1 min sí coincide) |
@@ -163,6 +163,7 @@ Nota #12: en `cancelOrder()` la impresión agrupada ocurre ANTES de marcar los i
 | 2026-08-02 | #30 | `DOCUMENTACION_SISTEMA.md` §20.4 | Actualizada la lista de dependencias Greenter: core/ws/xml/lite = 5.3.0 (xmldsig 5.0.3, report/htmltopdf 5.2.0, + gre-api 1.0.2). Verificado contra composer.lock. Solo documentación. |
 | 2026-08-02 | #31 | `composer.json` | Opción A: añadidas `"ext-soap": "*"` y `"ext-intl": "*"` al `require` (ambas se usan: SOAP en SUNAT, intl en NumberFormatter del total en letras; verificadas cargadas con `php -m`). Lock sincronizado con `composer update --lock`. El doc §20.4 quedó correcto sin cambios. Sintaxis JSON OK, tests OK. |
 | 2026-08-02 | #32 | `DOCUMENTACION_SISTEMA.md` §20.16 | Corregido el nombre del campo del vendor: `fechaEntrega` → **`fecEntregaBienes`** (propiedad + getter/setter reales de Shipment). Solo documentación. |
+| 2026-08-02 | #33 | `DOCUMENTACION_SISTEMA.md` §1 | Añadida nota: la versión de BD no está pinneada en el repo; el entorno del cliente usa MySQL 8.0.30 (ruta mysqldump en `BackupController.php:67`); código compatible con MySQL 8 / MariaDB 10.4. Ítem INFO documentado. |
 
 ---
 

@@ -49,6 +49,8 @@
 | PDF | mpdf, Greenter HtmlToPdf |
 | Build Tools | Vite + Tailwind CSS |
 
+> **Nota:** la versión de BD no está pinneada en el repo (composer.json/.env no la fuerzan). El entorno del cliente usa **MySQL 8.0.30** (Laragon, ver ruta de mysqldump en `BackupController.php`). El código usa sintaxis compatible con MySQL 8 / MariaDB 10.4.
+
 ---
 
 ## 2. Base de Datos
