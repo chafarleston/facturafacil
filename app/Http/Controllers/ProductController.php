@@ -563,9 +563,6 @@ class ProductController extends Controller
             $errors = [];
 
             $precioVal = $colMap['precio'] !== null ? floatval(str_replace(',', '.', preg_replace('/[^0-9.,]/', '', $precioStr))) : 0;
-            if (empty($precioStr) || $precioVal <= 0) {
-                $errors[] = 'Precio requerido o inválido';
-            }
 
             $precioCompraVal = $colMap['precio_compra'] !== null ? floatval(str_replace(',', '.', preg_replace('/[^0-9.,]/', '', $precioCompraStr))) : 0;
             $stockVal = $colMap['stock'] !== null ? intval(preg_replace('/[^0-9]/', '', $stockStr)) : 0;
