@@ -39,8 +39,8 @@
                         <td>{{ $r['row'] }}</td>
                         <td>{{ $r['codigo'] }}</td>
                         <td>{{ \Illuminate\Support\Str::limit($r['descripcion'], 40) }}</td>
-                        <td>{{ $r['precio'] > 0 ? 'S/ ' . number_format($r['precio'], 2) : '-' }}</td>
-                        <td>{{ $r['precio_compra'] > 0 ? 'S/ ' . number_format($r['precio_compra'], 2) : '-' }}</td>
+                        <td>S/ {{ number_format($r['precio'], 2) }}</td>
+                        <td>S/ {{ number_format($r['precio_compra'], 2) }}</td>
                         <td>{{ $r['stock'] }}</td>
                         <td>{{ $r['tipo_afectacion'] }}</td>
                         <td>{{ $r['umedida'] }}</td>
