@@ -57,7 +57,7 @@
                         @if($stats['crecimiento'] != 0)
                             <span class="growth-badge ml-2 {{ $stats['crecimiento'] >= 0 ? 'growth-up' : 'growth-down' }}">
                                 <i class="fas fa-arrow-{{ $stats['crecimiento'] >= 0 ? 'up' : 'down' }}"></i>
-                                {{ abs(number_format($stats['crecimiento'], 1)) }}%
+                                {{ number_format(abs($stats['crecimiento']), 1) }}%
                             </span>
                         @endif
                     </div>
