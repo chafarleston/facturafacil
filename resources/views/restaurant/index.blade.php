@@ -477,6 +477,23 @@
     </div>
 </div>
 
+{{-- Modal Caja no aperturada --}}
+@if(!$cajaAbierta)
+<div id="noCashRegisterOverlay" style="display:flex; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); z-index:10030; align-items:center; justify-content:center;">
+    <div style="background:white; padding:25px; border-radius:10px; min-width:380px; max-width:90%; text-align:center;">
+        <div style="font-size:44px; margin-bottom:10px;"><i class="fas fa-cash-register" style="color:#e94560;"></i></div>
+        <h5 style="margin:0 0 10px 0;">Caja no aperturada</h5>
+        <p style="color:#666; margin-bottom:20px;">Para operar el restaurante es necesario tener una caja abierta.<br>Solicite al <b>Administrador</b> o al <b>Cajero</b> que la aperturen.</p>
+        <div style="display:flex; gap:10px; justify-content:center;">
+            @if(auth()->user()->hasPermission('view_cashregisters') || auth()->user()->hasPermission('open_cashregister'))
+            <a href="{{ route('cashregisters.index') }}" class="btn btn-primary">Ir a Caja</a>
+            @endif
+            <button type="button" class="btn btn-secondary" onclick="window.location.reload()">Reintentar</button>
+        </div>
+    </div>
+</div>
+@endif
+
 {{-- Modal Toast --}}
 <div id="toastAlert" style="display:none; position:fixed; top:20px; right:20px; z-index:99999; background:#28a745; color:white; padding:15px 25px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.2); font-weight:bold; font-size:14px;">
     <i class="fas fa-check-circle mr-2"></i> <span id="toastMessage">Operación exitosa</span>

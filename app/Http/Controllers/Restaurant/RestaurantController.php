@@ -36,11 +36,6 @@ class RestaurantController extends Controller
             ->where('estado', 'ABIERTA')
             ->first();
 
-        if (!$cajaAbierta) {
-            return redirect()->route('cashregisters.index')
-                ->with('error', 'No se puede acceder al restaurante sin tener una caja abierta');
-        }
-
         $floors = Floor::where('company_id', $companyId)
             ->active()
             ->ordered()
@@ -82,7 +77,7 @@ class RestaurantController extends Controller
         $printServerRunning = $printServer->isServerRunning();
         $igvPercent = $company ? $company->getActiveIgvPercent() : 18;
 
-        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId', 'orderMode', 'printServerRunning', 'igvPercent'));
+        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId', 'orderMode', 'printServerRunning', 'igvPercent', 'cajaAbierta'));
     }
 
     public function modeIndex()
