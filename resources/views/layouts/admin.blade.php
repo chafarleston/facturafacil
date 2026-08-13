@@ -196,6 +196,31 @@
               </a>
             </li>
             @endcan
+
+            @can('permission', 'view_attendance')
+            <li class="nav-item">
+              <a href="#" class="nav-link {{ request()->routeIs('personal.*') || request()->routeIs('schedules.*') || request()->routeIs('attendance*') ? 'active' : '' }}">
+                <i class="nav-icon fas fa-id-card"></i>
+                <p>Asistencia<i class="fas fa-angle-left right"></i></p>
+              </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item"><a href="{{ url('/marcar') }}" class="nav-link" target="_blank"><i class="far fa-circle nav-icon"></i><p>Marcador (DNI)</p></a></li>
+                @can('permission', 'view_personal')
+                <li class="nav-item"><a href="{{ route('personal.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Personal</p></a></li>
+                @endcan
+                @can('permission', 'view_schedules')
+                <li class="nav-item"><a href="{{ route('schedules.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Horarios</p></a></li>
+                @endcan
+                @can('permission', 'view_attendance_rules')
+                <li class="nav-item"><a href="{{ route('attendance-rules.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Reglas de Tardanza</p></a></li>
+                @endcan
+                <li class="nav-item"><a href="{{ route('attendance.logs') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Marcaciones</p></a></li>
+                @can('permission', 'view_attendance_reports')
+                <li class="nav-item"><a href="{{ route('attendance.reports') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Reportes</p></a></li>
+                @endcan
+              </ul>
+            </li>
+            @endcan
             
             @can('permission', 'view_pos')
             <li class="nav-item">

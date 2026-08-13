@@ -91,6 +91,12 @@
 | 26 | `sunat_summaries` | Resúmenes diarios enviados | 1-2/día |
 | 27 | `auxiliary_items` | Elementos auxiliares | 0-50 |
 | 28 | `special_documents` | Docs especiales (guía, retención) | 0-10/mes |
+| 29 | `personal` | Trabajadores (DNI, sueldo, horario, foto, face_descriptor, suspendido) | 5-100 |
+| 30 | `schedules` | Horarios (corrido/dividido, tolerancias, días laborables) | 1-10 |
+| 31 | `attendances` | Asistencia diaria por trabajador (estado, tardanza, descuento) | N/día |
+| 32 | `attendance_logs` | Marcaciones crudas (fecha, hora, evento, foto, verificado) | N/día |
+| 33 | `attendance_settings` | Reglas de tardanza/faltas + modo de marcación + exito_segundos | 1 |
+| 34 | `attendance_discount_rules` | Descuentos por tramos de tardanza (10-60 min) | 11 |
 
 ### 2.2 Estructura Detallada de Tablas Clave
 

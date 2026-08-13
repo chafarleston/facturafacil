@@ -216,6 +216,25 @@ FacturaFácil es un sistema integral para restaurantes peruanos que unifica:
 | IMP-07 | Print Server Node.js con reintentos automáticos | P0 | ✅ |
 | IMP-08 | Apertura de cajón de efectivo vía ESC/POS | P1 | ✅ |
 
+### 3.12 Asistencia / Control de Personal
+
+**Propósito:** Control de entrada/salida del personal mediante marcación por DNI, con opción de verificación facial por webcam.
+
+| ID | Requisito | Prioridad | Estado |
+|----|-----------|-----------|--------|
+| ASI-01 | Marcador kiosco (`/marcar`) con pantalla de inicio y botón grande | P0 | ✅ |
+| ASI-02 | Registro por DNI (modo `dni`) | P0 | ✅ |
+| ASI-03 | Registro por webcam identificando el rostro (modo `webcam`) | P0 | ✅ |
+| ASI-04 | Registro con DNI + verificación facial (modo `dni_webcam`) | P0 | ✅ |
+| ASI-05 | Horarios corrido y dividido (2 entradas) con tolerancias | P0 | ✅ |
+| ASI-06 | Reglas de tardanza con descuentos por tramos (10-60 min), fijo o % del sueldo | P0 | ✅ |
+| ASI-07 | Falta por tardanza (umbral) y falta grave con suspensión por N graves consecutivas | P0 | ✅ |
+| ASI-08 | Verificación facial con `face-api.js` y registro de foto por marcación | P0 | ✅ |
+| ASI-09 | Reportes diario/semanal/mensual por trabajador (faltas, tardanzas, descuentos) | P0 | ✅ |
+| ASI-10 | Exportar reportes a PDF y Excel | P1 | ✅ |
+| ASI-11 | Historial de marcaciones con foto y estado de verificación | P0 | ✅ |
+| ASI-12 | Tiempo de éxito configurable y temporizador de inactividad en el marcador | P1 | ✅ |
+
 ---
 
 ## 4. Reglas de Negocio

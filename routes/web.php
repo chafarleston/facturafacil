@@ -20,6 +20,11 @@ use App\Http\Controllers\ThemeController;
 use App\Http\Controllers\UbigeoController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\PosController;
+use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\AttendanceRuleController;
+use App\Http\Controllers\AttendanceReportController;
 use App\Http\Controllers\Restaurant\RestaurantController;
 use App\Http\Controllers\Restaurant\FloorController;
 use App\Http\Controllers\Restaurant\TableController;
@@ -42,6 +47,10 @@ Route::get('/auxiliary-items/list', [\App\Http\Controllers\AuxiliaryItemControll
 Route::get('/autopedido', [\App\Http\Controllers\AutoPedidoController::class, 'index'])->name('autopedido.index');
 Route::post('/autopedido/confirm', [\App\Http\Controllers\AutoPedidoController::class, 'confirmOrder'])->name('autopedido.confirm');
 Route::get('/autopedido/success/{orderId}', [\App\Http\Controllers\AutoPedidoController::class, 'success'])->name('autopedido.success');
+
+// Marcador de asistencia (kiosco, sin login)
+Route::get('/marcar', [AttendanceController::class, 'markView'])->name('attendance.markView');
+Route::post('/marcar', [AttendanceController::class, 'mark'])->name('attendance.mark');
 
 Route::get('/test-json', function() {
     return response()->json(['test' => 'ok', 'time' => now()]);
@@ -109,6 +118,18 @@ Route::middleware('auth')->group(function () {
         Route::post('/printers/queue/{printJob}/retry', [\App\Http\Controllers\Admin\PrinterController::class, 'retry'])->name('printers.queue.retry');
         Route::delete('/printers/queue/{printJob}', [\App\Http\Controllers\Admin\PrinterController::class, 'destroy'])->name('printers.queue.destroy');
         Route::put('/printers/{printer}', [\App\Http\Controllers\Admin\PrinterController::class, 'update'])->name('printers.update');
+
+        // Asistencia / Control de personal
+        Route::resource('personal', EmployeeController::class)->except(['show'])->parameters(['personal' => 'personal']);
+        Route::post('/personal/{personal}/toggle-suspension', [EmployeeController::class, 'toggleSuspension'])->name('personal.toggleSuspension');
+        Route::resource('schedules', ScheduleController::class)->except(['show'])->parameters(['schedules' => 'schedule']);
+        Route::get('/attendance-rules', [AttendanceRuleController::class, 'index'])->name('attendance-rules.index');
+        Route::post('/attendance-rules', [AttendanceRuleController::class, 'update'])->name('attendance-rules.update');
+        Route::get('/attendance/logs', [AttendanceController::class, 'logs'])->name('attendance.logs');
+        Route::delete('/attendance/logs/{attendanceLog}', [AttendanceController::class, 'destroyLog'])->name('attendance.logs.destroy');
+        Route::get('/attendance/reports', [AttendanceReportController::class, 'index'])->name('attendance.reports');
+        Route::get('/attendance/reports/pdf', [AttendanceReportController::class, 'exportPdf'])->name('attendance.reports.pdf');
+        Route::get('/attendance/reports/excel', [AttendanceReportController::class, 'exportExcel'])->name('attendance.reports.excel');
     });
 
     // Caja: accesible por permisos (view_cashregisters / open_cashregister / close_cashregister)

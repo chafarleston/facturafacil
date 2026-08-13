@@ -3851,6 +3851,57 @@ Análisis exhaustivo del flujo de división + cliente. Correcciones aplicadas:
 
 ---
 
+## 28. Módulo de Asistencia / Control de Personal (Agosto 2026)
+
+Módulo de marcación de entrada/salida del personal por **DNI** con opción de **verificación facial por webcam**.
+
+### 28.1 Base de Datos (migraciones)
+
+| Migración | Descripción |
+|-----------|-------------|
+| `2026_08_08_000001_create_schedules_table` | Horarios (corrido/dividido, tolerancias, días laborables) |
+| `2026_08_08_000002_create_personal_table` | Trabajadores (DNI, sueldo, schedule_id, estado, suspendido, foto, face_descriptor) |
+| `2026_08_08_000003_create_attendance_settings_table` | Reglas generales (umbral de falta, descuento por falta) |
+| `2026_08_08_000004_create_attendance_discount_rules_table` | Descuentos por tramos de tardanza (10-60 min) |
+| `2026_08_08_000005_create_attendance_logs_table` | Marcaciones crudas |
+| `2026_08_08_000006_create_attendances_table` | Asistencia diaria consolidada |
+| `2026_08_08_000007` | Falta grave + suspension_graves_count |
+| `2026_08_08_000008` | personal.suspendido |
+| `2026_08_08_000009` | Estado FALTA_GRAVE en attendances |
+| `2026_08_08_000010` | personal.foto + face_descriptor |
+| `2026_08_08_000011` | attendance_logs.foto/verificado/distancia (personal_id nullable) |
+| `2026_08_08_000012` | reconocimiento_activo + reconocimiento_umbral |
+| `2026_08_08_000013` | modo_marcacion (dni/webcam/dni_webcam) |
+| `2026_08_08_000015` | exito_segundos |
+
+### 28.2 Modelos y Servicio
+
+- **Modelos**: `Personal`, `Schedule`, `Attendance`, `AttendanceLog`, `AttendanceSetting`, `AttendanceDiscountRule`.
+- **`AttendanceService`**: `recordMark()` (detecta evento según horario), `verifyFace()` (distancia euclidiana), `identifyFace()` (busca el mejor rostro), `recordRejectedAttempt()`, `computeDiscount()`, `finalizeDay()`, `consecutiveGraveDays()`.
+
+### 28.3 Marcador (kiosco, `/marcar`)
+
+- Sin login. Pantalla con **botón grande** "Iniciar un Proceso de Asistencia".
+- La cámara **solo se enciende** al iniciar el proceso; se apaga al volver al inicio.
+- **Temporizador de 30s** de inactividad → vuelve al botón de inicio.
+- **Éxito configurable** (`exito_segundos`) mostrado en chips horizontales.
+- **3 modos**: solo DNI (`dni`), solo webcam identifica (`webcam`), DNI + verificación (`dni_webcam`).
+- Requiere **contexto seguro** para la cámara (`localhost`, HTTPS o flag de Chrome). Scripts `iniciar-marcador.bat` / `iniciar-marcador-kiosko.bat`.
+
+### 28.4 Reglas
+
+- **Umbral de falta** por tardanza; **falta grave** (umbral configurable) y **suspensión** por N graves consecutivas (bloquea la marcación de entrada con mensaje a Administración).
+- Descuentos por tramos de tardanza (10,15,...,60 min) como **monto fijo** o **% del sueldo diario**.
+- `reconocimiento_umbral` para la verificación facial y `modo_marcacion` para elegir cómo marcar.
+
+### 28.5 Reportes
+
+- Diario / semanal / mensual por trabajador: días con estado (Puntual/Tardanza/Falta/Falta Grave), horas, minutos de tardanza y **monto a descontar por día**.
+- Resumen de faltas, tardanzas y descuento total.
+- Exportable a **PDF** y **Excel**.
+
+---
+
 ## Anexo: Códigos de Error SUNAT
 
 El archivo `docs/sunat/codigos-error-sunat.txt` contiene el listado completo de códigos de error de SUNAT (anexo 2), utilizado para depurar respuestas al enviar comprobantes electrónicos.

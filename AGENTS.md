@@ -41,6 +41,13 @@
 - **removeItem()**: item PENDING (no enviado a cocina) se borra físicamente; SENT/READY/DELIVERED se marca CANCELLED con `cancelled_from/at/by` y requiere password admin.
 - **Polling**: `pollActiveOrders` + `pollTableLocks` every 10s, `pollPrintServer` every 10s, `loadKitchenOrders` every 5s. Silent `.catch()` for polling, `showError()` for user actions.
 - **8 printer slots**: cocina-1, cocina-2, bar-1, precuenta, precuenta2, precuenta3, caja, autopedido.
+- **Asistencia / Control de Personal**: módulo de marcación por **DNI** con cámara opcional.
+  - Controladores: `AttendanceController` (marcador kiosco `/marcar` + logs), `EmployeeController` (Personal), `ScheduleController` (Horarios), `AttendanceRuleController` (reglas), `AttendanceReportController` (reportes diario/semanal/mensual PDF/Excel).
+  - Modelos: `Personal`, `Schedule`, `Attendance`, `AttendanceLog`, `AttendanceSetting`, `AttendanceDiscountRule`.
+  - **3 modos de marcación** (`attendance_settings.modo_marcacion`): `dni` (solo DNI), `webcam` (identifica por rostro), `dni_webcam` (DNI + verificación facial). Configurable en Reglas de Tardanza junto con umbral de similitud (`reconocimiento_umbral`) y tiempo de éxito (`exito_segundos`).
+  - **Reglas de tardanza/faltas**: umbral de falta, umbral de **falta grave** y **suspensión** por N graves consecutivas (`personal.suspendido`), descuentos por tramos 10-60 min (fijo o % del sueldo diario).
+  - **Verificación facial**: `face-api.js` (`public/js/face-api.min.js`) + modelos (`public/models/face-api`). Descriptor facial (128-d) en `personal.face_descriptor`; comparación por distancia euclidiana en `AttendanceService::verifyFace()/identifyFace()`.
+  - El marcador de kiosco requiere **contexto seguro** para la cámara (ver Repo quirks).
 
 ## Repo quirks
 - Print server requires Node.js (see `print-server-node/`). The `scheduler.vbs` starts both Laravel scheduler and print server on Windows.
@@ -52,6 +59,7 @@
 - **Elementos Auxiliares**: New module with CRUD at Restaurante → Elementos Auxiliares. Chips appear in product modal (POS + autopedido). Stored as JSON array in `restaurant_order_items.auxiliary_items`. Displayed in KDS and kitchen tickets.
 - **Autopedido modal**: Product selection opens a modal with quantity (+/−), kitchen notes (with virtual keyboard), and auxiliary items chips. Cart stores notes + aux items per product.
 - **Virtual keyboard**: Used for search input AND modal notes textarea. Driven by `activeInput` variable — `openKeyboard(input)` sets it, `pressKey`/`pressBackspace` write to `activeInput.value` using `selectionStart/End`.
+- **Marcador de asistencia (cámara)**: `getUserMedia` exige **contexto seguro** — `localhost`, HTTPS, o lanzar Chrome con `--unsafely-treat-insecure-origin-as-secure="http://IP:PUERTO"`. Incluye scripts `iniciar-marcador.bat` (normal) e `iniciar-marcador-kiosko.bat` (pantalla completa). Sin permiso de cámara, el marcador funciona igual (solo DNI, sin foto).
 - **Emojis in thermal tickets**: Do NOT use emojis (🧾, ✅, etc.) in ESC/POS tickets. Printers use CP850 encoding which garbles UTF-8 emojis. Use plain text alternatives.
 - **Print autopedido ticket**: `PrintService::printAutoPedidoTicket()` was missing `$this->processQueue()` — always verify that print methods call `processQueue()` after `queuePrint()`.
 - **PlainTextTicket::kitchenTicket**: Had a broken `$dests` filter that skipped ALL items (`$dests = ['cocina'=>'', ...]` where `$dest !== ''` was always true). Removed since `printKitchenOrder` already groups by destination.

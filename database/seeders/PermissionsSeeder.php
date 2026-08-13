@@ -57,6 +57,18 @@ class PermissionsSeeder extends Seeder
             ['name' => 'Ver Impresoras', 'slug' => 'view_printers', 'module' => 'printers', 'description' => 'Ver configuración de impresoras'],
             ['name' => 'Ver Cola Impresión', 'slug' => 'view_print_queue', 'module' => 'printers', 'description' => 'Ver cola de impresión'],
             ['name' => 'Ver Modo Pedidos', 'slug' => 'view_order_mode', 'module' => 'restaurant', 'description' => 'Ver configuración del modo de pedidos'],
+            ['name' => 'Ver Asistencia', 'slug' => 'view_attendance', 'module' => 'attendance', 'description' => 'Ver módulo de asistencia'],
+            ['name' => 'Ver Personal', 'slug' => 'view_personal', 'module' => 'attendance', 'description' => 'Ver lista de personal'],
+            ['name' => 'Crear Personal', 'slug' => 'create_personal', 'module' => 'attendance', 'description' => 'Crear personal'],
+            ['name' => 'Editar Personal', 'slug' => 'edit_personal', 'module' => 'attendance', 'description' => 'Editar personal'],
+            ['name' => 'Eliminar Personal', 'slug' => 'delete_personal', 'module' => 'attendance', 'description' => 'Eliminar personal'],
+            ['name' => 'Ver Horarios', 'slug' => 'view_schedules', 'module' => 'attendance', 'description' => 'Ver horarios de trabajo'],
+            ['name' => 'Crear Horarios', 'slug' => 'create_schedules', 'module' => 'attendance', 'description' => 'Crear horarios'],
+            ['name' => 'Editar Horarios', 'slug' => 'edit_schedules', 'module' => 'attendance', 'description' => 'Editar horarios'],
+            ['name' => 'Eliminar Horarios', 'slug' => 'delete_schedules', 'module' => 'attendance', 'description' => 'Eliminar horarios'],
+            ['name' => 'Ver Reglas Asistencia', 'slug' => 'view_attendance_rules', 'module' => 'attendance', 'description' => 'Ver reglas de tardanza y faltas'],
+            ['name' => 'Editar Reglas Asistencia', 'slug' => 'edit_attendance_rules', 'module' => 'attendance', 'description' => 'Editar reglas de tardanza y faltas'],
+            ['name' => 'Ver Reportes Asistencia', 'slug' => 'view_attendance_reports', 'module' => 'attendance', 'description' => 'Ver reportes de asistencia'],
         ];
 
         foreach ($permissions as $perm) {
@@ -87,6 +99,9 @@ class PermissionsSeeder extends Seeder
             'view_series',
             'view_printers', 'view_print_queue',
             'view_order_mode',
+            'view_attendance', 'view_personal', 'create_personal', 'edit_personal', 'delete_personal',
+            'view_schedules', 'create_schedules', 'edit_schedules', 'delete_schedules',
+            'view_attendance_rules', 'edit_attendance_rules', 'view_attendance_reports',
         ])->pluck('id')->toArray());
 
         $mozoRole = Role::firstOrCreate(['slug' => 'mozo'], [
