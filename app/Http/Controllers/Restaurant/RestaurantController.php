@@ -282,15 +282,14 @@ class RestaurantController extends Controller
                 return response()->json([
                     'success' => false,
                     'requires_admin' => true,
-                    'message' => 'El producto ya está enviado a cocina. Requiere autorización de administrador.'
+                    'message' => 'El producto ya está enviado a cocina. Requiere autorización de administrador o cajero.'
                 ]);
             }
 
-            $admin = auth()->user();
-            if (!$admin || !$admin->isAdmin() || !Hash::check($adminPassword, $admin->password)) {
+            if (!$this->checkAuthorizedPassword($adminPassword)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Contraseña de administrador incorrecta'
+                    'message' => 'Contraseña incorrecta'
                 ]);
             }
 
@@ -628,15 +627,14 @@ class RestaurantController extends Controller
                 return response()->json([
                     'success' => false,
                     'requires_admin' => true,
-                    'message' => 'El pedido tiene productos enviados a cocina. Requiere autorización de administrador.'
+                    'message' => 'El pedido tiene productos enviados a cocina. Requiere autorización de administrador o cajero.'
                 ]);
             }
 
-            $admin = auth()->user();
-            if (!$admin || !$admin->isAdmin() || !Hash::check($adminPassword, $admin->password)) {
+            if (!$this->checkAuthorizedPassword($adminPassword)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Contraseña de administrador incorrecta'
+                    'message' => 'Contraseña incorrecta'
                 ]);
             }
         }
@@ -1527,6 +1525,18 @@ private function updateOrderTotals(RestaurantOrder $order)
             \Log::error('Kiosko charge error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+    }
+
+    private function checkAuthorizedPassword(?string $password): bool
+    {
+        $user = auth()->user();
+        if (!$user || !$password) {
+            return false;
+        }
+        if (!$user->hasPermission('authorize_cancel_orders')) {
+            return false;
+        }
+        return Hash::check($password, $user->password);
     }
 }
 

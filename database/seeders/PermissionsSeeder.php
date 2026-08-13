@@ -47,6 +47,7 @@ class PermissionsSeeder extends Seeder
             ['name' => 'Usar POS', 'slug' => 'use_pos', 'module' => 'pos', 'description' => 'Usar punto de venta'],
             ['name' => 'Ver Restaurante', 'slug' => 'view_restaurant', 'module' => 'restaurant', 'description' => 'Ver módulo restaurante'],
             ['name' => 'Gestionar Pedidos', 'slug' => 'manage_orders', 'module' => 'restaurant', 'description' => 'Gestionar pedidos de restaurante'],
+            ['name' => 'Autorizar Anulaciones', 'slug' => 'authorize_cancel_orders', 'module' => 'restaurant', 'description' => 'Autorizar con contraseña la eliminación de productos y anulación de pedidos en cocina'],
             ['name' => 'Ver Cocina', 'slug' => 'view_kitchen', 'module' => 'kitchen', 'description' => 'Ver cocina KDS'],
             ['name' => 'Gestionar Cocina', 'slug' => 'manage_kitchen', 'module' => 'kitchen', 'description' => 'Gestionar pedidos en cocina'],
             ['name' => 'Ver Roles', 'slug' => 'view_roles', 'module' => 'users', 'description' => 'Ver roles'],
@@ -93,7 +94,7 @@ class PermissionsSeeder extends Seeder
             'view_suppliers', 'create_suppliers',
             'view_cashregisters', 'open_cashregister', 'close_cashregister', 'view_cashregister_history',
             'view_pos', 'use_pos',
-            'view_restaurant', 'manage_orders',
+            'view_restaurant', 'manage_orders', 'authorize_cancel_orders',
             'view_kitchen', 'manage_kitchen',
             'view_roles', 'create_roles', 'edit_roles',
             'view_permissions', 'create_permissions',
@@ -129,6 +130,7 @@ class PermissionsSeeder extends Seeder
             'view_invoices', 'create_invoices', 'send_sunat',
             'view_pos', 'use_pos',
             'view_cashregisters', 'open_cashregister',
+            'view_restaurant', 'manage_orders', 'authorize_cancel_orders',
         ])->pluck('id')->toArray());
 
         $userRole = Role::firstOrCreate(['slug' => 'user'], [

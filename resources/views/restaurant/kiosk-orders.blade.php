@@ -76,7 +76,7 @@
         </div>
         <p style="color:#666; font-size:13px; margin-bottom:10px;">¿Está seguro de anular este pedido? Esta acción no se puede deshacer.</p>
         <div id="cancelAdminSection" style="display:none; margin-bottom:12px;">
-            <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Contraseña de Administrador</label>
+            <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Contraseña</label>
             <input type="password" id="cancelAdminPassword" class="form-control form-control-sm" placeholder="Requerida para pedidos en cocina" style="border-color:#dc3545;">
         </div>
         <div id="cancelError" style="display:none; color:#dc3545; font-size:12px; margin-bottom:10px;"></div>
@@ -223,7 +223,7 @@ function confirmCancelKioskOrder() {
     if (pendingCancelRequiresAdmin) {
         const pwd = document.getElementById('cancelAdminPassword').value;
         if (!pwd) {
-            document.getElementById('cancelError').textContent = 'Debe ingresar la contraseña de administrador.';
+            document.getElementById('cancelError').textContent = 'Debe ingresar su contraseña.';
             document.getElementById('cancelError').style.display = 'block';
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-trash"></i> Sí, Anular';

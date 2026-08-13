@@ -536,7 +536,7 @@
 <div class="qty-overlay" id="adminPasswordOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
     <div class="qty-popup" style="background:white; padding:20px; border-radius:10px; min-width:320px; max-width:90%;">
         <h5 style="margin:0 0 5px 0;">Autorización requerida</h5>
-        <p style="font-size:13px; color:#666; margin-bottom:15px;">Ingrese su contraseña de administrador para eliminar este producto</p>
+        <p style="font-size:13px; color:#666; margin-bottom:15px;">Ingrese su contraseña para eliminar este producto</p>
         <input type="hidden" id="adminPasswordItemId">
         <input type="password" id="adminPasswordInput" class="form-control" placeholder="Contraseña" style="margin-bottom:10px;" autocomplete="off">
         <div style="display:flex; gap:10px; justify-content:flex-end;">
@@ -1259,7 +1259,7 @@ function removeItem(itemId) {
             document.getElementById('adminPasswordInput').focus();
         } else {
             pendingDeleteItems[itemId] = true;
-            showAlert('Este producto ya está enviado a cocina. Presione eliminar nuevamente para confirmar con contraseña de administrador.');
+            showAlert('Este producto ya está enviado a cocina. Presione eliminar nuevamente para confirmar con su contraseña.');
         }
         return;
     }
@@ -1545,7 +1545,7 @@ function cancelOrder() {
             document.getElementById('adminPasswordInput').focus();
         } else {
             pendingCancelAction = true;
-            showAlert('El pedido tiene productos en cocina. Presione Anular nuevamente para confirmar con contraseña de administrador.');
+            showAlert('El pedido tiene productos en cocina. Presione Anular nuevamente para confirmar con su contraseña.');
         }
         return;
     }

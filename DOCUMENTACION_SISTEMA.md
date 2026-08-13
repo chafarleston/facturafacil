@@ -1090,7 +1090,7 @@ DELETE /restaurant/orders/items/{id}
 → removeItem() [PHP]:
    0. Si el item tiene paid_invoice_id: se bloquea (ya facturado, A4)
    1. Si el item está PENDING (no enviado a cocina): se elimina físicamente (DELETE), sin rastro
-   2. Si el item está SENT/READY/DELIVERED: requiere admin_password
+    2. Si el item está SENT/READY/DELIVERED: requiere admin_password (usuario autenticado con permiso `authorize_cancel_orders`, verificado con su propia contraseña)
    3. Verifica contraseña con Hash::check()
    4. cancelled_from = estado actual (ej: SENT)
    5. cancelled_at = now()
@@ -1187,7 +1187,7 @@ printPrebillTo(printerKey) [JS]:
 cancelOrder() [JS] → confirmación → POST /restaurant/orders/{id}/cancel
 → cancelOrder() [PHP]:
    1. Verifica: usuario no mozo
-   2. Si tiene items SENT/READY/DELIVERED: requiere admin_password
+    2. Si tiene items SENT/READY/DELIVERED: requiere admin_password (usuario autenticado con permiso `authorize_cancel_orders`, verificado con su propia contraseña)
    3. Por cada item:
       - cancelled_from = kitchen_status actual
       - cancelled_at = now(), cancelled_by = auth()->id()
