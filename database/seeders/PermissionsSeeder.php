@@ -127,7 +127,7 @@ class PermissionsSeeder extends Seeder
             'view_dashboard',
             'view_invoices', 'create_invoices', 'send_sunat',
             'view_pos', 'use_pos',
-            'view_cashregisters', 'open_cashregister', 'close_cashregister',
+            'view_cashregisters', 'open_cashregister',
         ])->pluck('id')->toArray());
 
         $userRole = Role::firstOrCreate(['slug' => 'user'], [

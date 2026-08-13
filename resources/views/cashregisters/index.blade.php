@@ -21,11 +21,15 @@
                         </div>
                     </div>
                 </div>
-                @can('permission', 'close_cashregister')
+                @if(auth()->user() && auth()->user()->hasPermission('close_cashregister'))
                 <button type="submit" class="btn btn-danger">
                     <i class="fas fa-lock"></i> Cerrar Caja
                 </button>
-                @endcan
+                @else
+                <button type="button" class="btn btn-danger" onclick="$('#permissionModal').modal('show')">
+                    <i class="fas fa-lock"></i> Cerrar Caja
+                </button>
+                @endif
             </form>
         </div>
         @else
@@ -118,4 +122,30 @@
         </div>
     </div>
 </div>
+
+{{-- Modal: acceso restringido (solo administrador) --}}
+<div class="modal fade" id="permissionModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-lock"></i> Acceso restringido</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body text-center">
+                <i class="fas fa-user-shield text-danger" style="font-size:52px;"></i>
+                <h4 class="mt-2">Solo el Administrador puede ejecutar estas tareas</h4>
+                <p class="text-muted mb-0">Para cerrar la caja, solicite a un usuario administrador.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Entendido</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if(session('permission_modal'))
+<script>
+    $(document).ready(function () { $('#permissionModal').modal('show'); });
+</script>
+@endif
 @endsection

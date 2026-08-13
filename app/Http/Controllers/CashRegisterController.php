@@ -61,7 +61,10 @@ class CashRegisterController extends Controller
 
     public function close(Request $request)
     {
-        $this->authorize('permission', 'close_cashregister');
+        if (!auth()->user() || !auth()->user()->hasPermission('close_cashregister')) {
+            return redirect()->route('cashregisters.index')
+                ->with('permission_modal', 'Solo el Administrador puede ejecutar estas tareas');
+        }
 
         $request->validate([
             'cashregister_id' => 'required|exists:cashregisters,id',
