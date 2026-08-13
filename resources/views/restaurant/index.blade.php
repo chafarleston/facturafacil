@@ -480,7 +480,8 @@
 {{-- Modal Caja no aperturada --}}
 @if(!$cajaAbierta)
 <div id="noCashRegisterOverlay" style="display:flex; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); z-index:10030; align-items:center; justify-content:center;">
-    <div style="background:white; padding:25px; border-radius:10px; min-width:380px; max-width:90%; text-align:center;">
+    <div style="background:white; padding:25px; border-radius:10px; min-width:380px; max-width:90%; text-align:center; position:relative;">
+        <button type="button" onclick="document.getElementById('noCashRegisterOverlay').style.display='none'" style="position:absolute; top:8px; right:12px; background:none; border:none; font-size:22px; color:#999; cursor:pointer;" title="Cerrar">&times;</button>
         <div style="font-size:44px; margin-bottom:10px;"><i class="fas fa-cash-register" style="color:#e94560;"></i></div>
         <h5 style="margin:0 0 10px 0;">Caja no aperturada</h5>
         <p style="color:#666; margin-bottom:20px;">Para operar el restaurante es necesario tener una caja abierta.<br>Solicite al <b>Administrador</b> o al <b>Cajero</b> que la aperturen.</p>
@@ -489,6 +490,7 @@
             <a href="{{ route('cashregisters.index') }}" class="btn btn-primary">Ir a Caja</a>
             @endif
             <button type="button" class="btn btn-secondary" onclick="window.location.reload()">Reintentar</button>
+            <button type="button" class="btn btn-light" onclick="document.getElementById('noCashRegisterOverlay').style.display='none'">Entendido</button>
         </div>
     </div>
 </div>
