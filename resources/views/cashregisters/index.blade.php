@@ -66,6 +66,7 @@
     </div>
 </div>
 
+@if($canViewHistory)
 <div class="row mt-4">
     <div class="col-md-12">
         <div class="card">
@@ -122,6 +123,7 @@
         </div>
     </div>
 </div>
+@endif
 
 {{-- Modal: acceso restringido (solo administrador) --}}
 <div class="modal fade" id="permissionModal" tabindex="-1" role="dialog">

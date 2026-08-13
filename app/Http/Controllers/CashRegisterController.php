@@ -16,16 +16,19 @@ class CashRegisterController extends Controller
     {
         $this->authorize('permission', 'view_cashregisters');
         $companyId = \App\Models\Company::getMainCompany()->id;
-        
+
+        $user = auth()->user();
+        $canViewHistory = $user && $user->hasPermission('view_cashregister_history');
+
         $cajaAbierta = CashRegister::where('company_id', $companyId)
             ->where('estado', 'ABIERTA')
             ->first();
-            
-        $cajas = CashRegister::where('company_id', $companyId)
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
-            
-        return view('cashregisters.index', compact('cajas', 'cajaAbierta', 'companyId'));
+
+        $cajas = $canViewHistory
+            ? CashRegister::where('company_id', $companyId)->orderBy('created_at', 'desc')->paginate(15)
+            : collect();
+
+        return view('cashregisters.index', compact('cajas', 'cajaAbierta', 'companyId', 'canViewHistory'));
     }
 
     public function open(Request $request)
