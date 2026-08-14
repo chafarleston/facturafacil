@@ -24,6 +24,21 @@ class IsAdmin
             abort(403);
         }
 
+        // Lectura de productos/categorías por permiso (solo lectura)
+        $productReadRoutes = [
+            'products.index', 'products.show',
+            'products.composite.create',
+            'products.inventory.report', 'products.inventory.report.excel', 'products.inventory.report.pdf',
+        ];
+        $categoryReadRoutes = ['categories.index'];
+
+        if (in_array($routeName, $productReadRoutes) && $user->hasPermission('view_products')) {
+            return $next($request);
+        }
+        if (in_array($routeName, $categoryReadRoutes) && $user->hasPermission('view_categories')) {
+            return $next($request);
+        }
+
         if ($user->isAdmin() || $user->isSuperAdmin()) {
             return $next($request);
         }

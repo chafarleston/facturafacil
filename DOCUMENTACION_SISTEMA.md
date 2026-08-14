@@ -269,7 +269,7 @@ observaciones, referencia
 | `getOrder($orderId)` | GET `/restaurant/orders/{id}` | Obtiene orden con items |
 | `addItem($orderId)` | POST `/restaurant/orders/{id}/items` | Agrega producto al pedido |
 | `updateItem($itemId)` | PUT `/restaurant/orders/items/{id}` | Actualiza cantidad/notas |
-| `removeItem($itemId)` | DELETE `/restaurant/orders/items/{id}` | Elimina item. PENDING → borra físicamente; SENT/READY/DELIVERED → marca CANCELLED (exige password admin + auditoría + ticket) |
+| `removeItem($itemId)` | DELETE `/restaurant/orders/items/{id}` | Elimina item. PENDING → borra físicamente; SENT/READY/DELIVERED → marca CANCELLED (exige la contraseña del usuario autenticado con permiso `authorize_cancel_orders` + auditoría + ticket) |
 | `sendToKitchen($orderId)` | POST `/restaurant/orders/{id}/send-to-kitchen` | Envía items a cocina |
 | `closeOrder($orderId)` | POST `/restaurant/orders/{id}/close` | Cierra pedido (COMPLETED) |
 | `cancelOrder($orderId)` | POST `/restaurant/orders/{id}/cancel` | Anula pedido completo |
@@ -285,6 +285,13 @@ observaciones, referencia
 | `completeOrder($orderId)` | POST `/restaurant/kitchen/{id}/complete` | Completa pedido desde KDS |
 | `kitchenIndex()` | GET `/restaurant/kitchen` | Vista KDS |
 | `getKitchenOrders()` | GET `/restaurant/kitchen-orders` | Órdenes de cocina (polling) |
+
+#### Acceso y caja abierta
+
+- Login: el rol `mozo` se redirige a `/restaurant`; el resto a `/dashboard` (`AuthenticatedSessionController::store()`).
+- `index()` sin caja abierta NO redirige ni devuelve 403: renderiza la vista con el modal "Caja no aperturada" (el Administrador o el Cajero deben aperturar; botones Ir a Caja / Reintentar / Entendido). `chargeOrder()` sin caja responde JSON `{success:false, message:'No hay caja abierta...'}` con 400.
+- Cierre de caja: `CashRegisterController::close()` valida `hasPermission('close_cashregister')`; si no se tiene responde redirect + flash `permission_modal` (modal "Solo el Administrador puede ejecutar estas tareas").
+- Historial de cajas: solo visible para usuarios con permiso `view_cashregister_history` (por defecto `admin`).
 
 #### Flujo de Agregar Item
 

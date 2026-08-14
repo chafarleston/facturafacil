@@ -6,7 +6,9 @@
 <div class="card">
     <div class="card-header">
         <h3 class="card-title">Categorías</h3>
+        @can('permission', 'create_categories')
         <a href="{{ route('categories.create', ['company_id' => $companyId]) }}" class="btn btn-primary btn-sm float-right">Nueva Categoría</a>
+        @endcan
     </div>
     <div class="card-body">
         <table class="table table-bordered">
@@ -31,12 +33,16 @@
                     </td>
                     <td>{{ $category->products->count() }}</td>
                     <td>
+                        @can('permission', 'edit_categories')
                         <a href="{{ route('categories.edit', $category) }}" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></a>
+                        @endcan
+                        @can('permission', 'delete_categories')
                         <form action="{{ route('categories.destroy', $category) }}" method="POST" class="d-inline">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Eliminar categoría?')"><i class="fas fa-trash"></i></button>
                         </form>
+                        @endcan
                     </td>
                 </tr>
                 @empty

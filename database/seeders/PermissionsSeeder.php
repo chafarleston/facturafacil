@@ -131,6 +131,7 @@ class PermissionsSeeder extends Seeder
             'view_pos', 'use_pos',
             'view_cashregisters', 'open_cashregister',
             'view_restaurant', 'manage_orders', 'authorize_cancel_orders',
+            'view_products', 'view_categories',
         ])->pluck('id')->toArray());
 
         $userRole = Role::firstOrCreate(['slug' => 'user'], [

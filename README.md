@@ -35,7 +35,8 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 - Cobro con **cliente por defecto** (Cliente Varios DNI 88888888) y **confirmación de impresión**
 - **Solo consumo**: cobrar todo el pedido como "POR CONSUMO" con desglose de productos
 - **Mover pedido** entre mesas
-- Anulación de productos con autorización de administrador para items enviados a cocina
+- Anulación/eliminación de productos y pedidos con **autorización por contraseña** (usuario autenticado con permiso `authorize_cancel_orders` — admin o cajero, cada uno con su propia contraseña) para items ya enviados a cocina
+- **Login del mozo**: el rol `mozo` se redirige directo a `/restaurant`; si no hay caja abierta se muestra el modal **"Caja no aperturada"** (debe aperturarla el Administrador o el Cajero; botones Ir a Caja / Reintentar / Entendido)
 - Notas por producto y por pedido
 
 ### Caja Registradora
@@ -44,6 +45,8 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 - Reporte de **líneas eliminadas** con cantidad, producto, usuario que canceló y hora
 - Ticket 80mm y PDF A4 con formato columnas (Cant. | Producto | Precio)
 - **Bloqueo de cierre** si hay mesas abiertas en restaurante
+- El **cajero abre caja pero NO la cierra** (cierre exclusivo con permiso `close_cashregister`; si no lo tiene, modal "Solo el Administrador puede ejecutar estas tareas")
+- El **historial de cajas** (cajas anteriores) solo es visible con permiso `view_cashregister_history` (por defecto solo `admin`)
 - Dashboard con **resumen mensual** (ventas del mes vs mes anterior)
 
 ### Impresión Térmica ESC/POS
@@ -61,6 +64,7 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 ### Roles y Permisos
 - Roles: **Administrador**, **Cajero**, **Mozo**, **Usuario** (`superadmin` es un valor reservado en la lógica, no un rol de la BD)
 - Permisos granulares: Abrir Caja y Cerrar Caja como permisos separados; **Enviar a SUNAT** para cajero/admin
+- Permisos gestionables por rol (Roles/Permisos): `view_cashregister_history` (historial de cajas, solo admin por defecto), `authorize_cancel_orders` (autorizar anulaciones en cocina con la propia contraseña; admin y cajero por defecto) y `view_products`/`view_categories` (Productos y Categorías en solo lectura; el cajero los ve por defecto)
 - Control de acceso a funcionalidades del restaurante (Cobrar/Anular restringido a no-mozos)
 - **Auto-check de permisos** al seleccionar rol principal en creación de usuarios
 
@@ -89,6 +93,13 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 - Historial completo con stock antes/después por cada producto
 - Anulación con reincorporación automática al stock
 - Visualización de registros anulados en rojo (soft delete)
+
+### Asistencia / Control de Personal
+- Marcación en kiosco (`/marcar`) por **DNI** con cámara opcional (webcam)
+- **3 modos de marcación** configurable: `dni`, `webcam` (verificación facial con `face-api.js`) y `dni_webcam`
+- **Reglas de tardanza/faltas**: umbral de falta y de falta grave, suspensión por N graves consecutivas y descuentos por tramos (fijo o % del sueldo diario)
+- Administración: Personal, Horarios (corrido/dividido), Reglas de Tardanza, Marcaciones y Reportes (diario/semanal/mensual en PDF/Excel)
+- La cámara requiere **contexto seguro** (localhost, HTTPS o flag de Chrome); scripts `iniciar-marcador.bat` / `iniciar-marcador-kiosko.bat`
 
 ---
 
@@ -246,9 +257,11 @@ En `/companies/{id}/edit`:
 
 En `/roles` se gestionan los roles. Por defecto:
 - **Administrador**: acceso completo
-- **Cajero**: POS, facturación, **envío a SUNAT**, caja (abrir + cerrar como permisos separados)
-- **Mozo**: restaurante, cocina
+- **Cajero**: POS, facturación, **envío a SUNAT**, caja (**abrir, NO cerrar**), autoriza anulaciones de cocina con su contraseña y **ve Productos/Compuestos/Inventario/Categorías en solo lectura**
+- **Mozo**: restaurante, cocina (sin cobrar ni anular); entra directo a `/restaurant` al iniciar sesión
 - **Usuario**: POS, consultas; **sin comprobantes ni caja**
+
+Los permisos `view_cashregister_history` (historial de cajas) y `authorize_cancel_orders` (anulaciones en cocina) se pueden **añadir/quitar por rol** desde Roles/Permisos.
 
 ---
 

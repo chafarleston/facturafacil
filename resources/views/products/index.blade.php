@@ -34,6 +34,7 @@
             document.getElementById('searchInput').placeholder = labels[sel.value] || 'Buscar...';
           }
           </script>
+          @can('permission', 'create_products')
           <a href="{{ route('products.create', ['company_id' => $companyId ?? null]) }}" class="btn btn-primary btn-sm ml-2">
             <i class="fas fa-plus"></i> Nuevo
           </a>
@@ -46,6 +47,7 @@
           <a href="{{ route('products.export', ['company_id' => $companyId ?? null]) }}" class="btn btn-info btn-sm ml-1">
             <i class="fas fa-file-export"></i> Exportar
           </a>
+          @endcan
         </div>
       </div>
       <div class="card-body table-responsive p-0">
@@ -98,17 +100,21 @@
               </td>
               <td>
                 <a href="{{ route('products.show', $product) }}" class="btn btn-info btn-xs"><i class="fas fa-eye"></i></a>
+                @can('permission', 'edit_products')
                 @if($product->is_composite)
                   <a href="{{ route('products.composite.edit', $product) }}" class="btn btn-warning btn-xs"><i class="fas fa-edit"></i></a>
                 @else
                   <a href="{{ route('products.edit', $product) }}" class="btn btn-warning btn-xs"><i class="fas fa-edit"></i></a>
                 @endif
+                @endcan
+                @can('permission', 'create_products')
                 <form action="{{ route('products.duplicate', $product) }}" method="POST" style="display:inline;">
                     @csrf
                     <button type="submit" class="btn btn-secondary btn-xs" title="Duplicar producto" onclick="return confirm('¿Duplicar este producto?')">
                         <i class="fas fa-copy"></i>
                     </button>
                 </form>
+                @endcan
               </td>
             </tr>
             @empty

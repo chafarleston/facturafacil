@@ -443,7 +443,7 @@ protected $casts = [
 |--------|------|-------------|------|
 | `index()` | `/cashregisters` | GET | auth + permission `view_cashregisters` |
 | `open()` | `/cashregister/open` | POST | auth + permission `open_cashregister` |
-| `close()` | `/cashregister/close` | POST | auth + permission `close_cashregister` |
+| `close()` | `/cashregister/close` | POST | auth + permiso `close_cashregister` (si no se tiene → redirect + modal `permission_modal` "Solo el Administrador...") |
 | `show()` | `/cashregisters/{id}` | GET | auth + permission `view_cashregisters` |
 | `pdf()` | `/cashregisters/{id}/pdf` | GET | auth + permission `view_cashregisters` |
 | `ticketPdf()` | `/cashregisters/{id}/ticket` | GET | auth + permission `view_cashregisters` |
@@ -842,3 +842,4 @@ CreateObject("WScript.Shell").Run "node print-server-node/server.js", 0
 | 1.0 | Junio 2026 | Laravel 13.x base, Greenter 5.x, print server Node.js |
 | 2.0 | Julio 2026 | is_composite + product_components, precio_compra, detalle_consumo (JSON), POS multi-tab localStorage, fix método pago Yape/Plin, ticket caja completo, fix command injection, fix $dest en kitchenTicket |
 | 2.1 | Agosto 2026 | Dividir Cuenta (paid_invoice_id + split-charge), permisos SUNAT (send_sunat a cajero; user sin comprobantes/caja), rutas de caja por permiso, apertura de cajón en POS (manual + automática en efectivo), IGV dinámico en precuenta, Greenter v5.3.0 |
+| 2.2 | Agosto 2026 | Módulo Asistencia (personal, horarios, reglas, marcador DNI/webcam, reportes) portado a facturafacil; cajero abre caja pero NO la cierra (modal `permission_modal`); permiso `view_cashregister_history` (historial solo admin); login mozo → /restaurant; restaurante sin caja muestra modal "Caja no aperturada"; permiso `authorize_cancel_orders` (admin/cajero autorizan con su contraseña eliminaciones y anulaciones en cocina). |
