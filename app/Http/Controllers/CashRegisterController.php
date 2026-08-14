@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CashRegister;
+use App\Models\CashMovement;
 use App\Models\Invoice;
 use App\Models\RestaurantOrder;
 use App\Models\RestaurantOrderItem;
@@ -189,6 +190,9 @@ class CashRegisterController extends Controller
             }
         }
 
+        $totalIngresos = round((float) $caja->cashMovements()->where('tipo', 'INGRESO')->sum('monto'), 2);
+        $totalEgresos = round((float) $caja->cashMovements()->where('tipo', 'EGRESO')->sum('monto'), 2);
+
         $caja->update([
             'ventas_efectivo' => round($efectivo, 2),
             'ventas_tarjeta' => round($tarjeta, 2),
@@ -197,6 +201,8 @@ class CashRegisterController extends Controller
             'ventas_otro' => round($otro, 2),
             'cantidad_ventas' => $ventas->count(),
             'total_ventas' => round($efectivo + $tarjeta + $yape + $plin + $otro, 2),
+            'total_ingresos' => $totalIngresos,
+            'total_egresos' => $totalEgresos,
             'monto_cierre' => $request->monto_cierre,
             'estado' => 'CERRADA',
             'fecha_cierre' => $fechaCierre,
@@ -262,7 +268,8 @@ class CashRegisterController extends Controller
             'cashregister', 'facturas', 'boletas', 'nvs', 'ventas',
             'categoriasVentas', 'productosVendidos',
             'ventasEfectivo', 'ventasTarjeta', 'ventasYape', 'ventasPlin', 'ventasOtro',
-            'totalMetodos', 'lineasEliminadas', 'kioskoTotal', 'kioskoCount'
+            'totalMetodos', 'lineasEliminadas', 'kioskoTotal', 'kioskoCount',
+            'movimientos', 'totalIngresos', 'totalEgresos', 'saldoEsperado', 'diferencia'
         ));
     }
 
@@ -353,7 +360,20 @@ class CashRegisterController extends Controller
         arsort($categoriasVentas);
         arsort($productosVendidos);
 
-        return compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventasPorMetodo', 'categoriasVentas', 'productosVendidos', 'lineasEliminadas', 'ventas');
+        $movimientos = CashMovement::with('user')
+            ->where('cash_register_id', $cashregister->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $totalIngresos = $cashregister->total_ingresos ?? 0;
+        $totalEgresos = $cashregister->total_egresos ?? 0;
+        $saldoEsperado = round((float) ($cashregister->monto_apertura ?? 0)
+            + (float) $ventas->sum('total')
+            + (float) $totalIngresos
+            - (float) $totalEgresos, 2);
+        $diferencia = round((float) ($cashregister->monto_cierre ?? 0) - $saldoEsperado, 2);
+
+        return compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventasPorMetodo', 'categoriasVentas', 'productosVendidos', 'lineasEliminadas', 'ventas', 'movimientos', 'totalIngresos', 'totalEgresos', 'saldoEsperado', 'diferencia');
     }
 
     public function pdf(CashRegister $cashregister)

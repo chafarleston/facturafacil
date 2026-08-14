@@ -14,7 +14,8 @@ class CashRegister extends Model
     protected $fillable = [
         'company_id', 'user_id', 'monto_apertura', 'monto_cierre',
         'ventas_efectivo', 'ventas_tarjeta', 'ventas_yape', 'ventas_plin', 'ventas_otro',
-        'cantidad_ventas', 'total_ventas', 'estado', 'fecha_apertura', 'fecha_cierre', 'observaciones', 'referencia'
+        'cantidad_ventas', 'total_ventas', 'total_ingresos', 'total_egresos',
+        'estado', 'fecha_apertura', 'fecha_cierre', 'observaciones', 'referencia'
     ];
 
     protected $casts = [
@@ -26,9 +27,16 @@ class CashRegister extends Model
         'ventas_plin' => 'decimal:2',
         'ventas_otro' => 'decimal:2',
         'total_ventas' => 'decimal:2',
+        'total_ingresos' => 'decimal:2',
+        'total_egresos' => 'decimal:2',
         'fecha_apertura' => 'datetime',
         'fecha_cierre' => 'datetime',
     ];
+
+    public function cashMovements()
+    {
+        return $this->hasMany(CashMovement::class, 'cash_register_id');
+    }
 
     public function company()
     {

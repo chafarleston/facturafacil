@@ -27,7 +27,7 @@ FacturaFácil es un sistema integral para restaurantes peruanos que unifica:
 | Rol | Permisos Clave | Uso Principal |
 |-----|---------------|---------------|
 | **Admin** | Todo | Configuración, productos, usuarios, reportes |
-| **Cajero** | POS, facturación, envío a SUNAT, caja (abrir, NO cerrar), autoriza anulaciones de cocina con su contraseña | Caja, cobros |
+| **Cajero** | POS, facturación, envío a SUNAT, caja (abrir, NO cerrar), autoriza anulaciones de cocina con su contraseña, registra ingresos y gastos de caja | Caja, cobros |
 | **Mozo** | Restaurante, cocina (sin cobrar ni anular) | Tomar pedidos, enviar a cocina |
 | **Cliente** | Solo kiosko de autopedidos | Hacer pedidos sin intervención |
 

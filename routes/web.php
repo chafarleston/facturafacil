@@ -132,13 +132,18 @@ Route::middleware('auth')->group(function () {
         Route::get('/attendance/reports/excel', [AttendanceReportController::class, 'exportExcel'])->name('attendance.reports.excel');
     });
 
-    // Caja: accesible por permisos (view_cashregisters / open_cashregister / close_cashregister)
-    Route::resource('cashregisters', CashRegisterController::class)->only(['index', 'show']);
-    Route::get('/cashregisters/{cashregister}/pdf', [CashRegisterController::class, 'pdf'])->name('cashregisters.pdf');
-    Route::get('/cashregisters/{cashregister}/ticket', [CashRegisterController::class, 'ticketPdf'])->name('cashregisters.ticket');
-    Route::post('/cashregisters/{cashregister}/print-caja', [CashRegisterController::class, 'printCaja'])->name('cashregisters.printCaja');
-    Route::post('/cashregister/open', [CashRegisterController::class, 'open'])->name('cashregisters.open');
-    Route::post('/cashregister/close', [CashRegisterController::class, 'close'])->name('cashregisters.close');
+// Caja: accesible por permisos (view_cashregisters / open_cashregister / close_cashregister)
+Route::resource('cashregisters', CashRegisterController::class)->only(['index', 'show']);
+Route::get('/cashregisters/{cashregister}/pdf', [CashRegisterController::class, 'pdf'])->name('cashregisters.pdf');
+Route::get('/cashregisters/{cashregister}/ticket', [CashRegisterController::class, 'ticketPdf'])->name('cashregisters.ticket');
+Route::post('/cashregisters/{cashregister}/print-caja', [CashRegisterController::class, 'printCaja'])->name('cashregisters.printCaja');
+Route::post('/cashregister/open', [CashRegisterController::class, 'open'])->name('cashregisters.open');
+Route::post('/cashregister/close', [CashRegisterController::class, 'close'])->name('cashregisters.close');
+
+// Ingresos y Gastos (requiere caja abierta)
+Route::get('/cash-movements', [\App\Http\Controllers\CashMovementController::class, 'index'])->name('cash-movements.index');
+Route::post('/cash-movements', [\App\Http\Controllers\CashMovementController::class, 'store'])->name('cash-movements.store');
+Route::delete('/cash-movements/{cashMovement}', [\App\Http\Controllers\CashMovementController::class, 'destroy'])->name('cash-movements.destroy');
     
     Route::get('/invoices/{invoice}/send', [InvoiceController::class, 'sendToSunat'])->name('invoices.send');
     Route::get('/invoices/nv', [InvoiceController::class, 'nvIndex'])->name('invoices.nv');

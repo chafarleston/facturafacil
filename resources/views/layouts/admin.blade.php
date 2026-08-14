@@ -190,10 +190,20 @@
             
             @can('permission', 'view_cashregisters')
             <li class="nav-item">
-              <a href="{{ route('cashregisters.index') }}" class="nav-link {{ request()->routeIs('cashregisters.*') ? 'active' : '' }}">
+              <a href="#" class="nav-link {{ request()->routeIs('cashregisters.*') || request()->routeIs('cash-movements.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-cash-register"></i>
-                <p>Caja</p>
+                <p>Caja<i class="fas fa-angle-left right"></i></p>
               </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a href="{{ route('cashregisters.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Caja</p></a>
+                </li>
+                @can('permission', 'manage_cash_movements')
+                <li class="nav-item">
+                  <a href="{{ route('cash-movements.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Ingresos y Gastos</p></a>
+                </li>
+                @endcan
+              </ul>
             </li>
             @endcan
 

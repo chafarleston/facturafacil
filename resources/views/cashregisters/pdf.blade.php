@@ -48,6 +48,24 @@
             <td>Monto Cierre:</td>
             <td class="text-right">S/ {{ number_format($cashregister->monto_cierre ?? 0, 2) }}</td>
         </tr>
+        <tr>
+            <td>Ingresos:</td>
+            <td class="text-right text-success">S/ {{ number_format($totalIngresos ?? 0, 2) }}</td>
+        </tr>
+        <tr>
+            <td>Egresos:</td>
+            <td class="text-right text-danger">S/ {{ number_format($totalEgresos ?? 0, 2) }}</td>
+        </tr>
+        <tr>
+            <td>Saldo esperado:</td>
+            <td class="text-right">S/ {{ number_format($saldoEsperado ?? 0, 2) }}</td>
+        </tr>
+        <tr>
+            <td>Diferencia:</td>
+            <td class="text-right {{ ($diferencia ?? 0) != 0 ? 'text-danger' : 'text-success' }}">
+                {{ ($diferencia ?? 0) >= 0 ? '+' : '' }}S/ {{ number_format($diferencia ?? 0, 2) }}
+            </td>
+        </tr>
     </table>
 
     <div class="border-top py-2 mt-2 mb-1 bold">RESUMEN POR TIPO DE DOCUMENTO</div>
@@ -159,6 +177,26 @@
             <td>{{ $venta->metodo_pago ?? 'Efectivo' }}</td>
         </tr>
         @endforeach
+    </table>
+
+    <div class="border-top py-2 mt-2 mb-1 bold">MOVIMIENTOS (INGRESOS Y GASTOS)</div>
+    <table>
+        <tr class="bold border-bottom">
+            <td>Fecha</td>
+            <td>Tipo</td>
+            <td>Motivo</td>
+            <td class="text-right">Monto</td>
+        </tr>
+        @forelse($movimientos ?? [] as $mov)
+        <tr>
+            <td>{{ $mov->created_at->format('d/m H:i') }}</td>
+            <td>{{ $mov->tipo === 'INGRESO' ? 'Ingreso' : 'Egreso' }}</td>
+            <td>{{ $mov->motivo }}</td>
+            <td class="text-right">{{ $mov->tipo === 'INGRESO' ? '+' : '-' }} S/ {{ number_format($mov->monto, 2) }}</td>
+        </tr>
+        @empty
+        <tr><td colspan="4">Sin movimientos</td></tr>
+        @endforelse
     </table>
 
     @if(count($lineasEliminadas) > 0)

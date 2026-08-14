@@ -284,6 +284,20 @@ class PlainTextTicket
 
         $t->text('Monto apertura: S/ ' . number_format($cashregister->monto_apertura ?? 0, 2));
         $t->text('Monto cierre: S/ ' . number_format($cashregister->monto_cierre ?? 0, 2));
+        $t->separator();
+        $t->center('INGRESOS Y GASTOS');
+        $t->twoColumns('Ingresos:', 'S/ ' . number_format($data['totalIngresos'] ?? 0, 2));
+        $t->twoColumns('Egresos:', 'S/ ' . number_format($data['totalEgresos'] ?? 0, 2));
+        $t->twoColumns('Saldo esperado:', 'S/ ' . number_format($data['saldoEsperado'] ?? 0, 2));
+        $diferencia = $data['diferencia'] ?? 0;
+        $t->twoColumns('Diferencia:', (($diferencia >= 0) ? '+' : '') . 'S/ ' . number_format($diferencia, 2));
+        $movimientos = $data['movimientos'] ?? collect();
+        if ($movimientos->count() > 0) {
+            $t->center('MOVIMIENTOS');
+            foreach ($movimientos as $mov) {
+                $t->text(($mov->tipo === 'INGRESO' ? 'I ' : 'E ') . $mov->motivo . ' - S/ ' . number_format($mov->monto, 2));
+            }
+        }
         return $format === 'escpos' ? $t->getEscPos() : $t->getText();
     }
 

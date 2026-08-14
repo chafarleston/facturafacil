@@ -220,6 +220,77 @@
 </div>
 @endif
 
+<h4 class="mt-4">Ingresos y Gastos</h4>
+<div class="row">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="text-success">Ingresos</h5>
+                <h4>S/ {{ number_format($totalIngresos ?? 0, 2) }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5 class="text-danger">Egresos</h5>
+                <h4>S/ {{ number_format($totalEgresos ?? 0, 2) }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info">
+            <div class="card-body text-center text-white">
+                <h5>Saldo esperado</h5>
+                <h4>S/ {{ number_format($saldoEsperado ?? 0, 2) }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card {{ ($diferencia ?? 0) != 0 ? 'bg-danger' : 'bg-success' }}">
+            <div class="card-body text-center text-white">
+                <h5>Diferencia</h5>
+                <h4>{{ ($diferencia ?? 0) >= 0 ? '+' : '' }}S/ {{ number_format($diferencia ?? 0, 2) }}</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if(count($movimientos ?? []) > 0)
+<div class="table-responsive">
+    <table class="table table-sm table-bordered">
+        <thead class="thead-dark">
+            <tr>
+                <th>Fecha/Hora</th>
+                <th>Tipo</th>
+                <th>Motivo</th>
+                <th class="text-right">Monto</th>
+                <th>Usuario</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($movimientos as $mov)
+            <tr>
+                <td>{{ $mov->created_at->format('d/m/Y H:i') }}</td>
+                <td>
+                    @if($mov->tipo === 'INGRESO')
+                    <span class="badge badge-success">Ingreso</span>
+                    @else
+                    <span class="badge badge-danger">Egreso</span>
+                    @endif
+                </td>
+                <td>{{ $mov->motivo }}</td>
+                <td class="text-right">{{ $mov->tipo === 'INGRESO' ? '+' : '-' }} S/ {{ number_format($mov->monto, 2) }}</td>
+                <td>{{ $mov->user?->name ?? 'Eliminado' }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+</div>
+@else
+<p class="text-muted">Sin movimientos de ingresos o gastos en esta caja.</p>
+@endif
+
 <h4 class="mt-4">Lista de Comprobantes</h4>
 <div class="table-responsive">
     <table class="table table-sm table-bordered">

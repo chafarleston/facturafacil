@@ -47,6 +47,7 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 - **Bloqueo de cierre** si hay mesas abiertas en restaurante
 - El **cajero abre caja pero NO la cierra** (cierre exclusivo con permiso `close_cashregister`; si no lo tiene, modal "Solo el Administrador puede ejecutar estas tareas")
 - El **historial de cajas** (cajas anteriores) solo es visible con permiso `view_cashregister_history` (por defecto solo `admin`)
+- **Ingresos y Gastos** (`/cash-movements`): registrar ingresos y egresos de caja (motivo libre) ligados a la caja abierta; **requiere caja abierta**; se concilian en el cierre (`saldo esperado` y `diferencia`) y se muestran en el resumen web/PDF/ticket
 - Dashboard con **resumen mensual** (ventas del mes vs mes anterior)
 
 ### Impresión Térmica ESC/POS
@@ -257,7 +258,7 @@ En `/companies/{id}/edit`:
 
 En `/roles` se gestionan los roles. Por defecto:
 - **Administrador**: acceso completo
-- **Cajero**: POS, facturación, **envío a SUNAT**, caja (**abrir, NO cerrar**), autoriza anulaciones de cocina con su contraseña y **ve Productos/Compuestos/Inventario/Categorías en solo lectura**
+- **Cajero**: POS, facturación, **envío a SUNAT**, caja (**abrir, NO cerrar**), autoriza anulaciones de cocina con su contraseña, registra **ingresos y gastos** de caja y **ve Productos/Compuestos/Inventario/Categorías en solo lectura**
 - **Mozo**: restaurante, cocina (sin cobrar ni anular); entra directo a `/restaurant` al iniciar sesión
 - **Usuario**: POS, consultas; **sin comprobantes ni caja**
 

@@ -138,6 +138,20 @@
     <div class="border-top py-1 mt-1"></div>
     @endif
 
+    <div class="border-top py-1 mt-1"></div>
+    <div class="border-bottom py-1 mb-1 bold text-center">INGRESOS Y GASTOS</div>
+    <div style="display:flex; justify-content:space-between;"><span>Ingresos:</span><span>S/ {{ number_format($totalIngresos ?? 0, 2) }}</span></div>
+    <div style="display:flex; justify-content:space-between;"><span>Egresos:</span><span>S/ {{ number_format($totalEgresos ?? 0, 2) }}</span></div>
+    <div style="display:flex; justify-content:space-between;"><span>Saldo esperado:</span><span>S/ {{ number_format($saldoEsperado ?? 0, 2) }}</span></div>
+    <div style="display:flex; justify-content:space-between;"><span>Diferencia:</span><span>{{ ($diferencia ?? 0) >= 0 ? '+' : '' }}S/ {{ number_format($diferencia ?? 0, 2) }}</span></div>
+    @foreach($movimientos ?? [] as $mov)
+    <div style="font-size:7px; margin-bottom:2px;">
+        <span>{{ $mov->tipo === 'INGRESO' ? 'I' : 'E' }} {{ Str::limit($mov->motivo, 20) }}</span>
+        <span>{{ $mov->tipo === 'INGRESO' ? '+' : '-' }} S/ {{ number_format($mov->monto, 2) }}</span>
+    </div>
+    @endforeach
+    <div class="border-top py-1 mt-1"></div>
+
     <div class="border-top py-1 mt-1 text-center">
         <div class="bold">GRACIAS POR SU PREFERENCIA</div>
     </div>

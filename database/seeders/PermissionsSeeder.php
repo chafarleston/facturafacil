@@ -43,6 +43,7 @@ class PermissionsSeeder extends Seeder
             ['name' => 'Abrir Caja', 'slug' => 'open_cashregister', 'module' => 'cashregisters', 'description' => 'Abrir caja'],
             ['name' => 'Cerrar Caja', 'slug' => 'close_cashregister', 'module' => 'cashregisters', 'description' => 'Cerrar caja'],
             ['name' => 'Ver Historial de Caja', 'slug' => 'view_cashregister_history', 'module' => 'cashregisters', 'description' => 'Ver el historial de cajas cerradas'],
+            ['name' => 'Registrar Ingresos y Gastos', 'slug' => 'manage_cash_movements', 'module' => 'cashregisters', 'description' => 'Registrar y anular ingresos y gastos de caja'],
             ['name' => 'Ver POS', 'slug' => 'view_pos', 'module' => 'pos', 'description' => 'Ver punto de venta'],
             ['name' => 'Usar POS', 'slug' => 'use_pos', 'module' => 'pos', 'description' => 'Usar punto de venta'],
             ['name' => 'Ver Restaurante', 'slug' => 'view_restaurant', 'module' => 'restaurant', 'description' => 'Ver módulo restaurante'],
@@ -92,7 +93,7 @@ class PermissionsSeeder extends Seeder
             'view_invoices', 'create_invoices', 'send_sunat',
             'view_purchases', 'create_purchases',
             'view_suppliers', 'create_suppliers',
-            'view_cashregisters', 'open_cashregister', 'close_cashregister', 'view_cashregister_history',
+            'view_cashregisters', 'open_cashregister', 'close_cashregister', 'view_cashregister_history', 'manage_cash_movements',
             'view_pos', 'use_pos',
             'view_restaurant', 'manage_orders', 'authorize_cancel_orders',
             'view_kitchen', 'manage_kitchen',
@@ -131,7 +132,7 @@ class PermissionsSeeder extends Seeder
             'view_pos', 'use_pos',
             'view_cashregisters', 'open_cashregister',
             'view_restaurant', 'manage_orders', 'authorize_cancel_orders',
-            'view_products', 'view_categories',
+            'view_products', 'view_categories', 'manage_cash_movements',
         ])->pluck('id')->toArray());
 
         $userRole = Role::firstOrCreate(['slug' => 'user'], [

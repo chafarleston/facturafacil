@@ -73,6 +73,7 @@
 | `restaurant_orders` | Pedidos del restaurante |
 | `restaurant_order_items` | Items de pedidos |
 | `cashregisters` | Registros de apertura/cierre de caja |
+| `cash_movements` | Ingresos y gastos de caja (ligados a una caja abierta) |
 | `printers` | Configuración de impresoras |
 | `print_jobs` | Cola de impresión |
 | `purchases` | Compras a proveedores |
@@ -367,6 +368,16 @@ processCharge() [JS]
 | `pdf()` | GET `/cashregisters/{id}/pdf` | PDF A4 |
 | `ticketPdf()` | GET `/cashregisters/{id}/ticket` | Ticket 80mm |
 | `printCaja()` | POST `/cashregisters/{id}/print-caja` | Imprime en impresora Caja |
+
+#### Ingresos y Gastos (`CashMovementController`)
+
+| Método | Ruta | Propósito |
+|--------|------|-----------|
+| `index()` | GET `/cash-movements` | Lista movimientos de la caja abierta + saldo (permiso: `manage_cash_movements`) |
+| `store()` | POST `/cash-movements` | Registra INGRESO/EGRESO (motivo libre, monto>0). **Exige caja abierta**; actualiza en vivo `total_ingresos`/`total_egresos` |
+| `destroy()` | DELETE `/cash-movements/{id}` | Anula movimiento **solo si la caja sigue ABIERTA** (revierte totales) |
+
+- En el cierre se concilia: `saldo_esperado = monto_apertura + total_ventas + total_ingresos − total_egresos` y `diferencia = monto_cierre − saldo_esperado` (resumen web, PDF A4, ticket 80mm y ticket ESC/POS).
 
 #### Flujo de Cierre de Caja
 
