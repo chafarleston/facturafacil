@@ -39,6 +39,33 @@ class IsAdmin
             return $next($request);
         }
 
+        // Escritura de productos/categorías por permiso
+        $writeRoutePermission = [
+            'products.export' => 'create_products',
+            'products.create' => 'create_products',
+            'products.store' => 'create_products',
+            'products.composite.store' => 'create_products',
+            'products.duplicate' => 'create_products',
+            'products.import.form' => 'create_products',
+            'products.import.store' => 'create_products',
+            'products.import.preview' => 'create_products',
+            'products.import.template' => 'create_products',
+            'products.edit' => 'edit_products',
+            'products.update' => 'edit_products',
+            'products.composite.edit' => 'edit_products',
+            'products.composite.update' => 'edit_products',
+            'products.destroy' => 'delete_products',
+            'categories.create' => 'create_categories',
+            'categories.store' => 'create_categories',
+            'categories.edit' => 'edit_categories',
+            'categories.update' => 'edit_categories',
+            'categories.destroy' => 'delete_categories',
+        ];
+
+        if (isset($writeRoutePermission[$routeName]) && $user->hasPermission($writeRoutePermission[$routeName])) {
+            return $next($request);
+        }
+
         if ($user->isAdmin() || $user->isSuperAdmin()) {
             return $next($request);
         }

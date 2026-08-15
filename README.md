@@ -65,7 +65,7 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 ### Roles y Permisos
 - Roles: **Administrador**, **Cajero**, **Mozo**, **Usuario** (`superadmin` es un valor reservado en la lógica, no un rol de la BD)
 - Permisos granulares: Abrir Caja y Cerrar Caja como permisos separados; **Enviar a SUNAT** para cajero/admin
-- Permisos gestionables por rol (Roles/Permisos): `view_cashregister_history` (historial de cajas, solo admin por defecto), `authorize_cancel_orders` (autorizar anulaciones en cocina con la propia contraseña; admin y cajero por defecto) y `view_products`/`view_categories` (Productos y Categorías en solo lectura; el cajero los ve por defecto)
+- Permisos gestionables por rol (Roles/Permisos): `view_cashregister_history` (historial de cajas, solo admin por defecto), `authorize_cancel_orders` (autorizar anulaciones en cocina con la propia contraseña; admin y cajero por defecto) y `view/create/edit/delete_products` + `view/create/edit/delete_categories` (el cajero gestiona productos y categorías por defecto)
 - Control de acceso a funcionalidades del restaurante (Cobrar/Anular restringido a no-mozos)
 - **Auto-check de permisos** al seleccionar rol principal en creación de usuarios
 
@@ -258,7 +258,7 @@ En `/companies/{id}/edit`:
 
 En `/roles` se gestionan los roles. Por defecto:
 - **Administrador**: acceso completo
-- **Cajero**: POS, facturación, **envío a SUNAT**, caja (**abrir, NO cerrar**), autoriza anulaciones de cocina con su contraseña, registra **ingresos y gastos** de caja y **ve Productos/Compuestos/Inventario/Categorías en solo lectura**
+- **Cajero**: POS, facturación, **envío a SUNAT**, caja (**abrir, NO cerrar**), autoriza anulaciones de cocina con su contraseña, registra **ingresos y gastos** de caja y **gestiona productos/compuestos/inventario y categorías (crear, editar, eliminar)**
 - **Mozo**: restaurante, cocina (sin cobrar ni anular); entra directo a `/restaurant` al iniciar sesión
 - **Usuario**: POS, consultas; **sin comprobantes ni caja**
 

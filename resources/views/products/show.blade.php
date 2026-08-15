@@ -149,9 +149,13 @@
             <a href="{{ route('products.show', $prev) }}" class="btn btn-outline-primary"><i class="fas fa-chevron-left"></i> Anterior</a>
             @endif
             @if($product->is_composite)
+              @can('permission', 'edit_products')
               <a href="{{ route('products.composite.edit', $product) }}" class="btn btn-warning"><i class="fas fa-edit"></i> Editar</a>
+              @endcan
             @else
+              @can('permission', 'edit_products')
               <a href="{{ route('products.edit', $product) }}" class="btn btn-warning"><i class="fas fa-edit"></i> Editar</a>
+              @endcan
             @endif
             <a href="{{ route('products.index') }}" class="btn btn-secondary">Volver</a>
             @if($next)
