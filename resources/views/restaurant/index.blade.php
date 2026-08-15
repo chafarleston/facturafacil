@@ -1681,7 +1681,7 @@ function pollTableLocks() {
             delete card.dataset.lockedBy;
         });
 
-        data.locks.forEach(lock => {
+        (Array.isArray(data.locks) ? data.locks : []).forEach(lock => {
             if (lock.locked_by === currentUserId) return;
             const card = document.querySelector(`.table-card[data-table-id="${lock.table_id}"]`);
             if (!card) return;

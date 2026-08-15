@@ -1423,7 +1423,8 @@ private function updateOrderTotals(RestaurantOrder $order)
                     'user_name' => $table->lockedByUser ? $table->lockedByUser->name : 'Usuario',
                 ];
             })
-            ->filter();
+            ->filter()
+            ->values();
 
         return response()->json(['success' => true, 'locks' => $locks])
             ->header('Cache-Control', 'no-cache, must-revalidate, no-store, private');
