@@ -1,5 +1,4 @@
 @echo off
-chcp 65001 >nul
 setlocal enabledelayedexpansion
 title Actualizar FacturaFacil
 cd /d "%~dp0"
@@ -11,12 +10,16 @@ echo ============================================
 echo.
 
 set "LARAGON=C:\laragon"
-set "DBNAME="
-set "DBUSER="
-set "DBPASS="
-set "DBHOST="
-set "DBPORT="
-set "MYSQLDIR="
+
+:: ============================================
+::  CONFIGURACION DE BASE DE DATOS
+::  (editar estos valores si difieren del cliente)
+:: ============================================
+set "DB_HOST=127.0.0.1"
+set "DB_PORT=3306"
+set "DB_NAME=facturafacil"
+set "DB_USER=root"
+set "DB_PASS="
 
 echo [1/10] Backup de la base de datos
 set "MYSQLDIR="
@@ -25,38 +28,6 @@ if not defined MYSQLDIR for /d %%d in ("%LARAGON%\bin\mysql\mariadb-*") do set "
 if not defined MYSQLDIR ( echo   ERROR: no se encontro MySQL/MariaDB en %LARAGON%\bin\mysql & goto :error )
 set "MYSQLDUMP=%MYSQLDIR%\bin\mysqldump.exe"
 if not exist "%MYSQLDUMP%" ( echo   ERROR: mysqldump no existe & goto :error )
-
-for /f "tokens=1,* delims==" %%a in ('findstr /b "DB_DATABASE=" .env') do set "DBNAME=%%b"
-for /f "tokens=1,* delims==" %%a in ('findstr /b "DB_USERNAME=" .env') do set "DBUSER=%%b"
-for /f "tokens=1,* delims==" %%a in ('findstr /b "DB_PASSWORD=" .env') do set "DBPASS=%%b"
-for /f "tokens=1,* delims==" %%a in ('findstr /b "DB_HOST=" .env') do set "DBHOST=%%b"
-for /f "tokens=1,* delims==" %%a in ('findstr /b "DB_PORT=" .env') do set "DBPORT=%%b"
-if not defined DBNAME ( echo   ERROR: no hay DB_DATABASE en .env & goto :error )
-if not defined DBUSER set "DBUSER=root"
-if not defined DBHOST set "DBHOST=127.0.0.1"
-if not defined DBPORT set "DBPORT=3306"
-set "DBNAME=%DBNAME:"=%"
-set "DBUSER=%DBUSER:"=%"
-set "DBPASS=%DBPASS:"=%"
-set "DBHOST=%DBHOST:"=%"
-set "DBPORT=%DBPORT:"=%"
-
-:: si DB_PORT viene vacio pero DB_HOST trae host:puerto, separarlos
-set "DBPORT_CHECK="
-for /f "tokens=1,* delims==" %%a in ('findstr /b "DB_PORT=" .env') do set "DBPORT_CHECK=%%b"
-if not defined DBPORT_CHECK (
-    set "DBHOST_TMP="
-    set "DBPORT_TMP="
-    echo !DBHOST! | findstr /r ":" >nul 2>&1
-    if not errorlevel 1 (
-        for /f "tokens=1,2 delims=:" %%x in ("!DBHOST!") do (
-            set "DBHOST_TMP=%%x"
-            set "DBPORT_TMP=%%y"
-        )
-        if defined DBHOST_TMP set "DBHOST=!DBHOST_TMP!"
-        if defined DBPORT_TMP ( set "DBPORT=!DBPORT_TMP!" ) else set "DBPORT=3306"
-    )
-)
 
 for /f "tokens=2 delims==" %%a in ('wmic os get localdatetime /value 2^>nul') do set "DT=%%a"
 if defined DT (
@@ -68,13 +39,13 @@ if not defined DT set "DT=%RANDOM%"
 if not exist "backups" mkdir "backups"
 set "BACKUP=backups\backup_%DT%.sql"
 
-if "%DBPASS%"=="" (
-    "%MYSQLDUMP%" -h "%DBHOST%" -P "%DBPORT%" -u "%DBUSER%" "%DBNAME%" > "%BACKUP%"
+if "%DB_PASS%"=="" (
+    "%MYSQLDUMP%" --skip-column-statistics -h "%DB_HOST%" -P "%DB_PORT%" -u "%DB_USER%" "%DB_NAME%" > "%BACKUP%"
 ) else (
-    "%MYSQLDUMP%" -h "%DBHOST%" -P "%DBPORT%" -u "%DBUSER%" -p"%DBPASS%" "%DBNAME%" > "%BACKUP%"
+    "%MYSQLDUMP%" --skip-column-statistics -h "%DB_HOST%" -P "%DB_PORT%" -u "%DB_USER%" -p"%DB_PASS%" "%DB_NAME%" > "%BACKUP%"
 )
 if errorlevel 1 ( echo   ERROR en el backup de la BD & goto :error )
-echo   Backup OK: %BACKUP%  (host=%DBHOST% puerto=%DBPORT% db=%DBNAME%)
+echo   Backup OK: %BACKUP%  (host=%DB_HOST% puerto=%DB_PORT% db=%DB_NAME%)
 echo.
 
 echo [2/10] git pull origin main
