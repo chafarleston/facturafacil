@@ -307,6 +307,9 @@
     </style>
 </head>
 <body>
+    <div id="kdsInactiveNotice" style="display:none; position:fixed; top:0; left:0; right:0; z-index:9999; background:#e94560; color:#fff; text-align:center; padding:12px; font-size:16px; font-weight:bold;">
+        KDS INACTIVO - Modo Impresion 80mm activo. Active el Modo KDS para usar esta pantalla.
+    </div>
     <div class="kds-container">
         <div class="kds-header">
             <h2><i class="fas fa-utensils"></i> {{ $kds === 'bar' ? 'KDS BAR' : ($kds === 'cocina2' ? 'KDS COCINA 2' : 'KDS COCINA') }}</h2>
@@ -348,6 +351,7 @@
 
     <script>
 let kdsFilter = '{{ $kds ?? "cocina" }}';
+let orderMode = @json($orderMode ?? 'kds');
 let allOrders = [];
 let audioContext = null;
 let alertSound = null;
@@ -428,6 +432,10 @@ function loadKitchenOrders() {
     })
     .then(handlePollResponse)
     .then(data => {
+        if (data.order_mode && data.order_mode !== 'kds') {
+            stopKdsPolling();
+            return;
+        }
         if (data.success) {
             const prevCount = allOrders.length;
             allOrders = data.orders;
@@ -646,8 +654,25 @@ function completeOrder(orderId) {
     });
 }
 
-loadKitchenOrders();
-setInterval(loadKitchenOrders, 5000);
+function showKdsInactive() {
+    const n = document.getElementById('kdsInactiveNotice');
+    if (n) n.style.display = 'block';
+}
+
+function stopKdsPolling() {
+    if (window.__kdsInterval) {
+        clearInterval(window.__kdsInterval);
+        window.__kdsInterval = null;
+    }
+    showKdsInactive();
+}
+
+if (orderMode === 'kds') {
+    loadKitchenOrders();
+    window.__kdsInterval = setInterval(loadKitchenOrders, 5000);
+} else {
+    stopKdsPolling();
+}
     </script>
 </body>
 </html>

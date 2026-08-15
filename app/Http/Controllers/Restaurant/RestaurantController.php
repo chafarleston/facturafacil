@@ -687,7 +687,9 @@ class RestaurantController extends Controller
     public function kitchenIndex(Request $request)
     {
         $kds = $request->kds ?? 'cocina';
-        return view('restaurant.kds', compact('kds'));
+        $companyId = $request->company_id ?? Company::first()->id;
+        $orderMode = optional(Company::find($companyId))->order_mode ?? 'kds';
+        return view('restaurant.kds', compact('kds', 'orderMode'));
     }
 
     public function getKitchenOrders(Request $request)
@@ -749,7 +751,7 @@ class RestaurantController extends Controller
             ];
         });
 
-        return response()->json(['success' => true, 'orders' => $formattedOrders])
+        return response()->json(['success' => true, 'orders' => $formattedOrders, 'order_mode' => optional(Company::find($companyId))->order_mode ?? 'kds'])
             ->header('Cache-Control', 'no-cache, must-revalidate, no-store, private')
             ->header('Pragma', 'no-cache');
     }

@@ -1,3 +1,6 @@
+@php
+$__kdsActive = (optional(\App\Models\Company::getMainCompany())->order_mode ?? 'kds') === 'kds';
+@endphp
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -250,9 +253,11 @@
               <ul class="nav nav-treeview">
                 <li class="nav-item"><a href="{{ route('restaurant.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>POS Restaurante</p></a></li>
                 @can('permission', 'view_kitchen')
+                @if($__kdsActive)
                 <li class="nav-item"><a href="{{ route('restaurant.kitchen.cocina') }}" class="nav-link" target="_blank"><i class="far fa-circle nav-icon"></i><p>KDS Cocina</p></a></li>
                 <li class="nav-item"><a href="{{ route('restaurant.kitchen.cocina2') }}" class="nav-link" target="_blank"><i class="far fa-circle nav-icon"></i><p>KDS Cocina 2</p></a></li>
                 <li class="nav-item"><a href="{{ route('restaurant.kitchen.bar') }}" class="nav-link" target="_blank"><i class="far fa-circle nav-icon"></i><p>KDS Bar</p></a></li>
+                @endif
                 @endcan
                 <li class="nav-item"><a href="{{ route('restaurant.floors.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Pisos</p></a></li>
     <li class="nav-item"><a href="{{ route('auxiliary-items.index') }}" class="nav-link {{ request()->routeIs('auxiliary-items.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Elementos Auxiliares</p></a></li>
