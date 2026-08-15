@@ -1,5 +1,5 @@
 @php
-$__kdsActive = (optional(\App\Models\Company::getMainCompany())->order_mode ?? 'kds') === 'kds';
+$__kdsActive = \App\Models\Company::orderMode() === 'kds';
 @endphp
 <!DOCTYPE html>
 <html lang="es">

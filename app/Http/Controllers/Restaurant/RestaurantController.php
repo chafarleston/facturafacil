@@ -93,7 +93,8 @@ class RestaurantController extends Controller
         $company = Company::findOrFail($companyId);
         $newMode = $company->order_mode === 'print' ? 'kds' : 'print';
         $company->update(['order_mode' => $newMode]);
-        return back()->with('success', "Modo cambiado a " . ($newMode === 'print' ? 'Impresión 80mm' : 'KDS'));
+        \Illuminate\Support\Facades\Cache::forget('company_order_mode');
+        return back()->with('success', "Modo cambiado a " . ($newMode === 'print' ? 'Impresi��n 80mm' : 'KDS'));
     }
 
     public function openTable(Request $request, $tableId)
@@ -531,6 +532,9 @@ class RestaurantController extends Controller
 
     public function completeOrder(Request $request, $orderId)
     {
+        if (Company::orderMode() === 'print') {
+            return response()->json(['success' => false, 'message' => 'Modo Impresión activo — el KDS está inactivo'], 400);
+        }
         try {
             $order = RestaurantOrder::with('items')->findOrFail($orderId);
 
@@ -687,14 +691,13 @@ class RestaurantController extends Controller
     public function kitchenIndex(Request $request)
     {
         $kds = $request->kds ?? 'cocina';
-        $companyId = $request->company_id ?? Company::first()->id;
-        $orderMode = optional(Company::find($companyId))->order_mode ?? 'kds';
+        $orderMode = Company::orderMode();
         return view('restaurant.kds', compact('kds', 'orderMode'));
     }
 
     public function getKitchenOrders(Request $request)
     {
-        $companyId = $request->company_id ?? Company::first()->id;
+        $companyId = $request->company_id ?? Company::mainCompanyId();
         $kds = $request->kds ?? 'cocina';
         
         $orders = RestaurantOrder::where('company_id', $companyId)
@@ -751,7 +754,7 @@ class RestaurantController extends Controller
             ];
         });
 
-        return response()->json(['success' => true, 'orders' => $formattedOrders, 'order_mode' => optional(Company::find($companyId))->order_mode ?? 'kds'])
+        return response()->json(['success' => true, 'orders' => $formattedOrders, 'order_mode' => Company::orderMode()])
             ->header('Cache-Control', 'no-cache, must-revalidate, no-store, private')
             ->header('Pragma', 'no-cache');
     }
@@ -849,6 +852,9 @@ class RestaurantController extends Controller
 
     public function markKitchenReady($orderId)
     {
+        if (Company::orderMode() === 'print') {
+            return response()->json(['success' => false, 'message' => 'Modo Impresión activo — el KDS está inactivo'], 400);
+        }
         try {
             $order = RestaurantOrder::with('items')->findOrFail($orderId);
             
@@ -871,6 +877,9 @@ class RestaurantController extends Controller
 
     public function deliverKitchenOrder($orderId)
     {
+        if (Company::orderMode() === 'print') {
+            return response()->json(['success' => false, 'message' => 'Modo Impresión activo — el KDS está inactivo'], 400);
+        }
         try {
             $order = RestaurantOrder::with('items')->findOrFail($orderId);
             

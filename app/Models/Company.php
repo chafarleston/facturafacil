@@ -132,6 +132,20 @@ class Company extends Model
         return $company;
     }
 
+    public static function mainCompanyId(): int
+    {
+        return (int) \Illuminate\Support\Facades\Cache::rememberForever('company_main_id', function () {
+            return optional(static::getMainCompany())->id;
+        });
+    }
+
+    public static function orderMode(): string
+    {
+        return \Illuminate\Support\Facades\Cache::rememberForever('company_order_mode', function () {
+            return optional(static::getMainCompany())->order_mode ?? 'kds';
+        });
+    }
+
     public function getLogoUrl()
     {
         if ($this->logo && \Storage::disk('public')->exists($this->logo)) {
