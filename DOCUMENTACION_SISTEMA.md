@@ -336,13 +336,14 @@ processCharge() [JS]
             1. Verificar permiso (no mozo)
             2. Verificar caja abierta
             3. Validar orden (no OPEN, con items)
-            4. Buscar/crear serie y número
-            5. Calcular IGV según empresa
-            6. Crear Invoice + InvoiceItems
-            7. Descontar stock (permite negativo)
-            8. Marcar orden COMPLETED, mesa AVAILABLE
-            9. Actualizar caja registradora
-            10. Responder JSON
+            4. ENVIAR A COCINA/BAR automáticamente los items PENDING (marcar SENT, destino, ticket/impresión en modo print, evento KDS en modo kds)
+            5. Buscar/crear serie y número
+            6. Calcular IGV según empresa
+            7. Crear Invoice + InvoiceItems (incluye todos los items, enviados y pendientes)
+            8. Descontar stock (permite negativo)
+            9. Marcar orden COMPLETED, mesa AVAILABLE
+            10. Actualizar caja registradora
+            11. Responder JSON
     → showConfirm("Total: S/ X [\nVuelto: S/ Y]\n\n¿Desea imprimir el comprobante?")
         → Sí: window.open /pos/print/{invoice}/80mm + location.reload()
         → No: location.reload()

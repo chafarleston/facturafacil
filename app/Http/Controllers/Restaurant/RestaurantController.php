@@ -950,6 +950,34 @@ class RestaurantController extends Controller
                     'message' => 'El pedido no tiene productos por cobrar'
                 ], 400);
             }
+
+            // Opción B: enviar automáticamente a cocina/bar los items pendientes antes de facturar
+            $pendingToSend = $items->where('kitchen_status', 'PENDING');
+            if ($pendingToSend->isNotEmpty()) {
+                foreach ($pendingToSend as $item) {
+                    $item->kitchen_status = 'SENT';
+                    $item->sent_to_kitchen_at = now();
+                    $product = Product::find($item->product_id);
+                    if ($product && $product->kds_destination) {
+                        $item->kds_destination = $product->kds_destination;
+                    }
+                    $item->save();
+                }
+
+                $company = Company::find($order->company_id);
+                if ($company && ($company->order_mode ?? 'kds') === 'print') {
+                    try {
+                        $printService = app(PrintService::class);
+                        $printService->printKitchenOrder($order->fresh(['table.floor', 'user']), $pendingToSend);
+                    } catch (\Exception $e) {
+                        \Log::error('Auto-send print error: ' . $e->getMessage());
+                    }
+                }
+
+                event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
+                Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+                Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
+            }
             
             $customerId = $request->customer_id;
             $documentType = $request->document_type ?? 'NV';
@@ -1032,6 +1060,30 @@ class RestaurantController extends Controller
                     'success' => false,
                     'message' => 'El pedido no tiene productos por dividir'
                 ], 400);
+            }
+
+            // Opción B: enviar automáticamente a cocina/bar los items pendientes antes de dividir/cobrar
+            $pendingToSend = $availableItems->where('kitchen_status', 'PENDING');
+            if ($pendingToSend->isNotEmpty()) {
+                foreach ($pendingToSend as $item) {
+                    $item->kitchen_status = 'SENT';
+                    $item->sent_to_kitchen_at = now();
+                    $product = Product::find($item->product_id);
+                    if ($product && $product->kds_destination) {
+                        $item->kds_destination = $product->kds_destination;
+                    }
+                    $item->save();
+                }
+
+                $company = Company::find($order->company_id);
+                if ($company && ($company->order_mode ?? 'kds') === 'print') {
+                    try {
+                        $printService = app(PrintService::class);
+                        $printService->printKitchenOrder($order->fresh(['table.floor', 'user']), $pendingToSend);
+                    } catch (\Exception $e) {
+                        \Log::error('Auto-send print error: ' . $e->getMessage());
+                    }
+                }
             }
 
             $splits = $request->splits ?? [];
