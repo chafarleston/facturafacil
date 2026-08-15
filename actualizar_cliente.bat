@@ -60,9 +60,9 @@ echo [4/10] php artisan migrate --force
 call php artisan migrate --force
 if errorlevel 1 goto :error
 
-echo [5/10] php artisan db:seed --class=PermissionsSeeder --force
-echo        (SOLO permisos - NO resetea las series)
-call php artisan db:seed --class=PermissionsSeeder --force
+echo [5/10] php artisan db:seed --class=ActualizarSeeder --force
+echo        (Permisos + impresoras - NO resetea series ni contrasenas)
+call php artisan db:seed --class=ActualizarSeeder --force
 if errorlevel 1 goto :error
 
 echo [6/10] npm install (solo si falta node_modules)
