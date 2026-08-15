@@ -1630,11 +1630,19 @@ function confirmAdminPassword() {
     });
 }
 
+function handlePollResponse(res) {
+    if (res.status === 401) {
+        window.location.href = '/login';
+        return Promise.reject('unauthenticated');
+    }
+    return res.json();
+}
+
 function pollActiveOrders() {
     fetch('/restaurant/active-orders?_=' + Date.now(), {
         headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
     })
-    .then(res => res.json())
+    .then(handlePollResponse)
     .then(data => {
         if (!data.success) return;
         const tablesWithOrders = {};
@@ -1672,7 +1680,7 @@ function pollTableLocks() {
     fetch('/restaurant/locks?_=' + Date.now(), {
         headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
     })
-    .then(res => res.json())
+    .then(handlePollResponse)
     .then(data => {
         if (!data.success) return;
 
@@ -1720,7 +1728,7 @@ function pollPrintServer() {
     fetch('/restaurant/print-status?_=' + Date.now(), {
         headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
     })
-    .then(res => res.json())
+    .then(handlePollResponse)
     .then(data => {
         const badge = document.getElementById('printServerBadge');
         if (!badge) return;

@@ -414,11 +414,19 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 
+function handlePollResponse(res) {
+    if (res.status === 401) {
+        window.location.href = '/login';
+        return Promise.reject('unauthenticated');
+    }
+    return res.json();
+}
+
 function loadKitchenOrders() {
     fetch('/restaurant/kitchen-orders?_=' + Date.now() + '&kds=' + kdsFilter, {
         headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
     })
-    .then(res => res.json())
+    .then(handlePollResponse)
     .then(data => {
         if (data.success) {
             const prevCount = allOrders.length;
