@@ -286,9 +286,10 @@ Los permisos `view_cashregister_history` (historial de cajas) y `authorize_cance
 5. Cobrar → emite comprobante, envía a SUNAT
 
 ### KDS (Cocina)
-- `/restaurant/kitchen` — Pantalla de cocina, actualiza automáticamente cada 5s
-- Botones: Marcar Listo / Entregar
+- `/restaurant/kitchen` — Pantalla de cocina, actualiza automáticamente cada 5s (**solo en Modo KDS**; en Modo Impresión 80mm el menú oculta los ítems KDS, la pantalla muestra "KDS INACTIVO" y no hace polling)
+- Botones: Marcar Listo / Entregar (responden 400 en Modo Impresión)
 - Alerta sonora al recibir nuevos pedidos
+- Si la sesión expira, el polling redirige a `/login`
 
 ### Caja Registradora
 1. `/cashregisters` — Abrir caja con "Nombre de referencia" (ej: "25-05-mañana")

@@ -803,10 +803,12 @@ Apertura automática en POS:
 
 | Vista | Función | Intervalo |
 |-------|---------|-----------|
-| Restaurante | `pollActiveOrders()` | 3 segundos |
-| Restaurante | `pollTableLocks()` | 3 segundos |
-| Restaurante | `pollPrintServer()` | 10 segundos |
-| KDS (Cocina) | `loadKitchenOrders()` | 5 segundos |
+| Restaurante | `pollActiveOrders()` | 10 segundos |
+| Restaurante | `pollTableLocks()` | 10 segundos |
+| Restaurante | `pollPrintServer()` | 10 segundos (solo si hay badge, modo impresión) |
+| KDS (Cocina) | `loadKitchenOrders()` | 5 segundos (solo en Modo KDS) |
+
+> **Nota**: `handlePollResponse()` redirige a `/login` si el polling recibe **401** (sesión expirada). En modo `print` (`companies.order_mode`) el menú oculta los ítems "KDS Cocina/Cocina 2/Bar", `loadKitchenOrders` no arranca (o se detiene en vivo vía `getKitchenOrders.order_mode`, mostrando "KDS INACTIVO") y las acciones KDS (`markKitchenReady`/`deliverKitchenOrder`/`completeOrder`) responden **400**. El modo se cachea con `Company::orderMode()`/`mainCompanyId()` (`rememberForever`), invalidado por `Company::clearCache()` en `toggleMode` y en cambios de empresa (store/update/destroy/setMain).
 
 ### 13.2 Funciones Globales del Restaurante
 
