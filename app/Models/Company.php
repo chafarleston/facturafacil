@@ -146,6 +146,12 @@ class Company extends Model
         });
     }
 
+    public static function clearCache(): void
+    {
+        \Illuminate\Support\Facades\Cache::forget('company_main_id');
+        \Illuminate\Support\Facades\Cache::forget('company_order_mode');
+    }
+
     public function getLogoUrl()
     {
         if ($this->logo && \Storage::disk('public')->exists($this->logo)) {

@@ -41,7 +41,7 @@ public function store(Request $request)
         }
 
         Company::create($data);
-        \Illuminate\Support\Facades\Cache::forget(['company_main_id', 'company_order_mode']);
+        \App\Models\Company::clearCache();
 
         return redirect()->route('companies.index')->with('success', 'Empresa creada correctamente');
     }
@@ -138,7 +138,7 @@ if ($request->hasFile('certificado')) {
 }
 
         $company->update($data);
-        \Illuminate\Support\Facades\Cache::forget(['company_main_id', 'company_order_mode']);
+        \App\Models\Company::clearCache();
 
         return redirect()->route('companies.show', $company)->with('success', 'Empresa actualizada');
     }
@@ -196,7 +196,7 @@ if ($request->hasFile('certificado')) {
             return redirect()->route('companies.index')->with('error', 'No se puede eliminar la empresa principal');
         }
         $company->update(['estado' => 'INACTIVO']);
-        \Illuminate\Support\Facades\Cache::forget(['company_main_id', 'company_order_mode']);
+        \App\Models\Company::clearCache();
         return redirect()->route('companies.index')->with('success', 'Empresa eliminada correctamente');
     }
     
@@ -204,7 +204,7 @@ if ($request->hasFile('certificado')) {
     {
         \App\Models\Company::where('is_main', true)->update(['is_main' => false]);
         $company->update(['is_main' => true, 'estado' => 'ACTIVO']);
-        \Illuminate\Support\Facades\Cache::forget(['company_main_id', 'company_order_mode']);
+        \App\Models\Company::clearCache();
         return redirect()->route('companies.index')->with('success', 'Empresa establecida como principal');
     }
 }

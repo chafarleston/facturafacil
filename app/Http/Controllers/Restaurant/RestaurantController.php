@@ -93,7 +93,7 @@ class RestaurantController extends Controller
         $company = Company::findOrFail($companyId);
         $newMode = $company->order_mode === 'print' ? 'kds' : 'print';
         $company->update(['order_mode' => $newMode]);
-        \Illuminate\Support\Facades\Cache::forget('company_order_mode');
+        \App\Models\Company::clearCache();
         return back()->with('success', "Modo cambiado a " . ($newMode === 'print' ? 'Impresi��n 80mm' : 'KDS'));
     }
 
