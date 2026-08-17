@@ -378,7 +378,7 @@ processCharge() [JS]
 | `store()` | POST `/cash-movements` | Registra INGRESO/EGRESO (motivo libre, monto>0). **Exige caja abierta**; actualiza en vivo `total_ingresos`/`total_egresos` |
 | `destroy()` | DELETE `/cash-movements/{id}` | Anula movimiento **solo si la caja sigue ABIERTA** (revierte totales) |
 
-- En el cierre se concilia: `saldo_esperado = monto_apertura + total_ventas + total_ingresos − total_egresos` y `diferencia = monto_cierre − saldo_esperado` (resumen web, PDF A4, ticket 80mm y ticket ESC/POS).
+- En el cierre se concilia **solo con efectivo**: `saldo_esperado = monto_apertura + ventas_efectivo + total_ingresos − total_egresos` y `diferencia = monto_cierre − saldo_esperado` (resumen web, PDF A4, ticket 80mm y ticket ESC/POS). Los pagos **Yape/Plin/Tarjeta son virtuales** (no cuentan como dinero en caja) y se muestran por separado.
 
 #### Flujo de Cierre de Caja
 
