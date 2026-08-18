@@ -239,18 +239,10 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card bg-info">
+        <div class="card bg-{{ ($saldoFinalEfectivo ?? 0) < 0 ? 'danger' : 'success' }}">
             <div class="card-body text-center text-white">
-                <h5>Saldo esperado</h5>
-                <h4>S/ {{ number_format($saldoEsperado ?? 0, 2) }}</h4>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card {{ ($diferencia ?? 0) != 0 ? 'bg-danger' : 'bg-success' }}">
-            <div class="card-body text-center text-white">
-                <h5>Diferencia</h5>
-                <h4>{{ ($diferencia ?? 0) >= 0 ? '+' : '' }}S/ {{ number_format($diferencia ?? 0, 2) }}</h4>
+                <h5>Saldo Final de Efectivo</h5>
+                <h4>{{ ($saldoFinalEfectivo ?? 0) >= 0 ? '' : '-' }}S/ {{ number_format(abs($saldoFinalEfectivo ?? 0), 2) }}</h4>
             </div>
         </div>
     </div>

@@ -57,13 +57,9 @@
             <td class="text-right text-danger">S/ {{ number_format($totalEgresos ?? 0, 2) }}</td>
         </tr>
         <tr>
-            <td>Saldo esperado:</td>
-            <td class="text-right">S/ {{ number_format($saldoEsperado ?? 0, 2) }}</td>
-        </tr>
-        <tr>
-            <td>Diferencia:</td>
-            <td class="text-right {{ ($diferencia ?? 0) != 0 ? 'text-danger' : 'text-success' }}">
-                {{ ($diferencia ?? 0) >= 0 ? '+' : '' }}S/ {{ number_format($diferencia ?? 0, 2) }}
+            <td>Saldo Final de Efectivo:</td>
+            <td class="text-right {{ ($saldoFinalEfectivo ?? 0) < 0 ? 'text-danger' : 'text-success' }}">
+                {{ ($saldoFinalEfectivo ?? 0) >= 0 ? '' : '-' }}S/ {{ number_format(abs($saldoFinalEfectivo ?? 0), 2) }}
             </td>
         </tr>
     </table>

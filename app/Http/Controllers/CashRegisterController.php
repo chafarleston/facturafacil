@@ -259,6 +259,9 @@ class CashRegisterController extends Controller
             }
         }
         $totalMetodos = $ventasEfectivo + $ventasTarjeta + $ventasYape + $ventasPlin + $ventasOtro;
+
+        // Saldo final de efectivo = ventas en efectivo + ingresos - egresos (sin apertura; virtuales informativos)
+        $saldoFinalEfectivo = round((float) $ventasEfectivo + (float) ($totalIngresos ?? 0) - (float) ($totalEgresos ?? 0), 2);
         
         $kioskoVentas = $ventas->where('order_source', 'kiosko');
         $kioskoTotal = $kioskoVentas->sum('total');
@@ -269,7 +272,7 @@ class CashRegisterController extends Controller
             'categoriasVentas', 'productosVendidos',
             'ventasEfectivo', 'ventasTarjeta', 'ventasYape', 'ventasPlin', 'ventasOtro',
             'totalMetodos', 'lineasEliminadas', 'kioskoTotal', 'kioskoCount',
-            'movimientos', 'totalIngresos', 'totalEgresos', 'saldoEsperado', 'diferencia'
+            'movimientos', 'totalIngresos', 'totalEgresos', 'saldoFinalEfectivo'
         ));
     }
 
@@ -394,13 +397,13 @@ class CashRegisterController extends Controller
         }
         $ventasEfectivo = round($ventasEfectivo, 2);
 
-        $saldoEsperado = round((float) ($cashregister->monto_apertura ?? 0)
-            + (float) $ventasEfectivo
+        // Saldo final de efectivo = ventas en efectivo + ingresos - egresos (todos en efectivo)
+        // Yape/Plin/Tarjeta son pagos virtuales: no cuentan, solo informativo. Sin apertura.
+        $saldoFinalEfectivo = round((float) $ventasEfectivo
             + (float) $totalIngresos
             - (float) $totalEgresos, 2);
-        $diferencia = round((float) ($cashregister->monto_cierre ?? 0) - $saldoEsperado, 2);
 
-        return compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventasPorMetodo', 'categoriasVentas', 'productosVendidos', 'lineasEliminadas', 'ventas', 'movimientos', 'totalIngresos', 'totalEgresos', 'saldoEsperado', 'diferencia', 'ventasEfectivo');
+        return compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventasPorMetodo', 'categoriasVentas', 'productosVendidos', 'lineasEliminadas', 'ventas', 'movimientos', 'totalIngresos', 'totalEgresos', 'saldoFinalEfectivo', 'ventasEfectivo');
     }
 
     public function pdf(CashRegister $cashregister)

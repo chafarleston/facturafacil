@@ -288,9 +288,8 @@ class PlainTextTicket
         $t->center('INGRESOS Y GASTOS');
         $t->twoColumns('Ingresos:', 'S/ ' . number_format($data['totalIngresos'] ?? 0, 2));
         $t->twoColumns('Egresos:', 'S/ ' . number_format($data['totalEgresos'] ?? 0, 2));
-        $t->twoColumns('Saldo esperado:', 'S/ ' . number_format($data['saldoEsperado'] ?? 0, 2));
-        $diferencia = $data['diferencia'] ?? 0;
-        $t->twoColumns('Diferencia:', (($diferencia >= 0) ? '+' : '') . 'S/ ' . number_format($diferencia, 2));
+        $saldoFinal = (float) ($data['saldoFinalEfectivo'] ?? 0);
+        $t->twoColumns('SALDO FINAL EFECTIVO:', (($saldoFinal >= 0) ? '' : '-') . 'S/ ' . number_format(abs($saldoFinal), 2));
         $movimientos = $data['movimientos'] ?? collect();
         if ($movimientos->count() > 0) {
             $t->center('MOVIMIENTOS');
