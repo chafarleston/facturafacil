@@ -123,14 +123,11 @@
             <div class="col-md-6">
                 <div class="form-group mb-0">
                     <label>Producto</label>
-                    <select name="components[__INDEX__][product_id]" class="form-control component-product" required>
-                        <option value="">Seleccione un producto...</option>
-                        @foreach($availableProducts as $p)
-                            <option value="{{ $p->id }}" data-stock="{{ $p->stock }}" data-price="{{ $p->precio }}">
-                                {{ $p->descripcion }} (Stock: {{ $p->stock }} | S/ {{ number_format($p->precio, 2) }})
-                            </option>
-                        @endforeach
-                    </select>
+                    <div style="position:relative;">
+                        <input type="text" class="form-control component-product-search" placeholder="Buscar producto por nombre o código..." autocomplete="off">
+                        <input type="hidden" name="components[__INDEX__][product_id]" class="component-product-id" value="">
+                        <div class="component-product-results" style="display:none; position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid #ddd; border-radius:4px; max-height:200px; overflow-y:auto; z-index:1000;"></div>
+                    </div>
                 </div>
             </div>
             <div class="col-md-3">
@@ -163,17 +160,18 @@
 @push('scripts')
 <script>
 let componentIndex = 0;
+const availableProducts = @json($availableProducts);
 
 function addComponent() {
     const template = document.getElementById('component-template');
     const clone = template.content.cloneNode(true);
-    
+
     const html = clone.querySelector('.component-row');
     html.innerHTML = html.innerHTML.replace(/__INDEX__/g, componentIndex);
-    
+
     document.getElementById('components-list').appendChild(html);
     componentIndex++;
-    
+
     attachEvents();
     calculateTotals();
 }
@@ -187,76 +185,151 @@ function removeComponent(btn) {
 function reindexComponents() {
     const rows = document.querySelectorAll('.component-row');
     rows.forEach((row, index) => {
-        const select = row.querySelector('select[name*="[product_id]"]');
+        const hidden = row.querySelector('input[name*="[product_id]"]');
         const input = row.querySelector('input[name*="[quantity]"]');
-        if (select) select.name = `components[${index}][product_id]`;
+        if (hidden) hidden.name = `components[${index}][product_id]`;
         if (input) input.name = `components[${index}][quantity]`;
     });
 }
 
+function searchComponentProduct(input) {
+    const row = input.closest('.component-row');
+    const results = row.querySelector('.component-product-results');
+    const q = input.value.trim().toLowerCase();
+
+    if (!q) {
+        row.querySelector('.component-product-id').value = '';
+        results.style.display = 'none';
+        return;
+    }
+
+    const isNumeric = /^\d+$/.test(q);
+    const list = availableProducts.filter(function(p) {
+        if (isNumeric) return (p.codigo && String(p.codigo).toLowerCase().includes(q));
+        return (p.descripcion && String(p.descripcion).toLowerCase().includes(q)) ||
+               (p.codigo && String(p.codigo).toLowerCase().includes(q));
+    });
+
+    if (list.length === 0) {
+        results.innerHTML = '<div style="padding:8px 12px; color:#888; font-size:13px;">Sin resultados</div>';
+        results.style.display = 'block';
+        return;
+    }
+
+    let html = '';
+    list.slice(0, 15).forEach(function(p) {
+        const price = parseFloat(p.precio || 0).toFixed(2);
+        const stock = p.stock != null ? p.stock : 0;
+        html += '<div style="padding:8px 12px; cursor:pointer; font-size:13px; border-bottom:1px solid #eee;" ' +
+            'onclick="selectComponentProductById(this,' + p.id + ')">' +
+            '<strong>' + p.descripcion + '</strong><br>' +
+            '<small style="color:#888;">' + p.codigo + ' &mdash; S/ ' + price + ' &mdash; Stock: ' + stock + '</small>' +
+        '</div>';
+    });
+    results.innerHTML = html;
+    results.style.display = 'block';
+}
+
+function selectComponentProductById(el, id) {
+    const prod = availableProducts.find(p => p.id === id);
+    if (!prod) return;
+    selectComponentProduct(el, prod.id, prod.descripcion, parseFloat(prod.precio || 0));
+}
+
+function selectComponentProduct(el, id, name, price) {
+    const row = el.closest('.component-row');
+    const search = row.querySelector('.component-product-search');
+    const hidden = row.querySelector('.component-product-id');
+    const results = row.querySelector('.component-product-results');
+
+    hidden.value = id;
+    search.value = name;
+    results.style.display = 'none';
+    calculateTotals();
+}
+
 function attachEvents() {
-    document.querySelectorAll('.component-product, .component-quantity').forEach(el => {
-        el.removeEventListener('change', calculateTotals);
+    document.querySelectorAll('.component-product-search').forEach(el => {
+        el.removeEventListener('input', onSearchInput);
+        el.addEventListener('input', onSearchInput);
+    });
+    document.querySelectorAll('.component-quantity').forEach(el => {
         el.removeEventListener('input', calculateTotals);
-        el.addEventListener('change', calculateTotals);
         el.addEventListener('input', calculateTotals);
     });
+    document.querySelectorAll('.component-product-id').forEach(el => {
+        el.removeEventListener('change', calculateTotals);
+        el.addEventListener('change', calculateTotals);
+    });
+}
+
+function onSearchInput(e) {
+    searchComponentProduct(e.target);
 }
 
 function calculateTotals() {
     const rows = document.querySelectorAll('.component-row');
     rows.forEach(row => {
-        const select = row.querySelector('.component-product');
+        const hidden = row.querySelector('.component-product-id');
         const qtyInput = row.querySelector('.component-quantity');
         const subtotalInput = row.querySelector('.component-subtotal');
-        
-        if (select && qtyInput && subtotalInput) {
-            const selectedOption = select.options[select.selectedIndex];
-            const price = parseFloat(selectedOption.dataset.price || 0);
+
+        if (hidden && qtyInput && subtotalInput) {
+            const id = parseInt(hidden.value);
+            const prod = id ? availableProducts.find(p => p.id === id) : null;
+            const price = prod ? parseFloat(prod.precio || 0) : 0;
             const qty = parseFloat(qtyInput.value || 0);
-            const subtotal = price * qty;
-            subtotalInput.value = subtotal.toFixed(2);
+            subtotalInput.value = (price * qty).toFixed(2);
         }
     });
 }
+
+// Cerrar dropdowns al hacer click fuera
+document.addEventListener('click', function(e) {
+    document.querySelectorAll('.component-product-results').forEach(function(results) {
+        if (!results.closest('.component-row')) return;
+        if (results.closest('.component-row').contains(e.target)) return;
+        results.style.display = 'none';
+    });
+});
 
 document.getElementById('compositeForm').addEventListener('submit', function(e) {
     const rows = document.querySelectorAll('.component-row');
     const errorDiv = document.getElementById('components-error');
     errorDiv.style.display = 'none';
-    
+
     if (rows.length === 0) {
         e.preventDefault();
         errorDiv.textContent = 'Debe agregar al menos un componente al producto compuesto.';
         errorDiv.style.display = 'block';
         return;
     }
-    
+
     const productIds = [];
     let hasError = false;
-    
+
     rows.forEach(row => {
-        const select = row.querySelector('.component-product');
+        const hidden = row.querySelector('.component-product-id');
         const qtyInput = row.querySelector('.component-quantity');
-        
-        if (!select.value) {
+
+        if (!hidden || !hidden.value) {
             hasError = true;
             errorDiv.textContent = 'Seleccione un producto para cada componente.';
         }
-        
+
         if (!qtyInput.value || parseFloat(qtyInput.value) <= 0) {
             hasError = true;
             errorDiv.textContent = 'La cantidad debe ser mayor a 0.';
         }
-        
-        if (productIds.includes(select.value)) {
+
+        if (hidden && productIds.includes(hidden.value)) {
             hasError = true;
             errorDiv.textContent = 'No puede agregar el mismo producto dos veces como componente.';
         }
-        
-        productIds.push(select.value);
+
+        if (hidden) productIds.push(hidden.value);
     });
-    
+
     if (hasError) {
         e.preventDefault();
         errorDiv.style.display = 'block';
@@ -265,7 +338,7 @@ document.getElementById('compositeForm').addEventListener('submit', function(e) 
 
 document.addEventListener('DOMContentLoaded', function() {
     addComponent();
-    
+
     const sunatSearch = document.getElementById('sunat-search');
     const codigoSunat = document.getElementById('codigo_sunat');
     const resultsBox = document.getElementById('sunat-results');
