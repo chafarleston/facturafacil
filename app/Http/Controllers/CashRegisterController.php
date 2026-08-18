@@ -260,8 +260,13 @@ class CashRegisterController extends Controller
         }
         $totalMetodos = $ventasEfectivo + $ventasTarjeta + $ventasYape + $ventasPlin + $ventasOtro;
 
-        // Saldo final de efectivo = ventas en efectivo + ingresos - egresos (sin apertura; virtuales informativos)
-        $saldoFinalEfectivo = round((float) $ventasEfectivo + (float) ($totalIngresos ?? 0) - (float) ($totalEgresos ?? 0), 2);
+        // Saldo Final de Efectivo = apertura(ingreso) + ventas_efectivo + ingresos - egresos - cierre(egreso)
+        $saldoFinalEfectivo = round(
+            (float) ($cashregister->monto_apertura ?? 0)
+            + (float) $ventasEfectivo
+            + (float) ($totalIngresos ?? 0)
+            - (float) ($totalEgresos ?? 0)
+            - (float) ($cashregister->monto_cierre ?? 0), 2);
         
         $kioskoVentas = $ventas->where('order_source', 'kiosko');
         $kioskoTotal = $kioskoVentas->sum('total');
@@ -397,11 +402,15 @@ class CashRegisterController extends Controller
         }
         $ventasEfectivo = round($ventasEfectivo, 2);
 
-        // Saldo final de efectivo = ventas en efectivo + ingresos - egresos (todos en efectivo)
-        // Yape/Plin/Tarjeta son pagos virtuales: no cuentan, solo informativo. Sin apertura.
-        $saldoFinalEfectivo = round((float) $ventasEfectivo
+        // Saldo Final de Efectivo = apertura(ingreso) + ventas_efectivo + ingresos - egresos - cierre(egreso)
+        // Yape/Plin/Tarjeta son pagos virtuales: no cuentan, solo informativo.
+        // Positivo = sobra efectivo · Negativo = faltante (caja negativa)
+        $saldoFinalEfectivo = round(
+            (float) ($cashregister->monto_apertura ?? 0)
+            + (float) $ventasEfectivo
             + (float) $totalIngresos
-            - (float) $totalEgresos, 2);
+            - (float) $totalEgresos
+            - (float) ($cashregister->monto_cierre ?? 0), 2);
 
         return compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventasPorMetodo', 'categoriasVentas', 'productosVendidos', 'lineasEliminadas', 'ventas', 'movimientos', 'totalIngresos', 'totalEgresos', 'saldoFinalEfectivo', 'ventasEfectivo');
     }

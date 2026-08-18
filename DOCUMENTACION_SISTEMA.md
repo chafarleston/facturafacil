@@ -378,7 +378,7 @@ processCharge() [JS]
 | `store()` | POST `/cash-movements` | Registra INGRESO/EGRESO (motivo libre, monto>0). **Exige caja abierta**; actualiza en vivo `total_ingresos`/`total_egresos` |
 | `destroy()` | DELETE `/cash-movements/{id}` | Anula movimiento **solo si la caja sigue ABIERTA** (revierte totales) |
 
-- En el cierre se muestra el **Saldo Final de Efectivo** = `ventas_efectivo + total_ingresos − total_egresos` (sin la apertura; la venta se toma del método EFECTIVO, los egresos siempre en efectivo). Los pagos **Yape/Plin/Tarjeta son virtuales** (no cuentan como dinero en caja, solo informativo). Si el saldo es **negativo** (más egresos que ingresos) se marca en rojo (faltante). No se muestra "diferencia" contra un cierre fijo; el cierre puede ser menor a la apertura porque el efectivo de apertura se usó para los egresos. Se muestra en web, PDF A4, ticket 80mm y ticket ESC/POS.
+- En el cierre se muestra el **Saldo Final de Efectivo** = `monto_apertura(ingreso) + ventas_efectivo + total_ingresos − total_egresos − monto_cierre(egreso)`. La **apertura se toma como ingreso** y el **cierre como egreso** (se cancelan si son iguales, sin desbalance). **Positivo** = sobra efectivo (saldo positivo) · **Negativo** = falta (caja negativa, marcado en rojo). Los pagos **Yape/Plin/Tarjeta son virtuales** (no cuentan como dinero en caja, solo informativo). Se muestra en web, PDF A4, ticket 80mm y ticket ESC/POS.
 
 #### Flujo de Cierre de Caja
 
