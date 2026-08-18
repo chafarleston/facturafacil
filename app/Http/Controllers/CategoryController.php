@@ -11,7 +11,7 @@ class CategoryController extends Controller
 {
     public function index(Request $request)
     {
-        $companyId = $request\->get('company_id', \App\Models\Company::getMainCompany()->id);
+        $companyId = $request->get('company_id', \App\Models\Company::getMainCompany()->id);
         $categories = Category::where('company_id', $companyId)->orderBy('nombre')->get();
         
         return view('categories.index', compact('categories', 'companyId'));
@@ -19,7 +19,7 @@ class CategoryController extends Controller
 
     public function create(Request $request)
     {
-        $companyId = $request\->get('company_id', \App\Models\Company::getMainCompany()->id);
+        $companyId = $request->get('company_id', \App\Models\Company::getMainCompany()->id);
         return view('categories.create', compact('companyId'));
     }
 
@@ -30,7 +30,7 @@ class CategoryController extends Controller
             'descripcion' => 'nullable|string',
         ]);
 
-        $companyId = $request\->get('company_id', \App\Models\Company::getMainCompany()->id);
+        $companyId = $request->get('company_id', \App\Models\Company::getMainCompany()->id);
         
         Category::create([
             'company_id' => $companyId,

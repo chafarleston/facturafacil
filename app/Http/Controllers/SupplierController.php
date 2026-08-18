@@ -10,14 +10,14 @@ class SupplierController extends Controller
 {
     public function index(Request $request)
     {
-        $companyId = $request->get('company_id', Auth::user()->company_id);
+        $companyId = $request->get('company_id', \App\Models\Company::getMainCompany()->id);
         $suppliers = Supplier::where('company_id', $companyId)->orderBy('nombre')->get();
         return view('suppliers.index', compact('suppliers', 'companyId'));
     }
 
     public function create(Request $request)
     {
-        $companyId = $request->get('company_id', Auth::user()->company_id);
+        $companyId = $request->get('company_id', \App\Models\Company::getMainCompany()->id);
         return view('suppliers.create', compact('companyId'));
     }
 
@@ -28,7 +28,7 @@ class SupplierController extends Controller
             'ruc' => 'nullable|max:11',
         ]);
 
-        $companyId = $request->get('company_id', Auth::user()->company_id);
+        $companyId = $request->get('company_id', \App\Models\Company::getMainCompany()->id);
         
         Supplier::create([
             'company_id' => $companyId,
