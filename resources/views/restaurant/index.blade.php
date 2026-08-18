@@ -628,6 +628,7 @@
         <button class="btn-action btn-cancel-order" onclick="cancelOrder()" id="btnCancelOrder" disabled><i class="fas fa-times"></i><br>Anular</button>
         @endif
         <button class="btn-action btn-move" onclick="showMoveTableModal()" id="btnMoveTable" disabled><i class="fas fa-arrows-alt"></i><br>Mover</button>
+        <button class="btn-action btn-merge" onclick="showMergeTableModal()" id="btnMergeTable" disabled><i class="fas fa-object-group"></i><br>Fusionar</button>
         @if(!auth()->user()->isMozo())
         <button class="btn-action btn-cash-drawer" onclick="openCashDrawer()" id="btnCashDrawer" disabled><i class="fas fa-cash-register"></i><br>Caja</button>
         @endif
@@ -663,7 +664,7 @@
 <div class="qty-overlay" id="moveTableOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
     <div class="qty-popup" style="background:white; padding:20px; border-radius:10px; min-width:400px; max-width:500px; max-height:80vh; overflow-y:auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <h5 style="margin:0;"><i class="fas fa-arrows-alt"></i> Mover pedido a otra mesa</h5>
+            <h5 style="margin:0;" id="moveTableTitle"><i class="fas fa-arrows-alt"></i> Mover pedido a otra mesa</h5>
             <button onclick="closeMoveTableModal()" style="border:none; background:none; font-size:22px; cursor:pointer;">&times;</button>
         </div>
         <div id="moveTableList" style="max-height:55vh; overflow-y:auto;">
@@ -871,6 +872,8 @@ function selectTable(tableId) {
         if (cancelBtn) cancelBtn.disabled = false;
         const moveBtn = document.getElementById('btnMoveTable');
         if (moveBtn) moveBtn.disabled = false;
+        const mergeBtn = document.getElementById('btnMergeTable');
+        if (mergeBtn) mergeBtn.disabled = false;
         const drawerBtn = document.getElementById('btnCashDrawer');
         if (drawerBtn) drawerBtn.disabled = false;
 
@@ -1406,36 +1409,49 @@ function printPrebillTo(printerKey) {
 }
 
 function showMoveTableModal() {
+    buildTablePicker(false);
+}
+
+function showMergeTableModal() {
+    buildTablePicker(true);
+}
+
+function buildTablePicker(isMerge) {
     if (!currentOrderId) return;
     var container = document.getElementById('moveTableList');
     var html = '';
     var currentTableIdNum = parseInt(currentTableId);
-    
+
+    document.getElementById('moveTableTitle').textContent = isMerge ? 'Fusionar pedido con otra mesa' : 'Mover pedido a otra mesa';
+
     allFloors.forEach(function(floor) {
         var hasTables = floor.tables && floor.tables.some(function(t) { return t.id !== currentTableIdNum; });
         if (!hasTables) return;
-        
+
         html += '<div style="margin-bottom:12px;">';
         html += '<div style="font-weight:600; font-size:14px; color:#555; margin-bottom:6px; padding:4px 0; border-bottom:1px solid #eee;">' + floor.name + '</div>';
-        
+
         floor.tables.forEach(function(t) {
             if (t.id === currentTableIdNum) return;
             var isOccupied = t.status === 'OCCUPIED';
             var isAvailable = t.status === 'AVAILABLE';
+
+            if (isMerge && !isOccupied) return;
+
             var cssClass = isOccupied ? 'occupied' : (isAvailable ? 'available' : '');
             var icon = isOccupied ? 'fa-chair text-warning' : 'fa-chair text-success';
             var label = isOccupied ? 'Ocupada' : 'Disponible';
-            
-            html += '<div class="move-table-item ' + cssClass + '" onclick="selectMoveTable(' + t.id + ')" data-table-id="' + t.id + '">';
+
+            html += '<div class="move-table-item ' + cssClass + '" onclick="' + (isMerge ? 'selectMergeTable(' + t.id + ')' : 'selectMoveTable(' + t.id + ')') + '" data-table-id="' + t.id + '">';
             html += '<div class="table-icon"><i class="fas ' + icon + '"></i></div>';
             html += '<div style="flex:1;"><strong>' + t.name + '</strong><br><small style="color:#888;">' + label + '</small></div>';
             html += '</div>';
         });
-        
+
         html += '</div>';
     });
-    
-    container.innerHTML = html || '<p style="text-align:center;color:#888;">No hay otras mesas disponibles</p>';
+
+    container.innerHTML = html || '<p style="text-align:center;color:#888;">' + (isMerge ? 'No hay otras mesas ocupadas' : 'No hay otras mesas disponibles') + '</p>';
     document.getElementById('moveTableOverlay').style.display = 'flex';
 }
 
@@ -1463,6 +1479,34 @@ function selectMoveTable(targetTableId) {
                 location.reload();
             } else {
                 showError(data.message || 'Error al mover pedido');
+            }
+        })
+        .catch(function() {
+            showError('Error de conexión');
+        });
+    });
+}
+
+function selectMergeTable(targetTableId) {
+    closeMoveTableModal();
+    showConfirm('¿Fusionar el pedido de esta mesa con el pedido de la mesa seleccionada? Todos los productos quedarán juntos.', function() {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        fetch('/restaurant/orders/' + currentOrderId + '/merge', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ table_id: targetTableId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message || 'Pedidos fusionados');
+                location.reload();
+            } else {
+                showError(data.message || 'Error al fusionar');
             }
         })
         .catch(function() {

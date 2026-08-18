@@ -604,6 +604,85 @@ class RestaurantController extends Controller
         ]);
     }
 
+    public function mergeOrder(Request $request, $orderId)
+    {
+        if (auth()->user()->isMozo()) {
+            return response()->json(['success' => false, 'message' => 'No tienes permiso para fusionar mesas'], 403);
+        }
+
+        try {
+            $order = RestaurantOrder::with('items')->findOrFail($orderId);
+            $newTableId = $request->input('table_id');
+
+            if (!$newTableId) {
+                return response()->json(['success' => false, 'message' => 'Seleccione una mesa destino']);
+            }
+
+            if ($order->table_id == $newTableId) {
+                return response()->json(['success' => false, 'message' => 'La mesa seleccionada es la misma']);
+            }
+
+            $newTable = RestaurantTable::findOrFail($newTableId);
+            $destinoOrder = $newTable->activeOrder();
+
+            if (!$destinoOrder) {
+                return response()->json(['success' => false, 'message' => 'La mesa destino no tiene un pedido activo para fusionar']);
+            }
+
+            if ($order->order_type === 'kiosko' || $destinoOrder->order_type === 'kiosko') {
+                return response()->json(['success' => false, 'message' => 'No se pueden fusionar pedidos de kiosko']);
+            }
+
+            $origenFacturado = $order->items()->whereNotNull('paid_invoice_id')->exists();
+            $destinoFacturado = $destinoOrder->items()->whereNotNull('paid_invoice_id')->exists();
+            if ($origenFacturado || $destinoFacturado) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede fusionar: hay productos ya facturados en los pedidos'
+                ], 400);
+            }
+
+            $oldTable = $order->table;
+
+            $order->items()->update(['restaurant_order_id' => $destinoOrder->id]);
+
+            $this->updateOrderTotals($destinoOrder);
+
+            $hasKitchenItems = $destinoOrder->items()
+                ->whereIn('kitchen_status', ['SENT', 'READY', 'DELIVERED'])
+                ->exists();
+            if ($destinoOrder->status === 'OPEN' && $hasKitchenItems) {
+                $destinoOrder->update(['status' => 'SENT_TO_KITCHEN']);
+            }
+
+            $order->delete();
+
+            if ($oldTable) {
+                $otherOrders = RestaurantOrder::where('table_id', $oldTable->id)
+                    ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
+                    ->count();
+                if ($otherOrders == 0) {
+                    $oldTable->update(['status' => 'AVAILABLE']);
+                }
+            }
+
+            $newTable->update(['status' => 'OCCUPIED']);
+
+            event(new KitchenOrderUpdated($destinoOrder->company_id, 'kitchen'));
+            Cache::put('kitchen_updated_' . $destinoOrder->company_id, now()->timestamp, 10);
+            Cache::put('restaurant_updated_' . $destinoOrder->company_id, now()->timestamp, 10);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pedidos fusionados en ' . $newTable->name,
+                'old_table_id' => $oldTable?->id,
+                'new_table_id' => $newTable->id,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error al fusionar: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function cancelOrder(Request $request, $orderId)
     {
         if (auth()->user()->isMozo()) {
