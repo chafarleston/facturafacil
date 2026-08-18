@@ -14,7 +14,7 @@ class PurchaseController extends Controller
 {
     public function index(Request $request)
     {
-        $companyId = $request->get('company_id', Auth::user()->company_id);
+        $companyId = $request->get('company_id', \App\Models\Company::getMainCompany()->id);
         $purchases = Purchase::where('company_id', $companyId)
             ->orderBy('created_at', 'desc')
             ->paginate(15);
@@ -23,7 +23,7 @@ class PurchaseController extends Controller
 
     public function create(Request $request)
     {
-        $companyId = $request->get('company_id', Auth::user()->company_id);
+        $companyId = $request->get('company_id', \App\Models\Company::getMainCompany()->id);
         $suppliers = Supplier::where('company_id', $companyId)->where('estado', 'ACT')->get();
         $products = Product::where('company_id', $companyId)->where('estado', 'ACTIVO')->get();
         return view('purchases.create', compact('companyId', 'suppliers', 'products'));
@@ -42,7 +42,7 @@ class PurchaseController extends Controller
             'items.*.precio' => 'required|numeric|min:0',
         ]);
 
-        $companyId = $request->get('company_id', Auth::user()->company_id);
+        $companyId = $request->get('company_id', \App\Models\Company::getMainCompany()->id);
         
         $purchase = Purchase::create([
             'company_id' => $companyId,
