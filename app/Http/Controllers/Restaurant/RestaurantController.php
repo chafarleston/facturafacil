@@ -606,7 +606,7 @@ class RestaurantController extends Controller
 
     public function mergeOrder(Request $request, $orderId)
     {
-        if (auth()->user()->isMozo()) {
+        if (!auth()->user() || !auth()->user()->hasPermission('manage_order_merge')) {
             return response()->json(['success' => false, 'message' => 'No tienes permiso para fusionar mesas'], 403);
         }
 

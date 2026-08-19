@@ -628,7 +628,9 @@
         <button class="btn-action btn-cancel-order" onclick="cancelOrder()" id="btnCancelOrder" disabled><i class="fas fa-times"></i><br>Anular</button>
         @endif
         <button class="btn-action btn-move" onclick="showMoveTableModal()" id="btnMoveTable" disabled><i class="fas fa-arrows-alt"></i><br>Mover</button>
+        @can('permission', 'manage_order_merge')
         <button class="btn-action btn-merge" onclick="showMergeTableModal()" id="btnMergeTable" disabled><i class="fas fa-object-group"></i><br>Fusionar</button>
+        @endcan
         @if(!auth()->user()->isMozo())
         <button class="btn-action btn-cash-drawer" onclick="openCashDrawer()" id="btnCashDrawer" disabled><i class="fas fa-cash-register"></i><br>Caja</button>
         @endif
