@@ -1847,14 +1847,28 @@ function removePaymentRow(btn) {
 function updatePaymentSummary() {
     const total = parseFloat(document.getElementById('chargeTotal').textContent.replace('S/ ', '')) || 0;
     const amounts = document.querySelectorAll('.payment-amount');
+    const methods = document.querySelectorAll('.payment-method');
     let sum = 0;
     amounts.forEach(function(inp) { sum += parseFloat(inp.value) || 0; });
     const pending = Math.max(0, total - sum);
     const vuelto = Math.max(0, sum - total);
     document.getElementById('pendingAmount').textContent = pending.toFixed(2);
     document.getElementById('chargeVuelto').textContent = vuelto.toFixed(2);
+
+    // Los pagos virtuales (Yape/Plin/Tarjeta) son exactos: no pueden exceder el total
+    let virtualExcedido = false;
+    amounts.forEach(function(inp, idx) {
+        const m = methods[idx] ? methods[idx].value.toUpperCase() : '';
+        if (['YAPE', 'PLIN', 'TARJETA'].includes(m) && (parseFloat(inp.value) || 0) > total + 0.001) {
+            virtualExcedido = true;
+        }
+    });
+
     const btn = document.getElementById('btnProcessCharge');
-    if (pending === 0 && sum > 0) {
+    if (virtualExcedido) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-credit-card"></i> PAGO VIRTUAL EXCEDE EL TOTAL';
+    } else if (pending === 0 && sum > 0) {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-credit-card"></i> COBRAR S/ ' + total.toFixed(2);
     } else if (sum === 0) {

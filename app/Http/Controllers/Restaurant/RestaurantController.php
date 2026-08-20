@@ -1309,6 +1309,39 @@ class RestaurantController extends Controller
             $payments = [['method' => 'EFECTIVO', 'amount' => $total]];
         }
 
+        // Los pagos virtuales (YAPE/PLIN/TARJETA) son EXACTOS: no pueden exceder el total (no hay vuelto en ellos)
+        foreach ($payments as $p) {
+            $m = strtoupper($p['method']);
+            if (in_array($m, ['YAPE', 'PLIN', 'TARJETA']) && ((float) $p['amount']) > $total + 0.001) {
+                throw new \Exception('Los pagos con Yape/Plin/Tarjeta de crédito son exactos y no pueden exceder el total de la venta');
+            }
+        }
+
+        $totalPagado = collect($payments)->sum('amount');
+        $vuelto = max(0, $totalPagado - $total);
+
+        // El vuelto solo se descuenta del EFECTIVO (efectivo neto = efectivo - vuelto)
+        if ($vuelto > 0) {
+            $restante = $vuelto;
+            $nuevos = [];
+            foreach ($payments as $p) {
+                if (strtoupper($p['method']) === 'EFECTIVO') {
+                    $restar = min((float) $p['amount'], $restante);
+                    $nuevo = round((float) $p['amount'] - $restar, 2);
+                    $restante -= $restar;
+                    if ($nuevo > 0) {
+                        $nuevos[] = ['method' => 'EFECTIVO', 'amount' => $nuevo];
+                    }
+                } else {
+                    $nuevos[] = $p;
+                }
+            }
+            if ($restante > 0.001) {
+                throw new \Exception('El efectivo no cubre el vuelto de S/ ' . number_format($vuelto, 2));
+            }
+            $payments = $nuevos ?: [['method' => 'EFECTIVO', 'amount' => 0]];
+        }
+
         $igvRate = $mainCompany ? $mainCompany->getIgvRate() : 0.18;
         $subtotal = $total / (1 + $igvRate);
         $igv = $total - $subtotal;
@@ -1411,9 +1444,6 @@ class RestaurantController extends Controller
             $cajaAbierta->$paymentField = ($cajaAbierta->$paymentField ?? 0) + $payment['amount'];
         }
         $cajaAbierta->save();
-
-        $totalPagado = collect($payments)->sum('amount');
-        $vuelto = max(0, $totalPagado - $total);
 
         return [
             'invoice' => $invoice,
