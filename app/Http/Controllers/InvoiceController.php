@@ -30,7 +30,11 @@ class InvoiceController extends Controller
             $query->where('tipo_documento', $tipoDocumento);
         }
         
-        $invoices = $query->orderBy('fecha_emision', 'desc')
+        $invoices = $query
+            ->orderBy('fecha_emision', 'desc')
+            ->orderByRaw('COALESCE(hora_emision, "00:00:00") desc')
+            ->orderBy('serie', 'desc')
+            ->orderBy('numero', 'desc')
             ->paginate(15);
 
         return view('invoices.index', compact('invoices', 'companyId', 'tipoDocumento'));
