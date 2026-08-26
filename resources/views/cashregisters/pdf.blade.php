@@ -139,7 +139,7 @@
     </table>
     @endif
 
-    @if(count($productosVendidos) > 0)
+    @if(count($productosVendidos) > 0 && (!$reportConfig || $reportConfig->mostrar_productos_vendidos))
     <div class="border-top py-2 mt-2 mb-1 bold">PRODUCTOS VENDIDOS</div>
     <table>
         <tr class="bold border-bottom">
@@ -157,6 +157,7 @@
     </table>
     @endif
 
+    @if(!$reportConfig || $reportConfig->mostrar_lista_comprobantes)
     <div class="border-top py-2 mt-2 mb-1 bold">LISTA DE COMPROBANTES</div>
     <table>
         <tr class="bold border-bottom">
@@ -174,6 +175,7 @@
         </tr>
         @endforeach
     </table>
+    @endif
 
     <div class="border-top py-2 mt-2 mb-1 bold">MOVIMIENTOS (INGRESOS Y GASTOS)</div>
     <table>
@@ -195,7 +197,7 @@
         @endforelse
     </table>
 
-    @if(count($lineasEliminadas) > 0)
+    @if(count($lineasEliminadas) > 0 && (!$reportConfig || $reportConfig->mostrar_lineas_eliminadas))
     <div class="border-top py-2 mt-2 mb-1 bold">REPORTE DE LÍNEAS ELIMINADAS</div>
     <div style="margin-bottom:4px; font-size:10px;">Hay {{ count($lineasEliminadas) }} línea(s) eliminada(s) en el Sistema</div>
     <table>

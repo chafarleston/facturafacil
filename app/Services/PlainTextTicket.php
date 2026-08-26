@@ -243,7 +243,12 @@ class PlainTextTicket
         $t->separator();
 
         $ventas = $data['ventas'] ?? collect();
-        if ($ventas->count() > 0) {
+        $rc = $data['reportConfig'] ?? null;
+        $mostrarComprobantes = $rc === null || $rc->mostrar_lista_comprobantes;
+        $mostrarProductos = $rc === null || $rc->mostrar_productos_vendidos;
+        $mostrarLineas = $rc === null || $rc->mostrar_lineas_eliminadas;
+
+        if ($mostrarComprobantes && $ventas->count() > 0) {
             $t->center('COMPROBANTES');
             foreach ($ventas as $venta) {
                 $full = $venta->full_number ?? '';
@@ -265,7 +270,7 @@ class PlainTextTicket
         }
 
         $productos = $data['productosVendidos'] ?? [];
-        if (count($productos) > 0) {
+        if ($mostrarProductos && count($productos) > 0) {
             $t->center('PRODUCTOS VENDIDOS');
             foreach ($productos as $prod => $d) {
                 $t->twoColumns($d['cantidad'] . 'x ' . $prod, 'S/ ' . number_format($d['total'], 2));
@@ -274,7 +279,7 @@ class PlainTextTicket
         }
 
         $lineas = $data['lineasEliminadas'] ?? collect();
-        if ($lineas->count() > 0) {
+        if ($mostrarLineas && $lineas->count() > 0) {
             $t->center('LINEAS ELIMINADAS');
             foreach ($lineas as $item) {
                 $t->text('x' . number_format($item->quantity, 0) . ' - ' . $item->product_name);

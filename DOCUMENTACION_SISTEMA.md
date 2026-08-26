@@ -378,6 +378,17 @@ processCharge() [JS]
 | `store()` | POST `/cash-movements` | Registra INGRESO/EGRESO (motivo libre, monto>0). **Exige caja abierta**; actualiza en vivo `total_ingresos`/`total_egresos` |
 | `destroy()` | DELETE `/cash-movements/{id}` | Anula movimiento **solo si la caja sigue ABIERTA** (revierte totales) |
 
+#### Configuración de Reporte de Caja (`CashReportSettingController`)
+
+| Método | Ruta | Propósito |
+|--------|------|-----------|
+| `edit()` | GET `/cash-report-settings` | Formulario con las 3 casillas (permiso: `manage_report_settings`) |
+| `update()` | POST `/cash-report-settings` | Guarda con `updateOrCreate` por empresa |
+
+- Tabla `cash_report_settings` (por empresa): `mostrar_lista_comprobantes`, `mostrar_productos_vendidos`, `mostrar_lineas_eliminadas` (boolean, default `true`).
+- Controla qué secciones salen en los reportes **A4/80mm/ESC-POS** (y ticket de impresora Caja). Si no hay registro → todas visibles. El **reporte web** (`show`) siempre muestra todo.
+- `CashRegisterController::getCashRegisterData()` agrega `reportConfig` (o `null`) al `$data` usado por `pdf`, `ticket` y `printCaja`.
+
 - En el cierre se muestra el **Saldo Final de Efectivo** = `monto_apertura(ingreso) + ventas_efectivo + total_ingresos − total_egresos − monto_cierre(egreso)`. La **apertura se toma como ingreso** y el **cierre como egreso** (se cancelan si son iguales, sin desbalance). **Positivo** = sobra efectivo (saldo positivo) · **Negativo** = falta (caja negativa, marcado en rojo). Los pagos **Yape/Plin/Tarjeta son virtuales** (no cuentan como dinero en caja, solo informativo). Se muestra en web, PDF A4, ticket 80mm y ticket ESC/POS.
 
 #### Flujo de Cierre de Caja

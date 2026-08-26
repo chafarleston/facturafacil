@@ -76,6 +76,7 @@
         <div>Otro: S/ {{ number_format($calcOtro, 2) }}</div>
     </div>
 
+    @if(!$reportConfig || $reportConfig->mostrar_lista_comprobantes)
     <div class="border-top py-1 mt-1 mb-1 bold">LISTA DE COMPROBANTES</div>
     <div style="font-size:7px; border-bottom:1px dashed #000; padding-bottom:2px; margin-bottom:2px; display:flex;">
         <span style="flex:1;">Documento</span>
@@ -92,6 +93,7 @@
         <span style="flex:1; color:#888;">Pago: {{ $venta->metodo_pago ?? 'EFECTIVO' }}</span>
     </div>
     @endforeach
+    @endif
 
     @if(count($categoriasVentas) > 0)
     <div class="border-top py-1 mt-1 mb-1 bold">POR CATEGORÍA</div>
@@ -109,7 +111,7 @@
     @endforeach
     @endif
 
-    @if(count($productosVendidos) > 0)
+    @if(count($productosVendidos) > 0 && (!$reportConfig || $reportConfig->mostrar_productos_vendidos))
     <div class="border-top py-1 mt-1 mb-1 bold">PRODUCTOS VENDIDOS</div>
     <div style="font-size:8px; border-bottom:1px dashed #000; padding-bottom:2px; margin-bottom:2px; display:flex;">
         <span style="min-width:20px;">Cant.</span>
@@ -125,7 +127,7 @@
     @endforeach
     @endif
 
-    @if(count($lineasEliminadas) > 0)
+    @if(count($lineasEliminadas) > 0 && (!$reportConfig || $reportConfig->mostrar_lineas_eliminadas))
     <div class="border-top py-1 mt-1"></div>
     <div class="border-bottom py-1 mb-1 bold text-center">REPORTE DE LÍNEAS ELIMINADAS</div>
     <div style="font-size:8px; margin-bottom:3px;">Hay {{ count($lineasEliminadas) }} línea(s) eliminada(s) en el Sistema</div>

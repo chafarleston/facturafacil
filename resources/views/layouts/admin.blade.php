@@ -193,7 +193,7 @@ $__kdsActive = \App\Models\Company::orderMode() === 'kds';
             
             @can('permission', 'view_cashregisters')
             <li class="nav-item">
-              <a href="#" class="nav-link {{ request()->routeIs('cashregisters.*') || request()->routeIs('cash-movements.*') ? 'active' : '' }}">
+              <a href="#" class="nav-link {{ request()->routeIs('cashregisters.*') || request()->routeIs('cash-movements.*') || request()->routeIs('cash-report-settings.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-cash-register"></i>
                 <p>Caja<i class="fas fa-angle-left right"></i></p>
               </a>
@@ -204,6 +204,11 @@ $__kdsActive = \App\Models\Company::orderMode() === 'kds';
                 @can('permission', 'manage_cash_movements')
                 <li class="nav-item">
                   <a href="{{ route('cash-movements.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Ingresos y Gastos</p></a>
+                </li>
+                @endcan
+                @can('permission', 'manage_report_settings')
+                <li class="nav-item">
+                  <a href="{{ route('cash-report-settings.edit') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Configuración de Reporte</p></a>
                 </li>
                 @endcan
               </ul>

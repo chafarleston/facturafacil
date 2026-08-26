@@ -412,7 +412,10 @@ class CashRegisterController extends Controller
             - (float) $totalEgresos
             - (float) ($cashregister->monto_cierre ?? 0), 2);
 
-        return compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventasPorMetodo', 'categoriasVentas', 'productosVendidos', 'lineasEliminadas', 'ventas', 'movimientos', 'totalIngresos', 'totalEgresos', 'saldoFinalEfectivo', 'ventasEfectivo');
+        // Config de reporte (si no existe, se tratan como "todo visible" en las vistas)
+        $reportConfig = \App\Models\CashReportSetting::where('company_id', $cashregister->company_id)->first();
+
+        return compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventasPorMetodo', 'categoriasVentas', 'productosVendidos', 'lineasEliminadas', 'ventas', 'movimientos', 'totalIngresos', 'totalEgresos', 'saldoFinalEfectivo', 'ventasEfectivo', 'reportConfig');
     }
 
     public function pdf(CashRegister $cashregister)

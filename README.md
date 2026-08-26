@@ -48,6 +48,7 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 - El **cajero abre caja pero NO la cierra** (cierre exclusivo con permiso `close_cashregister`; si no lo tiene, modal "Solo el Administrador puede ejecutar estas tareas")
 - El **historial de cajas** (cajas anteriores) solo es visible con permiso `view_cashregister_history` (por defecto solo `admin`)
 - **Ingresos y Gastos** (`/cash-movements`): registrar ingresos y egresos de caja (motivo libre) ligados a la caja abierta; **requiere caja abierta**; se concilian en el cierre (`saldo esperado` y `diferencia`) y se muestran en el resumen web/PDF/ticket
+- **Configuración de Reporte** (`/cash-report-settings`): elegir qué secciones (Lista de Comprobantes, Productos Vendidos, Reporte de Líneas Eliminadas) se imprimen en los reportes **A4/80mm**; el reporte web siempre muestra todo
 - Dashboard con **resumen mensual** (ventas del mes vs mes anterior)
 
 ### Impresión Térmica ESC/POS

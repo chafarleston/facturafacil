@@ -144,6 +144,10 @@ Route::post('/cashregister/close', [CashRegisterController::class, 'close'])->na
 Route::get('/cash-movements', [\App\Http\Controllers\CashMovementController::class, 'index'])->name('cash-movements.index');
 Route::post('/cash-movements', [\App\Http\Controllers\CashMovementController::class, 'store'])->name('cash-movements.store');
 Route::delete('/cash-movements/{cashMovement}', [\App\Http\Controllers\CashMovementController::class, 'destroy'])->name('cash-movements.destroy');
+
+// Configuración de reporte de caja
+Route::get('/cash-report-settings', [\App\Http\Controllers\CashReportSettingController::class, 'edit'])->name('cash-report-settings.edit');
+Route::post('/cash-report-settings', [\App\Http\Controllers\CashReportSettingController::class, 'update'])->name('cash-report-settings.update');
     
     Route::get('/invoices/{invoice}/send', [InvoiceController::class, 'sendToSunat'])->name('invoices.send');
     Route::get('/invoices/nv', [InvoiceController::class, 'nvIndex'])->name('invoices.nv');

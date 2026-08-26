@@ -50,6 +50,7 @@ class PermissionsSeeder extends Seeder
             ['name' => 'Gestionar Pedidos', 'slug' => 'manage_orders', 'module' => 'restaurant', 'description' => 'Gestionar pedidos de restaurante'],
             ['name' => 'Autorizar Anulaciones', 'slug' => 'authorize_cancel_orders', 'module' => 'restaurant', 'description' => 'Autorizar con contraseña la eliminación de productos y anulación de pedidos en cocina'],
             ['name' => 'Fusionar Mesas', 'slug' => 'manage_order_merge', 'module' => 'restaurant', 'description' => 'Fusionar los pedidos de dos mesas en uno solo'],
+            ['name' => 'Configurar Reportes de Caja', 'slug' => 'manage_report_settings', 'module' => 'cashregisters', 'description' => 'Configurar qué secciones se muestran en los reportes de caja (A4/80mm)'],
             ['name' => 'Ver Cocina', 'slug' => 'view_kitchen', 'module' => 'kitchen', 'description' => 'Ver cocina KDS'],
             ['name' => 'Gestionar Cocina', 'slug' => 'manage_kitchen', 'module' => 'kitchen', 'description' => 'Gestionar pedidos en cocina'],
             ['name' => 'Ver Roles', 'slug' => 'view_roles', 'module' => 'users', 'description' => 'Ver roles'],
@@ -94,7 +95,7 @@ class PermissionsSeeder extends Seeder
             'view_invoices', 'create_invoices', 'send_sunat',
             'view_purchases', 'create_purchases',
             'view_suppliers', 'create_suppliers',
-            'view_cashregisters', 'open_cashregister', 'close_cashregister', 'view_cashregister_history', 'manage_cash_movements',
+            'view_cashregisters', 'open_cashregister', 'close_cashregister', 'view_cashregister_history', 'manage_cash_movements', 'manage_report_settings',
             'view_pos', 'use_pos',
             'view_restaurant', 'manage_orders', 'authorize_cancel_orders', 'manage_order_merge',
             'view_kitchen', 'manage_kitchen',
@@ -136,7 +137,7 @@ class PermissionsSeeder extends Seeder
             'view_products', 'view_categories',
             'create_products', 'edit_products', 'delete_products',
             'create_categories', 'edit_categories', 'delete_categories',
-            'manage_cash_movements',
+            'manage_cash_movements', 'manage_report_settings',
         ])->pluck('id')->toArray());
 
         $userRole = Role::firstOrCreate(['slug' => 'user'], [
