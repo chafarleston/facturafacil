@@ -61,6 +61,11 @@ class User extends Authenticatable
     {
         return $this->role === self::ROLE_WAITER;
     }
+
+    public function isCashier(): bool
+    {
+        return $this->role === 'cajero';
+    }
     
     public function hasAccessToRestaurant(): bool
     {

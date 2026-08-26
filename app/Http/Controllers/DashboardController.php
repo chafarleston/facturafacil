@@ -12,6 +12,10 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        if (auth()->user() && auth()->user()->isCashier()) {
+            return redirect()->route('cashregisters.index');
+        }
+
         $companyId = \App\Models\Company::getMainCompany()->id;
 
         $tt = \App\Models\Invoice::where('company_id', $companyId)

@@ -29,7 +29,10 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        $default = auth()->user()->isMozo() ? route('restaurant.index') : RouteServiceProvider::HOME;
+        $user = auth()->user();
+        $default = $user->isMozo()
+            ? route('restaurant.index')
+            : ($user->isCashier() ? route('cashregisters.index') : RouteServiceProvider::HOME);
 
         return redirect()->intended($default);
     }
