@@ -12,8 +12,14 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        if (auth()->user() && auth()->user()->isCashier()) {
+        $user = auth()->user();
+
+        if ($user && $user->isCashier()) {
             return redirect()->route('cashregisters.index');
+        }
+
+        if ($user && $user->isMozo()) {
+            return redirect()->route('restaurant.index');
         }
 
         $companyId = \App\Models\Company::getMainCompany()->id;
