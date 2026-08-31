@@ -43,6 +43,30 @@
 
         <div class="card mt-3">
             <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-upload"></i> Restaurar Base de Datos</h3>
+            </div>
+            <form method="POST" action="{{ route('backup.restore') }}" enctype="multipart/form-data">
+                @csrf
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Archivo SQL</label>
+                        <input type="file" name="sql_file" class="form-control" accept=".sql,.txt" required>
+                        <small class="form-text text-muted">
+                            Seleccione el archivo <code>.sql</code> generado por el backup para restaurarlo.
+                            La base de datos actual se reemplazará por el contenido del archivo.
+                        </small>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('¿Restaurar la base de datos? Se reemplazará el contenido actual.')">
+                        <i class="fas fa-upload"></i> Restaurar
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
                 <h3 class="card-title"><i class="fas fa-info-circle"></i> Información</h3>
             </div>
             <div class="card-body">

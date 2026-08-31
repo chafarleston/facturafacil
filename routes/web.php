@@ -77,6 +77,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['admin'])->group(function () {
         Route::get('/backup', [BackupController::class, 'index'])->name('backup.index');
         Route::post('/backup/run', [BackupController::class, 'run'])->name('backup.run');
+        Route::post('/backup/restore', [BackupController::class, 'restore'])->name('backup.restore');
         Route::resource('companies', CompanyController::class);
         Route::post('/companies/{company}/certificate', [CompanyController::class, 'updateCertificate'])->name('companies.certificate');
         Route::post('/companies/{company}/set-main', [CompanyController::class, 'setMain'])->name('companies.setMain');
