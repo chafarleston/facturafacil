@@ -407,8 +407,10 @@ class RestaurantController extends Controller
 
     public function printPrebill(Request $request, $orderId)
     {
-        $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($orderId);
-        $order->setRelation('items', $order->items->where('kitchen_status', '!=', 'CANCELLED'));
+$order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($orderId);
+        $order->setRelation('items', $order->items
+            ->where('kitchen_status', '!=', 'CANCELLED')
+            ->whereNull('paid_invoice_id'));
 
         $company = Company::getMainCompany();
 
@@ -436,8 +438,10 @@ class RestaurantController extends Controller
 
     public function printPrebillTo(Request $request, $orderId, $printerKey)
     {
-        $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($orderId);
-        $order->setRelation('items', $order->items->where('kitchen_status', '!=', 'CANCELLED'));
+$order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($orderId);
+        $order->setRelation('items', $order->items
+            ->where('kitchen_status', '!=', 'CANCELLED')
+            ->whereNull('paid_invoice_id'));
 
         try {
             $printService = app(PrintService::class);

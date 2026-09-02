@@ -154,6 +154,7 @@ class PlainTextTicket
         $t->separator();
         foreach ($order->items as $item) {
             if ($item->kitchen_status === 'CANCELLED') continue;
+            if ($item->paid_invoice_id) continue;
             $totalItem = $item->unit_price * $item->quantity;
             $t->itemLine(number_format($item->quantity, 0), $item->product_name, 'S/ ' . number_format($totalItem, 2));
         }

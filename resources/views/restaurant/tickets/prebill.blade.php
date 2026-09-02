@@ -76,6 +76,7 @@
         
         <div class="items">
             @foreach($order->items as $item)
+            @if($item->kitchen_status !== 'CANCELLED' && !$item->paid_invoice_id)
             <div class="item-row">
                 <div class="item-desc">{{ $item->product_name }}</div>
                 <div class="item-detail">
@@ -86,6 +87,7 @@
                 <div class="item-notes">{{ $item->notes }}</div>
                 @endif
             </div>
+            @endif
             @endforeach
         </div>
         
