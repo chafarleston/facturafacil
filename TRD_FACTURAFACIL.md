@@ -614,7 +614,7 @@ Genera tickets en texto plano con formato ESC/POS.
 | Método | Destino | Contenido |
 |--------|---------|-----------|
 | `kitchenTicket($order, $format, $dest)` | cocina-1/2, bar-1 | Header + items |
-| `prebillTicket($order, $format)` | precuenta | Items + total + IGV |
+| `prebillTicket($order, $format)` | precuenta | Items (activos, no pagados) + total + IGV |
 | `cancelNotification($order, $item, ...)` | cocina/bar | Item cancelado |
 | `cancelNotificationGrouped($order, ...)` | cocina/bar | Items cancelados agrupados (incluye "Anulado por") |
 | `invoiceTicket($invoice, $format)` | caja | Stub (no-op); comprobante por PDF Greenter |

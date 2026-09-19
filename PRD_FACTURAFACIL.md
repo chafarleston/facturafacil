@@ -340,6 +340,7 @@ FacturaFácil es un sistema integral para restaurantes peruanos que unifica:
 6. Por división: crea Invoice (NV/Boleta/Factura) + marca items pagados (paid_invoice_id)
 7. Si no quedan items sin pagar → pedido COMPLETED + mesa AVAILABLE
 8. Si quedan → remanente se cobra con el botón "Cobrar"
+9. La precuenta muestra solo items no pagados (`paid_invoice_id NULL`); los ya cobrados no aparecen
 ```
 
 ---
@@ -440,3 +441,4 @@ companies (1)
 | 1.0 | Junio 2026 | Versión inicial: POS, Restaurante, KDS, Kiosko, Caja |
 | 2.0 | Julio 2026 | Productos compuestos, precio_compra, reporte inventario, POS multi-venta, fix método de pago Yape/Plin, ticket caja completo |
 | 2.1 | Agosto 2026 | **Dividir Cuenta** (paid_invoice_id + split-charge), permisos SUNAT (cajero con envío), apertura de cajón en POS (manual + automática en efectivo), IGV dinámico en precuenta, 8º slot de impresora (autopedido) |
+| 2.2 | Septiembre 2026 | Fix precuenta: excluye items pagados (Dividir Cuenta) en PDF y ticket térmico; índice GitNexus local (`--index-only`) |

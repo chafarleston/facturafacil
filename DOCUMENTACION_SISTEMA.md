@@ -1210,8 +1210,9 @@ showPrebillOptions(event) [JS] → overlay modal con 3 opciones:
 
 printPrebillTo(printerKey) [JS]:
    POST /restaurant/orders/{id}/print-prebill/{key}
-   → printPrebillTo() [PHP]: genera ticket ESC/POS con cabecera + items + IGV dinámico
+   → printPrebillTo() [PHP]: genera ticket ESC/POS con cabecera + items (activos, no pagados) + IGV dinámico
 ```
+**Ambas precuentas (PDF `printPrebill()` y térmica `printPrebillTo()`) filtran la lista de items**: solo muestran items con `kitchen_status != CANCELLED` y `paid_invoice_id NULL`; `prebillTicket()` y `prebill.blade.php` re-filtran por seguridad. Los totales ya son el remanente (`updateOrderTotals()` excluye pagados).
 
 #### 19.2.11 Anular Pedido Completo
 
@@ -1482,7 +1483,7 @@ Encoding: detecta UTF-8, convierte a CP850, inserta ESC t 0x02
 | Método | Contenido |
 |--------|-----------|
 | `kitchenTicket()` | **COCINA** + pedido, mesa, hora, items |
-| `prebillTicket()` | **PRECUENTA** + items, subtotal, IGV dinámico, total |
+| `prebillTicket()` | **PRECUENTA** + items activos (excluye `CANCELLED` y `paid_invoice_id` ≠ NULL), subtotal, IGV dinámico, total |
 | `cancelNotificationGrouped()` | **ANULACIÓN COCINA** + items + usuario |
 | `invoiceTicket()` | No usado (stub, devuelve vacío). El comprobante se imprime por PDF de Greenter (`generatePdf`/`generateTicketPdf`); `PrintService::printInvoice()` no encola si el ticket es vacío |
 | `cashRegisterSummary()` | Resumen completo de caja |
@@ -3802,6 +3803,8 @@ Se extrajo el helper `createInvoiceFromItems()` que reutilizan `chargeOrder()` y
 | `sendToKitchen()` | `whereNull('paid_invoice_id')` → no reenvía a cocina clones PENDING ya pagados |
 | `printKitchenTicket()` | Filtra `paid_invoice_id` → no reimprime tickets de items pagados |
 | `kitchenStream()` (SSE) | Filtra `paid_invoice_id` en `whereHas` e items → consistente con KDS polling |
+| `printPrebill()` / `printPrebillTo()` | Filtran `whereNull('paid_invoice_id')` en el `setRelation('items')` → la precuenta no lista items ya pagados |
+| `prebillTicket()` / `prebill.blade.php` | Re-filtran items con `paid_invoice_id` → defensivo si el `load(['table','items'])` en modo `print` sobrescribe el setRelation |
 | `createInvoiceFromItems()` | Fallback: si `payments` está vacío o suma 0, registra EFECTIVO por el total → caja siempre cuadra |
 
 ### 27.10 Frontend

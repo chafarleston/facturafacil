@@ -18,6 +18,8 @@
 - `php artisan cache:clear && php artisan view:clear && php artisan route:clear` — full cache flush (do this after any route/view change)
 - `php -l path/to/file.php` — PHP syntax check (no linter configured)
 - `php artisan tinker --execute="..."` — inline tinker (avoid heredoc in PowerShell)
+- `actualizar-gitnexus.bat` — refresca el índice GitNexus local (idempotente: `node .gitnexus/run.cjs analyze` o analiza desde cero si falta; CLI global v1.6.9, sin MCP)
+- `eliminar_ventas_productos.bat` — menú para eliminar ventas y/o productos (scripts `eliminar-ventas-productos/clean_ventas.php` y `clean_productos.php` vía tinker con `base_path`). Crea backup MySQL previo en `eliminar-ventas-productos/backup/` y pide confirmación `SI`. DESTRUCTIVO.
 - Tests: `php artisan test` (uses SQLite :memory:, no DB needed)
 
 ## Architecture notes
@@ -41,6 +43,7 @@
 - **Configuración de Reporte de Caja**: submenú en Caja (`/cash-report-settings`, permiso `manage_report_settings`, admin+cajero por defecto). En `cash_report_settings` (por empresa, defaults `true`) se controla qué secciones salen en los reportes **A4/80mm/ESC-POS**: LISTA DE COMPROBANTES, PRODUCTOS VENDIDOS y REPORTE DE LÍNEAS ELIMINADAS. Si un check está desmarcado, esa sección no se imprime; si no hay registro, se muestran todas. El **reporte web** (`show`) siempre muestra todo. La config se lee en `CashRegisterController::getCashRegisterData()` (clave `reportConfig`, `null` = todo visible).
 - **Ingresos y Gastos**: módulo en submenú Caja (`/cash-movements`, permiso `manage_cash_movements`). Registra ingresos/egresos (motivo texto libre, siempre en **efectivo**) ligados a la caja abierta; **requiere caja abierta** (sin caja → aviso, formulario bloqueado). Actualiza en vivo `cashregisters.total_ingresos/total_egresos`; anular un movimiento solo si la caja sigue ABIERTA. El **Saldo Final de Efectivo** = `monto_apertura(ingreso) + ventas_efectivo + total_ingresos − total_egresos − monto_cierre(egreso)`. La **apertura se toma como ingreso** y el **cierre como egreso**; ambos se cancelan si son iguales (sin desbalance). **Positivo** = sobra efectivo (saldo positivo) · **Negativo** = falta (caja negativa, marcado en rojo). Los pagos **Yape/Plin/Tarjeta son virtuales** (no cuentan, solo informativo). Se muestra en web, PDF A4, ticket 80mm y ticket ESC/POS.
 - **Precuenta IGV**: `PlainTextTicket::prebillTicket()` usa `Company::getActiveIgvPercent()` (dinámico: 18% general / 10.5% restaurante), NO un valor fijo.
+- **Precuenta excluye pagados**: la lista de items de la precuenta (PDF `prebill.blade.php` y ticket ESC/POS `prebillTicket()`) solo muestra items activos y **no pagados** (`kitchen_status != CANCELLED` + `paid_invoice_id NULL`). `RestaurantController::printPrebill()`/`printPrebillTo()` filtran en el `setRelation('items')`; la vista y el ticket re-filtran por seguridad (el `load(['table','items'])` en modo `print` sobrescribiría el filtro). Los totales (`subtotal/igv/total`) ya son el remanente porque los excluye `updateOrderTotals()`.
 - **removeItem()**: item PENDING (no enviado a cocina) se borra físicamente; SENT/READY/DELIVERED se marca CANCELLED con `cancelled_from/at/by` y requiere la contraseña del usuario autenticado con permiso `authorize_cancel_orders` (helper `checkAuthorizedPassword()`, también usado por `cancelOrder`). El mozo no puede anular.
 - **Cobro con pendientes**: `chargeOrder`/`splitChargeOrder` envían automáticamente a cocina/bar los items `PENDING` antes de facturar (ticket/impresión en modo `print`; evento KDS en modo `kds`), para que ningún producto se cobre sin pasar por preparación. El total de la factura incluye todos los items (enviados y pendientes) → el cierre de caja los cuenta.
 - **Login/Restaurante**: `AuthenticatedSessionController::store()` redirige a `mozo` → `/restaurant` (el resto → `/dashboard`). `RestaurantController::index()` sin caja abierta NO redirige ni devuelve 403: renderiza la vista con el modal "Caja no aperturada" (Administrador/Cajero deben aperturar; botones Ir a Caja / Reintentar / Entendido). Cobrar sin caja responde JSON de error amigable.
@@ -85,7 +88,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **facturafacil** (2898 symbols, 5611 relationships, 222 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **facturafacil** (3354 symbols, 6502 relationships, 258 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

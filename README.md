@@ -29,8 +29,8 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 - **Búsqueda de productos** en tiempo real (solo por descripción/nombre; la búsqueda por código y código de barras existe en el POS)
 - Envío a cocina (modo **KDS** en pantalla o **Impresión 80mm** a impresora térmica)
 - **KDS (Kitchen Display System)**: pantalla en tiempo real con alertas sonoras al recibir nuevos pedidos, colores por estado y secciones MOZO / KIOSKO
-- Precuenta con selección de impresora (Precuenta 1, 2 o 3) e **IGV dinámico** según empresa
-- **Dividir Cuenta**: reparte el pedido en 2+ comprobantes (NV/Boleta/Factura) por cantidades, cada división con su cliente, método de pago y solo consumo; los items pagados se marcan "Pagado" y desaparecen del KDS
+- Precuenta con selección de impresora (Precuenta 1, 2 o 3), **IGV dinámico** según empresa y que **excluye los productos ya pagados** (Dividir Cuenta)
+- **Dividir Cuenta**: reparte el pedido en 2+ comprobantes (NV/Boleta/Factura) por cantidades, cada división con su cliente, método de pago y solo consumo; los items pagados se marcan "Pagado", desaparecen del KDS y ya no aparecen en la precuenta
 - **Kiosko / Autoservicio**: pedidos por pantalla táctil (`/autopedido`), numeración A-XXX ligada a la caja abierta, estados Pendiente/En Cocina y cobro en el cajero
 - Cobro con **cliente por defecto** (Cliente Varios DNI 88888888) y **confirmación de impresión**
 - **Solo consumo**: cobrar todo el pedido como "POR CONSUMO" con desglose de productos
