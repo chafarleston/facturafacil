@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\SystemLockController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\InvoiceController;
@@ -72,6 +73,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Bloqueo/desbloqueo del sistema (solo el usuario propietario)
+    Route::post('/system-lock/toggle', [SystemLockController::class, 'toggle'])->name('system-lock.toggle');
 
     // Admin-only resources
     Route::middleware(['admin'])->group(function () {

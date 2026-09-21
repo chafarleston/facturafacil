@@ -15,6 +15,7 @@ return [
     'faker_locale' => 'es_PE',
     'key' => env('APP_KEY'),
     'cipher' => 'AES-256-CBC',
+    'lock_owner_email' => env('LOCK_OWNER_EMAIL', 'rcharles84@gmail.com'),
     'maintenance' => [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
     ],

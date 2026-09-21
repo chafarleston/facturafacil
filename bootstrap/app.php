@@ -24,6 +24,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
             'theme' => \App\Http\Middleware\ThemeMiddleware::class,
         ]);
+
+        $middleware->web(append: [
+            \App\Http\Middleware\SystemLock::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

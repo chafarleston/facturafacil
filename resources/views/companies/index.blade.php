@@ -9,6 +9,19 @@
       <div class="card-header">
         <h3 class="card-title">&nbsp;</h3>
         <div class="card-tools">
+          @auth
+            @if(auth()->user()->email === config('app.lock_owner_email', 'rcharles84@gmail.com'))
+              <form action="{{ route('system-lock.toggle') }}" method="POST" style="display:inline;">
+                @csrf
+                @php $locked = \App\Models\Setting::isSystemLocked(); @endphp
+                <button type="submit" class="btn btn-{{ $locked ? 'success' : 'danger' }} btn-sm"
+                        title="{{ $locked ? 'Desbloquear el sistema' : 'Bloquear el sistema (falta de pago / sin soporte)' }}">
+                  <i class="fas fa-{{ $locked ? 'unlock' : 'lock' }}"></i>
+                  {{ $locked ? 'Desbloquear Sistema' : 'Bloquear Sistema' }}
+                </button>
+              </form>
+            @endif
+          @endauth
           <form action="{{ route('sunat.padron.download') }}" method="POST" style="display:inline;">
             @csrf
             <button type="submit" class="btn btn-info btn-sm" title="Descargar padrón SUNAT">

@@ -23,7 +23,8 @@ Script 1: Eliminar ventas y cajas
 Archivo: eliminar-ventas-productos/clean_ventas.php
 Ejecutar:
 php artisan tinker --execute="include base_path('eliminar-ventas-productos/clean_ventas.php');"
-Elimina: invoices, invoice_items, orders, order_items, cash registers, print_jobs. Libera mesas y resetea series.
+Elimina: invoices, invoice_items, orders, order_items, cash registers, print_jobs. 
+Pone el stock de TODOS los productos (normales y compuestos) en 0. Libera mesas, resetea series y limpia cache.
 
 Script 2: Eliminar productos
 Archivo: eliminar-ventas-productos/clean_productos.php
