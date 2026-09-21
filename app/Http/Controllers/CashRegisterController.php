@@ -433,7 +433,10 @@ class CashRegisterController extends Controller
         $html = view('cashregisters.pdf', $data)->render();
         $pdf->WriteHTML($html);
 
-        return $pdf->Output('resumen-caja-a4-' . $cashregister->id . '.pdf', 'D');
+        $filename = 'resumen-caja-a4-' . $cashregister->id . '.pdf';
+        return response($pdf->Output($filename, 'S'), 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
     }
 
     public function ticketPdf(CashRegister $cashregister)
@@ -451,7 +454,10 @@ class CashRegisterController extends Controller
         $html = view('cashregisters.ticket', $data)->render();
         $pdf->WriteHTML($html);
 
-        return $pdf->Output('resumen-caja-ticket-' . $cashregister->id . '.pdf', 'D');
+        $filename = 'resumen-caja-ticket-' . $cashregister->id . '.pdf';
+        return response($pdf->Output($filename, 'S'), 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
     }
 
     public function printCaja(CashRegister $cashregister)

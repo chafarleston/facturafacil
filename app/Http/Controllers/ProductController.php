@@ -800,8 +800,11 @@ class ProductController extends Controller
         ))->render();
         
         $pdf->WriteHTML($html);
-        
-        return $pdf->Output('inventario_' . now()->format('Ymd_His') . '.pdf', 'D');
+
+        $filename = 'inventario_' . now()->format('Ymd_His') . '.pdf';
+        return response($pdf->Output($filename, 'S'), 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
     }
 
     private function getNextProductCode(int $companyId): int

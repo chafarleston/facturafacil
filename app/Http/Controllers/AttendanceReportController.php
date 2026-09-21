@@ -49,7 +49,10 @@ class AttendanceReportController extends Controller
 
         $pdf = new \Mpdf\Mpdf(['mode' => 'utf-8', 'format' => 'A4', 'margin_top' => 10, 'margin_bottom' => 15]);
         $pdf->WriteHTML(view('attendance.report_pdf', compact('report', 'rango', 'range'))->render());
-        return $pdf->Output('reporte-asistencia-' . now()->format('Ymd_His') . '.pdf', 'D');
+        $filename = 'reporte-asistencia-' . now()->format('Ymd_His') . '.pdf';
+        return response($pdf->Output($filename, 'S'), 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
     }
 
     public function exportExcel(Request $request)
