@@ -37,7 +37,7 @@ class ProductController extends Controller
 
     public function create(Request $request)
     {
-        $companyId = $request->company_id;
+        $companyId = $request->company_id ?? Company::first()->id;
         $lastProduct = Product::where('company_id', $companyId)->orderBy('id', 'desc')->first();
         $nextNumber = $this->getNextProductCode($companyId);
         $codigo = 'PROD' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
