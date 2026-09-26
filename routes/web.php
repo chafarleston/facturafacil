@@ -3,6 +3,7 @@
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\SystemLockController;
+use App\Http\Controllers\SunatAlertController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\InvoiceController;
@@ -76,6 +77,9 @@ Route::middleware('auth')->group(function () {
 
     // Bloqueo/desbloqueo del sistema (solo el usuario propietario)
     Route::post('/system-lock/toggle', [SystemLockController::class, 'toggle'])->name('system-lock.toggle');
+
+    // Alertas de facturación SUNAT (admin y cajero)
+    Route::post('/sunat-alerts/{sunatAlert}/resolve', [SunatAlertController::class, 'resolve'])->name('sunat-alerts.resolve');
 
     // Admin-only resources
     Route::middleware(['admin'])->group(function () {

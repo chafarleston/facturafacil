@@ -49,9 +49,9 @@ class GreenterService
             ];
         }
 
-        // ND relacionada a Boleta debe ir por Resumen Diario
+        // Nota de Crédito de Boleta va por Resumen Diario
         if ($invoice->tipo_documento === '03') {
-            return $this->sendNoteViaSummary($invoice, $company, '08', $motivo, $descripcion);
+            return $this->sendNoteViaSummary($invoice, $company, '07', $motivo, $descripcion);
         }
         
         try {
@@ -134,11 +134,15 @@ class GreenterService
                 $line->setCantidad($item->cantidad);
                 $rate = $company->getIgvRate();
                 $igvPct = $company->getActiveIgvPercent();
-                $valorUnitario = round($item->precio_unitario / (1 + $rate), 2);
-                $baseIgv = round($valorUnitario * $item->cantidad, 2);
-                $igvItem = round($baseIgv * $rate, 2);
+                $cantidad = (float) $item->cantidad;
+            $lineaConIgv = ((float) ($item->precio_venta ?? 0) > 0) ? (float) $item->precio_venta : (float) $item->precio_unitario * $cantidad;
+                        $baseIgv = round($lineaConIgv / (1 + $rate), 2);
+                        $igvItem = round($lineaConIgv - $baseIgv, 2);
+                        $valorUnitario = $cantidad > 0 ? round($baseIgv / $cantidad, 2) : 0;
+                        $precioUnitarioConIgv = $cantidad > 0 ? round($lineaConIgv / $cantidad, 2) : 0;
+                        
                 $line->setMtoValorUnitario($valorUnitario);
-                $line->setMtoPrecioUnitario($item->precio_unitario);
+                $line->setMtoPrecioUnitario($precioUnitarioConIgv);
                 $line->setTipAfeIgv('10');
                 $line->setMtoBaseIgv($baseIgv);
                 $line->setPorcentajeIgv($igvPct);
@@ -325,11 +329,15 @@ class GreenterService
                 $line->setCantidad($item->cantidad);
                 $rate = $company->getIgvRate();
                 $igvPct = $company->getActiveIgvPercent();
-                $valorUnitario = round($item->precio_unitario / (1 + $rate), 2);
-                $baseIgv = round($valorUnitario * $item->cantidad, 2);
-                $igvItem = round($baseIgv * $rate, 2);
+                $cantidad = (float) $item->cantidad;
+            $lineaConIgv = ((float) ($item->precio_venta ?? 0) > 0) ? (float) $item->precio_venta : (float) $item->precio_unitario * $cantidad;
+                        $baseIgv = round($lineaConIgv / (1 + $rate), 2);
+                        $igvItem = round($lineaConIgv - $baseIgv, 2);
+                        $valorUnitario = $cantidad > 0 ? round($baseIgv / $cantidad, 2) : 0;
+                        $precioUnitarioConIgv = $cantidad > 0 ? round($lineaConIgv / $cantidad, 2) : 0;
+                        
                 $line->setMtoValorUnitario($valorUnitario);
-                $line->setMtoPrecioUnitario($item->precio_unitario);
+                $line->setMtoPrecioUnitario($precioUnitarioConIgv);
                 $line->setTipAfeIgv('10');
                 $line->setMtoBaseIgv($baseIgv);
                 $line->setPorcentajeIgv($igvPct);
@@ -451,6 +459,7 @@ class GreenterService
         $noteInvoice->sunat_estado = 'PENDIENTE';
         $noteInvoice->sunat_code = $tipoDoc === '07' ? 'NC' : 'ND';
         $noteInvoice->sunat_description = 'ENVIADO POR RESUMEN DIARIO';
+        $noteInvoice->docu_referencia = $invoice->serie . '-' . str_pad((int) $invoice->numero, 8, '0', STR_PAD_LEFT);
         $noteInvoice->save();
 
         $serie->incrementNumber();
@@ -485,8 +494,8 @@ class GreenterService
             } else {
                 // If summary fails, the note stays as PENDIENTE (can be retried)
                 return [
-                    'success' => true,
-                    'code' => 'ENVIADO',
+                    'success' => false,
+                    'code' => 'PENDIENTE',
                     'description' => $noteInvoice->full_number . ' pendiente de envío a SUNAT.',
                     'note_number' => $fullNumber,
                 ];
@@ -494,8 +503,8 @@ class GreenterService
         } catch (\Exception $e) {
             \Log::error('Summary send error: ' . $e->getMessage());
             return [
-                'success' => true,
-                'code' => 'ENVIADO',
+                'success' => false,
+                'code' => 'PENDIENTE',
                 'description' => $noteInvoice->full_number . ' pendiente de envío a SUNAT.',
                 'note_number' => $fullNumber,
             ];
@@ -1155,6 +1164,23 @@ class GreenterService
                 'description' => 'No hay certificado digital configurado. Suba el archivo .p12 desde la configuración de la empresa.'
             ];
         }
+
+        // Anti doble envío: si ya fue enviado, anulado o está en reserva, no reenviar
+        if (in_array($invoice->sunat_estado, ['ACEPTADO', 'ENVIADO', 'ANULADO'])) {
+            return [
+                'success' => false,
+                'code' => 'ALREADY_SENT',
+                'description' => 'El comprobante ya fue enviado o anulado (' . $invoice->sunat_estado . '). No se reenvía a SUNAT.'
+            ];
+        }
+
+        if ($invoice->tipo_documento !== '01') {
+            return [
+                'success' => false,
+                'code' => 'TYPE_NOT_SUPPORTED',
+                'description' => 'Este documento no se envía por el flujo directo de facturas'
+            ];
+        }
         
         $this->company = $company;
         
@@ -1169,10 +1195,15 @@ class GreenterService
         }
         
         $greenterCompany = $this->buildCompany($company);
-        
+
+        // Reserva: marca en ENVIADO antes del SOAP para evitar envíos concurrentes
+        $invoice->update(['sunat_estado' => 'ENVIADO']);
+
         $greenterInvoice = $this->buildInvoice($invoice, $company);
         
         try {
+            // Acotar timeout del socket: una SUNAT caída no debe congelar la venta
+            ini_set('default_socket_timeout', 12);
             $result = $this->see->send($greenterInvoice);
             
         if ($result->isSuccess()) {
@@ -1220,7 +1251,14 @@ class GreenterService
             }
         } catch (\Exception $e) {
             \Log::error('Greenter Error: ' . $e->getMessage());
-            
+
+            // Reintentable manualmente: volver a PENDIENTE con el error
+            $invoice->update([
+                'sunat_estado' => 'PENDIENTE',
+                'sunat_code' => 'EXCEPTION',
+                'sunat_description' => 'Error de envío: ' . $e->getMessage(),
+            ]);
+
             return [
                 'success' => false,
                 'code' => 'EXCEPTION',
@@ -1356,16 +1394,20 @@ class GreenterService
             
             $rate = $company->getIgvRate();
             $igvPct = $company->getActiveIgvPercent();
-            $valorUnitario = round($item->precio_unitario / (1 + $rate), 2);
-            $baseIgv = round($valorUnitario * $item->cantidad, 2);
-            $igvItem = round($baseIgv * $rate, 2);
+            $cantidad = (float) $item->cantidad;
+            $lineaConIgv = ((float) ($item->precio_venta ?? 0) > 0) ? (float) $item->precio_venta : (float) $item->precio_unitario * $cantidad;
+                        $baseIgv = round($lineaConIgv / (1 + $rate), 2);
+                        $igvItem = round($lineaConIgv - $baseIgv, 2);
+                        $valorUnitario = $cantidad > 0 ? round($baseIgv / $cantidad, 2) : 0;
+                        $precioUnitarioConIgv = $cantidad > 0 ? round($lineaConIgv / $cantidad, 2) : 0;
+                        
             
             $line->setUnidad('NIU');
             $line->setCodProducto($item->codigo ?? '');
             $line->setDescripcion($item->descripcion);
             $line->setCantidad($item->cantidad);
             $line->setMtoValorUnitario($valorUnitario);
-            $line->setMtoPrecioUnitario($item->precio_unitario);
+            $line->setMtoPrecioUnitario($precioUnitarioConIgv);
             $line->setTipAfeIgv('10');
             $line->setMtoBaseIgv($baseIgv);
             $line->setPorcentajeIgv($igvPct);

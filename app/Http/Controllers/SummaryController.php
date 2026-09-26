@@ -92,7 +92,7 @@ class SummaryController extends Controller
     {
         $this->authorize('permission', 'send_sunat');
         $invoices = \App\Models\Invoice::whereIn('sunat_estado', ['PENDIENTE', 'ERROR', 'RECHAZADO'])
-            ->whereIn('tipo_documento', ['01', '03'])
+            ->whereIn('tipo_documento', ['01', '03', '07', '08'])
             ->get();
 
         if ($invoices->isEmpty()) {
@@ -107,6 +107,8 @@ class SummaryController extends Controller
         foreach ($invoices as $invoice) {
             if ($invoice->tipo_documento === '03') {
                 $result = $summaryService->sendBoletaToSummary($invoice);
+            } elseif (in_array($invoice->tipo_documento, ['07', '08'], true)) {
+                $result = $summaryService->retryNote($invoice);
             } else {
                 $result = $greenterService->sendInvoice($invoice);
             }
@@ -131,7 +133,7 @@ class SummaryController extends Controller
     public function sendDaily(SummaryService $summaryService)
     {
         $this->authorize('permission', 'send_sunat');
-        $result = $summaryService->sendDailySummary();
+        $result = $summaryService->sendDailySummary(true);
 
         if ($result['success']) {
             return redirect()->route('sunat-summaries.index')

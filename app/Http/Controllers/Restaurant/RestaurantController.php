@@ -1094,6 +1094,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
                 'total' => $result['total'],
                 'document_type' => $result['document_type'],
                 'vuelto' => $result['vuelto'],
+                'sunat' => $result['sunat'] ?? null,
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -1248,6 +1249,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
                     'total' => $result['total'],
                     'document_type' => $documentType,
                     'vuelto' => $result['vuelto'],
+                    'sunat' => $result['sunat'] ?? null,
                 ];
             }
 
@@ -1449,12 +1451,24 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
         }
         $cajaAbierta->save();
 
+        // Envío inmediato: solo facturas (01) se envían al momento; boletas van al Resumen Diario (09:00)
+        $sunatResult = null;
+        if ($documentType === '01') {
+            try {
+                $sunatResult = (new \App\Services\GreenterService())->sendInvoice($invoice->fresh());
+            } catch (\Exception $e) {
+                \Log::error('Restaurante envío inmediato factura error: ' . $e->getMessage());
+                $sunatResult = ['success' => false, 'code' => 'EXCEPTION', 'description' => $e->getMessage()];
+            }
+        }
+
         return [
             'invoice' => $invoice,
             'full_number' => $fullNumber,
             'total' => $total,
             'document_type' => $documentType,
             'vuelto' => $vuelto,
+            'sunat' => $sunatResult,
         ];
     }
 

@@ -132,11 +132,37 @@
             {{ $invoice->metodo_pago }} @if($invoice->referencia_pago) - {{ $invoice->referencia_pago }} @endif
         </div>
         <div class="success-total">S/ {{ number_format($invoice->total, 2) }}</div>
-        
+
+        @php
+            $sunatResult = session('sunat_sent');
+            $estadoSunat = $invoice->sunat_estado;
+            $esFactura = $invoice->tipo_documento === '01';
+            $esBoleta = $invoice->tipo_documento === '03';
+        @endphp
+        @if($esFactura || $esBoleta)
+            @if($esFactura && $estadoSunat === 'ACEPTADO')
+                <div class="alert alert-success py-2">
+                    <i class="fas fa-check-circle"></i> <strong>Factura enviada a SUNAT correctamente.</strong>
+                </div>
+            @elseif($esFactura)
+                <div class="alert alert-warning py-2">
+                    <i class="fas fa-exclamation-triangle"></i> <strong>Factura NO enviada a SUNAT.</strong><br>
+                    <small>{{ $sunatResult['description'] ?? $invoice->sunat_description ?? 'Error de envío. Reintente más tarde desde el módulo de Comprobantes.' }}</small>
+                </div>
+            @else
+                <div class="alert alert-info py-2">
+                    <i class="fas fa-info-circle"></i> <strong>Boleta pendiente de envío.</strong>
+                    <small>Se enviará automáticamente mañana a las 09:00 (Resumen Diario) o puede enviarla ahora con el botón SUNAT.</small>
+                </div>
+            @endif
+        @endif
+
         <div class="btn-group-custom">
+            @if(($esFactura || $esBoleta) && $estadoSunat !== 'ACEPTADO')
             <button class="btn-custom btn-sunat" onclick="sendToSunat({{ $invoice->id }})" id="btnSunat">
                 <i class="fas fa-paper-plane"></i> Enviar a SUNAT
             </button>
+            @endif
             <button class="btn-custom btn-a4" onclick="printInvoice({{ $invoice->id }}, 'A4')">
                 <i class="fas fa-file-alt"></i> A4
             </button>

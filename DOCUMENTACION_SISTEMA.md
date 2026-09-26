@@ -3937,6 +3937,89 @@ Módulo de marcación de entrada/salida del personal por **DNI** con opción de 
 
 ---
 
+## 29. Facturación Electrónica SUNAT — Correcciones y Puesta en Marcha (Septiembre 2026)
+
+### 29.1 Flujo de envío
+
+- **Boletas (03)**, **NC/ND de boletas** y **anulaciones de boletas** → **Resumen Diario** (`SummaryService::sendBoletaToSummary/sendNoteToSummary/voidBoleta`).
+- **Facturas (01)** y sus NC/ND → **envío directo** (`GreenterService::sendInvoice` y `sendCreditNote/sendDebitNote`).
+- **NV** (`Nota de Venta`) → **nunca se envía** a SUNAT.
+- Estado por documento: `PENDIENTE → ENVIADO → ACEPTADO` (o `RECHAZADO/ANULADO`). Los tickets se guardan en `invoices.sunat_code`.
+
+### 29.2 Correcciones aplicadas (septiembre 2026)
+
+| # | Severidad | Archivo | Bug | Fix |
+|---|-----------|---------|-----|-----|
+| 1 | CRÍTICO | `GreenterService::buildInvoice` / builders NC·ND | Recalculaba `precio_unitario/(1+rate)` pero POS/Restaurante guardan el precio **sin IGV** (base) y el manual **con IGV** → montos sub-declarados en el XML | Usa `invoice_items.precio_venta` (total de línea **CON IGV**, consistente en las 3 fuentes) como base; deriva valor unitario/IGV de ahí |
+| 2 | CRÍTICO | `InvoiceController::sendToSunat` | Sin guard: re-clic/refresh de una factura ACEPTADA → la reenviaba y SUNAT la marcaba RECHAZADO (sobreescribía estado) | Guard: bloquea si `sunat_estado` ∈ `ACEPTADO/ENVIADO/ANULADO` |
+| 3 | CRÍTICO | `GreenterService::sendCreditNote` | La NC de boleta se generaba como **ND (08)** | Pasa `'07'` (crédito); la ND sigue `'08'` |
+| 4 | CRÍTICO | `SummaryService::checkTicketStatus` | `UPDATE WHERE sunat_code=ticket` marcaba **ACEPTADO** también a boletas **ANULADAS** (mismo ticket) | Solo actualiza documentos con `sunat_estado = ENVIADO` |
+| 5 | ALTO | `SummaryService::checkTicketStatus` | Resumen `RECHAZADO` dejaba las boletas en `ENVIADO` para siempre (ni retry ni batch las tomaban) | En rechazo pasa los documentos del ticket a `PENDIENTE` (reintentables) |
+| 6 | ALTO | `RetryPendingInvoices` + `SummaryController::retryPending` | No reintentaban notas **07/08** | Añadido `SummaryService::retryNote()` (requiere `invoices.docu_referencia`) y rama 07/08 en ambos |
+| 7 | MEDIO | `GreenterService::sendNoteViaSummary` | Si el resumen fallaba devolvía `success=true 'ENVIADO'` (mentía al usuario) | Devuelve `success=false, code=PENDIENTE`; la nota queda reintentable |
+| 8 | BAJO | `SummaryService` | Notas sin referencia al documento original (solo `credit_note_id` en crédito) | Nueva columna `invoices.docu_referencia` (migración `2026_09_21_000002`) poblada al crear la nota |
+
+### 29.3 Agendado de tareas SUNAT (Laravel 13 — `routes/console.php`)
+
+> **IMPORTANTE**: en Laravel 11+ el scheduler NO lee `App\Console\Kernel::schedule()` — usa el kernel por defecto y define las tareas en **`routes/console.php`** con `Schedule::command()`. (Antes, `print:process-queue` y `sunat:download-padron` "programados" en Kernel.php **nunca se ejecutaban**.)
+
+Tareas registradas en `routes/console.php`:
+
+| Expresión | Comando | Descripción |
+|-----------|---------|-------------|
+| `* * * * *` | `print:process-queue` | Procesar cola de impresión (cada minuto) |
+| `0 2 * * 0` | `sunat:download-padron` | Descargar padrón reducido (domingo 02:00) |
+| `0 9 * * *` | `sunat:send-daily-summary` | Resumen Diario de boletas PENDIENTES de días previos (09:00) |
+| `0 12 * * *` | `sunat:send-daily-summary` | Reintento del Resumen Diario (12:00) |
+| `5 9 * * *` / `20 9 * * *` | `sunat:check-summaries` | Consultar estado de tickets tras el envío matutino |
+| `5 12 * * *` / `20 12 * * *` | `sunat:check-summaries` | Consultar estado de tickets tras el reintento |
+| `6 12 * * *` | `sunat:verify-unresolved` | Si quedan boletas PENDIENTES de días previos → **alerta** |
+
+Ejecutar con `php artisan schedule:work` (o el `scheduler.vbs`).
+
+> **Envío de facturas**: inmediato y sincrónico al generar (POS, Restaurante, Manual) con reserva de estado (`ENVIADO` transitorio) y `default_socket_timeout≈12s`; si falla quedan `PENDIENTE` para **reintento manual**. **Boletas**: no se auto-envían; el Resumen Diario (09:00/12:00) agrupa por `fecha_emision` las `PENDIENTE` (las enviadas manualmente = `ENVIADO` se excluyen).
+
+### 29.4 Checklist de puesta en marcha (config del dueño — sin esto NO se emite)
+
+1. **Certificado digital**: subir en **Empresa → Editar → Certificado** (un certificado por empresa). Sin él, `setupSee()` falla con `NO_CERT`/`No hay certificado digital configurado`.
+2. **Ambiente SUNAT**: `soap_type_id` correcto en la empresa:
+   - `2` = **PRODUCCIÓN** (⚠️ en la BD actual hay `'01'`/`'1'` → el código resuelve a **FE_BETA**).
+3. **Usuario SOL**: `soap_username` = **usuario secundario SIN el RUC** (Greenter concatena `RUC+usuario`; si guardas RUC prefijado → `RUC+RUC+usuario` y auth falla).
+4. **Empresa principal**: marcar `is_main=1` en la empresa correcta (hoy **ninguna** lo tiene → `getMainCompany()` resuelve por fallback al primer ACTIVO, ambiguo).
+5. **Series**: series de boleta/factura/NC/ND creadas y activas por empresa (la NC/ND se crean solas con prefijo BC/FC/BD/FD si no existen).
+6. **Padrón SUNAT**: descargar (`sunat:download-padron` o botón en Empresas) para búsqueda de clientes/postores.
+7. **Servidor de impresión + scheduler** activos en producción (ver `print-server-node/` y `scheduler.vbs`).
+8. **Backup** periódico (módulo Backup) antes de operar con SUNAT.
+
+### 29.5 Pendientes / limitaciones conocidas
+
+- El reintento de notas **07/08 que ya tienen ticket** (rechazadas) no está automatizado; `retryNote()` solo reintenta notas que nunca obtuvieron ticket (`sunat_code='NC'/'ND'`).
+- `retryPending` y `SummaryController::retryPending` **no excluyen NV** (las lista como "tipo no soportado"); no programadas automáticamente.
+- Correlativos de **comunicación de baja** (`voidInvoice`) son aleatorios (rand 1-999) y no se persisten → riesgo de colisión en bajas del mismo día.
+- `sunat_ticket` (columna) no se usa; los tickets viven en `sunat_code`.
+- **Observaciones** SUNAT ("aceptada con observaciones") no se modelan (solo descripción genérica).
+- `getMainCompany()` se usa en el envío ignorando `invoice->company_id` → con 2+ empresas activas hay que revisar el issuer.
+
+### 29.6 Envío inmediato de facturas y alerta de boletas (Septiembre 2026)
+
+**Facturas (01)** — envío **inmediato y sincrónico** al generarse:
+- En `PosController::store`, `RestaurantController::createInvoiceFromItems` (cobro/fusión cabecera) y `InvoiceController::store` (comprobante manual) se llama a `GreenterService::sendInvoice` en el mismo request.
+- **Reserva de estado**: antes del SOAP se marca `ENVIADO` (transitorio); éxito → `ACEPTADO`, rechazo SUNAT → `RECHAZADO`, excepción → vuelve a `PENDIENTE` con el error. `default_socket_timeout` ≈ 12 s para que SUNAT caída no congele la venta.
+- Si no se envió, el responsable la reenvía **manualmente** (botón en Comprobantes / `sunat:retry-pending`). No hay reintento automático.
+- La ventana de resultado del POS (`pos.success`) muestra "Factura enviada ✅" o "NO enviada ❌ (error) — reenvíela desde Comprobantes".
+
+**Boletas (03)** — NO se auto-envían al generarse:
+- Quedan `PENDIENTE`. Se pueden enviar **individualmente** (botón) → `ENVIADO`.
+- El **Resumen Diario** automático (09:00, reintento 12:00) agrupa por `fecha_emision` las `PENDIENTE` de días previos (un RC por fecha). Las enviadas manualmente (`ENVIADO`) quedan **excluidas**.
+- `sunat:check-summaries` consulta el estado de los tickets tras cada envío (09:05/09:20 y 12:05/12:20).
+
+**Alerta al área de sistemas** (`sunat_alerts`):
+- A las **12:06** `sunat:verify-unresolved` revisa si quedan boletas `PENDIENTE` con `fecha_emision < hoy`; si las hay, crea una alerta activa (tipo `sunat_boletas`).
+- La alerta se muestra como **campana ⚠️ con badge** en la barra superior (visible a **admin y cajero**); al pulsarla abre un **modal** con el mensaje "Problema con la facturación — notifique al área de sistemas" y botón "Marcar como resuelto".
+- **Auto-resolución por evento** (`SunatAlertService::evaluate()`): cuando ya no quedan boletas `PENDIENTE` de días previos (envío exitoso / resumen de la mañana) la alerta se marca `RESUELTO` sola. Además el admin/cajero puede marcarla manual.
+
+---
+
 ## Anexo: Códigos de Error SUNAT
 
 El archivo `docs/sunat/codigos-error-sunat.txt` contiene el listado completo de códigos de error de SUNAT (anexo 2), utilizado para depurar respuestas al enviar comprobantes electrónicos.

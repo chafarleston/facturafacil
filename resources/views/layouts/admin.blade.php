@@ -43,6 +43,17 @@ $__kdsActive = \App\Models\Company::orderMode() === 'kds';
       </ul>
       
       <ul class="navbar-nav ml-auto">
+        @if(in_array(Auth::user()->role ?? '', ['admin', 'cajero']))
+          @php $sunatAlertCount = \App\Services\SunatAlertService::activeCount(); @endphp
+          @if($sunatAlertCount > 0)
+          <li class="nav-item">
+            <a class="nav-link" href="#" data-toggle="modal" data-target="#sunatAlertModal" title="Alerta de facturación SUNAT">
+              <i class="fas fa-exclamation-triangle" style="color:#f39c12;"></i>
+              <span class="badge badge-warning navbar-badge">{{ $sunatAlertCount }}</span>
+            </a>
+          </li>
+          @endif
+        @endif
         <li class="nav-item dropdown">
           <a class="nav-link" data-toggle="dropdown" href="#">
             <i class="far fa-user"></i> {{ Auth::user()->name ?? 'Usuario' }}
@@ -563,5 +574,7 @@ if (document.getElementById('ubigeo_codigo')) {
   </script>
   
   @stack('scripts')
+
+  @include('partials.sunat-alert-modal')
 </body>
 </html>

@@ -95,21 +95,26 @@ class SummaryService
         return str_pad($lastNum + 1, 3, '0', STR_PAD_LEFT);
     }
 
-    public function sendDailySummary(): array
+    public function sendDailySummary(bool $includeToday = false): array
     {
         $company = Company::getMainCompany();
         if (!$company) {
             return ['success' => false, 'description' => 'No hay empresa principal configurada'];
         }
 
+        $operator = $includeToday ? '<=' : '<';
         $invoices = InvoiceModel::where('company_id', $company->id)
             ->where('tipo_documento', '03')
             ->where('sunat_estado', 'PENDIENTE')
-            ->whereDate('fecha_emision', now()->format('Y-m-d'))
-            ->get();
+            ->whereDate('fecha_emision', $operator, now()->format('Y-m-d'))
+            ->orderBy('fecha_emision')
+            ->get()
+            ->groupBy(fn ($i) => $i->fecha_emision);
 
         if ($invoices->isEmpty()) {
-            return ['success' => false, 'description' => 'No hay boletas pendientes para hoy'];
+            \App\Services\SunatAlertService::evaluate();
+
+            return ['success' => false, 'description' => 'No hay boletas pendientes'];
         }
 
         try {
@@ -118,78 +123,116 @@ class SummaryService
             return ['success' => false, 'description' => $e->getMessage()];
         }
 
-        try {
-            $correlativo = $this->getNextCorrelativo($company);
-            $details = [];
+        $enviadas = 0;
+        $errores = [];
 
-            foreach ($invoices as $invoice) {
-                $cd = $this->getClientData($invoice);
-                $detail = new SummaryDetail();
-                $detail->setTipoDoc('03');
-                $detail->setSerieNro($invoice->serie . '-' . str_pad($invoice->numero, 8, '0', STR_PAD_LEFT));
-                $detail->setClienteTipo($cd['tipo_doc']);
-                $detail->setClienteNro($cd['num_doc']);
-                $detail->setEstado('1');
-                $detail->setTotal($invoice->total);
-                $detail->setMtoOperGravadas($invoice->gravado ?? $invoice->subtotal);
-                $detail->setMtoOperInafectas(0);
-                $detail->setMtoOperExoneradas(0);
-                $detail->setMtoOperExportacion(0);
-                $detail->setMtoOperGratuitas(0);
-                $detail->setMtoIGV($invoice->igv);
-                $detail->setPorcentajeIgv($company->getActiveIgvPercent());
-                $details[] = $detail;
-            }
+        foreach ($invoices as $fecha => $group) {
+            try {
+                $correlativo = $this->getNextCorrelativo($company);
+                $details = [];
 
-            $summary = new Summary();
-            $summary->setFecGeneracion(new \DateTime(now()->format('Y-m-d')));
-            $summary->setFecResumen(new \DateTime());
-            $summary->setCorrelativo($correlativo);
-            $summary->setMoneda('PEN');
-            $summary->setCompany($this->buildGreenterCompany($company));
-            $summary->setDetails($details);
+                foreach ($group as $invoice) {
+                    if (in_array($invoice->sunat_estado, ['ACEPTADO', 'ANULADO', 'ENVIADO'])) {
+                        continue;
+                    }
+                    // Reserva: evita que esta boleta sea tomada por otro envío concurrente
+                    $invoice->update(['sunat_estado' => 'ENVIADO']);
 
-            $result = $this->see->send($summary);
-
-            if ($result->isSuccess()) {
-                $ticket = $result->getTicket();
-                $fullCorrelativo = 'RC-' . now()->format('Ymd') . '-' . $correlativo;
-                $total = $invoices->count();
-
-                SummaryDocument::create([
-                    'company_id' => $company->id,
-                    'fecha_emision' => now()->format('Y-m-d'),
-                    'fecha_operacion' => now()->format('Y-m-d'),
-                    'correlativo' => $fullCorrelativo,
-                    'cantidad_documentos' => $total,
-                    'ticket' => $ticket,
-                    'sunat_estado' => 'ENVIADO',
-                    'sunat_response' => json_encode(['ticket' => $ticket, 'count' => $total]),
-                ]);
-
-                foreach ($invoices as $invoice) {
-                    $invoice->update([
-                        'sunat_estado' => 'ENVIADO',
-                        'sunat_code' => $ticket,
-                        'sunat_description' => 'ENVIADO POR RESUMEN DIARIO. Ticket: ' . $ticket,
-                    ]);
+                    $cd = $this->getClientData($invoice);
+                    $detail = new SummaryDetail();
+                    $detail->setTipoDoc('03');
+                    $detail->setSerieNro($invoice->serie . '-' . str_pad($invoice->numero, 8, '0', STR_PAD_LEFT));
+                    $detail->setClienteTipo($cd['tipo_doc']);
+                    $detail->setClienteNro($cd['num_doc']);
+                    $detail->setEstado('1');
+                    $detail->setTotal($invoice->total);
+                    $detail->setMtoOperGravadas($invoice->gravado ?? $invoice->subtotal);
+                    $detail->setMtoOperInafectas(0);
+                    $detail->setMtoOperExoneradas(0);
+                    $detail->setMtoOperExportacion(0);
+                    $detail->setMtoOperGratuitas(0);
+                    $detail->setMtoIGV($invoice->igv);
+                    $detail->setPorcentajeIgv($company->getActiveIgvPercent());
+                    $details[] = $detail;
                 }
 
-                \Log::info("Daily summary sent: {$fullCorrelativo}, {$total} boletas, ticket: {$ticket}");
+                if (empty($details)) {
+                    continue;
+                }
 
-                return [
-                    'success' => true,
-                    'ticket' => $ticket,
-                    'description' => "Resumen diario enviado con {$total} boleta(s). Ticket: {$ticket}",
-                ];
-            } else {
-                $error = $result->getError();
-                return ['success' => false, 'description' => $error->getMessage() ?? 'Error desconocido'];
+                $summary = new Summary();
+                $summary->setFecGeneracion(new \DateTime($fecha));
+                $summary->setFecResumen(new \DateTime());
+                $summary->setCorrelativo($correlativo);
+                $summary->setMoneda('PEN');
+                $summary->setCompany($this->buildGreenterCompany($company));
+                $summary->setDetails($details);
+
+                ini_set('default_socket_timeout', 15);
+                $result = $this->see->send($summary);
+
+                if ($result->isSuccess()) {
+                    $ticket = $result->getTicket();
+                    $total = count($details);
+                    $fullCorrelativo = 'RC-' . now()->format('Ymd') . '-' . $correlativo;
+
+                    SummaryDocument::create([
+                        'company_id' => $company->id,
+                        'fecha_emision' => now()->format('Y-m-d'),
+                        'fecha_operacion' => $fecha,
+                        'correlativo' => $fullCorrelativo,
+                        'cantidad_documentos' => $total,
+                        'ticket' => $ticket,
+                        'sunat_estado' => 'ENVIADO',
+                        'sunat_response' => json_encode(['ticket' => $ticket, 'count' => $total]),
+                    ]);
+
+                    foreach ($group as $invoice) {
+                        $invoice->update([
+                            'sunat_estado' => 'ENVIADO',
+                            'sunat_code' => $ticket,
+                            'sunat_description' => 'ENVIADO POR RESUMEN DIARIO. Ticket: ' . $ticket,
+                        ]);
+                    }
+
+                    \Log::info("Daily summary sent (fecha {$fecha}): {$fullCorrelativo}, {$total} boletas, ticket: {$ticket}");
+
+                    // Chequear estado inmediatamente tras enviar (SUNAT puede tardar en procesar)
+                    try {
+                        $this->checkTicketStatus($ticket);
+                    } catch (\Exception $checkError) {
+                        \Log::warning('Check after daily send falló: ' . $checkError->getMessage());
+                    }
+
+                    $enviadas += $total;
+                } else {
+                    $error = $result->getError();
+                    $errores[] = $fecha . ': ' . ($error->getMessage() ?? 'Error desconocido');
+                    // Revertir reserva: no quedó enviada realmente
+                    foreach ($group as $invoice) {
+                        $invoice->update(['sunat_estado' => 'PENDIENTE']);
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::error('Daily Summary Error (fecha ' . $fecha . '): ' . $e->getMessage());
+                $errores[] = $fecha . ': ' . $e->getMessage();
+                foreach ($group as $invoice) {
+                    $invoice->update(['sunat_estado' => 'PENDIENTE']);
+                }
             }
-        } catch (\Exception $e) {
-            \Log::error('Daily Summary Error: ' . $e->getMessage());
-            return ['success' => false, 'description' => $e->getMessage()];
         }
+
+        \App\Services\SunatAlertService::evaluate();
+
+        if ($enviadas === 0 && !empty($errores)) {
+            return ['success' => false, 'description' => 'No se pudo enviar el resumen: ' . implode(' | ', $errores)];
+        }
+
+        if (!empty($errores)) {
+            return ['success' => false, 'description' => 'Enviadas ' . $enviadas . ' boleta(s); errores: ' . implode(' | ', $errores)];
+        }
+
+        return ['success' => true, 'description' => 'Resumen(es) enviado(s): ' . $enviadas . ' boleta(s)'];
     }
 
     private function getClientData($invoice): array
@@ -211,9 +254,14 @@ class SummaryService
 
     public function sendBoletaToSummary(InvoiceModel $invoice): array
     {
-        $company = Company::getMainCompany();
+$company = Company::getMainCompany();
         if (!$company) {
             return ['success' => false, 'description' => 'No hay empresa principal configurada'];
+        }
+
+        // Anti doble envío: si ya fue enviada, anulada o está en reserva, no reenviar
+        if (in_array($invoice->sunat_estado, ['ACEPTADO', 'ENVIADO', 'ANULADO'])) {
+            return ['success' => false, 'code' => 'ALREADY_SENT', 'description' => 'La boleta ya fue enviada (' . $invoice->sunat_estado . '). No se reenvía a SUNAT.'];
         }
 
         try {
@@ -221,6 +269,9 @@ class SummaryService
         } catch (\Exception $e) {
             return ['success' => false, 'description' => $e->getMessage()];
         }
+
+        // Reserva: marca ENVIADO antes del SOAP para evitar envíos concurrentes
+        $invoice->update(['sunat_estado' => 'ENVIADO']);
 
         try {
             $correlativo = $this->getNextCorrelativo($company);
@@ -249,7 +300,8 @@ class SummaryService
             $summary->setCompany($this->buildGreenterCompany($company));
             $summary->setDetails([$detail]);
 
-            $result = $this->see->send($summary);
+            ini_set('default_socket_timeout', 12);
+                $result = $this->see->send($summary);
 
             if ($result->isSuccess()) {
                 $ticket = $result->getTicket();
@@ -288,14 +340,15 @@ class SummaryService
             } else {
                 $error = $result->getError();
                 $invoice->update([
-                    'sunat_estado' => 'RECHAZADO',
+                    'sunat_estado' => 'PENDIENTE',
                     'sunat_code' => $error->getCode() ?? 'ERROR',
-                    'sunat_description' => $error->getMessage() ?? 'Error desconocido',
+                    'sunat_description' => ($error->getMessage() ?? 'Error desconocido') . ' (reintentar manual o resumen diario)',
                 ]);
                 return ['success' => false, 'code' => $error->getCode(), 'description' => $error->getMessage()];
             }
         } catch (\Exception $e) {
             Log::error('Summary Error: ' . $e->getMessage());
+            $invoice->update(['sunat_estado' => 'PENDIENTE', 'sunat_description' => 'Error de envío: ' . $e->getMessage()]);
             return ['success' => false, 'description' => $e->getMessage()];
         }
     }
@@ -326,6 +379,7 @@ class SummaryService
 
                 // Update invoice status to ACEPTADO
                 InvoiceModel::where('sunat_code', $ticket)
+                    ->where('sunat_estado', 'ENVIADO')
                     ->update([
                         'sunat_estado' => 'ACEPTADO',
                         'sunat_description' => 'ACEPTADO VÍA RESUMEN DIARIO',
@@ -347,6 +401,13 @@ class SummaryService
                             'sunat_estado' => 'RECHAZADO',
                             'sunat_response' => json_encode(['error' => $error->getMessage()]),
                         ]);
+                                        // Resumen rechazado: devolver los documentos del ticket a PENDIENTE para poder reintentarlos
+                    InvoiceModel::where('sunat_code', $ticket)
+                        ->where('sunat_estado', 'ENVIADO')
+                        ->update([
+                            'sunat_estado' => 'PENDIENTE',
+                            'sunat_description' => 'Resumen rechazado por SUNAT; pendiente de reintento',
+                        ]);
                     return ['success' => false, 'description' => $error->getMessage()];
                 }
                 return ['success' => false, 'description' => 'Pendiente de procesar'];
@@ -355,6 +416,29 @@ class SummaryService
             Log::error('Status check error: ' . $e->getMessage());
             return ['success' => false, 'description' => $e->getMessage()];
         }
+    }
+
+    public function retryNote(InvoiceModel $note): array
+    {
+        if (!in_array($note->tipo_documento, ['07', '08'], true)) {
+            return ['success' => false, 'description' => 'Tipo no soportado para retryNote: ' . $note->tipo_documento];
+        }
+
+        if (!in_array($note->sunat_code, ['NC', 'ND'], true)) {
+            return ['success' => false, 'description' => $note->full_number . ' ya fue enviado con ticket; revise su estado'];
+        }
+
+        $ref = $note->docu_referencia;
+        if (!$ref || strpos($ref, '-') === false) {
+            return ['success' => false, 'description' => 'Nota sin documento de referencia; no es reintentable'];
+        }
+
+        [$refSerie, $refNum] = explode('-', $ref, 2);
+        $original = new InvoiceModel();
+        $original->serie = $refSerie;
+        $original->numero = (int) $refNum;
+
+        return $this->sendNoteToSummary($note, $original, $note->tipo_documento);
     }
 
     public function voidBoleta(InvoiceModel $invoice): array
@@ -396,7 +480,8 @@ class SummaryService
             $summary->setCompany($this->buildGreenterCompany($company));
             $summary->setDetails([$detail]);
 
-            $result = $this->see->send($summary);
+            ini_set('default_socket_timeout', 12);
+                $result = $this->see->send($summary);
 
             if ($result->isSuccess()) {
                 $ticket = $result->getTicket();
@@ -484,7 +569,8 @@ class SummaryService
             $summary->setCompany($this->buildGreenterCompany($company));
             $summary->setDetails([$detail]);
 
-            $result = $this->see->send($summary);
+            ini_set('default_socket_timeout', 12);
+                $result = $this->see->send($summary);
 
             if ($result->isSuccess()) {
                 $ticket = $result->getTicket();

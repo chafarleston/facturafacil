@@ -248,6 +248,17 @@ class InvoiceController extends Controller
 
         $invoice->load('customer');
 
+        // Envío inmediato: solo facturas (01) se envían al momento; boletas van al Resumen Diario (09:00)
+        $sunatResult = null;
+        if ($tipoDoc === '01') {
+            try {
+                $sunatResult = (new \App\Services\GreenterService())->sendInvoice($invoice->fresh());
+            } catch (\Exception $e) {
+                \Log::error('Manual envío inmediato factura error: ' . $e->getMessage());
+                $sunatResult = ['success' => false, 'code' => 'EXCEPTION', 'description' => $e->getMessage()];
+            }
+        }
+
         $autoPrint = false;
 
         $responseData = [
@@ -263,6 +274,7 @@ class InvoiceController extends Controller
                 'metodo_pago' => $invoice->metodo_pago,
                 'referencia_pago' => $invoice->referencia_pago,
                 'customer_name' => $invoice->customer ? $invoice->customer->nombre : 'Cliente Varios',
+                'sunat' => $sunatResult,
             ],
         ];
 
@@ -272,6 +284,7 @@ class InvoiceController extends Controller
 
         return redirect()->route('invoices.show', $invoice)
             ->with('success', 'Documento creado: ' . $invoice->full_number)
+            ->with('sunat_sent', $sunatResult)
             ->with('auto_print', $autoPrint);
     }
 
@@ -361,6 +374,10 @@ class InvoiceController extends Controller
             return back()->with('success', 'Nota de Venta no se envía a SUNAT');
         }
 
+        // Evitar reenvío: si ya fue enviado o anulado, SUNAT rechaza duplicados
+        if (in_array($invoice->sunat_estado, ['ACEPTADO', 'ENVIADO', 'ANULADO'])) {
+            return back()->with('error', 'El comprobante ya fue enviado o anulado (' . $invoice->sunat_estado . '). No se reenvía a SUNAT.');
+        }
         // Boletas se envían mediante Resumen Diario
         if ($invoice->tipo_documento === '03') {
             try {

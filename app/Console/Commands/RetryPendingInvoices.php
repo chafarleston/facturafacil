@@ -43,6 +43,8 @@ class RetryPendingInvoices extends Command
             } elseif ($invoice->tipo_documento === '01') {
                 $greenterService = new GreenterService();
                 $result = $greenterService->sendInvoice($invoice);
+            } elseif (in_array($invoice->tipo_documento, ['07', '08'], true)) {
+                $result = (new SummaryService())->retryNote($invoice);
             } else {
                 $this->warn("Tipo no soportado: {$invoice->tipo_documento}");
                 continue;

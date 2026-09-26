@@ -213,7 +213,17 @@ class PosController extends Controller
             \Log::error('POS print error: ' . $e->getMessage());
         }
 
-        return redirect()->route('pos.success', $invoice->id);
+        $sunatResult = null;
+        if ($documentType === '01') {
+            try {
+                $sunatResult = (new GreenterService())->sendInvoice($invoice->fresh());
+            } catch (\Exception $e) {
+                \Log::error('POS envío inmediato factura error: ' . $e->getMessage());
+                $sunatResult = ['success' => false, 'code' => 'EXCEPTION', 'description' => $e->getMessage()];
+            }
+        }
+
+        return redirect()->route('pos.success', $invoice->id)->with('sunat_sent', $sunatResult);
     }
     
     private function numberToLetter($number)
