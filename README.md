@@ -29,7 +29,7 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 - **Búsqueda de productos** en tiempo real (solo por descripción/nombre; la búsqueda por código y código de barras existe en el POS)
 - Envío a cocina (modo **KDS** en pantalla o **Impresión 80mm** a impresora térmica)
 - **KDS (Kitchen Display System)**: pantalla en tiempo real con alertas sonoras al recibir nuevos pedidos, colores por estado y secciones MOZO / KIOSKO
-- Precuenta con selección de impresora (Precuenta 1, 2 o 3), **IGV dinámico** según empresa y que **excluye los productos ya pagados** (Dividir Cuenta)
+- Precuenta con selección de impresora (Precuenta 1, 2 o 3), **IGV dinámico** según empresa, **datos de la empresa** en el encabezado (nombre, RUC, dirección, teléfono, email) y aviso al pie *"Esto no es un comprobante de venta, si desea pedir boleta o factura escriba sus datos."*; **excluye los productos ya pagados** (Dividir Cuenta)
 - **Dividir Cuenta**: reparte el pedido en 2+ comprobantes (NV/Boleta/Factura) por cantidades, cada división con su cliente, método de pago y solo consumo; los items pagados se marcan "Pagado", desaparecen del KDS y ya no aparecen en la precuenta
 - **Kiosko / Autoservicio**: pedidos por pantalla táctil (`/autopedido`), numeración A-XXX ligada a la caja abierta, estados Pendiente/En Cocina y cobro en el cajero
 - Cobro con **cliente por defecto** (Cliente Varios DNI 88888888) y **confirmación de impresión**
@@ -49,6 +49,7 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 - El **historial de cajas** (cajas anteriores) solo es visible con permiso `view_cashregister_history` (por defecto solo `admin`)
 - **Ingresos y Gastos** (`/cash-movements`): registrar ingresos y egresos de caja (motivo libre) ligados a la caja abierta; **requiere caja abierta**; se concilian en el cierre (`saldo esperado` y `diferencia`) y se muestran en el resumen web/PDF/ticket
 - **Configuración de Reporte** (`/cash-report-settings`): elegir qué secciones (Lista de Comprobantes, Productos Vendidos, Reporte de Líneas Eliminadas) se imprimen en los reportes **A4/80mm**; el reporte web siempre muestra todo
+- **Precuadre**: botón en la caja vigente (al costado de "Cerrar Caja") que imprime en la impresora **Caja** un resumen tipo cierre **sin cerrar** la caja; se habilita con el toggle **"Precuadre"** en Empresa (`/companies`)
 - Dashboard con **resumen mensual** (ventas del mes vs mes anterior)
 
 ### Impresión Térmica ESC/POS
@@ -132,7 +133,7 @@ Navegador (cliente)
 - **Quick Edit Mode desactivado** para evitar congelamiento por clic
 - **start-hidden.vbs** para ejecución en segundo plano sin ventana
 
-**Reintentos automáticos**: el comando `php artisan print:process-queue` está programado cada minuto en `Kernel.php` (`everyMinute`). Se invoca ejecutando `php artisan schedule:run` vía `scheduler.vbs` o una tarea de Windows creada fuera del repo (`FacturaFacilScheduler`).
+**Reintentos automáticos**: el comando `php artisan print:process-queue` está programado cada minuto en `routes/console.php` (`Schedule::command(...)->everyMinute()`, Laravel 11+ ya no usa `App\Console\Kernel::schedule()`). Se invoca ejecutando `php artisan schedule:run` vía `scheduler.vbs` o una tarea de Windows creada fuera del repo (`FacturaFacilScheduler`).
 
 ---
 

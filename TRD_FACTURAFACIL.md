@@ -448,6 +448,8 @@ protected $casts = [
 | `pdf()` | `/cashregisters/{id}/pdf` | GET | auth + permission `view_cashregisters` |
 | `ticketPdf()` | `/cashregisters/{id}/ticket` | GET | auth + permission `view_cashregisters` |
 | `printCaja()` | `/cashregisters/{id}/print-caja` | POST | auth + permission `view_cashregisters` |
+| `printPrecuadre()` | `/cashregisters/{id}/print-precuadre` | POST | auth + permission `view_cashregisters`; rechaza cajas `CERRADA`; imprime `cashRegisterSummary(..., 'PRECUADRE')` en impresora Caja sin cerrar la caja |
+| `preparePrintData()` | — (privado) | — | Helper compartido por `printCaja()`/`printPrecuadre()` (getCashRegisterData + desglose por método de pago) |
 
 **Lógica de cierre (`close()`):**
 ```
@@ -462,7 +464,7 @@ protected $casts = [
 9. Actualizar cash register con todos los montos → estado CERRADA
 ```
 
-**Lógica de métodos de pago (compartida por `show()` y `printCaja()`):**
+**Lógica de métodos de pago (compartida por `show()`, `printCaja()` y `printPrecuadre()`):**
 ```php
 foreach ($ventas as $venta) {
     $pago = $venta->metodo_pago;  // "YAPE/80 + EFECTIVO/15"
@@ -614,11 +616,11 @@ Genera tickets en texto plano con formato ESC/POS.
 | Método | Destino | Contenido |
 |--------|---------|-----------|
 | `kitchenTicket($order, $format, $dest)` | cocina-1/2, bar-1 | Header + items |
-| `prebillTicket($order, $format)` | precuenta | Items (activos, no pagados) + total + IGV |
+| `prebillTicket($order, $format)` | precuenta | Datos de empresa (nombre/RUC/dirección/tel/email) + items (activos, no pagados) + total + IGV + pie "no es comprobante de venta" |
 | `cancelNotification($order, $item, ...)` | cocina/bar | Item cancelado |
 | `cancelNotificationGrouped($order, ...)` | cocina/bar | Items cancelados agrupados (incluye "Anulado por") |
 | `invoiceTicket($invoice, $format)` | caja | Stub (no-op); comprobante por PDF Greenter |
-| `cashRegisterSummary($cash, $data, ...)` | caja | Cierre completo |
+| `cashRegisterSummary($cash, $data, ..., $title='CIERRE DE CAJA')` | caja | Cierre completo; título configurable (`CIERRE DE CAJA` \| `PRECUADRE`) |
 
 **Encoding:** CP850 con tabla de mapeo manual para caracteres especiales (ñ, tildes).
 
@@ -847,3 +849,5 @@ CreateObject("WScript.Shell").Run "node print-server-node/server.js", 0
 | 2.4 | Agosto 2026 | Polling: `handlePollResponse` redirige a `/login` en 401 (sesión expirada); fix edge case `getTableLocks` (`->values()` + `Array.isArray`). Modo KDS vs Impresión: menú oculta "KDS Cocina/Cocina 2/Bar" en modo `print`; `loadKitchenOrders` solo corre en Modo KDS (chequeo en vivo vía `getKitchenOrders.order_mode` + aviso "KDS INACTIVO"); acciones KDS (`markKitchenReady`/`deliverKitchenOrder`/`completeOrder`) responden 400 en `print`. Caché `Company::orderMode()`/`mainCompanyId()` (`rememberForever`) invalidada por `Company::clearCache()` en `toggleMode` y cambios de empresa. |
 | 2.5 | Agosto 2026 | Cobro con pendientes: `chargeOrder`/`splitChargeOrder` envían automáticamente a cocina/bar los items `PENDING` (SENT + ticket/impresión en modo print, evento KDS en modo kds) antes de facturar; el total incluye todos los items y el cierre de caja los cuenta. |
 | 2.6 | Agosto 2026 | Configuración de Reporte de Caja: tabla `cash_report_settings` + permiso `manage_report_settings` (admin+cajero); checks para mostrar/ocultar LISTA DE COMPROBANTES, PRODUCTOS VENDIDOS y LINEAS ELIMINADAS en reportes A4/80mm/ESC-POS (web siempre muestra todo). |
+| 2.7 | Octubre 2026 | **Precuadre**: botón en `/cashregisters` (caja ABIERTA) que imprime `cashRegisterSummary(..., 'PRECUADRE')` en la impresora Caja sin cerrar la caja; toggle global `precuadre_enabled` en `settings` desde `/companies`; ruta `POST /precuadre/toggle` (`PrecuadreSettingController`); `printCaja()`/`printPrecuadre()` comparten `preparePrintData()`; `cashRegisterSummary()` acepta 5º parámetro `$title`. |
+| 2.8 | Octubre 2026 | **Precuenta**: encabezado con datos de la empresa (`nombre_comercial ?: razon_social`, RUC, dirección, teléfono, email) y pie "Esto no es un comprobante de venta, si desea pedir boleta o factura escriba sus datos." en PDF (`prebill.blade.php`) y ticket térmico (`buildPrebillHeader()` + `centerWrapped()`); corrige `$company->name` inexistente en el PDF. |

@@ -78,6 +78,7 @@ FacturaFácil es un sistema integral para restaurantes peruanos que unifica:
 | RES-15 | Cierre de pedido (COMPLETED) desde KDS | P2 | ✅ |
 | RES-16 | Venta de productos compuestos con descuento de stock de componentes | P2 | ✅ |
 | RES-17 | **Dividir Cuenta**: repartir el pedido en 2+ comprobantes (NV/Boleta/Factura) por cantidades, con cliente, método de pago y solo consumo por división; items pagados se marcan "Pagado" y desaparecen del KDS | P1 | ✅ |
+| RES-18 | Precuenta con **datos de la empresa** en el encabezado (nombre, RUC, dirección, teléfono, email) y aviso al pie "Esto no es un comprobante de venta, si desea pedir boleta o factura escriba sus datos." (PDF y ticket térmico) | P2 | ✅ |
 
 ### 3.3 Cocina (KDS)
 
@@ -128,6 +129,7 @@ FacturaFácil es un sistema integral para restaurantes peruanos que unifica:
 | CAJ-11 | Imprimir resumen directo en impresora térmica Caja | P1 | ✅ |
 | CAJ-12 | Mensaje de cierre específico: mesas abiertas vs pedidos kiosko | P2 | ✅ |
 | CAJ-13 | Sistema mono-empresa (siempre usa empresa principal) | P0 | ✅ |
+| CAJ-14 | **Precuadre**: botón en la caja vigente que imprime un resumen tipo cierre (título `PRECUADRE`) en la impresora Caja **sin cerrar** la caja; se habilita con un toggle global en Empresa | P2 | ✅ |
 
 ### 3.6 Productos
 
@@ -323,6 +325,7 @@ FacturaFácil es un sistema integral para restaurantes peruanos que unifica:
 
 ### 5.4 Flujo de Cierre de Caja
 ```
+0. (Opcional) Click "Precuadre" → imprime un resumen previo en la impresora Caja sin cerrar la caja (requiere toggle "Precuadre" activo en Empresa)
 1. Cajero click "Cerrar Caja"
 2. Sistema verifica: ¿hay pedidos abiertos? (mesas + kiosko)
 3. Si hay → mensaje específico: "3 mesas abiertas" y/o "2 kiosko pendientes"
@@ -442,3 +445,4 @@ companies (1)
 | 2.0 | Julio 2026 | Productos compuestos, precio_compra, reporte inventario, POS multi-venta, fix método de pago Yape/Plin, ticket caja completo |
 | 2.1 | Agosto 2026 | **Dividir Cuenta** (paid_invoice_id + split-charge), permisos SUNAT (cajero con envío), apertura de cajón en POS (manual + automática en efectivo), IGV dinámico en precuenta, 8º slot de impresora (autopedido) |
 | 2.2 | Septiembre 2026 | Fix precuenta: excluye items pagados (Dividir Cuenta) en PDF y ticket térmico; índice GitNexus local (`--index-only`) |
+| 2.3 | Octubre 2026 | **Precuadre** (botón en caja vigente + toggle global en Empresa; imprime resumen tipo cierre en impresora Caja sin cerrar) y **precuenta con datos de empresa + aviso** "no es comprobante de venta" (PDF y ticket térmico) |

@@ -369,6 +369,8 @@ processCharge() [JS]
 | `pdf()` | GET `/cashregisters/{id}/pdf` | PDF A4 |
 | `ticketPdf()` | GET `/cashregisters/{id}/ticket` | Ticket 80mm |
 | `printCaja()` | POST `/cashregisters/{id}/print-caja` | Imprime en impresora Caja |
+| `printPrecuadre()` | POST `/cashregisters/{id}/print-precuadre` | Imprime un **precuadre** (resumen tipo cierre con título `PRECUADRE`) en la impresora Caja **sin cerrar** la caja. Solo cajas `ABIERTA`; permiso `view_cashregisters` |
+| `preparePrintData()` | — (privado) | Helper compartido por `printCaja()`/`printPrecuadre()`: `getCashRegisterData()` + desglose Efectivo/Tarjeta/Yape/Plin/Otro y `total_ventas` |
 
 #### Ingresos y Gastos (`CashMovementController`)
 
@@ -387,7 +389,8 @@ processCharge() [JS]
 
 - Tabla `cash_report_settings` (por empresa): `mostrar_lista_comprobantes`, `mostrar_productos_vendidos`, `mostrar_lineas_eliminadas` (boolean, default `true`).
 - Controla qué secciones salen en los reportes **A4/80mm/ESC-POS** (y ticket de impresora Caja). Si no hay registro → todas visibles. El **reporte web** (`show`) siempre muestra todo.
-- `CashRegisterController::getCashRegisterData()` agrega `reportConfig` (o `null`) al `$data` usado por `pdf`, `ticket` y `printCaja`.
+- `CashRegisterController::getCashRegisterData()` agrega `reportConfig` (o `null`) al `$data` usado por `pdf`, `ticket`, `printCaja` y `printPrecuadre`.
+- El botón **Precuadre** (`printPrecuadre()`) se muestra en `/cashregisters` (junto a "Cerrar Caja") solo cuando hay caja **ABIERTA** y el toggle está activo. El toggle **"Precuadre Activado/Desactivado"** vive en Empresa (`/companies`, grupo admin) y guarda el flag global `precuadre_enabled` en la tabla `settings` (`Setting::isPrecuadreEnabled()`); ruta `POST /precuadre/toggle` (`PrecuadreSettingController`). `printCaja()`/`printPrecuadre()` comparten `preparePrintData()`.
 
 - En el cierre se muestra el **Saldo Final de Efectivo** = `monto_apertura(ingreso) + ventas_efectivo + total_ingresos − total_egresos − monto_cierre(egreso)`. La **apertura se toma como ingreso** y el **cierre como egreso** (se cancelan si son iguales, sin desbalance). **Positivo** = sobra efectivo (saldo positivo) · **Negativo** = falta (caja negativa, marcado en rojo). Los pagos **Yape/Plin/Tarjeta son virtuales** (no cuentan como dinero en caja, solo informativo). Se muestra en web, PDF A4, ticket 80mm y ticket ESC/POS.
 
@@ -486,11 +489,11 @@ Genera texto ESC/POS para tickets térmicos.
 
 ```php
 kitchenTicket($order)           // Ticket de cocina
-prebillTicket($order)           // Precuenta
+prebillTicket($order)           // Precuenta (cabecera con datos de empresa + items activos/no pagados + IGV dinámico + pie "no es comprobante de venta")
 cancelNotification($order, $item)           // Anulación individual
 cancelNotificationGrouped($order, $format='text', $dest='cocina')    // Anulación agrupada (incluye "Anulado por")
 invoiceTicket($invoice)         // STUB (no-op): comprobante se imprime por PDF de Greenter (generatePdf / generateTicketPdf). PrintService::printInvoice() no encola si el ticket es vacío
-cashRegisterSummary($cashregister, $data)   // Resumen de caja
+cashRegisterSummary($cashregister, $data, $format, $width, $title='CIERRE DE CAJA')   // Resumen de caja (título configurable: CIERRE DE CAJA | PRECUADRE)
 ```
 
 **Encoding**: Usa CP850 (PC850) con tabla de mapeo manual para ñ, tildes y mayúsculas acentuadas.
@@ -606,7 +609,7 @@ Laravel (servidor) ─── HTTP POST ───→ Print Server (localhost:9100
 
 **Reintentos Automáticos:**
 - Comando: `php artisan print:process-queue`
-- Programado: cada 1 minuto (Kernel.php → everyMinute → php artisan schedule:run). La invocación de schedule:run se hace vía scheduler.vbs o una tarea de Windows creada fuera del repo (el repo no incluye el registro de Task Scheduler; README solo referencia schtasks /run)
+- Programado: cada 1 minuto (`routes/console.php` → `Schedule::command('print:process-queue')->everyMinute()` → php artisan schedule:run; Laravel 11+ ya NO usa `App\Console\Kernel::schedule()`). La invocación de schedule:run se hace vía scheduler.vbs o una tarea de Windows creada fuera del repo (el repo no incluye el registro de Task Scheduler; README solo referencia schtasks /run)
 - Máximo: 3 intentos por trabajo
 
 ### 6.3 Comandos ESC/POS Soportados
@@ -700,6 +703,7 @@ Los permisos se asignan a roles en la tabla `role_permission`. La verificación 
 | XML SUNAT facturas | `GreenterService::buildInvoice()` | Uso de `$company->getIgvRate()` |
 | XML SUNAT NC | `GreenterService::sendCreditNote()` | Uso de `$company->getIgvRate()` |
 | Ticket precuenta | `PlainTextTicket::prebillTicket()` | Uso de `$company->getActiveIgvPercent()` |
+| Cabecera/pie precuenta | `PlainTextTicket::buildPrebillHeader()` / `prebill.blade.php` | Datos de empresa arriba + aviso "no es comprobante de venta" al pie |
 | Vistas | Varias | Display del porcentaje |
 
 ### 8.3 Configuración
@@ -933,6 +937,8 @@ Apertura automática en POS:
 | GET | `/printers` | Configurar impresoras |
 | GET | `/printers/queue` | Cola de impresión |
 | POST | `/companies/{id}/certificate` | Subir certificado |
+| POST | `/precuadre/toggle` | Activar/desactivar el botón Precuadre en Caja (grupo admin) |
+| POST | `/cashregisters/{id}/print-precuadre` | Imprimir precuadre de la caja vigente en la impresora Caja (permiso `view_cashregisters`) |
 | GET | `/sunat-padron` | Vista padrón SUNAT |
 | POST | `/sunat-padron/download` | Descargar padrón |
 | GET | `/series` | Series de comprobantes |
@@ -1210,9 +1216,9 @@ showPrebillOptions(event) [JS] → overlay modal con 3 opciones:
 
 printPrebillTo(printerKey) [JS]:
    POST /restaurant/orders/{id}/print-prebill/{key}
-   → printPrebillTo() [PHP]: genera ticket ESC/POS con cabecera + items (activos, no pagados) + IGV dinámico
+   → printPrebillTo() [PHP]: genera ticket ESC/POS con cabecera de la empresa (nombre/RUC/dirección/teléfono/email vía `buildPrebillHeader()`) + items (activos, no pagados) + IGV dinámico + pie "Esto no es un comprobante de venta, si desea pedir boleta o factura escriba sus datos."
 ```
-**Ambas precuentas (PDF `printPrebill()` y térmica `printPrebillTo()`) filtran la lista de items**: solo muestran items con `kitchen_status != CANCELLED` y `paid_invoice_id NULL`; `prebillTicket()` y `prebill.blade.php` re-filtran por seguridad. Los totales ya son el remanente (`updateOrderTotals()` excluye pagados).
+**Ambas precuentas (PDF `printPrebill()` y térmica `printPrebillTo()`) muestran los datos de la empresa en la parte superior** (`nombre_comercial ?: razon_social`, RUC, dirección, teléfono, email) **y el aviso al pie**; además filtran la lista de items: solo muestran items con `kitchen_status != CANCELLED` y `paid_invoice_id NULL`; `prebillTicket()` y `prebill.blade.php` re-filtran por seguridad. Los totales ya son el remanente (`updateOrderTotals()` excluye pagados).
 
 #### 19.2.11 Anular Pedido Completo
 
@@ -1314,6 +1320,21 @@ Se generan desde restaurant_order_items con:
    - cancelled_at BETWEEN fecha_apertura AND fecha_cierre
 
 Muestra: x{cantidad} - {producto} - {usuario que canceló} {hora}
+```
+
+#### 19.4.4 Precuadre
+
+```
+Con caja ABIERTA, botón "Precuadre" (junto a "Cerrar Caja") en /cashregisters:
+POST /cashregisters/{id}/print-precuadre → printPrecuadre() [PHP]:
+   1. Autoriza: permiso view_cashregisters
+   2. Rechaza cajas CERRADA
+   3. preparePrintData() → getCashRegisterData() (fecha_cierre temporal = ahora) + desglose por método de pago
+   4. Imprime PlainTextTicket::cashRegisterSummary(..., 'PRECUADRE') en la impresora destino "Caja"
+   5. NO modifica el estado de la caja
+
+Visibilidad del botón: toggle "Precuadre" en /companies → flag global `precuadre_enabled`
+(tabla `settings`, `Setting::isPrecuadreEnabled()`); ruta `POST /precuadre/toggle` (`PrecuadreSettingController`).
 ```
 
 ---
@@ -1483,10 +1504,10 @@ Encoding: detecta UTF-8, convierte a CP850, inserta ESC t 0x02
 | Método | Contenido |
 |--------|-----------|
 | `kitchenTicket()` | **COCINA** + pedido, mesa, hora, items |
-| `prebillTicket()` | **PRECUENTA** + items activos (excluye `CANCELLED` y `paid_invoice_id` ≠ NULL), subtotal, IGV dinámico, total |
+| `prebillTicket()` | **PRECUENTA** + cabecera con datos de la empresa (nombre/RUC/dirección/teléfono/email) + items activos (excluye `CANCELLED` y `paid_invoice_id` ≠ NULL), subtotal, IGV dinámico, total + pie "Esto no es un comprobante de venta, si desea pedir boleta o factura escriba sus datos." |
 | `cancelNotificationGrouped()` | **ANULACIÓN COCINA** + items + usuario |
 | `invoiceTicket()` | No usado (stub, devuelve vacío). El comprobante se imprime por PDF de Greenter (`generatePdf`/`generateTicketPdf`); `PrintService::printInvoice()` no encola si el ticket es vacío |
-| `cashRegisterSummary()` | Resumen completo de caja |
+| `cashRegisterSummary()` | Resumen completo de caja (título configurable: `CIERRE DE CAJA` \| `PRECUADRE`) |
 
 ---
 
@@ -4017,6 +4038,25 @@ Ejecutar con `php artisan schedule:work` (o el `scheduler.vbs`).
 - A las **12:06** `sunat:verify-unresolved` revisa si quedan boletas `PENDIENTE` con `fecha_emision < hoy`; si las hay, crea una alerta activa (tipo `sunat_boletas`).
 - La alerta se muestra como **campana ⚠️ con badge** en la barra superior (visible a **admin y cajero**); al pulsarla abre un **modal** con el mensaje "Problema con la facturación — notifique al área de sistemas" y botón "Marcar como resuelto".
 - **Auto-resolución por evento** (`SunatAlertService::evaluate()`): cuando ya no quedan boletas `PENDIENTE` de días previos (envío exitoso / resumen de la mañana) la alerta se marca `RESUELTO` sola. Además el admin/cajero puede marcarla manual.
+
+---
+
+## 30. Precuadre y precuenta con datos de empresa (Octubre 2026)
+
+### 30.1 Precuadre (resumen previo al cierre)
+
+- Botón **"Precuadre"** en `/cashregisters`, al costado de "Cerrar Caja", visible solo cuando hay caja **ABIERTA** (permiso `view_cashregisters`).
+- Toggle **"Precuadre Activado/Desactivado"** en `/companies` (grupo admin) → flag global `precuadre_enabled` en la tabla `settings` (`Setting::isPrecuadreEnabled()` / `setPrecuadreEnabled()`); ruta `POST /precuadre/toggle` (`PrecuadreSettingController`).
+- `CashRegisterController::printPrecuadre()` (POST `/cashregisters/{id}/print-precuadre`): rechaza cajas `CERRADA`, arma los datos con `preparePrintData()` (helper compartido con `printCaja()`), imprime `PlainTextTicket::cashRegisterSummary(..., 'PRECUADRE')` en la impresora destino **Caja** y **no modifica** la caja.
+- `cashRegisterSummary()` acepta un 5º parámetro `$title` (por defecto `'CIERRE DE CAJA'`); con `'PRECUADRE'` cambia el encabezado y la etiqueta de fecha. Reto compatible: `printCaja()` sigue mostrando `CIERRE DE CAJA`.
+
+### 30.2 Precuenta con datos de empresa y aviso legal
+
+- **Encabezado**: datos de la empresa del pedido (`nombre_comercial ?: razon_social`, RUC, dirección, teléfono, email).
+  - PDF: `resources/views/restaurant/tickets/prebill.blade.php` (empresa = `Company::find($order->company_id) ?: Company::getMainCompany()`).
+  - Térmica: `PlainTextTicket::buildPrebillHeader()` con el helper `centerWrapped()` para ajustar líneas largas a 58/80mm.
+- **Pie**: *"Esto no es un comprobante de venta, si desea pedir boleta o factura escriba sus datos."* + "Gracias por su visita" (en PDF y ticket ESC/POS).
+- Corrige el encabezado previo del PDF, que usaba `$company->name` (campo inexistente en `Company`) y por eso mostraba "Restaurante".
 
 ---
 

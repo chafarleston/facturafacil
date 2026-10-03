@@ -14,7 +14,7 @@
 - `php artisan sunat:send-daily-summary` — batch boletas into daily summary
 - `php artisan sunat:check-summaries` — check pending summary tickets
 - `php artisan sunat:retry-pending` — retry PENDIENTE/RECHAZADO invoices (boletas→summary, facturas→sendInvoice)
-- `php artisan sunat:download-padron` — download+extract SUNAT padrón (deletes the ZIP after extracting; scheduled weekly Sunday 02:00 in Kernel.php)
+- `php artisan sunat:download-padron` — download+extract SUNAT padrón (deletes the ZIP after extracting; scheduled weekly Sunday 02:00 in `routes/console.php`)
 - `php artisan cache:clear && php artisan view:clear && php artisan route:clear` — full cache flush (do this after any route/view change)
 - `php -l path/to/file.php` — PHP syntax check (no linter configured)
 - `php artisan tinker --execute="..."` — inline tinker (avoid heredoc in PowerShell)
@@ -81,7 +81,7 @@
 - **buildInvoice()**: private helper con firma `($invoice, $company)` — no es parte de la API pública.
 - **cancelNotificationGrouped()**: imprime "Anulado por" (usa `cancelledBy` del primer item del grupo). Firma: `($order, $format='text', $dest='cocina')`.
 - **Extensions**: composer.json requiere `ext-openssl`, `ext-xml`, `ext-zip`, `ext-soap`, `ext-intl` (soap = SUNAT SOAP; intl = NumberFormatter del total en letras).
-- **Kernel.php**: `print:process-queue` agendado UNA vez (`everyMinute()`). `schedule:run` se invoca vía `scheduler.vbs` o una tarea de Windows creada fuera del repo.
+- **Scheduler**: las tareas viven en `routes/console.php` (`Schedule::command()`; Laravel 11+ ya NO lee `App\Console\Kernel::schedule()`). `print:process-queue` corre `everyMinute()`. `schedule:run`/`schedule:work` se invoca vía `scheduler.vbs` o una tarea de Windows creada fuera del repo.
 - **`sunat:download-padron`**: elimina el ZIP tras extraer (el `.txt` del padrón se conserva).
 - `DOCUMENTACION_SISTEMA.md` contains detailed docs (~3860 lines). Read it for SUNAT error codes, module docs, and troubleshooting. La auditoría doc↔código está en `INFORME_DISCREPANCIAS.md` (42 ítems, todos los accionables resueltos).
 

@@ -125,6 +125,8 @@ El botón **Precuenta** abre un selector de impresora para imprimir el detalle d
 
 > La precuenta **excluye los productos ya pagados** al dividir la cuenta.
 
+La precuenta muestra en la parte superior los **datos de la empresa** (nombre, RUC, dirección, teléfono y email) y al pie la leyenda: *"Esto no es un comprobante de venta, si desea pedir boleta o factura escriba sus datos."*
+
 ### 5.5 Cobrar la mesa
 
 - Pulsa **Cobrar** → se factura todo lo pendiente de la mesa y se libera la mesa.
@@ -168,6 +170,7 @@ Aquí se **apertura** la caja (monto inicial y referencia), se consultan las caj
 - Solo el **Administrador** cierra la caja; el cajero apertura pero no la cierra.
 - El **Saldo Final de Efectivo** considera: apertura + ventas en efectivo + ingresos − egresos − cierre.
 - Pagos de Yape/Plin/Tarjeta se muestran como informativos.
+- **Precuadre**: si está habilitado (ver Empresas), junto a "Cerrar Caja" aparece el botón **Precuadre**, que imprime un resumen tipo cierre en la impresora **Caja** **sin cerrar** la caja, para cuadrar el efectivo antes del cierre definitivo.
 
 ### 8.2 Ingresos y Gastos
 
@@ -276,6 +279,11 @@ El módulo **Empresas** administra las empresas (RUC, razón social, logo, certi
 ![Sistema bloqueado](manual-img/35-sistema-bloqueado.png)
 
 > Es una herramienta útil cuando vence el pago o el soporte: el sistema queda inoperativo para el personal hasta que el propietario lo desbloquee.
+
+### Habilitar el Precuadre
+
+- En **Empresas** hay un botón **"Precuadre: Activado / Desactivado"** que muestra u oculta el botón **Precuadre** en la página de **Caja**.
+- Al activarlo, al costado de "Cerrar Caja" (con la caja abierta) aparece **Precuadre**, que imprime un resumen previo en la impresora **Caja** sin cerrar la caja.
 
 ---
 
