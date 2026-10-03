@@ -412,7 +412,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             ->where('kitchen_status', '!=', 'CANCELLED')
             ->whereNull('paid_invoice_id'));
 
-        $company = Company::getMainCompany();
+        $company = Company::find($order->company_id) ?: Company::getMainCompany();
 
         $companyRecord = Company::find($order->company_id);
         if ($companyRecord && ($companyRecord->order_mode ?? 'kds') === 'print') {

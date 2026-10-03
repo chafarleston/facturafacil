@@ -28,6 +28,13 @@ class PlainTextTicket
         $this->text .= str_repeat($char, $left) . $text . str_repeat($char, $right) . "\n";
     }
     
+    public function centerWrapped(string $text, string $char = ' '): void
+    {
+        foreach (explode("\n", wordwrap($text, $this->width, "\n", false)) as $line) {
+            $this->center(trim($line), $char);
+        }
+    }
+
     public function left(string $text): void
     {
         $this->text .= $text . "\n";
@@ -149,8 +156,9 @@ class PlainTextTicket
     
     public static function prebillTicket($order, string $format = 'text', int $width = 48): string
     {
+        $company = \App\Models\Company::find($order->company_id);
         $t = new self($format, $width);
-        $t->buildPrebillHeader($order);
+        $t->buildPrebillHeader($order, $company);
         $t->separator();
         foreach ($order->items as $item) {
             if ($item->kitchen_status === 'CANCELLED') continue;
@@ -161,9 +169,13 @@ class PlainTextTicket
         $t->separator();
         $t->twoColumns('SUBTOTAL:', 'S/ ' . number_format($order->subtotal ?? $order->total, 2));
         $igvPercent = $order->igvPercent
-            ?? (\App\Models\Company::find($order->company_id)?->getActiveIgvPercent() ?? 18);
+            ?? ($company?->getActiveIgvPercent() ?? 18);
         $t->twoColumns('IGV (' . $igvPercent . '%):', 'S/ ' . number_format($order->igv ?? 0, 2));
         $t->twoColumns('TOTAL:', 'S/ ' . number_format($order->total, 2));
+        $t->separator();
+        $t->centerWrapped('Esto no es un comprobante de venta, si desea pedir boleta o factura escriba sus datos.');
+        $t->blank();
+        $t->center('Gracias por su visita');
         return $format === 'escpos' ? $t->getEscPos() : $t->getText();
     }
     
@@ -346,8 +358,18 @@ class PlainTextTicket
         $this->text('Hora: ' . now()->format('H:i:s'));
     }
     
-    protected function buildPrebillHeader($order): void
+    protected function buildPrebillHeader($order, $company = null): void
     {
+        $company = $company ?: \App\Models\Company::find($order->company_id);
+        if ($company) {
+            $nombre = $company->nombre_comercial ?: $company->razon_social;
+            if ($nombre) $this->centerWrapped($nombre);
+            if ($company->ruc) $this->center('RUC: ' . $company->ruc);
+            if ($company->direccion) $this->centerWrapped($company->direccion);
+            if ($company->telefono) $this->center('Tel: ' . $company->telefono);
+            if ($company->email) $this->centerWrapped($company->email);
+            $this->separator();
+        }
         $this->center('*** PRECUENTA ***', '*');
         $this->blank();
         $this->text('Pedido: ' . $order->order_number);

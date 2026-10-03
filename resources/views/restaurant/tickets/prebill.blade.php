@@ -40,6 +40,7 @@
         .total-row.grand { font-size: 12pt; font-weight: bold; border-top: 1px solid #000; padding-top: 1mm; margin-top: 1mm; }
         .footer { text-align: center; margin-top: 2mm; font-size: 8pt; }
         .footer .separator { font-size: 10pt; margin: 1mm 0; letter-spacing: 1px; }
+        .footer .disclaimer { font-size: 7.5pt; font-style: italic; margin: 1mm 0; line-height: 1.25; }
         .time { font-size: 7pt; color: #666; }
         .dotted-line { border-top: 1px dashed #ccc; margin: 2mm 0; }
     </style>
@@ -47,9 +48,19 @@
 <body>
     <div class="ticket">
         <div class="header">
-            <div class="company">{{ $company->name ?? 'Restaurante' }}</div>
-            <div>{{ $company->ruc ?? '' }}</div>
-            <div>{{ $company->direccion ?? '' }}</div>
+            <div class="company">{{ $company?->nombre_comercial ?: ($company?->razon_social ?? 'Restaurante') }}</div>
+            @if($company?->ruc)
+            <div>RUC: {{ $company->ruc }}</div>
+            @endif
+            @if($company?->direccion)
+            <div>{{ $company->direccion }}</div>
+            @endif
+            @if($company?->telefono)
+            <div>Tel: {{ $company->telefono }}</div>
+            @endif
+            @if($company?->email)
+            <div>{{ $company->email }}</div>
+            @endif
             <div class="subtitle">** PRECUENTA **</div>
         </div>
         
@@ -109,8 +120,9 @@
         <div class="dotted-line"></div>
         
         <div class="footer">
-            <div class="time">{{ now()->format('d/m/Y H:i:s') }}</div>
             <div class="separator">**** PRECUENTA ****</div>
+            <div class="disclaimer">Esto no es un comprobante de venta, si desea pedir boleta o factura escriba sus datos.</div>
+            <div class="time">{{ now()->format('d/m/Y H:i:s') }}</div>
             <div style="margin-top:1mm;">Gracias por su visita</div>
         </div>
     </div>
