@@ -10,27 +10,33 @@
             <h4><i class="fas fa-cash-register"></i> Caja Abierta</h4>
             <p>Fecha apertura: {{ $cajaAbierta->fecha_apertura ? $cajaAbierta->fecha_apertura->format('d/m/Y H:i') : '-' }}</p>
             <p>Monto apertura: S/ {{ number_format($cajaAbierta->monto_apertura, 2) }}</p>
-            <form method="POST" action="{{ route('cashregisters.close') }}" class="mt-3">
+            <div class="d-flex align-items-end flex-wrap" style="gap:.5rem;">
+            <form method="POST" action="{{ route('cashregisters.close') }}" class="mt-3 mb-0">
                 @csrf
                 <input type="hidden" name="cashregister_id" value="{{ $cajaAbierta->id }}">
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label>Monto de cierre</label>
-                            <input type="number" name="monto_cierre" class="form-control" step="0.01" placeholder="S/ total en caja" required>
-                        </div>
-                    </div>
+                <div class="form-group mb-0">
+                    <label>Monto de cierre</label>
+                    <input type="number" name="monto_cierre" class="form-control" step="0.01" placeholder="S/ total en caja" required style="max-width:220px;">
                 </div>
                 @if(auth()->user() && auth()->user()->hasPermission('close_cashregister'))
-                <button type="submit" class="btn btn-danger">
+                <button type="submit" class="btn btn-danger mt-2">
                     <i class="fas fa-lock"></i> Cerrar Caja
                 </button>
                 @else
-                <button type="button" class="btn btn-danger" onclick="$('#permissionModal').modal('show')">
+                <button type="button" class="btn btn-danger mt-2" onclick="$('#permissionModal').modal('show')">
                     <i class="fas fa-lock"></i> Cerrar Caja
                 </button>
                 @endif
             </form>
+            @if($precuadreEnabled)
+            <form method="POST" action="{{ route('cashregisters.printPrecuadre', $cajaAbierta) }}" class="mt-3 mb-0">
+                @csrf
+                <button type="submit" class="btn btn-info" title="Imprime el precuadre de la caja vigente en la impresora Caja">
+                    <i class="fas fa-calculator"></i> Precuadre
+                </button>
+            </form>
+            @endif
+            </div>
         </div>
         @else
         <div class="card card-primary">

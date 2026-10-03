@@ -22,6 +22,15 @@
               </form>
             @endif
           @endauth
+          @php $precuadre = \App\Models\Setting::isPrecuadreEnabled(); @endphp
+          <form action="{{ route('precuadre.toggle') }}" method="POST" style="display:inline;">
+            @csrf
+            <button type="submit" class="btn btn-{{ $precuadre ? 'warning' : 'secondary' }} btn-sm"
+                    title="{{ $precuadre ? 'Deshabilitar el botón Precuadre en Caja' : 'Habilitar el botón Precuadre en Caja' }}">
+              <i class="fas fa-{{ $precuadre ? 'toggle-on' : 'toggle-off' }}"></i>
+              {{ $precuadre ? 'Precuadre: Activado' : 'Precuadre: Desactivado' }}
+            </button>
+          </form>
           <form action="{{ route('sunat.padron.download') }}" method="POST" style="display:inline;">
             @csrf
             <button type="submit" class="btn btn-info btn-sm" title="Descargar padrón SUNAT">

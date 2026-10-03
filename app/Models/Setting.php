@@ -36,4 +36,14 @@ class Setting extends Model
     {
         static::set('system_locked', $locked ? '1' : '0');
     }
+
+    public static function isPrecuadreEnabled(): bool
+    {
+        return static::get('precuadre_enabled', '0') === '1';
+    }
+
+    public static function setPrecuadreEnabled(bool $enabled): void
+    {
+        static::set('precuadre_enabled', $enabled ? '1' : '0');
+    }
 }

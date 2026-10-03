@@ -3,6 +3,7 @@
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\SystemLockController;
+use App\Http\Controllers\PrecuadreSettingController;
 use App\Http\Controllers\SunatAlertController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ProductController;
@@ -89,6 +90,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('companies', CompanyController::class);
         Route::post('/companies/{company}/certificate', [CompanyController::class, 'updateCertificate'])->name('companies.certificate');
         Route::post('/companies/{company}/set-main', [CompanyController::class, 'setMain'])->name('companies.setMain');
+        Route::post('/precuadre/toggle', [PrecuadreSettingController::class, 'toggle'])->name('precuadre.toggle');
         Route::resource('customers', CustomerController::class)->parameters(['customers' => 'customer']);
         Route::get('/products/export', [ProductController::class, 'export'])->name('products.export');
         Route::get('/products/import', [ProductController::class, 'importForm'])->name('products.import.form');
@@ -146,6 +148,7 @@ Route::resource('cashregisters', CashRegisterController::class)->only(['index', 
 Route::get('/cashregisters/{cashregister}/pdf', [CashRegisterController::class, 'pdf'])->name('cashregisters.pdf');
 Route::get('/cashregisters/{cashregister}/ticket', [CashRegisterController::class, 'ticketPdf'])->name('cashregisters.ticket');
 Route::post('/cashregisters/{cashregister}/print-caja', [CashRegisterController::class, 'printCaja'])->name('cashregisters.printCaja');
+Route::post('/cashregisters/{cashregister}/print-precuadre', [CashRegisterController::class, 'printPrecuadre'])->name('cashregisters.printPrecuadre');
 Route::post('/cashregister/open', [CashRegisterController::class, 'open'])->name('cashregisters.open');
 Route::post('/cashregister/close', [CashRegisterController::class, 'close'])->name('cashregisters.close');
 

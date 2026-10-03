@@ -216,14 +216,14 @@ class PlainTextTicket
         $this->text('Hora: ' . now()->format('H:i:s'));
     }
     
-    public static function cashRegisterSummary($cashregister, array $data, string $format = 'text', int $width = 48): string
+    public static function cashRegisterSummary($cashregister, array $data, string $format = 'text', int $width = 48, string $title = 'CIERRE DE CAJA'): string
     {
         $t = new self($format, $width);
-        $t->center('*** CIERRE DE CAJA ***', '*');
+        $t->center('*** ' . strtoupper($title) . ' ***', '*');
         $t->blank();
         $t->text('Caja #' . $cashregister->id);
         $t->text('Apertura: ' . ($cashregister->fecha_apertura ? $cashregister->fecha_apertura->format('d/m H:i') : ''));
-        $t->text('Cierre: ' . now()->format('d/m H:i'));
+        $t->text((str_contains(strtoupper($title), 'PRECUADRE') ? 'Precuadre: ' : 'Cierre: ') . now()->format('d/m H:i'));
         $t->separator();
         $t->center('RESUMEN POR DOCUMENTO');
         $facturas = $data['facturas'] ?? collect();

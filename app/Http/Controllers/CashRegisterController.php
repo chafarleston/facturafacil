@@ -29,7 +29,9 @@ class CashRegisterController extends Controller
             ? CashRegister::where('company_id', $companyId)->orderBy('created_at', 'desc')->paginate(15)
             : collect();
 
-        return view('cashregisters.index', compact('cajas', 'cajaAbierta', 'companyId', 'canViewHistory'));
+        $precuadreEnabled = \App\Models\Setting::isPrecuadreEnabled();
+
+        return view('cashregisters.index', compact('cajas', 'cajaAbierta', 'companyId', 'canViewHistory', 'precuadreEnabled'));
     }
 
     public function open(Request $request)
@@ -464,61 +466,93 @@ class CashRegisterController extends Controller
     {
         $this->authorize('permission', 'view_cashregisters');
         try {
-            $data = $this->getCashRegisterData($cashregister);
-            
-            $ventas = $data['ventas'];
-            $data['total_ventas'] = $ventas->sum('total');
-            $data['efectivo'] = 0;
-            $data['tarjeta'] = 0;
-            $data['yape'] = 0;
-            $data['plin'] = 0;
-            $data['otro'] = 0;
-
-            foreach ($ventas as $venta) {
-                $pago = $venta->metodo_pago ?? 'EFECTIVO';
-                if (str_contains($pago, ' + ')) {
-                    $parts = explode(' + ', $pago);
-                    foreach ($parts as $part) {
-                        $part = trim($part);
-                        if (str_contains($part, '/')) {
-                            [$metName, $metAmt] = explode('/', $part);
-                            $amt = min((float) $metAmt, $venta->total);
-                        } else {
-                            $metName = $part;
-                            $amt = round($venta->total / count($parts), 2);
-                        }
-                        $key = strtoupper($metName);
-                        match (true) {
-                            str_starts_with($key, 'EFECT') => $data['efectivo'] += $amt,
-                            str_starts_with($key, 'TARJ') => $data['tarjeta'] += $amt,
-                            $key === 'YAPE' => $data['yape'] += $amt,
-                            $key === 'PLIN' => $data['plin'] += $amt,
-                            default => $data['otro'] += $amt,
-                        };
-                    }
-                } else {
-                    $key = strtoupper(explode('/', $pago)[0]);
-                    match (true) {
-                        str_starts_with($key, 'EFECT') => $data['efectivo'] += $venta->total,
-                        str_starts_with($key, 'TARJ') => $data['tarjeta'] += $venta->total,
-                        $key === 'YAPE' => $data['yape'] += $venta->total,
-                        $key === 'PLIN' => $data['plin'] += $venta->total,
-                        default => $data['otro'] += $venta->total,
-                    };
-                }
-            }
+            $data = $this->preparePrintData($cashregister);
 
             $printer = \App\Models\Printer::where('assigned_to', 'caja')->where('active', true)->first();
             if (!$printer) {
                 return back()->with('error', 'No hay impresora Caja configurada');
             }
             $width = \App\Services\PlainTextTicket::widthForPaper($printer->paper_size);
-            $text = \App\Services\PlainTextTicket::cashRegisterSummary($cashregister, $data, 'escpos', $width);
+            $text = \App\Services\PlainTextTicket::cashRegisterSummary($cashregister, $data, 'escpos', $width, 'CIERRE DE CAJA');
             app(\App\Services\PrintServerService::class)->printText($printer, $text);
             return back()->with('success', 'Resumen enviado a impresora Caja');
         } catch (\Exception $e) {
             \Log::error('Print caja error: ' . $e->getMessage());
             return back()->with('error', 'Error al imprimir: ' . $e->getMessage());
         }
+    }
+
+    public function printPrecuadre(CashRegister $cashregister)
+    {
+        $this->authorize('permission', 'view_cashregisters');
+
+        if ($cashregister->estado === 'CERRADA') {
+            return back()->with('error', 'La caja ya está cerrada');
+        }
+
+        try {
+            $data = $this->preparePrintData($cashregister);
+
+            $printer = \App\Models\Printer::where('assigned_to', 'caja')->where('active', true)->first();
+            if (!$printer) {
+                return back()->with('error', 'No hay impresora Caja configurada');
+            }
+            $width = \App\Services\PlainTextTicket::widthForPaper($printer->paper_size);
+            $text = \App\Services\PlainTextTicket::cashRegisterSummary($cashregister, $data, 'escpos', $width, 'PRECUADRE');
+            app(\App\Services\PrintServerService::class)->printText($printer, $text);
+            return back()->with('success', 'Precuadre enviado a impresora Caja');
+        } catch (\Exception $e) {
+            \Log::error('Print precuadre error: ' . $e->getMessage());
+            return back()->with('error', 'Error al imprimir: ' . $e->getMessage());
+        }
+    }
+
+    private function preparePrintData(CashRegister $cashregister): array
+    {
+        $data = $this->getCashRegisterData($cashregister);
+
+        $ventas = $data['ventas'];
+        $data['total_ventas'] = $ventas->sum('total');
+        $data['efectivo'] = 0;
+        $data['tarjeta'] = 0;
+        $data['yape'] = 0;
+        $data['plin'] = 0;
+        $data['otro'] = 0;
+
+        foreach ($ventas as $venta) {
+            $pago = $venta->metodo_pago ?? 'EFECTIVO';
+            if (str_contains($pago, ' + ')) {
+                $parts = explode(' + ', $pago);
+                foreach ($parts as $part) {
+                    $part = trim($part);
+                    if (str_contains($part, '/')) {
+                        [$metName, $metAmt] = explode('/', $part);
+                        $amt = min((float) $metAmt, $venta->total);
+                    } else {
+                        $metName = $part;
+                        $amt = round($venta->total / count($parts), 2);
+                    }
+                    $key = strtoupper($metName);
+                    match (true) {
+                        str_starts_with($key, 'EFECT') => $data['efectivo'] += $amt,
+                        str_starts_with($key, 'TARJ') => $data['tarjeta'] += $amt,
+                        $key === 'YAPE' => $data['yape'] += $amt,
+                        $key === 'PLIN' => $data['plin'] += $amt,
+                        default => $data['otro'] += $amt,
+                    };
+                }
+            } else {
+                $key = strtoupper(explode('/', $pago)[0]);
+                match (true) {
+                    str_starts_with($key, 'EFECT') => $data['efectivo'] += $venta->total,
+                    str_starts_with($key, 'TARJ') => $data['tarjeta'] += $venta->total,
+                    $key === 'YAPE' => $data['yape'] += $venta->total,
+                    $key === 'PLIN' => $data['plin'] += $venta->total,
+                    default => $data['otro'] += $venta->total,
+                };
+            }
+        }
+
+        return $data;
     }
 }
