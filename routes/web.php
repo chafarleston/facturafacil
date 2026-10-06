@@ -108,7 +108,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/products/{product}/composite/update', [ProductController::class, 'updateComposite'])->name('products.composite.update');
         Route::resource('categories', CategoryController::class);
         Route::resource('suppliers', SupplierController::class);
-        Route::resource('purchases', PurchaseController::class);
+        Route::resource('purchases', PurchaseController::class)->except(['edit', 'update']);
         Route::get('/purchases/{purchase}/print/a4', [\App\Http\Controllers\PurchaseController::class, 'printA4'])->name('purchases.print.a4');
         Route::get('/purchases/{purchase}/print/ticket', [\App\Http\Controllers\PurchaseController::class, 'printTicket'])->name('purchases.print.ticket');
         Route::resource('stock-outputs', StockOutputController::class);

@@ -2,18 +2,24 @@
 
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Http\Middleware\SystemLock;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
     /**
-     * A basic test example.
+     * La raíz redirige al login.
+     *
+     * Se desactiva SystemLock porque en el entorno de tests (SQLite :memory:)
+     * no se ejecutan las migraciones (varias usan ALTER ... MODIFY ... ENUM, solo MySQL)
+     * y el middleware consulta la tabla `settings`.
      */
-    public function test_the_application_returns_a_successful_response(): void
+    public function test_the_application_redirects_to_login(): void
     {
+        $this->withoutMiddleware(SystemLock::class);
+
         $response = $this->get('/');
 
-        $response->assertStatus(200);
+        $response->assertRedirect('/login');
     }
 }
