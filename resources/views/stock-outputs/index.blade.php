@@ -6,9 +6,11 @@
 <div class="card">
     <div class="card-header">
         <h3 class="card-title">Historial de Consumos</h3>
+        @can('permission', 'create_stock_outputs')
         <a href="{{ route('stock-outputs.create', ['company_id' => $companyId ?? null]) }}" class="btn btn-primary btn-sm float-right">
             <i class="fas fa-plus"></i> Nuevo Consumo
         </a>
+        @endcan
     </div>
     <div class="card-body table-responsive p-0">
         <table class="table table-bordered">
@@ -55,9 +57,12 @@
                             <i class="fas fa-receipt"></i>
                         </a>
                         @if(!$output->trashed())
+                        @can('permission', 'edit_stock_outputs')
                         <a href="{{ route('stock-outputs.edit', $output) }}" class="btn btn-warning btn-xs">
                             <i class="fas fa-edit"></i>
                         </a>
+                        @endcan
+                        @can('permission', 'delete_stock_outputs')
                         <form action="{{ route('stock-outputs.destroy', $output) }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Anular este consumo? El stock se reincorporará automáticamente.');">
                             @csrf
                             @method('DELETE')
@@ -65,6 +70,7 @@
                                 <i class="fas fa-trash"></i>
                             </button>
                         </form>
+                        @endcan
                         @endif
                     </td>
                 </tr>

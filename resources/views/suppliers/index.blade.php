@@ -6,7 +6,9 @@
 <div class="card">
     <div class="card-header">
         <h3 class="card-title">Proveedores</h3>
+        @can('permission', 'create_suppliers')
         <a href="{{ route('suppliers.create', ['company_id' => $companyId]) }}" class="btn btn-primary btn-sm float-right">Nuevo Proveedor</a>
+        @endcan
     </div>
     <div class="card-body">
         <table class="table table-bordered">
@@ -27,12 +29,16 @@
                     <td>{{ $supplier->telefono }}</td>
                     <td><span class="badge badge-{{ $supplier->estado == 'ACT' ? 'success' : 'danger' }}">{{ $supplier->estado }}</span></td>
                     <td>
+                        @can('permission', 'edit_suppliers')
                         <a href="{{ route('suppliers.edit', $supplier) }}" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></a>
+                        @endcan
+                        @can('permission', 'delete_suppliers')
                         <form action="{{ route('suppliers.destroy', $supplier) }}" method="POST" class="d-inline">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Eliminar?')"><i class="fas fa-trash"></i></button>
                         </form>
+                        @endcan
                     </td>
                 </tr>
                 @empty

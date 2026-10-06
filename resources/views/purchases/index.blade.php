@@ -6,7 +6,9 @@
 <div class="card">
     <div class="card-header">
         <h3 class="card-title">Lista de Compras</h3>
+        @can('permission', 'create_purchases')
         <a href="{{ route('purchases.create', ['company_id' => $companyId]) }}" class="btn btn-primary btn-sm float-right">Nueva Compra</a>
+        @endcan
     </div>
     <div class="card-body table-responsive p-0">
         <table class="table table-bordered">
@@ -33,11 +35,13 @@
                         <a href="{{ route('purchases.print.a4', $purchase) }}" class="btn btn-secondary btn-sm" target="_blank" title="Imprimir A4"><i class="fas fa-file-pdf"></i></a>
                         <a href="{{ route('purchases.print.ticket', $purchase) }}" class="btn btn-secondary btn-sm" target="_blank" title="Imprimir Ticket 80mm"><i class="fas fa-receipt"></i></a>
                         @if($purchase->estado == 'REGISTRADO')
+                        @can('permission', 'delete_purchases')
                         <form action="{{ route('purchases.destroy', $purchase) }}" method="POST" class="d-inline">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Anular compra? Esto restará el stock.')"><i class="fas fa-times"></i></button>
                         </form>
+                        @endcan
                         @endif
                     </td>
                 </tr>

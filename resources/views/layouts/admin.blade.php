@@ -185,22 +185,28 @@ $__kdsActive = \App\Models\Company::orderMode() === 'kds';
             </li>
             @endcan
             
-            @can('permission', 'view_purchases')
+            @if(auth()->user()->hasPermission('view_purchases') || auth()->user()->hasPermission('view_suppliers') || auth()->user()->hasPermission('view_stock_outputs'))
             <li class="nav-item">
-              <a href="#" class="nav-link {{ request()->routeIs('purchases.*') || request()->routeIs('suppliers.*') ? 'active' : '' }}">
+              <a href="#" class="nav-link {{ request()->routeIs('purchases.*') || request()->routeIs('suppliers.*') || request()->routeIs('stock-outputs.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-shopping-cart"></i>
                 <p>Compras<i class="fas fa-angle-left right"></i></p>
               </a>
               <ul class="nav nav-treeview">
+                @can('permission', 'view_purchases')
                 <li class="nav-item"><a href="{{ route('purchases.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Lista de Compras</p></a></li>
+                @endcan
+                @can('permission', 'create_purchases')
                 <li class="nav-item"><a href="{{ route('purchases.create') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Nueva Compra</p></a></li>
+                @endcan
                 @can('permission', 'view_suppliers')
                 <li class="nav-item"><a href="{{ route('suppliers.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Proveedores</p></a></li>
                 @endcan
+                @can('permission', 'view_stock_outputs')
                 <li class="nav-item"><a href="{{ route('stock-outputs.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Consumo Interno</p></a></li>
+                @endcan
               </ul>
             </li>
-            @endcan
+            @endif
             
             @can('permission', 'view_cashregisters')
             <li class="nav-item">
