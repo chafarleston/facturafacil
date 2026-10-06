@@ -13,12 +13,19 @@ class Product extends Model
         'company_id', 'codigo', 'codigo_barras', 'descripcion', 'codigo_sunat',
         'umedida_codigo', 'precio', 'precio_minimo', 'tipo_afectacion',
         'igv_percent', 'estado', 'category_id', 'stock', 'kds_destination',
-        'is_composite', 'precio_compra',
+        'is_composite', 'precio_compra', 'imagen',
     ];
 
     protected $casts = [
         'stock' => 'decimal:4',
     ];
+
+    protected $appends = ['imagen_url'];
+
+    public function getImagenUrlAttribute(): ?string
+    {
+        return $this->imagen ? asset('storage/' . $this->imagen) : null;
+    }
 
     public function company()
     {

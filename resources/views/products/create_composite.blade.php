@@ -7,10 +7,27 @@
     <div class="card-header">
         <h3 class="card-title"><i class="fas fa-boxes"></i> Nuevo Producto Compuesto</h3>
     </div>
-    <form method="POST" action="{{ route('products.composite.store') }}" id="compositeForm">
+    <form method="POST" action="{{ route('products.composite.store') }}" id="compositeForm" enctype="multipart/form-data">
         @csrf
         <input type="hidden" name="company_id" value="{{ $companyId }}">
         <div class="card-body">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="form-group">
+                        <label>Imagen del Producto</label>
+                        <div class="custom-file">
+                            <input type="file" name="imagen" class="custom-file-input" id="imagenInput" accept="image/*">
+                            <label class="custom-file-label" for="imagenInput">Seleccionar imagen</label>
+                        </div>
+                        <small class="form-text text-muted">JPEG, PNG o WebP (máx. 5 MB). Se optimiza automáticamente.</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div id="imagenPreviewWrap" class="d-none">
+                        <img id="imagenPreview" src="" style="max-height:90px;border:1px solid #ddd;padding:4px;border-radius:4px;">
+                    </div>
+                </div>
+            </div>
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group">
@@ -158,6 +175,18 @@
 @endsection
 
 @push('scripts')
+<script>
+document.getElementById('imagenInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+        document.getElementById('imagenPreview').src = ev.target.result;
+        document.getElementById('imagenPreviewWrap').classList.remove('d-none');
+    };
+    reader.readAsDataURL(file);
+});
+</script>
 <script>
 let componentIndex = 0;
 const availableProducts = @json($availableProducts);

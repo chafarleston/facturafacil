@@ -10,8 +10,15 @@ class Category extends Model
     use HasFactory;
 
     protected $fillable = [
-        'company_id', 'nombre', 'descripcion', 'estado', 'color', 'icon'
+        'company_id', 'nombre', 'descripcion', 'estado', 'color', 'icon', 'imagen',
     ];
+
+    protected $appends = ['imagen_url'];
+
+    public function getImagenUrlAttribute(): ?string
+    {
+        return $this->imagen ? asset('storage/' . $this->imagen) : null;
+    }
 
     public function company()
     {

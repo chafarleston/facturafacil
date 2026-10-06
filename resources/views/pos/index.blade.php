@@ -142,6 +142,9 @@
         color: #666;
         margin-top: 4px;
     }
+    .product-img { width: 100%; height: 72px; object-fit: cover; border-radius: 8px; margin-bottom: 6px; }
+    .product-img-placeholder { display: flex; align-items: center; justify-content: center; background: #f1f3f5; color: #adb5bd; font-size: 24px; }
+    .category-card-img { width: 100%; height: 54px; object-fit: cover; border-radius: 8px; margin-bottom: 4px; }
     
     /* Espaciador para la última fila */
     .products-grid::after {
@@ -346,7 +349,11 @@
             @foreach($categories as $category)
             <div class="category-card" style="border-color: {{ $category->color ?? '#007bff' }};"
                  onclick="showProducts({{ $category->id }}, '{{ $category->nombre }}')">
+                @if($showCategoryImages && $category->imagen_url)
+                <img src="{{ $category->imagen_url }}" class="category-card-img" alt="" loading="lazy">
+                @else
                 <i class="{{ $category->icon ?? 'fas fa-tag' }}" style="color: {{ $category->color ?? '#007bff' }};"></i>
+                @endif
                 <h5 style="color: #333;">{{ $category->nombre }}</h5>
                 <small>{{ $category->products_count ?? 0 }} productos</small>
             </div>
@@ -531,6 +538,8 @@ const productsData = @json($products->where('estado', 'ACTIVO'));
 const categoriesData = @json($categories);
 const customersData = @json($customers);
 const seriesData = @json($series);
+const showProductImages = {{ $showProductImages ? 'true' : 'false' }};
+const showCategoryImages = {{ $showCategoryImages ? 'true' : 'false' }};
 
 // === MULTI-TAB SYSTEM ===
 let saleTabs = [];
@@ -845,6 +854,14 @@ function updateSerieByType() {
 }
 
 // === PRODUCT SEARCH ===
+function productImageHtml(product) {
+    if (!showProductImages) return '';
+    if (product.imagen_url) {
+        return '<img src="' + product.imagen_url + '" class="product-img" alt="" loading="lazy">';
+    }
+    return '<div class="product-img product-img-placeholder"><i class="fas fa-image"></i></div>';
+}
+
 function showProducts(categoryId, categoryName) {
     document.getElementById('categoriesGrid').style.display = 'none';
     document.getElementById('productsSection').style.display = 'flex';
@@ -854,6 +871,7 @@ function showProducts(categoryId, categoryName) {
     let html = '';
     products.forEach(product => {
         html += '<div class="product-card" onclick="addToSale(' + product.id + ')">' +
+            productImageHtml(product) +
             '<div class="product-name">' + product.descripcion + '</div>' +
             '<div class="product-price">S/ ' + parseFloat(product.precio).toFixed(2) + '</div>' +
             '<div class="product-stock">Stock: ' + product.stock + '</div></div>';
@@ -880,6 +898,7 @@ function searchPOSProducts(query) {
     var html = '';
     results.forEach(function(product) {
         html += '<div class="product-card" onclick="addToSale(' + product.id + ')">' +
+            productImageHtml(product) +
             '<div class="product-name">' + product.descripcion + '</div>' +
             '<div class="product-price">S/ ' + parseFloat(product.precio).toFixed(2) + '</div>' +
             '<div class="product-stock">Stock: ' + product.stock + '</div></div>';

@@ -229,6 +229,11 @@
     
     .product-name { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
     .product-price { font-size: 14px; color: #28a745; font-weight: bold; }
+
+    .product-img { width: 100%; height: 90px; object-fit: cover; border-radius: 6px; margin-bottom: 6px; }
+    .product-img-placeholder { display: flex; align-items: center; justify-content: center; background: #f1f3f5; color: #adb5bd; font-size: 28px; }
+    .category-img { width: 22px; height: 22px; object-fit: cover; border-radius: 4px; margin-right: 5px; vertical-align: middle; }
+    .category-img-placeholder { margin-right: 5px; }
     
     /* Tab Order */
     .order-items-list {
@@ -578,6 +583,13 @@
                 <button class="category-btn active" data-category="all" onclick="filterProducts('all')">Todos</button>
                 @foreach($categories as $category)
                 <button class="category-btn" data-category="{{ $category->id }}" onclick="filterProducts({{ $category->id }})">
+                    @if($showCategoryImages)
+                        @if($category->imagen_url)
+                        <img src="{{ $category->imagen_url }}" class="category-img" alt="" loading="lazy">
+                        @else
+                        <i class="fas fa-image category-img-placeholder"></i>
+                        @endif
+                    @endif
                     {{ $category->nombre }}
                 </button>
                 @endforeach
@@ -590,6 +602,13 @@
                      data-product-name="{{ $product->descripcion }}"
                      data-product-price="{{ $product->precio }}"
                      onclick="addProductToOrder({{ $product->id }})">
+                    @if($showProductImages)
+                        @if($product->imagen_url)
+                        <img src="{{ $product->imagen_url }}" class="product-img" alt="" loading="lazy">
+                        @else
+                        <div class="product-img product-img-placeholder"><i class="fas fa-image"></i></div>
+                        @endif
+                    @endif
                     <div class="product-name">{{ $product->descripcion }}</div>
                     <div class="product-price">S/ {{ number_format($product->precio, 2) }}</div>
                 </div>

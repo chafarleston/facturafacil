@@ -114,7 +114,9 @@ class SummaryService
         if ($invoices->isEmpty()) {
             \App\Services\SunatAlertService::evaluate();
 
-            return ['success' => false, 'description' => 'No hay boletas pendientes'];
+            // No es un error: no hay nada por enviar. Se marca como exitoso para
+            // que el scheduler no lo registre como comando fallido.
+            return ['success' => true, 'description' => 'No hay boletas pendientes'];
         }
 
         try {

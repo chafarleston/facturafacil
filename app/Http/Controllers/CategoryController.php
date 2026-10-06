@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Company;
+use App\Services\ImageOptimizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 class CategoryController extends Controller
 {
@@ -23,21 +26,30 @@ class CategoryController extends Controller
         return view('categories.create', compact('companyId'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, ImageOptimizer $imageOptimizer)
     {
         $request->validate([
             'nombre' => 'required|string|max:255',
             'descripcion' => 'nullable|string',
+            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         $companyId = $request->get('company_id', \App\Models\Company::getMainCompany()->id);
-        
-        Category::create([
+
+        $data = [
             'company_id' => $companyId,
             'nombre' => $request->nombre,
             'descripcion' => $request->descripcion,
             'estado' => $request->estado ?? 'ACT',
-        ]);
+        ];
+
+        if ($request->hasFile('imagen')) {
+            $data['imagen'] = $imageOptimizer->optimize($request->file('imagen'), 'categories');
+        }
+
+        Category::create($data);
+
+        $this->clearCategoryCaches($companyId);
 
         return redirect()->route('categories.index', ['company_id' => $companyId])
             ->with('success', 'Categoría creada correctamente');
@@ -53,18 +65,35 @@ class CategoryController extends Controller
         return view('categories.edit', compact('category'));
     }
 
-    public function update(Request $request, Category $category)
+    public function update(Request $request, Category $category, ImageOptimizer $imageOptimizer)
     {
         $request->validate([
             'nombre' => 'required|string|max:255',
             'descripcion' => 'nullable|string',
+            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
-        $category->update([
+        $data = [
             'nombre' => $request->nombre,
             'descripcion' => $request->descripcion,
             'estado' => $request->estado ?? $category->estado,
-        ]);
+        ];
+
+        if ($request->hasFile('imagen')) {
+            if ($category->imagen) {
+                Storage::disk('public')->delete($category->imagen);
+            }
+            $data['imagen'] = $imageOptimizer->optimize($request->file('imagen'), 'categories');
+        } elseif ($request->boolean('remove_imagen')) {
+            if ($category->imagen) {
+                Storage::disk('public')->delete($category->imagen);
+            }
+            $data['imagen'] = null;
+        }
+
+        $category->update($data);
+
+        $this->clearCategoryCaches($category->company_id);
 
         return redirect()->route('categories.index', ['company_id' => $category->company_id])
             ->with('success', 'Categoría actualizada correctamente');
@@ -75,7 +104,17 @@ class CategoryController extends Controller
         $companyId = $category->company_id;
         $category->delete();
 
+        $this->clearCategoryCaches($companyId);
+
         return redirect()->route('categories.index', ['company_id' => $companyId])
             ->with('success', 'Categoría eliminada correctamente');
+    }
+
+    private function clearCategoryCaches($companyId): void
+    {
+        Cache::forget('restaurant_products_' . $companyId);
+        Cache::forget('restaurant_categories_' . $companyId);
+        Cache::forget('kiosko_products_' . $companyId);
+        Cache::forget('kiosko_categories_' . $companyId);
     }
 }

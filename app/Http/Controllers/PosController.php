@@ -48,7 +48,10 @@ class PosController extends Controller
             ->whereIn('tipo_documento', ['01', '03', 'NV'])
             ->get();
         
-        return view('pos.index', compact('categories', 'products', 'customers', 'series', 'cajaAbierta', 'mainCompany'));
+        $showProductImages = \App\Models\Setting::showProductImages('pos');
+        $showCategoryImages = \App\Models\Setting::showCategoryImages('pos');
+
+        return view('pos.index', compact('categories', 'products', 'customers', 'series', 'cajaAbierta', 'mainCompany', 'showProductImages', 'showCategoryImages'));
     }
     
     public function store(Request $request)

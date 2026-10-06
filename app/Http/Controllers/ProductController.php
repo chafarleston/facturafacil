@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Company;
 use App\Models\Product;
+use App\Services\ImageOptimizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
@@ -47,7 +49,7 @@ class ProductController extends Controller
         return view('products.create', compact('companyId', 'codigo', 'categories'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, ImageOptimizer $imageOptimizer)
     {
         $validated = $request->validate([
             'company_id' => 'required|exists:companies,id',
@@ -64,6 +66,7 @@ class ProductController extends Controller
             'category_id' => 'nullable|exists:categories,id',
             'stock' => 'nullable|numeric',
             'kds_destination' => 'nullable|in:cocina,cocina2,bar',
+            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         if (is_null($validated['precio'] ?? null)) {
@@ -81,9 +84,15 @@ class ProductController extends Controller
         $validated['umedida_codigo'] = $validated['umedida_codigo'] ?? 'NIU';
         $validated['igv_percent'] = $validated['igv_percent'] ?? 18;
 
+        if ($request->hasFile('imagen')) {
+            $validated['imagen'] = $imageOptimizer->optimize($request->file('imagen'), 'products');
+        } else {
+            unset($validated['imagen']);
+        }
+
         Product::create($validated);
 
-        Cache::forget('restaurant_products_' . $request->company_id);
+        $this->clearProductCaches($request->company_id);
 
         return redirect()->route('products.index', ['company_id' => $request->company_id])
             ->with('success', 'Producto creado correctamente');
@@ -110,7 +119,7 @@ class ProductController extends Controller
         return view('products.edit', compact('product', 'categories'));
     }
 
-    public function update(Request $request, Product $product)
+    public function update(Request $request, Product $product, ImageOptimizer $imageOptimizer)
     {
         $validated = $request->validate([
             'codigo' => 'required|max:50',
@@ -125,6 +134,7 @@ class ProductController extends Controller
             'igv_percent' => 'nullable|numeric|min:0|max:100',
             'category_id' => 'nullable|exists:categories,id',
             'kds_destination' => 'nullable|in:cocina,cocina2,bar',
+            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         if (is_null($validated['precio'] ?? null)) {
@@ -137,9 +147,23 @@ class ProductController extends Controller
             }
         }
 
+        if ($request->hasFile('imagen')) {
+            if ($product->imagen) {
+                Storage::disk('public')->delete($product->imagen);
+            }
+            $validated['imagen'] = $imageOptimizer->optimize($request->file('imagen'), 'products');
+        } elseif ($request->boolean('remove_imagen')) {
+            if ($product->imagen) {
+                Storage::disk('public')->delete($product->imagen);
+            }
+            $validated['imagen'] = null;
+        } else {
+            unset($validated['imagen']);
+        }
+
         $product->update($validated);
 
-        Cache::forget('restaurant_products_' . $product->company_id);
+        $this->clearProductCaches($product->company_id);
 
         return redirect()->route('products.show', $product)->with('success', 'Producto actualizado');
     }
@@ -147,8 +171,16 @@ class ProductController extends Controller
     public function destroy(Product $product)
     {
         $product->update(['estado' => 'INACTIVO']);
-        Cache::forget('restaurant_products_' . $product->company_id);
+        $this->clearProductCaches($product->company_id);
         return back()->with('success', 'Producto desactivado');
+    }
+
+    private function clearProductCaches($companyId): void
+    {
+        Cache::forget('restaurant_products_' . $companyId);
+        Cache::forget('restaurant_categories_' . $companyId);
+        Cache::forget('kiosko_products_' . $companyId);
+        Cache::forget('kiosko_categories_' . $companyId);
     }
 
     public function duplicate(Request $request, Product $product)
@@ -172,6 +204,7 @@ class ProductController extends Controller
             'category_id' => $product->category_id,
             'stock' => 0,
             'kds_destination' => $product->kds_destination,
+            'imagen' => $product->imagen,
         ]);
 
         return redirect()->route('products.edit', $duplicate)
@@ -194,7 +227,7 @@ class ProductController extends Controller
         return view('products.create_composite', compact('companyId', 'codigo', 'categories', 'availableProducts'));
     }
 
-    public function storeComposite(Request $request)
+    public function storeComposite(Request $request, ImageOptimizer $imageOptimizer)
     {
         $validated = $request->validate([
             'company_id' => 'required|exists:companies,id',
@@ -208,6 +241,7 @@ class ProductController extends Controller
             'igv_percent' => 'nullable|numeric|min:0|max:100',
             'category_id' => 'nullable|exists:categories,id',
             'kds_destination' => 'nullable|in:cocina,cocina2,bar',
+            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'components' => 'required|array|min:1',
             'components.*.product_id' => 'required|exists:products,id',
             'components.*.quantity' => 'required|numeric|min:0.01',
@@ -227,6 +261,12 @@ class ProductController extends Controller
         $validated['umedida_codigo'] = $validated['umedida_codigo'] ?? 'NIU';
         $validated['igv_percent'] = $validated['igv_percent'] ?? 18;
 
+        if ($request->hasFile('imagen')) {
+            $validated['imagen'] = $imageOptimizer->optimize($request->file('imagen'), 'products');
+        } else {
+            unset($validated['imagen']);
+        }
+
         $product = Product::create($validated);
 
         foreach ($request->components as $component) {
@@ -236,7 +276,7 @@ class ProductController extends Controller
             ]);
         }
 
-        Cache::forget('restaurant_products_' . $request->company_id);
+        $this->clearProductCaches($request->company_id);
 
         return redirect()->route('products.index', ['company_id' => $request->company_id])
             ->with('success', 'Producto compuesto creado correctamente');
@@ -261,7 +301,7 @@ class ProductController extends Controller
         return view('products.edit_composite', compact('product', 'categories', 'availableProducts'));
     }
 
-    public function updateComposite(Request $request, Product $product)
+    public function updateComposite(Request $request, Product $product, ImageOptimizer $imageOptimizer)
     {
         if (!$product->is_composite) {
             abort(404);
@@ -278,6 +318,7 @@ class ProductController extends Controller
             'igv_percent' => 'nullable|numeric|min:0|max:100',
             'category_id' => 'nullable|exists:categories,id',
             'kds_destination' => 'nullable|in:cocina,cocina2,bar',
+            'imagen' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'components' => 'required|array|min:1',
             'components.*.product_id' => 'required|exists:products,id',
             'components.*.quantity' => 'required|numeric|min:0.01',
@@ -292,6 +333,20 @@ class ProductController extends Controller
             }
         }
 
+        if ($request->hasFile('imagen')) {
+            if ($product->imagen) {
+                Storage::disk('public')->delete($product->imagen);
+            }
+            $validated['imagen'] = $imageOptimizer->optimize($request->file('imagen'), 'products');
+        } elseif ($request->boolean('remove_imagen')) {
+            if ($product->imagen) {
+                Storage::disk('public')->delete($product->imagen);
+            }
+            $validated['imagen'] = null;
+        } else {
+            unset($validated['imagen']);
+        }
+
         $product->update($validated);
 
         $product->components()->delete();
@@ -302,7 +357,7 @@ class ProductController extends Controller
             ]);
         }
 
-        Cache::forget('restaurant_products_' . $product->company_id);
+        $this->clearProductCaches($product->company_id);
 
         return redirect()->route('products.show', $product)->with('success', 'Producto compuesto actualizado');
     }

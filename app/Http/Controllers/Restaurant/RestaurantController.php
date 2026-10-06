@@ -77,7 +77,10 @@ class RestaurantController extends Controller
         $printServerRunning = $printServer->isServerRunning();
         $igvPercent = $company ? $company->getActiveIgvPercent() : 18;
 
-        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId', 'orderMode', 'printServerRunning', 'igvPercent', 'cajaAbierta'));
+        $showProductImages = \App\Models\Setting::showProductImages('restaurant');
+        $showCategoryImages = \App\Models\Setting::showCategoryImages('restaurant');
+
+        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId', 'orderMode', 'printServerRunning', 'igvPercent', 'cajaAbierta', 'showProductImages', 'showCategoryImages'));
     }
 
     public function modeIndex()

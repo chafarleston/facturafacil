@@ -91,6 +91,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/companies/{company}/certificate', [CompanyController::class, 'updateCertificate'])->name('companies.certificate');
         Route::post('/companies/{company}/set-main', [CompanyController::class, 'setMain'])->name('companies.setMain');
         Route::post('/precuadre/toggle', [PrecuadreSettingController::class, 'toggle'])->name('precuadre.toggle');
+        Route::get('/catalog-images', [\App\Http\Controllers\CatalogImageSettingController::class, 'edit'])->name('catalog-images.edit');
+        Route::post('/catalog-images', [\App\Http\Controllers\CatalogImageSettingController::class, 'update'])->name('catalog-images.update');
         Route::resource('customers', CustomerController::class)->parameters(['customers' => 'customer']);
         Route::get('/products/export', [ProductController::class, 'export'])->name('products.export');
         Route::get('/products/import', [ProductController::class, 'importForm'])->name('products.import.form');

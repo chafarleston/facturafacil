@@ -46,4 +46,24 @@ class Setting extends Model
     {
         static::set('precuadre_enabled', $enabled ? '1' : '0');
     }
+
+    public static function showProductImages(string $module): bool
+    {
+        return static::get('img_products_' . $module, '0') === '1';
+    }
+
+    public static function showCategoryImages(string $module): bool
+    {
+        return static::get('img_categories_' . $module, '0') === '1';
+    }
+
+    public static function setShowProductImages(string $module, bool $enabled): void
+    {
+        static::set('img_products_' . $module, $enabled ? '1' : '0');
+    }
+
+    public static function setShowCategoryImages(string $module, bool $enabled): void
+    {
+        static::set('img_categories_' . $module, $enabled ? '1' : '0');
+    }
 }

@@ -21,6 +21,8 @@
         .product-card { background: #fff; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,.08); cursor: pointer; transition: transform .15s; }
         .product-card:active { transform: scale(.95); }
         .product-icon { font-size: 40px; margin-bottom: 8px; color: #e94560; }
+        .product-img { width: 100%; height: 110px; object-fit: cover; border-radius: 10px; margin-bottom: 8px; font-size: 0; }
+        .cat-img { width: 24px; height: 24px; object-fit: cover; border-radius: 4px; margin-right: 6px; vertical-align: middle; }
         .product-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
         .product-price { font-size: 16px; color: #28a745; font-weight: bold; }
         .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 2px solid #ddd; padding: 12px 20px; display: flex; align-items: center; gap: 15px; z-index: 20; }
@@ -88,14 +90,23 @@
     <div class="categories" id="categoriesContainer">
         <button class="cat-btn active" data-cat="all" onclick="filterCategory('all')">🍽️ Todos</button>
         @foreach($categories as $cat)
-        <button class="cat-btn" data-cat="{{ $cat->id }}" onclick="filterCategory({{ $cat->id }})">{{ $cat->nombre }}</button>
+        <button class="cat-btn" data-cat="{{ $cat->id }}" onclick="filterCategory({{ $cat->id }})">
+            @if($showCategoryImages && $cat->imagen_url)
+            <img src="{{ $cat->imagen_url }}" class="cat-img" alt="" loading="lazy">
+            @endif
+            {{ $cat->nombre }}
+        </button>
         @endforeach
     </div>
 
     <div class="products" id="productsContainer">
         @foreach($products as $p)
         <div class="product-card" data-category="{{ $p->category_id ?? 0 }}" data-name="{{ strtolower($p->descripcion) }}" onclick="addProduct({{ $p->id }}, '{{ addslashes($p->descripcion) }}', {{ $p->precio }})">
+            @if($showProductImages && $p->imagen_url)
+            <img src="{{ $p->imagen_url }}" class="product-img" alt="" loading="lazy">
+            @else
             <div class="product-icon"><i class="fas fa-utensils"></i></div>
+            @endif
             <div class="product-name">{{ $p->descripcion }}</div>
             <div class="product-price">S/ {{ number_format($p->precio, 2) }}</div>
         </div>
