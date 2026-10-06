@@ -40,6 +40,7 @@ class PurchaseController extends Controller
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.cantidad' => 'required|integer|min:1',
             'items.*.precio' => 'required|numeric|min:0',
+            'items.*.precio_venta' => 'nullable|numeric|min:0',
         ]);
 
         $companyId = $request->get('company_id', \App\Models\Company::getMainCompany()->id);
@@ -68,6 +69,9 @@ class PurchaseController extends Controller
 
             $product = Product::find($item['product_id']);
             $product->precio_compra = $item['precio'];
+            if (array_key_exists('precio_venta', $item) && $item['precio_venta'] !== null && $item['precio_venta'] !== '') {
+                $product->precio = $item['precio_venta'];
+            }
             $product->stock += $item['cantidad'];
             $product->save();
         }

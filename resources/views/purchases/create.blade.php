@@ -66,8 +66,14 @@
                 </div>
                 <div class="col-md-2">
                     <div class="form-group mb-0">
-                        <label>Precio Unit.</label>
-                        <input type="number" id="itemPrice" class="form-control" step="0.01" min="0">
+                        <label>Prec Compra</label>
+                        <input type="number" id="itemPrice" class="form-control" step="0.01" min="0" inputmode="decimal" oninput="sanitizeDecimal(this)">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-group mb-0">
+                        <label>Precio Vent.</label>
+                        <input type="number" id="itemSalePrice" class="form-control" step="0.01" min="0" inputmode="decimal" placeholder="Opcional" oninput="sanitizeDecimal(this)">
                     </div>
                 </div>
                 <div class="col-md-2">
@@ -80,7 +86,8 @@
                     <tr>
                         <th>Producto</th>
                         <th class="text-right">Cantidad</th>
-                        <th class="text-right">Precio</th>
+                        <th class="text-right">Prec. Compra</th>
+                        <th class="text-right">Precio Vent.</th>
                         <th class="text-right">Subtotal</th>
                         <th></th>
                     </tr>
@@ -114,7 +121,23 @@
 </style>
 <script>
 let items = [];
+let selectedOriginalSale = null;
 const productsData = @json($products);
+
+function isValidDecimal(value) {
+    return /^\d+(\.\d+)?$/.test(String(value).trim());
+}
+
+function sanitizeDecimal(input) {
+    var cleaned = input.value.replace(/[^0-9.]/g, '');
+    var parts = cleaned.split('.');
+    if (parts.length > 2) {
+        cleaned = parts[0] + '.' + parts.slice(1).join('');
+    }
+    if (cleaned !== input.value) {
+        input.value = cleaned;
+    }
+}
 
 document.addEventListener('click', function(e) {
     var dd = document.getElementById('productDropdown');
@@ -144,21 +167,23 @@ function searchProducts(query) {
 
     var html = '';
     results.slice(0, 15).forEach(function(p) {
-        html += '<div class="product-option" onclick="selectProduct(' + p.id + ',\'' + p.descripcion.replace(/'/g, "\\'") + '\',' + p.precio + ')" style="padding:8px 12px; cursor:pointer; font-size:13px; border-bottom:1px solid #eee;">' +
+        html += '<div class="product-option" onclick="selectProduct(' + p.id + ',\'' + p.descripcion.replace(/'/g, "\\'") + '\',' + parseFloat(p.precio_compra || 0) + ',' + parseFloat(p.precio || 0) + ')" style="padding:8px 12px; cursor:pointer; font-size:13px; border-bottom:1px solid #eee;">' +
             '<strong>' + p.descripcion + '</strong><br>' +
-            '<small style="color:#888;">' + p.codigo + ' &mdash; S/ ' + parseFloat(p.precio).toFixed(2) + ' &mdash; Stock: ' + p.stock + '</small>' +
+            '<small style="color:#888;">' + p.codigo + ' &mdash; S/ ' + parseFloat(p.precio || 0).toFixed(2) + ' &mdash; Stock: ' + p.stock + '</small>' +
         '</div>';
     });
     dd.innerHTML = html;
     dd.style.display = 'block';
 }
 
-function selectProduct(id, name, price) {
+function selectProduct(id, name, precioCompra, precioVenta) {
     document.getElementById('selectedProductId').value = id;
     document.getElementById('selectedProductName').value = name;
     document.getElementById('productSearch').value = name;
     document.getElementById('productDropdown').style.display = 'none';
-    document.getElementById('itemPrice').value = price;
+    document.getElementById('itemPrice').value = precioCompra;
+    document.getElementById('itemSalePrice').value = precioVenta;
+    selectedOriginalSale = precioVenta;
 }
 
 document.getElementById('productSearch').addEventListener('keydown', function(e) {
@@ -170,15 +195,36 @@ function addItem() {
     var name = document.getElementById('selectedProductName').value;
     if (!id) { alert('Seleccione un producto'); return; }
 
-    var qty = parseInt(document.getElementById('itemQty').value) || 0;
-    var price = parseFloat(document.getElementById('itemPrice').value) || 0;
-    if (qty <= 0 || price < 0) { alert('Ingrese cantidad y precio válidos'); return; }
+    var qtyRaw = document.getElementById('itemQty').value;
+    var priceRaw = document.getElementById('itemPrice').value.trim();
+    var saleRaw = document.getElementById('itemSalePrice').value.trim();
+
+    var qty = parseInt(qtyRaw, 10);
+    if (!qty || qty <= 0) { alert('Ingrese una cantidad válida'); return; }
+
+    if (priceRaw === '' || !isValidDecimal(priceRaw)) { alert('Ingrese un precio de compra numérico válido'); return; }
+    var price = parseFloat(priceRaw);
+    if (price < 0) { alert('El precio de compra no puede ser negativo'); return; }
+
+    var saleChanged = false;
+    var salePrice = selectedOriginalSale;
+    if (saleRaw !== '') {
+        if (!isValidDecimal(saleRaw)) { alert('El precio de venta debe ser numérico'); return; }
+        var parsedSale = parseFloat(saleRaw);
+        if (parsedSale < 0) { alert('El precio de venta no puede ser negativo'); return; }
+        if (selectedOriginalSale === null || Math.abs(parsedSale - selectedOriginalSale) > 0.0001) {
+            saleChanged = true;
+        }
+        salePrice = parsedSale;
+    }
 
     items.push({
         product_id: id,
         nombre: name,
         cantidad: qty,
-        precio: price
+        precio: price,
+        precio_venta: salePrice,
+        precio_venta_cambia: saleChanged
     });
 
     renderItems();
@@ -187,6 +233,8 @@ function addItem() {
     document.getElementById('productSearch').value = '';
     document.getElementById('itemQty').value = 1;
     document.getElementById('itemPrice').value = '';
+    document.getElementById('itemSalePrice').value = '';
+    selectedOriginalSale = null;
 }
 
 function removeItem(idx) {
@@ -202,8 +250,13 @@ function renderItems() {
     items.forEach(function(item, idx) {
         var subtotal = item.cantidad * item.precio;
         total += subtotal;
+        var saleDisplay = (item.precio_venta !== null && item.precio_venta !== undefined) ? item.precio_venta.toFixed(2) : '&mdash;';
+        var saleInput = '';
+        if (item.precio_venta_cambia) {
+            saleInput = '<input type="hidden" name="items[' + idx + '][precio_venta]" value="' + item.precio_venta + '">';
+        }
         var row = document.createElement('tr');
-        row.innerHTML = '<td>' + item.nombre + '</td><td class="text-right">' + item.cantidad + '</td><td class="text-right">' + item.precio.toFixed(2) + '</td><td class="text-right">' + subtotal.toFixed(2) + '</td><td><button type="button" onclick="removeItem(' + idx + ')" class="btn btn-danger btn-sm"><i class="fas fa-times"></i></button></td><input type="hidden" name="items[' + idx + '][product_id]" value="' + item.product_id + '"><input type="hidden" name="items[' + idx + '][cantidad]" value="' + item.cantidad + '"><input type="hidden" name="items[' + idx + '][precio]" value="' + item.precio + '">';
+        row.innerHTML = '<td>' + item.nombre + '</td><td class="text-right">' + item.cantidad + '</td><td class="text-right">' + item.precio.toFixed(2) + '</td><td class="text-right">' + saleDisplay + '</td><td class="text-right">' + subtotal.toFixed(2) + '</td><td><button type="button" onclick="removeItem(' + idx + ')" class="btn btn-danger btn-sm"><i class="fas fa-times"></i></button></td><input type="hidden" name="items[' + idx + '][product_id]" value="' + item.product_id + '"><input type="hidden" name="items[' + idx + '][cantidad]" value="' + item.cantidad + '"><input type="hidden" name="items[' + idx + '][precio]" value="' + item.precio + '">' + saleInput;
         tbody.appendChild(row);
     });
 
