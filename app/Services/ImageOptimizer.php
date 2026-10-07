@@ -23,7 +23,15 @@ class ImageOptimizer
      */
     public function optimize(UploadedFile $file, string $directory): string
     {
-        $contents = file_get_contents($file->getRealPath());
+        return $this->optimizeFile($file->getRealPath(), $directory);
+    }
+
+    /**
+     * Igual que optimize() pero a partir de la ruta de un archivo existente.
+     */
+    public function optimizeFile(string $sourcePath, string $directory): string
+    {
+        $contents = @file_get_contents($sourcePath);
         if ($contents === false) {
             throw new \RuntimeException('No se pudo leer la imagen.');
         }
@@ -33,7 +41,7 @@ class ImageOptimizer
             throw new \RuntimeException('Formato de imagen no soportado.');
         }
 
-        $image = $this->applyExifOrientation($image, $file);
+        $image = $this->applyExifOrientation($image, $sourcePath);
         $image = $this->resize($image);
 
         $tmpPath = tempnam(sys_get_temp_dir(), 'img');
@@ -84,18 +92,18 @@ class ImageOptimizer
         return $resized;
     }
 
-    private function applyExifOrientation(\GdImage $image, UploadedFile $file): \GdImage
+    private function applyExifOrientation(\GdImage $image, string $sourcePath): \GdImage
     {
         if (!function_exists('exif_read_data')) {
             return $image;
         }
 
-        $mime = $file->getMimeType();
+        $mime = @mime_content_type($sourcePath) ?: '';
         if (!in_array($mime, ['image/jpeg', 'image/jpg'], true)) {
             return $image;
         }
 
-        $exif = @exif_read_data($file->getRealPath());
+        $exif = @exif_read_data($sourcePath);
         if (!$exif || empty($exif['Orientation'])) {
             return $image;
         }

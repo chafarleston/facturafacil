@@ -180,6 +180,10 @@ umedida_codigo, precio, precio_minimo, precio_compra
 tipo_afectacion, igv_percent, estado
 stock, kds_destination (cocina | cocina2 | bar)
 is_composite (boolean)
+imagen (string nullable) // ruta WebP optimizada en disco public
+
+// Accessors / appends
+imagen_url → asset('storage/'.$imagen) | null  ($appends = ['imagen_url'])
 
 // Relaciones
 components() → hasMany(ProductComponent::class, 'parent_product_id')
@@ -671,8 +675,9 @@ Los permisos se asignan a roles en la tabla `role_permission`. La verificación 
 | Productos | view/create/edit/delete_products |
 | Categorías | view/create/edit/delete_categories |
 | Comprobantes | view/create_invoices, send_sunat |
-| Compras | view/create_purchases |
-| Proveedores | view/create_suppliers |
+| Compras | view/create/delete_purchases |
+| Proveedores | view/create/edit/delete_suppliers |
+| Consumo Interno | view/create/edit/delete_stock_outputs (módulo `stock_outputs`) |
 | Caja | view_cashregisters, open_cashregister, close_cashregister |
 | POS | view_pos, use_pos |
 | Restaurante | view_restaurant, manage_orders |
@@ -4057,6 +4062,108 @@ Ejecutar con `php artisan schedule:work` (o el `scheduler.vbs`).
   - Térmica: `PlainTextTicket::buildPrebillHeader()` con el helper `centerWrapped()` para ajustar líneas largas a 58/80mm.
 - **Pie**: *"Esto no es un comprobante de venta, si desea pedir boleta o factura escriba sus datos."* + "Gracias por su visita" (en PDF y ticket ESC/POS).
 - Corrige el encabezado previo del PDF, que usaba `$company->name` (campo inexistente en `Company`) y por eso mostraba "Restaurante".
+
+---
+
+## 31. Imágenes de Productos y Categorías (Octubre 2026)
+
+### 31.1 Descripción
+
+Módulo opcional que permite asociar **una imagen** a cada producto y categoría, y decidir de forma **global** en qué módulos de venta se muestran (POS, Restaurante, Kiosko). Por defecto **todo está desactivado**, por lo que el sistema se comporta igual que antes (sin cargar imágenes, más rápido). Clientes que no quieren imágenes no configuran nada.
+
+### 31.2 Base de datos
+
+| Tabla | Columna | Tipo | Notas |
+|-------|---------|------|-------|
+| `products` | `imagen` | string nullable | ruta relativa en disco `public` (ej: `products/uuid.webp`) |
+| `categories` | `imagen` | string nullable | ruta relativa en disco `public` (ej: `categories/uuid.webp`) |
+
+Migraciones: `2026_10_06_000001_add_imagen_to_products_table.php`, `2026_10_06_000002_add_imagen_to_categories_table.php`.
+
+**Configuración global** en la tabla `settings` (clave/valor, todas `0` por defecto):
+
+- `img_products_pos`, `img_products_restaurant`, `img_products_kiosko`
+- `img_categories_pos`, `img_categories_restaurant`, `img_categories_kiosko`
+
+Helpers en `Setting`: `showProductImages($modulo)`, `showCategoryImages($modulo)`, `setShowProductImages()`, `setShowCategoryImages()` (usa la caché de `Setting::get`, invalidada por `Setting::set`).
+
+### 31.3 Optimización al subir (`app/Services/ImageOptimizer.php`)
+
+Al guardar un producto/categoría con imagen, `ImageOptimizer::optimize($file, $dir)`:
+
+1. Lee la imagen y crea un recurso GD (`imagecreatefromstring`).
+2. Corrige la **orientación EXIF** (solo JPEG).
+3. **Redimensiona** proporcionalmente a un máximo de **800 px** (lado mayor).
+4. Convierte a **WebP calidad 80** (soporta transparencia).
+5. Guarda en el disco `public` (`products/` o `categories/`) con nombre UUID y devuelve la ruta.
+
+Requiere la extensión **GD con soporte WebP** (`php -m` → `gd`; Laragon PHP 8.4 la trae). No usa Imagick.
+
+Validación en los controladores: `nullable|image|mimes:jpeg,png,jpg,webp|max:5120`. En edición se puede marcar **"Eliminar imagen"** (`remove_imagen`); al reemplazar se borra el archivo anterior del disco.
+
+### 31.4 Formularios (admin)
+
+- `resources/views/products/create.blade.php`, `products/edit.blade.php`
+- `resources/views/products/create_composite.blade.php`, `products/edit_composite.blade.php`
+- `resources/views/categories/create.blade.php`, `categories/edit.blade.php`
+
+Todos con `enctype="multipart/form-data"`, input de imagen, vista previa y (en edición) imagen actual + "Eliminar imagen".
+
+### 31.5 Selector global (submenú)
+
+- Menú **Empresa → "Imágenes de Venta"** (`resources/views/layouts/admin.blade.php`), ruta `GET /catalog-images` (`catalog-images.edit`).
+- Pantalla `resources/views/catalogimages/edit.blade.php`: dos bloques independientes (**Productos** y **Categorías**) × 3 switches (POS / Restaurante / Kiosko) y botón Guardar.
+- `CatalogImageSettingController@update` (`POST /catalog-images`) persiste las 6 claves con `Setting::setShow*Images()`.
+
+### 31.6 Render en los módulos
+
+Los controladores calculan las banderas y las pasan a la vista: `PosController::index` (módulo `pos`), `RestaurantController::index` (`restaurant`), `AutoPedidoController::index` (`kiosko`).
+
+- **POS** (`resources/views/pos/index.blade.php`): las tarjetas se generan en JS; el helper `productImageHtml()` inserta `<img loading="lazy">` o placeholder. Las categorías (Blade) muestran imagen si `$showCategoryImages`.
+- **Restaurante** (`resources/views/restaurant/index.blade.php`): `<img class="product-img">` en la tarjeta Blade y `category-img` en los botones.
+- **Kiosko** (`resources/views/autopedido/index.blade.php`): se reemplaza el `.product-icon` por `<img>`; si no hay imagen o está desactivado, se mantiene el ícono `fa-utensils`.
+
+Si el módulo está activo pero el ítem no tiene imagen → **placeholder** (`fa-image`; en kiosko `fa-utensils`). CSS `object-fit:cover` con altura fija para evitar saltos de layout.
+
+### 31.7 Cachés
+
+Al guardar/eliminar producto o categoría (`ProductController`, `CategoryController`) se invalidan:
+
+- `restaurant_products_{companyId}`, `restaurant_categories_{companyId}`
+- `kiosko_products_{companyId}`, `kiosko_categories_{companyId}`
+
+Los modelos `Product`/`Category` exponen `imagen_url` vía `$appends`, por lo que el atributo viaja en los `@json(...)` (POS) sin consultas adicionales.
+
+### 31.8 Generación masiva (comandos)
+
+Para asignar imágenes a muchos ítems sin subir archivos uno a uno se usan tarjetas generadas con GD + fuente TTF (`App\Services\PlaceholderImageGenerator`): fondo de color único (derivado del nombre), título centrado y subtítulo (categoría/código en productos; descripción en categorías).
+
+```bash
+php artisan products:generate-images            # todos los productos
+php artisan products:generate-images --company=1
+php artisan products:generate-images --force    # regenera aunque ya tenga imagen
+php artisan categories:generate-images [--company=1] [--force]
+```
+
+- Por defecto **omite** los ítems que ya tienen imagen (idempotente; ideal para productos nuevos).
+- Al final invalida las cachés de productos/categorías de Restaurante y Kiosko.
+- Guarda en el disco `public` (`products/`, `categories/`) en formato WebP (~5 KB).
+
+### 31.9 Descargar imágenes reales de internet (Wikimedia Commons)
+
+`php artisan products:fetch-images` busca y descarga una **foto real** por producto usando la API de **Wikimedia Commons** (`App\Services\WikimediaImageFetcher`), según palabras clave derivadas de la descripción (quitando cantidades, unidades y términos de relleno).
+
+```bash
+php artisan products:fetch-images                       # solo pendientes (sin imagen o tarjeta generada)
+php artisan products:fetch-images --force               # re-descarga todos
+php artisan products:fetch-images --company=1 --limit=100 --offset=100 --sleep=400
+php artisan categories:fetch-images [--force] [--company=1] [--limit=] [--offset=] [--sleep=]
+```
+
+- **Idempotente/reanudable**: sin `--force` procesa únicamente los productos sin imagen o con la tarjeta generada (720×540). Se puede repetir para reintentar.
+- Requiere **salida a internet**. Wikimedia limita ráfagas (devuelve respuestas vacías temporalmente): el fetcher **reintenta** con espera creciente; el proceso es lento (~2 s por descarga) y puede necesitar varias pasadas.
+- La imagen descargada se optimiza con `ImageOptimizer` (WebP, máx. 800 px). Los productos sin coincidencia conservan su tarjeta generada.
+- La relevancia es aproximada (búsqueda por keyword), por lo que algunos productos pueden requerir ajuste manual de la imagen.
 
 ---
 

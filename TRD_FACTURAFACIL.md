@@ -70,8 +70,8 @@
 | 5 | `role_user` | Pivot: rol ↔ usuario | 5-10 |
 | 6 | `role_permission` | Pivot: permiso ↔ rol | 200+ |
 | 7 | `customers` | Clientes | 100-1000 |
-| 8 | `categories` | Categorías de productos | 20-50 |
-| 9 | `products` | Productos (catálogo) | 100-500 |
+| 8 | `categories` | Categorías de productos (imagen WebP opcional) | 20-50 |
+| 9 | `products` | Productos (catálogo, imagen WebP opcional) | 100-500 |
 | 10 | `product_components` | Componentes de prod. compuestos | 0-100 |
 | 11 | `invoices` | Comprobantes emitidos | 1000-5000/mes |
 | 12 | `invoice_items` | Items de comprobantes | 5000-20000/mes |
@@ -97,6 +97,7 @@
 | 32 | `attendance_logs` | Marcaciones crudas (fecha, hora, evento, foto, verificado) | N/día |
 | 33 | `attendance_settings` | Reglas de tardanza/faltas + modo de marcación + exito_segundos | 1 |
 | 34 | `attendance_discount_rules` | Descuentos por tramos de tardanza (10-60 min) | 11 |
+| 35 | `settings` | Clave/valor global (`system_locked`, `precuadre_enabled`, `img_products_*`, `img_categories_*`) | ~10 |
 
 ### 2.2 Estructura Detallada de Tablas Clave
 
@@ -851,3 +852,4 @@ CreateObject("WScript.Shell").Run "node print-server-node/server.js", 0
 | 2.6 | Agosto 2026 | Configuración de Reporte de Caja: tabla `cash_report_settings` + permiso `manage_report_settings` (admin+cajero); checks para mostrar/ocultar LISTA DE COMPROBANTES, PRODUCTOS VENDIDOS y LINEAS ELIMINADAS en reportes A4/80mm/ESC-POS (web siempre muestra todo). |
 | 2.7 | Octubre 2026 | **Precuadre**: botón en `/cashregisters` (caja ABIERTA) que imprime `cashRegisterSummary(..., 'PRECUADRE')` en la impresora Caja sin cerrar la caja; toggle global `precuadre_enabled` en `settings` desde `/companies`; ruta `POST /precuadre/toggle` (`PrecuadreSettingController`); `printCaja()`/`printPrecuadre()` comparten `preparePrintData()`; `cashRegisterSummary()` acepta 5º parámetro `$title`. |
 | 2.8 | Octubre 2026 | **Precuenta**: encabezado con datos de la empresa (`nombre_comercial ?: razon_social`, RUC, dirección, teléfono, email) y pie "Esto no es un comprobante de venta, si desea pedir boleta o factura escriba sus datos." en PDF (`prebill.blade.php`) y ticket térmico (`buildPrebillHeader()` + `centerWrapped()`); corrige `$company->name` inexistente en el PDF. |
+| 2.9 | Octubre 2026 | **Imágenes de productos/categorías** (`products.imagen`, `categories.imagen`): optimización al subir con `ImageOptimizer` (GD → WebP q80, máx. 800 px, EXIF); selector global en `settings` (`img_products_{pos,restaurant,kiosko}`, `img_categories_{...}`) con submenú **Empresa → "Imágenes de Venta"** (`/catalog-images`); render condicionado en POS/Restaurante/Kiosko con placeholder; invalida cachés `restaurant_*`/`kiosko_*`. **Compras/Proveedores/Consumo Interno por permiso** (`delete_purchases`, `edit/delete_suppliers`, módulo `stock_outputs`) asignables al `cajero`; `IsAdmin` autoriza `purchases.*`/`suppliers.*`/`stock-outputs.*`; `purchases` sin rutas `edit/update`. Fix scheduler `sunat:send-daily-summary`: "sin boletas pendientes" ahora retorna éxito (ya no exit 1 diario). |

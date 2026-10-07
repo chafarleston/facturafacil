@@ -151,6 +151,7 @@ FacturaFácil es un sistema integral para restaurantes peruanos que unifica:
 | PRO-12 | Stock negativo permitido (reposición vía compras) | P0 | ✅ |
 | PRO-13 | Productos con precio 0 válidos (componentes de menú) | P0 | ✅ |
 | PRO-14 | Elementos auxiliares para personalizar pedidos | P2 | ✅ |
+| PRO-15 | Imágenes opcionales de productos/categorías (optimizadas a WebP) con visibilidad por módulo (POS/Restaurante/Kiosko) | P2 | ✅ |
 
 ### 3.7 Productos Compuestos
 
@@ -446,3 +447,4 @@ companies (1)
 | 2.1 | Agosto 2026 | **Dividir Cuenta** (paid_invoice_id + split-charge), permisos SUNAT (cajero con envío), apertura de cajón en POS (manual + automática en efectivo), IGV dinámico en precuenta, 8º slot de impresora (autopedido) |
 | 2.2 | Septiembre 2026 | Fix precuenta: excluye items pagados (Dividir Cuenta) en PDF y ticket térmico; índice GitNexus local (`--index-only`) |
 | 2.3 | Octubre 2026 | **Precuadre** (botón en caja vigente + toggle global en Empresa; imprime resumen tipo cierre en impresora Caja sin cerrar) y **precuenta con datos de empresa + aviso** "no es comprobante de venta" (PDF y ticket térmico) |
+| 2.4 | Octubre 2026 | **Imágenes de productos/categorías** (optimizadas a WebP al subir) con selector global en Empresa → "Imágenes de Venta" por módulo (POS/Restaurante/Kiosko); **Compras/Proveedores/Consumo Interno** delegables por permiso al `cajero`; fix scheduler `sunat:send-daily-summary` (no-op = éxito) |
