@@ -66,4 +66,14 @@ class Setting extends Model
     {
         static::set('img_categories_' . $module, $enabled ? '1' : '0');
     }
+
+    public static function categoriesOnly(string $module): bool
+    {
+        return static::get('catonly_' . $module, '0') === '1';
+    }
+
+    public static function setCategoriesOnly(string $module, bool $enabled): void
+    {
+        static::set('catonly_' . $module, $enabled ? '1' : '0');
+    }
 }

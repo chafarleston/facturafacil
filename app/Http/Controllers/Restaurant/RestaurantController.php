@@ -79,8 +79,9 @@ class RestaurantController extends Controller
 
         $showProductImages = \App\Models\Setting::showProductImages('restaurant');
         $showCategoryImages = \App\Models\Setting::showCategoryImages('restaurant');
+        $categoriesOnly = \App\Models\Setting::categoriesOnly('restaurant');
 
-        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId', 'orderMode', 'printServerRunning', 'igvPercent', 'cajaAbierta', 'showProductImages', 'showCategoryImages'));
+        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId', 'orderMode', 'printServerRunning', 'igvPercent', 'cajaAbierta', 'showProductImages', 'showCategoryImages', 'categoriesOnly'));
     }
 
     public function modeIndex()

@@ -17,6 +17,15 @@
         .categories { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 15px; background: #fff; border-bottom: 1px solid #eee; justify-content: center; }
         .cat-btn { padding: 10px 20px; border: 2px solid #ddd; border-radius: 25px; background: #fff; font-size: 16px; cursor: pointer; transition: all .2s; }
         .cat-btn.active { background: #e94560; color: #fff; border-color: #e94560; }
+        .categories.categories-only { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; justify-content: stretch; padding: 15px; }
+        .categories.categories-only .cat-btn {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+            padding: 24px 14px; border-radius: 16px; font-size: 18px; font-weight: 600;
+            min-height: 140px; white-space: normal; text-align: center;
+        }
+        .categories.categories-only .cat-img { width: 72px; height: 72px; border-radius: 12px; margin: 0; }
+        .back-cats { margin: 12px 15px; padding: 12px 20px; background: #fff; border: 2px solid #e94560; color: #e94560; border-radius: 25px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .back-cats:hover { background: #fdf0f2; }
         .products { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; padding: 15px; padding-bottom: 100px; }
         .product-card { background: #fff; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,.08); cursor: pointer; transition: transform .15s; }
         .product-card:active { transform: scale(.95); }
@@ -87,8 +96,8 @@
         <button class="search-btn" onclick="openKeyboard(document.getElementById('searchInput'))"><i class="fas fa-keyboard"></i></button>
     </div>
 
-    <div class="categories" id="categoriesContainer">
-        <button class="cat-btn active" data-cat="all" onclick="filterCategory('all')">🍽️ Todos</button>
+    <div class="categories {{ $categoriesOnly ? 'categories-only' : '' }}" id="categoriesContainer">
+        <button class="cat-btn {{ $categoriesOnly ? '' : 'active' }}" data-cat="all" onclick="filterCategory('all')">🍽️ Todos</button>
         @foreach($categories as $cat)
         <button class="cat-btn" data-cat="{{ $cat->id }}" onclick="filterCategory({{ $cat->id }})">
             @if($showCategoryImages && $cat->imagen_url)
@@ -99,7 +108,11 @@
         @endforeach
     </div>
 
-    <div class="products" id="productsContainer">
+    <button type="button" id="backToCategories" class="back-cats" style="display:none;" onclick="backToCategories()">
+        <i class="fas fa-arrow-left"></i> Categorías
+    </button>
+
+    <div class="products" id="productsContainer" @if($categoriesOnly) style="display:none" @endif>
         @foreach($products as $p)
         <div class="product-card" data-category="{{ $p->category_id ?? 0 }}" data-name="{{ strtolower($p->descripcion) }}" onclick="addProduct({{ $p->id }}, '{{ addslashes($p->descripcion) }}', {{ $p->precio }})">
             @if($showProductImages && $p->imagen_url)
@@ -201,7 +214,8 @@
 
     <script>
         let cart = [];
-        let activeCategory = 'all';
+        const categoriesOnly = @json($categoriesOnly ?? false);
+        let activeCategory = categoriesOnly ? null : 'all';
         let showCart = false;
         let modalProductId = null;
         let modalQty = 1;
@@ -331,11 +345,35 @@
 
         function applyFilters() {
             const q = document.getElementById('searchInput').value.toLowerCase().trim();
+            const container = document.getElementById('productsContainer');
+            const cats = document.getElementById('categoriesContainer');
+            const backBtn = document.getElementById('backToCategories');
+
+            if (categoriesOnly) {
+                // Modo "solo categorías": al elegir una categoría (o buscar) se ocultan las
+                // categorías y se muestran los productos en su lugar.
+                const showProducts = q !== '' || activeCategory !== null;
+                if (cats) cats.style.display = showProducts ? 'none' : '';
+                if (container) container.style.display = showProducts ? '' : 'none';
+                if (backBtn) backBtn.style.display = showProducts ? '' : 'none';
+                if (!showProducts) return;
+            } else if (container) {
+                container.style.display = '';
+            }
+
             document.querySelectorAll('.product-card').forEach(card => {
-                const catMatch = activeCategory === 'all' || card.dataset.category == activeCategory;
+                const catMatch = activeCategory === 'all' || activeCategory === null || card.dataset.category == activeCategory;
                 const nameMatch = !q || card.dataset.name.includes(q);
                 card.style.display = (catMatch && nameMatch) ? '' : 'none';
             });
+        }
+
+        function backToCategories() {
+            activeCategory = null;
+            const input = document.getElementById('searchInput');
+            if (input) input.value = '';
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            applyFilters();
         }
 
         /* Virtual Keyboard */

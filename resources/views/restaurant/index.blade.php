@@ -205,6 +205,63 @@
         color: white;
         border-color: #007bff;
     }
+
+    /* Modo "solo categorías": tarjetas grandes */
+    .products-categories.categories-only {
+        display: grid;
+        grid-auto-flow: row;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        grid-template-rows: none;
+        gap: 14px;
+        overflow: visible;
+        padding: 6px 0;
+    }
+    .products-categories.categories-only .category-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 20px 14px;
+        border-radius: 14px;
+        font-size: 15px;
+        font-weight: 600;
+        white-space: normal;
+        text-align: center;
+        min-height: 130px;
+        box-shadow: 0 1px 5px rgba(0,0,0,.08);
+    }
+    .products-categories.categories-only .category-btn:hover {
+        border-color: #007bff;
+        box-shadow: 0 3px 10px rgba(0,123,255,.2);
+    }
+    .products-categories.categories-only .category-img {
+        width: 72px;
+        height: 72px;
+        border-radius: 12px;
+        margin: 0;
+    }
+    .products-categories.categories-only .category-img-placeholder {
+        font-size: 40px;
+        margin: 0;
+        color: #adb5bd;
+    }
+
+    .back-cats {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin: 4px 0 12px 0;
+        padding: 10px 18px;
+        background: #fff;
+        border: 1px solid #007bff;
+        color: #007bff;
+        border-radius: 22px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .back-cats:hover { background: #f0f7ff; }
     
     .products-grid {
         display: grid;
@@ -579,8 +636,8 @@
     
     <div class="modal-content-area">
         <div id="tabProducts">
-            <div class="products-categories" id="productsCategories">
-                <button class="category-btn active" data-category="all" onclick="filterProducts('all')">Todos</button>
+            <div class="products-categories {{ $categoriesOnly ? 'categories-only' : '' }}" id="productsCategories">
+                <button class="category-btn {{ $categoriesOnly ? '' : 'active' }}" data-category="all" onclick="filterProducts('all')">Todos</button>
                 @foreach($categories as $category)
                 <button class="category-btn" data-category="{{ $category->id }}" onclick="filterProducts({{ $category->id }})">
                     @if($showCategoryImages)
@@ -594,7 +651,10 @@
                 </button>
                 @endforeach
             </div>
-            <div class="products-grid" id="productsList">
+            <button type="button" id="backToCategories" class="back-cats" style="display:none;" onclick="backToCategories()">
+                <i class="fas fa-arrow-left"></i> Categorías
+            </button>
+            <div class="products-grid" id="productsList" @if($categoriesOnly) style="display:none" @endif>
                 @foreach($products as $product)
                 <div class="product-card"
                      data-product-id="{{ $product->id }}"
@@ -1084,7 +1144,8 @@ function renderOrder(order) {
     document.getElementById('itemsCount').style.display = 'inline';
 }
 
-let activeCategory = 'all';
+const categoriesOnly = @json($categoriesOnly ?? false);
+let activeCategory = categoriesOnly ? null : 'all';
 window._searchQuery = '';
 
 function filterProducts(categoryId) {
@@ -1102,11 +1163,36 @@ function searchProducts(query) {
 
 function applyFilters() {
     const q = window._searchQuery || '';
+    const grid = document.getElementById('productsList');
+    const cats = document.getElementById('productsCategories');
+    const backBtn = document.getElementById('backToCategories');
+
+    if (categoriesOnly) {
+        // Modo "solo categorías": al elegir una categoría (o buscar) se ocultan las
+        // categorías y se muestran los productos en su lugar.
+        const showProducts = q !== '' || activeCategory !== null;
+        if (cats) cats.style.display = showProducts ? 'none' : '';
+        if (grid) grid.style.display = showProducts ? '' : 'none';
+        if (backBtn) backBtn.style.display = showProducts ? '' : 'none';
+        if (!showProducts) return;
+    } else if (grid) {
+        grid.style.display = '';
+    }
+
     document.querySelectorAll('.product-card').forEach(card => {
-        const catMatch = activeCategory === 'all' || card.dataset.categoryId == activeCategory;
+        const catMatch = activeCategory === 'all' || activeCategory === null || card.dataset.categoryId == activeCategory;
         const nameMatch = !q || card.dataset.productName.toLowerCase().includes(q);
         card.style.display = (catMatch && nameMatch) ? '' : 'none';
     });
+}
+
+function backToCategories() {
+    activeCategory = null;
+    window._searchQuery = '';
+    const input = document.getElementById('productSearch');
+    if (input) input.value = '';
+    document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('active'));
+    applyFilters();
 }
 
 function loadAuxiliaryItems() {

@@ -35,8 +35,9 @@ class AutoPedidoController extends Controller
 
         $showProductImages = \App\Models\Setting::showProductImages('kiosko');
         $showCategoryImages = \App\Models\Setting::showCategoryImages('kiosko');
+        $categoriesOnly = \App\Models\Setting::categoriesOnly('kiosko');
 
-        return view('autopedido.index', compact('products', 'categories', 'companyId', 'showProductImages', 'showCategoryImages'));
+        return view('autopedido.index', compact('products', 'categories', 'companyId', 'showProductImages', 'showCategoryImages', 'categoriesOnly'));
     }
 
     public function confirmOrder(Request $request)

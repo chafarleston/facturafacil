@@ -4165,6 +4165,16 @@ php artisan categories:fetch-images [--force] [--company=1] [--limit=] [--offset
 - La imagen descargada se optimiza con `ImageOptimizer` (WebP, máx. 800 px). Los productos sin coincidencia conservan su tarjeta generada.
 - La relevancia es aproximada (búsqueda por keyword), por lo que algunos productos pueden requerir ajuste manual de la imagen.
 
+### 31.10 Modo "Mostrar solo categorías"
+
+Configuración global **por módulo** en la tabla `settings` (`catonly_{pos,restaurant,kiosko}`, default `0`), editable en **Empresa → "Imágenes de Venta" → bloque "Visualización"** (`CatalogImageSettingController`, checkboxes `catonly_*`). Helper `Setting::categoriesOnly($module)`.
+
+- **Independiente por módulo**: si un módulo está en `0`, no cambia nada en él.
+- **Restaurante / Kiosko**: al abrir el módulo se muestran **solo las categorías** (el grid de productos arranca oculto: `#productsList` / `#productsContainer` con `style="display:none"`) y las **tarjetas de categoría se muestran más grandes** (clase `categories-only` → grid con imagen/ícono grande). Al hacer clic en una categoría **se oculta la grilla de categorías y se muestran los productos en su lugar** (el grid de productos se reubica arriba, sin necesidad de scroll), con un botón **"← Categorías"** para volver. **"Todos"** muestra todos; el **buscador** sigue funcionando y revela coincidencias aunque no se elija categoría (al limpiar la búsqueda vuelve a las categorías).
+- **POS**: ya arranca mostrando solo categorías por diseño, por lo que su switch no altera el comportamiento del POS.
+
+Implementación en JS: variable `categoriesOnly` (`@json($categoriesOnly)`) y `activeCategory` inicia en `null` cuando el modo está activo; `applyFilters()` oculta el contenedor si no hay categoría seleccionada ni búsqueda.
+
 ---
 
 ## Anexo: Códigos de Error SUNAT

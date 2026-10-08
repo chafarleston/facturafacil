@@ -18,13 +18,15 @@ class CatalogImageSettingController extends Controller
         $modules = self::MODULES;
         $productImages = [];
         $categoryImages = [];
+        $categoriesOnly = [];
 
         foreach (array_keys($modules) as $module) {
             $productImages[$module] = Setting::showProductImages($module);
             $categoryImages[$module] = Setting::showCategoryImages($module);
+            $categoriesOnly[$module] = Setting::categoriesOnly($module);
         }
 
-        return view('catalogimages.edit', compact('modules', 'productImages', 'categoryImages'));
+        return view('catalogimages.edit', compact('modules', 'productImages', 'categoryImages', 'categoriesOnly'));
     }
 
     public function update(Request $request)
@@ -32,6 +34,7 @@ class CatalogImageSettingController extends Controller
         foreach (array_keys(self::MODULES) as $module) {
             Setting::setShowProductImages($module, $request->boolean('img_products_' . $module));
             Setting::setShowCategoryImages($module, $request->boolean('img_categories_' . $module));
+            Setting::setCategoriesOnly($module, $request->boolean('catonly_' . $module));
         }
 
         return redirect()->route('catalog-images.edit')

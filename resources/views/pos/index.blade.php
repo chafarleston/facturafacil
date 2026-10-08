@@ -866,7 +866,7 @@ function showProducts(categoryId, categoryName) {
     document.getElementById('categoriesGrid').style.display = 'none';
     document.getElementById('productsSection').style.display = 'flex';
     document.getElementById('categoryTitle').textContent = categoryName;
-    const products = productsData.filter(p => p.category_id === categoryId);
+    const products = productsData.filter(p => Number(p.category_id) === Number(categoryId));
     if (products.length === 0) { document.getElementById('productsGrid').innerHTML = '<div class="empty-sale"><i class="fas fa-box-open"></i><p>Sin productos</p></div>'; return; }
     let html = '';
     products.forEach(product => {
