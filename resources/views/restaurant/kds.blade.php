@@ -309,6 +309,9 @@
 <body>
     <div id="kdsInactiveNotice" style="display:none; position:fixed; top:0; left:0; right:0; z-index:9999; background:#e94560; color:#fff; text-align:center; padding:12px; font-size:16px; font-weight:bold;">
         KDS INACTIVO - Modo Impresion 80mm activo. Active el Modo KDS para usar esta pantalla.
+        <button type="button" onclick="location.reload()" style="margin-left:12px; padding:6px 16px; border:none; border-radius:20px; background:#fff; color:#e94560; font-weight:bold; font-size:14px; cursor:pointer; vertical-align:middle;">
+            <i class="fas fa-sync-alt"></i> Reintentar
+        </button>
     </div>
     <div class="kds-container">
         <div class="kds-header">
