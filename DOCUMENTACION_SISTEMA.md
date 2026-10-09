@@ -824,12 +824,12 @@ Apertura automática en POS:
 
 | Vista | Función | Intervalo |
 |-------|---------|-----------|
-| Restaurante | `pollActiveOrders()` | 10 segundos |
-| Restaurante | `pollTableLocks()` | 10 segundos |
-| Restaurante | `pollPrintServer()` | 10 segundos (solo si hay badge, modo impresión) |
+| Restaurante | `pollActiveOrders()` | 10 segundos (también al cargar) |
+| Restaurante | `pollTableLocks()` | 10 segundos (también al cargar) |
+| Restaurante | `pollPrintServer()` | 10 segundos (solo si hay badge, modo impresión; también al cargar) |
 | KDS (Cocina) | `loadKitchenOrders()` | 5 segundos (solo en Modo KDS) |
 
-> **Nota**: `handlePollResponse()` redirige a `/login` si el polling recibe **401** (sesión expirada). En modo `print` (`companies.order_mode`) el menú oculta los ítems "KDS Cocina/Cocina 2/Bar", `loadKitchenOrders` no arranca (o se detiene en vivo vía `getKitchenOrders.order_mode`, mostrando "KDS INACTIVO") y las acciones KDS (`markKitchenReady`/`deliverKitchenOrder`/`completeOrder`) responden **400**. El modo se cachea con `Company::orderMode()`/`mainCompanyId()` (`rememberForever`), invalidado por `Company::clearCache()` en `toggleMode` y en cambios de empresa (store/update/destroy/setMain).
+> **Nota**: `handlePollResponse()` redirige a `/login` si el polling recibe **401** (sesión expirada). Al actualizar el estado de una mesa, `pollActiveOrders` usa `setTableCardState()` (en vez de sobrescribir `className`) para **preservar la clase `locked-by-other`** y no borrar el bloqueo de otro usuario. En modo `print` (`companies.order_mode`) el menú oculta los ítems "KDS Cocina/Cocina 2/Bar", `loadKitchenOrders` no arranca (o se detiene en vivo vía `getKitchenOrders.order_mode`, mostrando "KDS INACTIVO") y las acciones KDS (`markKitchenReady`/`deliverKitchenOrder`/`completeOrder`) responden **400**. El aviso "KDS INACTIVO" incluye un botón **Reintentar** (`location.reload()`) para retomar el polling tras reactivar el modo (en inactivo no hay ninguna petición en segundo plano). El modo se cachea con `Company::orderMode()`/`mainCompanyId()` (`rememberForever`), invalidado por `Company::clearCache()` en `toggleMode` y en cambios de empresa (store/update/destroy/setMain).
 
 ### 13.2 Funciones Globales del Restaurante
 

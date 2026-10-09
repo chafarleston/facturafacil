@@ -88,7 +88,7 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 - **Precio de compra** (`precio_compra`) para valorar inventario a costo
 - **Reporte de Inventario** (`/products/inventory-report`) con totales a precio venta y costo, filtro por categoría y exportación Excel/PDF
 - Importación/exportación de productos y duplicado con código secuencial automático
-- **Imágenes opcionales** de productos y categorías (se optimizan a WebP al subir) y selector global en **Empresa → "Imágenes de Venta"** para mostrarlas en POS, Restaurante y/o Kiosko (desactivado por defecto)
+- **Imágenes opcionales** de productos y categorías (se optimizan a WebP al subir) y selector global en **Empresa → "Imágenes de Venta"** para mostrarlas en POS, Restaurante y/o Kiosko (desactivado por defecto). El mismo panel incluye **"Mostrar solo categorías"** por módulo: Restaurante/Kiosko arrancan mostrando solo las categorías (tarjetas grandes) y muestran los productos al hacer clic en una categoría (con botón para volver); el POS ya funciona así
 
 ### Consumo Interno (Salidas de Stock)
 - Registro de consumos de cocina sin generar venta (mermas, degustaciones, consumo interno)
