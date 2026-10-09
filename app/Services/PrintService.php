@@ -127,8 +127,17 @@ class PrintService
     {
         if (!$this->printServer->isServerRunning()) return;
 
-        $jobs = PrintJob::whereIn('status', ['pending', 'failed'])
-            ->where('attempts', '<', self::MAX_ATTEMPTS)
+        $jobs = PrintJob::where(function ($q) {
+                $q->whereIn('status', ['pending', 'failed'])
+                    ->where('attempts', '<', self::MAX_ATTEMPTS);
+            })
+            ->orWhere(function ($q) {
+                // Recupera jobs 'processing' atascados (p. ej. por caída del proceso):
+                // si llevan más de 2 minutos en ese estado, se reenvían.
+                $q->where('status', 'processing')
+                    ->where('updated_at', '<', now()->subMinutes(2))
+                    ->where('attempts', '<', self::MAX_ATTEMPTS);
+            })
             ->orderBy('id')
             ->get();
 
@@ -142,7 +151,9 @@ class PrintService
                 } else {
                     $payload['printer'] = $job->printer_name;
                 }
-                $response = \Illuminate\Support\Facades\Http::timeout(5)
+                // Timeout amplio: el print-server puede tardar hasta ~15 s (RAW local) / ~10 s (red);
+                // con 5 s se marcaba 'failed' por timeout y el reintento podía IMPRIMIR DOS VECES.
+                $response = \Illuminate\Support\Facades\Http::timeout(25)
                     ->post(config('print-server.url', 'http://127.0.0.1:9100') . '/print', $payload);
                 if ($response->successful()) {
                     $job->update(['status' => 'completed', 'completed_at' => now()]);

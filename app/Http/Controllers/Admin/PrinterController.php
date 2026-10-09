@@ -23,7 +23,16 @@ class PrinterController extends Controller
     public function queue()
     {
         $jobs = PrintJob::orderBy('id', 'desc')->paginate(20);
-        return view('admin.print_jobs.index', compact('jobs'));
+
+        // Totales reales (no solo la página actual)
+        $counts = [
+            'pending' => PrintJob::where('status', 'pending')->count(),
+            'processing' => PrintJob::where('status', 'processing')->count(),
+            'completed' => PrintJob::where('status', 'completed')->count(),
+            'failed' => PrintJob::where('status', 'failed')->count(),
+        ];
+
+        return view('admin.print_jobs.index', compact('jobs', 'counts'));
     }
 
     public function retry(PrintJob $printJob)

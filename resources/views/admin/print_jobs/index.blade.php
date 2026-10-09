@@ -9,9 +9,10 @@
             <div class="card-header">
                 <h3 class="card-title">Trabajos de Impresión</h3>
                 <div class="card-tools">
-                    <span class="badge badge-info mr-2">Pendientes: {{ $jobs->where('status', 'pending')->count() }}</span>
-                    <span class="badge badge-success mr-2">Completados: {{ $jobs->where('status', 'completed')->count() }}</span>
-                    <span class="badge badge-danger">Fallidos: {{ $jobs->where('status', 'failed')->count() }}</span>
+                    <span class="badge badge-info mr-2">Pendientes: {{ $counts['pending'] }}</span>
+                    <span class="badge badge-warning mr-2">Procesando: {{ $counts['processing'] }}</span>
+                    <span class="badge badge-success mr-2">Completados: {{ $counts['completed'] }}</span>
+                    <span class="badge badge-danger">Fallidos: {{ $counts['failed'] }}</span>
                 </div>
             </div>
             <div class="card-body table-responsive p-0">
