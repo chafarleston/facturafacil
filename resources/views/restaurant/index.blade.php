@@ -879,6 +879,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const psBadge = document.getElementById('printServerBadge');
     if (psBadge) {
+        pollPrintServer();
         setInterval(pollPrintServer, 10000);
     }
     
@@ -1723,7 +1724,7 @@ function cancelOrderRequest(password) {
             showAlert('Pedido anulado');
             const tableCard = document.querySelector(`.table-card[data-table-id="${currentTableId}"]`);
             if (tableCard) {
-                tableCard.className = 'table-card available';
+                setTableCardState(tableCard, 'available', false);
                 tableCard.dataset.orderId = '';
                 const orderDiv = tableCard.querySelector('.table-order');
                 if (orderDiv) orderDiv.remove();
@@ -1789,6 +1790,13 @@ function handlePollResponse(res) {
     return res.json();
 }
 
+// Cambia el estado de una mesa preservando la clase 'locked-by-other' (bloqueo de otro usuario).
+function setTableCardState(card, state, hasOrder) {
+    card.classList.remove('available', 'occupied', 'reserved', 'has-order');
+    card.classList.add(state);
+    if (hasOrder) card.classList.add('has-order');
+}
+
 function pollActiveOrders() {
     fetch('/restaurant/active-orders?_=' + Date.now(), {
         headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
@@ -1801,7 +1809,7 @@ function pollActiveOrders() {
             tablesWithOrders[order.table_id] = order;
             const card = document.querySelector(`.table-card[data-table-id="${order.table_id}"]`);
             if (!card) return;
-            card.className = 'table-card occupied has-order';
+            setTableCardState(card, 'occupied', true);
             if (!orderModalOpen) {
                 card.dataset.orderId = order.id;
             }
@@ -1817,7 +1825,7 @@ function pollActiveOrders() {
             const tid = parseInt(card.dataset.tableId);
             if (!tid) return;
             if (!tablesWithOrders[tid] && card.classList.contains('occupied')) {
-                card.className = 'table-card available';
+                setTableCardState(card, 'available', false);
                 card.dataset.orderId = '';
                 const orderDiv = card.querySelector('.table-order');
                 if (orderDiv) orderDiv.remove();
