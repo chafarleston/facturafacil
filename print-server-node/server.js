@@ -82,14 +82,15 @@ function log(msg) {
   }
 }
 
-// ── Helper: prepare ESC/POS data with proper encoding ──
-function prepareEscpos(rawBuffer, codePage = 'cp850', codePageId = 0x02) {
-  // Laravel already sends ISO-8859-1 encoded data with ESC/POS commands.
-  // Just prepend the code page command to ensure correct character mapping.
-  const hasCodePageCmd = rawBuffer.length >= 3 && 
+// ── Helper: prepare ESC/POS data (ensure CP850 command prefix) ──
+function prepareEscpos(rawBuffer) {
+  // Laravel already sends CP850-encoded bytes (PlainTextTicket::getEscPos()).
+  // Here we only guarantee that the code-page command is present at the
+  // start of the stream; we do NOT re-encode the text.
+  const startsWithCpCmd = rawBuffer.length >= 3 &&
     rawBuffer[0] === ESC && rawBuffer[1] === 0x74;
 
-  if (!hasCodePageCmd) {
+  if (!startsWithCpCmd) {
     return Buffer.concat([ESC_POS.INIT, ESC_POS.CP_850, rawBuffer]);
   }
   return rawBuffer;
@@ -295,12 +296,12 @@ app.post('/print', async (req, res) => {
 
     let rawBuffer = Buffer.from(dataBase64, 'base64');
 
-    // Auto-fix ESC/POS encoding if needed
+    // Ensure the ESC/POS stream selects CP850 at the start
     if (mode === 'escpos') {
       const originalLen = rawBuffer.length;
-      rawBuffer = prepareEscpos(rawBuffer, encoding);
+      rawBuffer = prepareEscpos(rawBuffer);
       if (rawBuffer.length !== originalLen) {
-        log(`ESC/POS auto-converted UTF-8->${encoding} (${originalLen} -> ${rawBuffer.length} bytes)`);
+        log(`ESC/POS CP850 prefix added (${originalLen} -> ${rawBuffer.length} bytes)`);
       }
     }
 

@@ -6,6 +6,9 @@
 - Print Server Node.js (localhost:9100), Vite + Tailwind CSS + AdminLTE
 - No broadcasting in dev (BROADCAST_DRIVER=log)
 
+## Code conventions
+- **Comentarios de código**: TODOS los comentarios (PHP, Blade, JS, CSS, comandos) deben escribirse en **español**, breves y descriptivos. Mantenerlo en los desarrollos y cambios futuros.
+
 ## Commands
 - `php artisan serve` — dev server
 - `php artisan migrate` — run pending migrations

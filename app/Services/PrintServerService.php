@@ -38,11 +38,6 @@ class PrintServerService
         return [];
     }
 
-    public function printPdf(Printer $printer, string $pdfBase64): bool
-    {
-        return $this->sendPrint($printer, $pdfBase64, 'pdf');
-    }
-
     public function printText(Printer $printer, string $text): bool
     {
         return $this->sendPrint($printer, $text, 'escpos');
