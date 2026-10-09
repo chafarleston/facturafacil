@@ -196,11 +196,12 @@ class PosController extends Controller
             try {
                 $printer = \App\Models\Printer::where('assigned_to', 'caja')->where('active', true)->first();
                 if ($printer) {
+                    $serverUrl = config('print-server.url', 'http://127.0.0.1:9100');
                     $http = \Illuminate\Support\Facades\Http::timeout(3);
                     if ($printer->type === 'network' && $printer->ip_address) {
-                        $http->get('http://localhost:9100/open-drawer', ['ip' => $printer->ip_address, 'port' => $printer->port]);
+                        $http->get($serverUrl . '/open-drawer', ['ip' => $printer->ip_address, 'port' => $printer->port]);
                     } else {
-                        $http->get('http://localhost:9100/open-drawer', ['printer' => $printer->printer_name]);
+                        $http->get($serverUrl . '/open-drawer', ['printer' => $printer->printer_name]);
                     }
                 }
             } catch (\Exception $e) {

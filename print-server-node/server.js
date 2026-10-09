@@ -167,6 +167,12 @@ async function getPrinters() {
 // ── Local RAW Printing ──
 async function printLocalRaw(printerName, dataBuffer) {
   const tmpFile = path.join(os.tmpdir(), `print_${Date.now()}_${Math.random().toString(36).slice(2)}.bin`);
+  // Sanitiza el nombre de la impresora: solo letras, dígitos, espacio, punto y guion
+  const safePrinter = String(printerName || '').replace(/[^\w .\-]/g, '').trim();
+
+  if (!safePrinter) {
+    throw new Error('Nombre de impresora no válido');
+  }
 
   try {
     fs.writeFileSync(tmpFile, dataBuffer);
@@ -176,19 +182,19 @@ async function printLocalRaw(printerName, dataBuffer) {
       if (!fs.existsSync(RAW_PRINT_PS1)) {
         throw new Error(`raw-print.ps1 not found at ${RAW_PRINT_PS1}. Place it next to server.js.`);
       }
-      const cmd = `powershell -NoProfile -ExecutionPolicy Bypass -File "${RAW_PRINT_PS1}" -printerName "${printerName}" -filePath "${tmpFile}"`;
+      const cmd = `powershell -NoProfile -ExecutionPolicy Bypass -File "${RAW_PRINT_PS1}" -printerName "${safePrinter}" -filePath "${tmpFile}"`;
       const { stdout } = await execAsync(cmd, { timeout: 15000 });
       const output = stdout.trim();
       if (output.startsWith('ERROR')) {
         throw new Error(output);
       }
-      log(`Printed OK to "${printerName}" via RAW (${dataBuffer.length} bytes)`);
+      log(`Printed OK to "${safePrinter}" via RAW (${dataBuffer.length} bytes)`);
       return { success: true, bytes: dataBuffer.length };
     } else {
       // Unix: use lp
-      const cmd = `lp -d "${printerName}" -o raw "${tmpFile}"`;
+      const cmd = `lp -d "${safePrinter}" -o raw "${tmpFile}"`;
       await execAsync(cmd, { timeout: 15000 });
-      log(`Printed OK to "${printerName}" via lp (${dataBuffer.length} bytes)`);
+      log(`Printed OK to "${safePrinter}" via lp (${dataBuffer.length} bytes)`);
       return { success: true, bytes: dataBuffer.length };
     }
   } finally {
@@ -294,7 +300,13 @@ app.post('/print', async (req, res) => {
       return res.status(400).json({ success: false, message: 'No print data provided' });
     }
 
-    let rawBuffer = Buffer.from(dataBase64, 'base64');
+    // Valida que el payload sea base64 válido antes de imprimir (evita basura)
+    const base64Clean = String(dataBase64).replace(/\s+/g, '');
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64Clean)) {
+      return res.status(400).json({ success: false, message: 'Invalid base64 print data' });
+    }
+
+    let rawBuffer = Buffer.from(base64Clean, 'base64');
 
     // Ensure the ESC/POS stream selects CP850 at the start
     if (mode === 'escpos') {

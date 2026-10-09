@@ -534,6 +534,7 @@
 @push('scripts')
 <script>
 const igvPercent = {{ $mainCompany->getActiveIgvPercent() }};
+const printServerUrl = @json(config('print-server.url', 'http://127.0.0.1:9100'));
 const productsData = @json($products->where('estado', 'ACTIVO'));
 const categoriesData = @json($categories);
 const customersData = @json($customers);
@@ -928,7 +929,7 @@ function openCashDrawer() {
         var body = 'mode=escpos&data=' + encodeURIComponent(config.data);
         if (config.printer) body += '&printer=' + encodeURIComponent(config.printer);
         else if (config.ip) { body += '&ip=' + config.ip + '&port=' + config.port; }
-        fetch('http://localhost:9100/print', {
+        fetch(printServerUrl + '/print', {
             method: 'POST',
             mode: 'no-cors',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

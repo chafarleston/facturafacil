@@ -853,6 +853,7 @@ let currentTableName = null;
 let orderModalOpen = false;
 const currentUserId = {{ auth()->id() }};
 const companyId = {{ $companyId }};
+const printServerUrl = @json(config('print-server.url', 'http://127.0.0.1:9100'));
 let productsData = @json($products);
 let customersData = @json($customers);
 let seriesData = @json($series);
@@ -1640,7 +1641,7 @@ function openCashDrawer() {
         var body = 'mode=escpos&data=' + encodeURIComponent(config.data);
         if (config.printer) body += '&printer=' + encodeURIComponent(config.printer);
         else if (config.ip) { body += '&ip=' + config.ip + '&port=' + config.port; }
-        fetch('http://localhost:9100/print', {
+        fetch(printServerUrl + '/print', {
             method: 'POST',
             mode: 'no-cors',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
