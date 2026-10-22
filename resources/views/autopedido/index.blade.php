@@ -92,8 +92,8 @@
     <div class="header">🍽️ Auto Pedido</div>
 
     <div class="search-bar">
-        <input type="text" class="search-input" id="searchInput" placeholder="Buscar producto..." readonly onfocus="openKeyboard(this)">
-        <button class="search-btn" onclick="openKeyboard(document.getElementById('searchInput'))"><i class="fas fa-keyboard"></i></button>
+        <input type="text" class="search-input" id="searchInput" placeholder="Buscar producto..." oninput="applyFilters()">
+        <button class="search-btn" onclick="toggleKeyboard(document.getElementById('searchInput'))"><i class="fas fa-keyboard"></i></button>
     </div>
 
     <div class="categories {{ $categoriesOnly ? 'categories-only' : '' }}" id="categoriesContainer">
@@ -381,6 +381,13 @@
             activeInput = input;
             document.getElementById('keyboard').classList.add('show');
             if (activeInput) activeInput.focus();
+        }
+        function toggleKeyboard(input) {
+            if (document.getElementById('keyboard').classList.contains('show')) {
+                closeKeyboard();
+            } else {
+                openKeyboard(input);
+            }
         }
         function closeKeyboard() {
             activeInput = null;
