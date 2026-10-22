@@ -23,7 +23,7 @@
       <form method="POST" action="/login">
         <input type="hidden" name="_token" value="{{ csrf_token() }}">
         <div class="input-group mb-3">
-          <input type="email" name="email" class="form-control" placeholder="Correo electrónico" required>
+          <input type="email" name="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email') }}" placeholder="Correo electrónico" required>
           <div class="input-group-append">
             <div class="input-group-text">
               <span class="fas fa-envelope"></span>
@@ -41,7 +41,7 @@
         <div class="row">
           <div class="col-8">
             <div class="icheck-primary">
-              <input type="checkbox" id="remember" name="remember">
+              <input type="checkbox" id="remember" name="remember" {{ old('remember') ? 'checked' : '' }}>
               <label for="remember">Recordarme</label>
             </div>
           </div>
@@ -53,9 +53,38 @@
     </div>
   </div>
 </div>
+@if($errors->any())
+<div class="modal fade" id="loginErrorModal" tabindex="-1" role="dialog" aria-labelledby="loginErrorModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-danger">
+        <h5 class="modal-title text-white" id="loginErrorModalLabel">
+          <i class="fas fa-exclamation-triangle"></i> Error de inicio de sesión
+        </h5>
+        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Cerrar">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        {{ $errors->first('email') ?: $errors->first('password') ?: 'No se pudo iniciar sesión. Verifique sus datos.' }}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Entendido</button>
+      </div>
+    </div>
+  </div>
+</div>
+@endif
+
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+@if($errors->any())
+$(function() {
+    $('#loginErrorModal').modal('show');
+});
+@endif
+
 function togglePassword() {
     var field = document.getElementById('passwordField');
     var icon = document.getElementById('eyeIcon');
