@@ -467,6 +467,19 @@
     }
     .aux-chip:hover { border-color: #aaa; background: #f5f5f5; }
     .aux-chip.selected { background: #e94560; color: #fff; border-color: #e94560; }
+
+    /* Teclado virtual para la búsqueda de productos */
+    .rest-kb-overlay { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 10060; background: #d1d5db; padding: 8px; box-shadow: 0 -2px 12px rgba(0,0,0,.2); }
+    .rest-kb-overlay.show { display: block; }
+    .rest-kb-row { display: flex; justify-content: center; gap: 4px; margin-bottom: 4px; }
+    .rest-kb-key { min-width: 44px; height: 48px; background: #fff; border: 1px solid #999; border-radius: 6px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,.15); user-select: none; }
+    .rest-kb-key:active { background: #e0e0e0; }
+    .rest-kb-wide { min-width: 76px; }
+    .rest-kb-space { min-width: 220px; }
+    .rest-kb-action { background: #e94560; color: #fff; border-color: #c23a51; }
+    @media (min-width: 900px) {
+        .rest-kb-overlay { max-width: 720px; left: 50%; transform: translateX(-50%); border-radius: 12px 12px 0 0; }
+    }
 </style>
 @endpush
 
@@ -616,10 +629,13 @@
             <small id="modalOrderNumber">Sin pedido</small>
         </div>
         <div style="flex:1; text-align:center; padding:0 10px;">
-            <div style="display:inline-block; position:relative; max-width:320px; width:100%;">
-                <i class="fas fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#999; font-size:12px;"></i>
-                <input type="text" id="productSearch" placeholder="Buscar producto..." oninput="searchProducts(this.value)" style="width:100%; padding:4px 10px 4px 26px; border:none; border-radius:15px; font-size:12px; outline:none; box-sizing:border-box; background:rgba(255,255,255,0.9);">
-            </div>
+                <div style="display:inline-block; position:relative; max-width:320px; width:100%;">
+                    <i class="fas fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#999; font-size:12px;"></i>
+                    <input type="text" id="productSearch" placeholder="Buscar producto..." oninput="searchProducts(this.value)" style="width:100%; padding:4px 32px 4px 26px; border:none; border-radius:15px; font-size:12px; outline:none; box-sizing:border-box; background:rgba(255,255,255,0.9);">
+                    <button type="button" onclick="toggleRestaurantKeyboard()" title="Teclado virtual" style="position:absolute; right:4px; top:50%; transform:translateY(-50%); border:none; background:transparent; color:#666; cursor:pointer; padding:2px 6px; font-size:14px;">
+                        <i class="fas fa-keyboard"></i>
+                    </button>
+                </div>
         </div>
         <button class="btn-close-modal" onclick="closeModal()">&#8592;</button>
     </div>
@@ -842,6 +858,58 @@
     </div>
 </div>
 
+{{-- Teclado virtual para la búsqueda de productos --}}
+<div class="rest-kb-overlay" id="restaurantKeyboard">
+    <div class="rest-kb-row">
+        <div class="rest-kb-key" onclick="restKbPressKey('1')">1</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('2')">2</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('3')">3</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('4')">4</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('5')">5</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('6')">6</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('7')">7</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('8')">8</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('9')">9</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('0')">0</div>
+        <div class="rest-kb-key rest-kb-wide rest-kb-action" onclick="restKbPressBackspace()">⌫</div>
+    </div>
+    <div class="rest-kb-row">
+        <div class="rest-kb-key" onclick="restKbPressKey('Q')">Q</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('W')">W</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('E')">E</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('R')">R</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('T')">T</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('Y')">Y</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('U')">U</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('I')">I</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('O')">O</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('P')">P</div>
+    </div>
+    <div class="rest-kb-row">
+        <div class="rest-kb-key" onclick="restKbPressKey('A')">A</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('S')">S</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('D')">D</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('F')">F</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('G')">G</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('H')">H</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('J')">J</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('K')">K</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('L')">L</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('Ñ')">Ñ</div>
+    </div>
+    <div class="rest-kb-row">
+        <div class="rest-kb-key" onclick="restKbPressKey('Z')">Z</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('X')">X</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('C')">C</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('V')">V</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('B')">B</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('N')">N</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('M')">M</div>
+        <div class="rest-kb-key rest-kb-space" onclick="restKbPressKey(' ')">Espacio</div>
+        <div class="rest-kb-key rest-kb-wide rest-kb-action" onclick="closeRestaurantKeyboard()"><i class="fas fa-check"></i> OK</div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -849,6 +917,49 @@
 let currentOrderId = null;
 let currentTableId = null;
 let currentTableName = null;
+
+// Teclado virtual para el buscador de productos
+let restKbActiveInput = null;
+
+function openRestaurantKeyboard(input) {
+    restKbActiveInput = input;
+    document.getElementById('restaurantKeyboard').classList.add('show');
+    if (restKbActiveInput) restKbActiveInput.focus();
+}
+
+function closeRestaurantKeyboard() {
+    restKbActiveInput = null;
+    document.getElementById('restaurantKeyboard').classList.remove('show');
+}
+
+function toggleRestaurantKeyboard() {
+    const kb = document.getElementById('restaurantKeyboard');
+    if (kb.classList.contains('show')) {
+        closeRestaurantKeyboard();
+    } else {
+        openRestaurantKeyboard(document.getElementById('productSearch'));
+    }
+}
+
+function restKbPressKey(k) {
+    if (!restKbActiveInput) return;
+    const start = restKbActiveInput.selectionStart;
+    const end = restKbActiveInput.selectionEnd;
+    restKbActiveInput.value = restKbActiveInput.value.substring(0, start) + k + restKbActiveInput.value.substring(end);
+    restKbActiveInput.selectionStart = restKbActiveInput.selectionEnd = start + k.length;
+    restKbActiveInput.focus();
+    if (restKbActiveInput.id === 'productSearch') searchProducts(restKbActiveInput.value);
+}
+
+function restKbPressBackspace() {
+    if (!restKbActiveInput) return;
+    const start = restKbActiveInput.selectionStart;
+    if (start === 0) return;
+    restKbActiveInput.value = restKbActiveInput.value.substring(0, start - 1) + restKbActiveInput.value.substring(start);
+    restKbActiveInput.selectionStart = restKbActiveInput.selectionEnd = start - 1;
+    restKbActiveInput.focus();
+    if (restKbActiveInput.id === 'productSearch') searchProducts(restKbActiveInput.value);
+}
 let orderModalOpen = false;
 const currentUserId = {{ auth()->id() }};
 const companyId = {{ $companyId }};
@@ -997,10 +1108,12 @@ function closeModal() {
     document.getElementById('customerModalOverlay').style.display = 'none';
     document.getElementById('moveTableOverlay').style.display = 'none';
     document.getElementById('prebillOverlay').style.display = 'none';
+    closeRestaurantKeyboard();
     resetTableStyle(currentTableId);
 }
 
 function switchTab(tab) {
+    closeRestaurantKeyboard();
     document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
     document.querySelector(`.modal-tab[data-tab="${tab}"]`).classList.add('active');
     
@@ -1222,6 +1335,7 @@ function loadAuxiliaryItems() {
 }
 
 function addProductToOrder(productId) {
+    closeRestaurantKeyboard();
     pendingProductId = productId;
     const product = productsData.find(p => p.id === productId);
     document.getElementById('modalProductName').textContent = product.descripcion;
