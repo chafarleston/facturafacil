@@ -48,6 +48,24 @@
                 </div>
             </form>
         </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-calculator"></i> Precuadre</h3>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">
+                    Habilita el botón <b>Precuadre</b> en Caja, que imprime un resumen de la caja abierta sin cerrarla.
+                </p>
+                <form action="{{ route('precuadre.toggle') }}" method="POST" class="mb-0">
+                    @csrf
+                    <button type="submit" class="btn btn-{{ $precuadre ? 'warning' : 'secondary' }}">
+                        <i class="fas fa-{{ $precuadre ? 'toggle-on' : 'toggle-off' }}"></i>
+                        {{ $precuadre ? 'Precuadre: Activado' : 'Precuadre: Desactivado' }}
+                    </button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 @endsection

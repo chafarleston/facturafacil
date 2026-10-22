@@ -9,6 +9,8 @@ class PrecuadreSettingController extends Controller
 {
     public function toggle(Request $request)
     {
+        $this->authorize('permission', 'manage_report_settings');
+
         Setting::setPrecuadreEnabled(! Setting::isPrecuadreEnabled());
 
         $enabled = Setting::isPrecuadreEnabled();

@@ -211,7 +211,7 @@ $__kdsActive = \App\Models\Company::orderMode() === 'kds';
 
             @can('permission', 'view_restaurant')
             <li class="nav-item">
-              <a href="#" class="nav-link {{ request()->routeIs('restaurant.*') && !request()->routeIs('restaurant.kioskOrders') ? 'active' : '' }}">
+              <a href="#" class="nav-link {{ (request()->routeIs('restaurant.*') && !request()->routeIs('restaurant.kioskOrders')) || request()->routeIs('restaurant-settings.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-utensils"></i>
                 <p>Restaurante<i class="fas fa-angle-left right"></i></p>
               </a>
@@ -229,6 +229,7 @@ $__kdsActive = \App\Models\Company::orderMode() === 'kds';
                 @can('permission', 'view_order_mode')
                 <li class="nav-item"><a href="{{ route('restaurant.mode') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Modo de Pedidos</p></a></li>
                 @endcan
+                <li class="nav-item"><a href="{{ route('restaurant-settings.edit') }}" class="nav-link {{ request()->routeIs('restaurant-settings.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Configuración Restaurante</p></a></li>
               </ul>
             </li>
 

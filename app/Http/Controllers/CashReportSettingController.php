@@ -14,8 +14,9 @@ class CashReportSettingController extends Controller
 
         $companyId = $request->company_id ?? Company::getMainCompany()->id;
         $config = CashReportSetting::where('company_id', $companyId)->first();
+        $precuadre = \App\Models\Setting::isPrecuadreEnabled();
 
-        return view('cashreportsettings.edit', compact('companyId', 'config'));
+        return view('cashreportsettings.edit', compact('companyId', 'config', 'precuadre'));
     }
 
     public function update(Request $request)

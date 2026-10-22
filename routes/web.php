@@ -90,7 +90,6 @@ Route::middleware('auth')->group(function () {
         Route::resource('companies', CompanyController::class);
         Route::post('/companies/{company}/certificate', [CompanyController::class, 'updateCertificate'])->name('companies.certificate');
         Route::post('/companies/{company}/set-main', [CompanyController::class, 'setMain'])->name('companies.setMain');
-        Route::post('/precuadre/toggle', [PrecuadreSettingController::class, 'toggle'])->name('precuadre.toggle');
         Route::get('/catalog-images', [\App\Http\Controllers\CatalogImageSettingController::class, 'edit'])->name('catalog-images.edit');
         Route::post('/catalog-images', [\App\Http\Controllers\CatalogImageSettingController::class, 'update'])->name('catalog-images.update');
         Route::resource('customers', CustomerController::class)->parameters(['customers' => 'customer']);
@@ -162,6 +161,7 @@ Route::delete('/cash-movements/{cashMovement}', [\App\Http\Controllers\CashMovem
 // Configuración de reporte de caja
 Route::get('/cash-report-settings', [\App\Http\Controllers\CashReportSettingController::class, 'edit'])->name('cash-report-settings.edit');
 Route::post('/cash-report-settings', [\App\Http\Controllers\CashReportSettingController::class, 'update'])->name('cash-report-settings.update');
+Route::post('/precuadre/toggle', [PrecuadreSettingController::class, 'toggle'])->name('precuadre.toggle');
     
     Route::get('/invoices/{invoice}/send', [InvoiceController::class, 'sendToSunat'])->name('invoices.send');
     Route::get('/invoices/nv', [InvoiceController::class, 'nvIndex'])->name('invoices.nv');
@@ -211,6 +211,10 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     Route::post('/kiosk-settings', [\App\Http\Controllers\KioskSettingController::class, 'update'])->name('kiosk-settings.update');
 
     Route::get('/restaurant/mode', [RestaurantController::class, 'modeIndex'])->name('restaurant.mode');
+
+    // Configuración del Restaurante (visualización y modo de pedidos)
+    Route::get('/restaurant-settings', [\App\Http\Controllers\RestaurantSettingController::class, 'edit'])->name('restaurant-settings.edit');
+    Route::post('/restaurant-settings', [\App\Http\Controllers\RestaurantSettingController::class, 'update'])->name('restaurant-settings.update');
     Route::get('/restaurant/kitchen', [RestaurantController::class, 'kitchenIndex'])->name('restaurant.kitchen');
     Route::get('/restaurant/kitchen/cocina', function () { return redirect('/restaurant/kitchen?kds=cocina'); })->name('restaurant.kitchen.cocina');
     Route::get('/restaurant/kitchen/cocina2', function () { return redirect('/restaurant/kitchen?kds=cocina2'); })->name('restaurant.kitchen.cocina2');
