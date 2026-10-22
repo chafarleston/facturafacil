@@ -693,11 +693,10 @@
     
     <div class="modal-actions">
         @if($orderMode === 'print')
-        <button class="btn-action btn-send" onclick="sendToKitchen()"><i class="fas fa-paper-plane"></i><br>Enviar</button>
+        <button class="btn-action btn-kitchen" onclick="sendToKitchen()"><i class="fas fa-print"></i><br>Imprimir</button>
         <button class="btn-action btn-prebill" onclick="showPrebillOptions(event)" id="btnPrebill" disabled><i class="fas fa-receipt"></i><br>Precuenta</button>
         @else
-        <button class="btn-action btn-kitchen" onclick="sendToKitchen()"><i class="fas fa-paper-plane"></i><br>Cocina</button>
-        <button class="btn-action btn-send" onclick="printKitchenTicket()"><i class="fas fa-paper-plane"></i><br>Enviar</button>
+        <button class="btn-action btn-kitchen" onclick="sendToKitchen()"><i class="fas fa-paper-plane"></i><br>Enviar a KDS</button>
         <button class="btn-action btn-prebill" onclick="showPrebillOptions(event)" id="btnPrebill" disabled><i class="fas fa-receipt"></i><br>Precuenta</button>
         <button class="btn-action btn-close-order" onclick="closeTable()"><i class="fas fa-check"></i><br>Cerrar</button>
         @endif
@@ -1482,11 +1481,6 @@ function sendToKitchen() {
             showError('Error al enviar a cocina');
         });
     });
-}
-
-function printKitchenTicket() {
-    if (!currentOrderId) return;
-    window.open('/restaurant/orders/' + currentOrderId + '/print-kitchen', '_blank');
 }
 
 function printPrebill() {
