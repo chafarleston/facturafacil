@@ -208,7 +208,43 @@ $__kdsActive = \App\Models\Company::orderMode() === 'kds';
               </ul>
             </li>
             @endif
-            
+
+            @can('permission', 'view_restaurant')
+            <li class="nav-item">
+              <a href="#" class="nav-link {{ request()->routeIs('restaurant.*') && !request()->routeIs('restaurant.kioskOrders') ? 'active' : '' }}">
+                <i class="nav-icon fas fa-utensils"></i>
+                <p>Restaurante<i class="fas fa-angle-left right"></i></p>
+              </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item"><a href="{{ route('restaurant.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>POS Restaurante</p></a></li>
+                @can('permission', 'view_kitchen')
+                @if($__kdsActive)
+                <li class="nav-item"><a href="{{ route('restaurant.kitchen.cocina') }}" class="nav-link" target="_blank"><i class="far fa-circle nav-icon"></i><p>KDS Cocina</p></a></li>
+                <li class="nav-item"><a href="{{ route('restaurant.kitchen.cocina2') }}" class="nav-link" target="_blank"><i class="far fa-circle nav-icon"></i><p>KDS Cocina 2</p></a></li>
+                <li class="nav-item"><a href="{{ route('restaurant.kitchen.bar') }}" class="nav-link" target="_blank"><i class="far fa-circle nav-icon"></i><p>KDS Bar</p></a></li>
+                @endif
+                @endcan
+                <li class="nav-item"><a href="{{ route('restaurant.floors.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Pisos</p></a></li>
+    <li class="nav-item"><a href="{{ route('auxiliary-items.index') }}" class="nav-link {{ request()->routeIs('auxiliary-items.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Elementos Auxiliares</p></a></li>
+                @can('permission', 'view_order_mode')
+                <li class="nav-item"><a href="{{ route('restaurant.mode') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Modo de Pedidos</p></a></li>
+                @endcan
+              </ul>
+            </li>
+
+            <li class="nav-item">
+              <a href="#" class="nav-link {{ request()->routeIs('restaurant.kioskOrders') || request()->routeIs('kiosk-settings.*') ? 'active' : '' }}">
+                <i class="nav-icon fas fa-desktop"></i>
+                <p>Kiosko<i class="fas fa-angle-left right"></i></p>
+              </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item"><a href="{{ route('restaurant.kioskOrders') }}" class="nav-link {{ request()->routeIs('restaurant.kioskOrders') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Pedidos Kiosko</p></a></li>
+                <li class="nav-item"><a href="{{ route('autopedido.index') }}" class="nav-link" target="_blank"><i class="far fa-circle nav-icon"></i><p>AutoPedido</p></a></li>
+                <li class="nav-item"><a href="{{ route('kiosk-settings.edit') }}" class="nav-link {{ request()->routeIs('kiosk-settings.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Configuración Kiosko</p></a></li>
+              </ul>
+            </li>
+            @endcan
+
             @can('permission', 'view_cashregisters')
             <li class="nav-item">
               <a href="#" class="nav-link {{ request()->routeIs('cashregisters.*') || request()->routeIs('cash-movements.*') || request()->routeIs('cash-report-settings.*') ? 'active' : '' }}">
@@ -228,6 +264,30 @@ $__kdsActive = \App\Models\Company::orderMode() === 'kds';
                 <li class="nav-item">
                   <a href="{{ route('cash-report-settings.edit') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Configuración de Reporte</p></a>
                 </li>
+                @endcan
+              </ul>
+            </li>
+            @endcan
+
+            @can('permission', 'view_pos')
+            <li class="nav-item">
+              <a href="{{ route('pos.index') }}" class="nav-link {{ request()->routeIs('pos.*') ? 'active' : '' }}">
+                <i class="nav-icon fas fa-shopping-cart"></i>
+                <p>Punto de Venta</p>
+              </a>
+            </li>
+            @endcan
+
+            @can('permission', 'view_printers')
+            <li class="nav-item">
+              <a href="#" class="nav-link {{ request()->routeIs('printers.*') ? 'active' : '' }}">
+                <i class="nav-icon fas fa-print"></i>
+                <p>Impresoras<i class="fas fa-angle-left right"></i></p>
+              </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item"><a href="{{ route('printers.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Configuración</p></a></li>
+                @can('permission', 'view_print_queue')
+                <li class="nav-item"><a href="{{ route('printers.queue') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Cola de Impresión</p></a></li>
                 @endcan
               </ul>
             </li>
@@ -253,56 +313,6 @@ $__kdsActive = \App\Models\Company::orderMode() === 'kds';
                 <li class="nav-item"><a href="{{ route('attendance.logs') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Marcaciones</p></a></li>
                 @can('permission', 'view_attendance_reports')
                 <li class="nav-item"><a href="{{ route('attendance.reports') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Reportes</p></a></li>
-                @endcan
-              </ul>
-            </li>
-            @endcan
-            
-            @can('permission', 'view_pos')
-            <li class="nav-item">
-              <a href="{{ route('pos.index') }}" class="nav-link {{ request()->routeIs('pos.*') ? 'active' : '' }}">
-                <i class="nav-icon fas fa-shopping-cart"></i>
-                <p>Punto de Venta</p>
-              </a>
-            </li>
-            @endcan
-
-            @can('permission', 'view_restaurant')
-            <li class="nav-item">
-              <a href="#" class="nav-link {{ request()->routeIs('restaurant.*') ? 'active' : '' }}">
-                <i class="nav-icon fas fa-utensils"></i>
-                <p>Restaurante<i class="fas fa-angle-left right"></i></p>
-              </a>
-              <ul class="nav nav-treeview">
-                <li class="nav-item"><a href="{{ route('restaurant.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>POS Restaurante</p></a></li>
-                @can('permission', 'view_kitchen')
-                @if($__kdsActive)
-                <li class="nav-item"><a href="{{ route('restaurant.kitchen.cocina') }}" class="nav-link" target="_blank"><i class="far fa-circle nav-icon"></i><p>KDS Cocina</p></a></li>
-                <li class="nav-item"><a href="{{ route('restaurant.kitchen.cocina2') }}" class="nav-link" target="_blank"><i class="far fa-circle nav-icon"></i><p>KDS Cocina 2</p></a></li>
-                <li class="nav-item"><a href="{{ route('restaurant.kitchen.bar') }}" class="nav-link" target="_blank"><i class="far fa-circle nav-icon"></i><p>KDS Bar</p></a></li>
-                @endif
-                @endcan
-                <li class="nav-item"><a href="{{ route('restaurant.floors.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Pisos</p></a></li>
-    <li class="nav-item"><a href="{{ route('auxiliary-items.index') }}" class="nav-link {{ request()->routeIs('auxiliary-items.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Elementos Auxiliares</p></a></li>
-                @can('permission', 'view_order_mode')
-                <li class="nav-item"><a href="{{ route('restaurant.mode') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Modo de Pedidos</p></a></li>
-                @endcan
-                <li class="nav-item"><a href="{{ route('restaurant.kioskOrders') }}" class="nav-link {{ request()->routeIs('restaurant.kioskOrders') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Pedidos Kiosko</p></a></li>
-                <li class="nav-item"><a href="{{ route('autopedido.index') }}" class="nav-link" target="_blank"><i class="far fa-circle nav-icon"></i><p>🖥️ Kiosko (Pantalla)</p></a></li>
-              </ul>
-            </li>
-            @endcan
-
-            @can('permission', 'view_printers')
-            <li class="nav-item">
-              <a href="#" class="nav-link {{ request()->routeIs('printers.*') ? 'active' : '' }}">
-                <i class="nav-icon fas fa-print"></i>
-                <p>Impresoras<i class="fas fa-angle-left right"></i></p>
-              </a>
-              <ul class="nav nav-treeview">
-                <li class="nav-item"><a href="{{ route('printers.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Configuración</p></a></li>
-                @can('permission', 'view_print_queue')
-                <li class="nav-item"><a href="{{ route('printers.queue') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Cola de Impresión</p></a></li>
                 @endcan
               </ul>
             </li>
