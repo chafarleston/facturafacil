@@ -47,6 +47,36 @@ class Setting extends Model
         static::set('precuadre_enabled', $enabled ? '1' : '0');
     }
 
+    public static function isWebsiteEnabled(): bool
+    {
+        return static::get('website_enabled', '0') === '1';
+    }
+
+    public static function setWebsiteEnabled(bool $enabled): void
+    {
+        static::set('website_enabled', $enabled ? '1' : '0');
+    }
+
+    public static function web(string $key, $default = null)
+    {
+        return static::get('web_' . $key, $default);
+    }
+
+    public static function setWeb(string $key, $value): void
+    {
+        static::set('web_' . $key, $value);
+    }
+
+    public static function pos(string $key, $default = null)
+    {
+        return static::get('pos_' . $key, $default);
+    }
+
+    public static function setPos(string $key, $value): void
+    {
+        static::set('pos_' . $key, $value);
+    }
+
     public static function showProductImages(string $module): bool
     {
         return static::get('img_products_' . $module, '0') === '1';

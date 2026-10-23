@@ -96,7 +96,7 @@ $__kdsActive = \App\Models\Company::orderMode() === 'kds';
             
             @can('permission', 'view_companies')
             <li class="nav-item">
-              <a href="#" class="nav-link {{ request()->routeIs('companies.*') || request()->routeIs('series.*') || request()->routeIs('users.*') || request()->routeIs('roles.*') || request()->routeIs('permissions.*') || request()->routeIs('catalog-images.*') ? 'active' : '' }}">
+              <a href="#" class="nav-link {{ request()->routeIs('companies.*') || request()->routeIs('series.*') || request()->routeIs('users.*') || request()->routeIs('roles.*') || request()->routeIs('permissions.*') || request()->routeIs('catalog-images.*') || request()->routeIs('website.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-building"></i>
                 <p>Empresa<i class="fas fa-angle-left right"></i></p>
               </a>
@@ -104,7 +104,7 @@ $__kdsActive = \App\Models\Company::orderMode() === 'kds';
                 <li class="nav-item">
                   <a href="{{ route('companies.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Datos de Empresa</p></a>
                   <a href="{{ route('backup.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Backup DB</p></a>
-                  <a href="{{ route('catalog-images.edit') }}" class="nav-link {{ request()->routeIs('catalog-images.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Imágenes de Venta</p></a>
+                  <a href="{{ route('website.edit') }}" class="nav-link {{ request()->routeIs('website.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Configuración de Página Web</p></a>
                 </li>
                 @can('permission', 'view_series')
                 <li class="nav-item">
@@ -272,10 +272,16 @@ $__kdsActive = \App\Models\Company::orderMode() === 'kds';
 
             @can('permission', 'view_pos')
             <li class="nav-item">
-              <a href="{{ route('pos.index') }}" class="nav-link {{ request()->routeIs('pos.*') ? 'active' : '' }}">
+              <a href="#" class="nav-link {{ request()->routeIs('pos.*') || request()->routeIs('pos-settings.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-shopping-cart"></i>
-                <p>Punto de Venta</p>
+                <p>Punto de Venta<i class="fas fa-angle-left right"></i></p>
               </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item"><a href="{{ route('pos.index') }}" class="nav-link {{ request()->routeIs('pos.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>POS</p></a></li>
+                @if(auth()->user()->isAdmin() || auth()->user()->isSuperAdmin() || auth()->user()->isCashier())
+                <li class="nav-item"><a href="{{ route('pos-settings.edit') }}" class="nav-link {{ request()->routeIs('pos-settings.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Configuración de Punto de Venta</p></a></li>
+                @endif
+              </ul>
             </li>
             @endcan
 

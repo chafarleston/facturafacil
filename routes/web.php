@@ -20,6 +20,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SunatPadronController;
 use App\Http\Controllers\ThemeController;
+use App\Http\Controllers\WebsiteController;
 use App\Http\Controllers\UbigeoController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\PosController;
@@ -33,9 +34,7 @@ use App\Http\Controllers\Restaurant\FloorController;
 use App\Http\Controllers\Restaurant\TableController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return redirect('/login');
-});
+Route::get('/', [WebsiteController::class, 'index'])->name('home');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth'])->name('dashboard');
 Route::post('/theme', [ThemeController::class, 'change'])->name('theme.change')->middleware('auth');
@@ -92,6 +91,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/companies/{company}/set-main', [CompanyController::class, 'setMain'])->name('companies.setMain');
         Route::get('/catalog-images', [\App\Http\Controllers\CatalogImageSettingController::class, 'edit'])->name('catalog-images.edit');
         Route::post('/catalog-images', [\App\Http\Controllers\CatalogImageSettingController::class, 'update'])->name('catalog-images.update');
+        Route::post('/website/toggle', [WebsiteController::class, 'toggle'])->name('website.toggle');
+        Route::get('/website-settings', [WebsiteController::class, 'edit'])->name('website.edit');
+        Route::post('/website-settings', [WebsiteController::class, 'update'])->name('website.update');
         Route::resource('customers', CustomerController::class)->parameters(['customers' => 'customer']);
         Route::get('/products/export', [ProductController::class, 'export'])->name('products.export');
         Route::get('/products/import', [ProductController::class, 'importForm'])->name('products.import.form');
@@ -199,6 +201,10 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     Route::post('/pos/sunat/{id}', [PosController::class, 'sendToSunat'])->name('pos.sunat');
     Route::get('/pos/print/{id}/{format}', [PosController::class, 'printInvoice'])->name('pos.print');
     Route::post('/pos/open-drawer', [PosController::class, 'openDrawer'])->name('pos.openDrawer');
+
+    // Configuración del Punto de Venta
+    Route::get('/pos-settings', [\App\Http\Controllers\PosSettingController::class, 'edit'])->name('pos-settings.edit');
+    Route::post('/pos-settings', [\App\Http\Controllers\PosSettingController::class, 'update'])->name('pos-settings.update');
 
     // Restaurant Routes
     Route::get('/restaurant', [RestaurantController::class, 'index'])->name('restaurant.index');

@@ -404,9 +404,9 @@
                 <div style="flex: 1;">
                     <label>Tipo Documento</label>
                     <select id="documentType" class="form-control form-control-sm" onchange="updateSerieByType()">
-                        <option value="03">BOLETA</option>
-                        <option value="01">FACTURA</option>
-                        <option value="NV">NOTA DE VENTA</option>
+                        <option value="03" {{ $defaultDocumentType === '03' ? 'selected' : '' }}>BOLETA</option>
+                        <option value="01" {{ $defaultDocumentType === '01' ? 'selected' : '' }}>FACTURA</option>
+                        <option value="NV" {{ $defaultDocumentType === 'NV' ? 'selected' : '' }}>NOTA DE VENTA</option>
                     </select>
                 </div>
                 <div style="flex: 1;">
@@ -419,12 +419,12 @@
                 <div style="flex: 1;">
                     <label>Metodo de Pago</label>
                     <select id="paymentMethod" class="form-control form-control-sm">
-                        <option value="EFECTIVO">EFECTIVO</option>
-                        <option value="TARJETA">TARJETA</option>
-                        <option value="TRANSFERENCIA">TRANSFERENCIA</option>
-                        <option value="YAPE">YAPE</option>
-                        <option value="PLIN">PLIN</option>
-                        <option value="MIXTO">MIXTO</option>
+                        <option value="EFECTIVO" {{ $defaultPaymentMethod === 'EFECTIVO' ? 'selected' : '' }}>EFECTIVO</option>
+                        <option value="TARJETA" {{ $defaultPaymentMethod === 'TARJETA' ? 'selected' : '' }}>TARJETA</option>
+                        <option value="TRANSFERENCIA" {{ $defaultPaymentMethod === 'TRANSFERENCIA' ? 'selected' : '' }}>TRANSFERENCIA</option>
+                        <option value="YAPE" {{ $defaultPaymentMethod === 'YAPE' ? 'selected' : '' }}>YAPE</option>
+                        <option value="PLIN" {{ $defaultPaymentMethod === 'PLIN' ? 'selected' : '' }}>PLIN</option>
+                        <option value="MIXTO" {{ $defaultPaymentMethod === 'MIXTO' ? 'selected' : '' }}>MIXTO</option>
                     </select>
                 </div>
                 <div style="flex: 1;">
@@ -541,6 +541,8 @@ const customersData = @json($customers);
 const seriesData = @json($series);
 const showProductImages = {{ $showProductImages ? 'true' : 'false' }};
 const showCategoryImages = {{ $showCategoryImages ? 'true' : 'false' }};
+const defaultDocumentType = @json($defaultDocumentType);
+const defaultPaymentMethod = @json($defaultPaymentMethod);
 
 // === MULTI-TAB SYSTEM ===
 let saleTabs = [];
@@ -579,8 +581,8 @@ function addNewTab() {
         items: [],
         customerId: null,
         customerName: '',
-        documentType: 'NV',
-        paymentMethod: 'EFECTIVO',
+        documentType: defaultDocumentType,
+        paymentMethod: defaultPaymentMethod,
         createdAt: new Date().toISOString()
     };
     nextTabId++;
@@ -607,8 +609,8 @@ function switchToTab(tabId) {
     // Restore tab state to inputs
     document.getElementById('customerId').value = tab.customerId || '';
     document.getElementById('customerSearch').value = tab.customerName || '';
-    document.getElementById('documentType').value = tab.documentType || 'NV';
-    document.getElementById('paymentMethod').value = tab.paymentMethod || 'EFECTIVO';
+    document.getElementById('documentType').value = tab.documentType || defaultDocumentType;
+    document.getElementById('paymentMethod').value = tab.paymentMethod || defaultPaymentMethod;
     updateSerieByType();
     
     renderTabs();
@@ -630,8 +632,8 @@ function closeTab(tabId) {
             activeTabId = null;
             document.getElementById('customerId').value = '';
             document.getElementById('customerSearch').value = '';
-            document.getElementById('documentType').value = 'NV';
-            document.getElementById('paymentMethod').value = 'EFECTIVO';
+            document.getElementById('documentType').value = defaultDocumentType;
+            document.getElementById('paymentMethod').value = defaultPaymentMethod;
             updateSerieByType();
             renderTabs();
             renderSaleItems();

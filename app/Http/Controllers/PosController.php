@@ -50,8 +50,10 @@ class PosController extends Controller
         
         $showProductImages = \App\Models\Setting::showProductImages('pos');
         $showCategoryImages = \App\Models\Setting::showCategoryImages('pos');
+        $defaultDocumentType = \App\Models\Setting::pos('default_document_type', '03');
+        $defaultPaymentMethod = \App\Models\Setting::pos('default_payment_method', 'EFECTIVO');
 
-        return view('pos.index', compact('categories', 'products', 'customers', 'series', 'cajaAbierta', 'mainCompany', 'showProductImages', 'showCategoryImages'));
+        return view('pos.index', compact('categories', 'products', 'customers', 'series', 'cajaAbierta', 'mainCompany', 'showProductImages', 'showCategoryImages', 'defaultDocumentType', 'defaultPaymentMethod'));
     }
     
     public function store(Request $request)
@@ -192,7 +194,7 @@ class PosController extends Controller
         $cajaAbierta->save();
 
         // Abrir cajón automáticamente en pagos en efectivo (necesita dar vuelto)
-        if ($paymentMethod === 'EFECTIVO') {
+        if ($paymentMethod === 'EFECTIVO' && \App\Models\Setting::pos('open_drawer_cash', '1') === '1') {
             try {
                 $printer = \App\Models\Printer::where('assigned_to', 'caja')->where('active', true)->first();
                 if ($printer) {
