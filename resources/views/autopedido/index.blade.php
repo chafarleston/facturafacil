@@ -82,6 +82,16 @@
         .kb-key-action { background: #e94560; color: #fff; border-color: #c23a51; }
         .kb-row-top { margin-bottom: 4px; }
 
+        .delivery-type-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 15px; background: #fff; border-bottom: 1px solid #eee; }
+        .delivery-type-label { font-size: 13px; color: #666; font-weight: 600; }
+        .delivery-type-btn { padding: 9px 18px; border: 2px solid #ddd; background: #fff; border-radius: 25px; font-size: 15px; cursor: pointer; transition: all .2s; }
+        .delivery-type-btn.active { background: #e94560; border-color: #e94560; color: #fff; }
+        .delivery-type-hint { font-size: 12px; color: #999; }
+        .delivery-label { display: block; font-size: 13px; color: #555; margin: 12px 0 4px; font-weight: 600; }
+        .delivery-input { width: 100%; padding: 12px 14px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; outline: none; }
+        .delivery-input:focus { border-color: #e94560; }
+        .delivery-kb-btn { width: 100%; margin-top: 10px; padding: 10px; border: 1px solid #ddd; background: #f8f8f8; border-radius: 10px; font-size: 14px; color: #555; cursor: pointer; }
+
         @media (min-width: 768px) {
             .products { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
             .keyboard-overlay { max-width: 600px; left: 50%; transform: translateX(-50%); border-radius: 12px 12px 0 0; }
@@ -94,6 +104,13 @@
     <div class="search-bar">
         <input type="text" class="search-input" id="searchInput" placeholder="Buscar producto..." oninput="applyFilters()">
         <button class="search-btn" onclick="toggleKeyboard(document.getElementById('searchInput'))"><i class="fas fa-keyboard"></i></button>
+    </div>
+
+    <div class="delivery-type-bar">
+        <span class="delivery-type-label"><i class="fas fa-bag-shopping"></i> Tipo de pedido:</span>
+        <button type="button" class="delivery-type-btn active" id="btnTypeLocal" onclick="setDeliveryType('local')"><i class="fas fa-store"></i> Local</button>
+        <button type="button" class="delivery-type-btn" id="btnTypeWeb" onclick="setDeliveryType('web')"><i class="fas fa-motorcycle"></i> Delivery (Web)</button>
+        <span class="delivery-type-hint" id="deliveryTypeHint"></span>
     </div>
 
     <div class="categories {{ $categoriesOnly ? 'categories-only' : '' }}" id="categoriesContainer">
@@ -148,6 +165,26 @@
                 <button class="btn-cancel-modal" onclick="closeProductModal()">Cancelar</button>
                 <button class="btn-add-cart" onclick="confirmAddToCart()">Agregar al Carrito</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Delivery Modal -->
+    <div class="product-modal" id="deliveryModal" style="z-index:60;">
+        <div class="product-modal-content">
+            <h3><i class="fas fa-motorcycle"></i> Datos de Delivery</h3>
+            <p style="font-size:14px;color:#666;margin-bottom:10px;">Completa tus datos para el envío.</p>
+            <label class="delivery-label" for="deliveryName">Nombres y apellidos *</label>
+            <input type="text" id="deliveryName" class="delivery-input" placeholder="Nombres y apellidos" onfocus="focusDeliveryInput(this)">
+            <label class="delivery-label" for="deliveryAddress">Dirección de delivery *</label>
+            <input type="text" id="deliveryAddress" class="delivery-input" placeholder="Dirección de entrega" onfocus="focusDeliveryInput(this)">
+            <label class="delivery-label" for="deliveryPhone">Número de contacto *</label>
+            <input type="tel" id="deliveryPhone" class="delivery-input" placeholder="Número de contacto" onfocus="focusDeliveryInput(this)">
+            <div id="deliveryError" style="display:none;color:#dc3545;font-size:14px;margin-top:10px;"></div>
+            <div class="modal-btns">
+                <button type="button" class="btn-cancel-modal" onclick="closeDeliveryModal()">Cancelar</button>
+                <button type="button" class="btn-add-cart" onclick="confirmDelivery()"><i class="fas fa-check"></i> Confirmar pedido</button>
+            </div>
+            <button type="button" class="delivery-kb-btn" onclick="toggleKeyboard(activeInput || document.getElementById('deliveryName'))"><i class="fas fa-keyboard"></i> Teclado virtual</button>
         </div>
     </div>
 
@@ -412,12 +449,78 @@
             if (activeInput.id === 'searchInput') applyFilters();
         }
 
-        /* Confirm order */
+        /* Tipo de pedido y confirmación */
+        let deliveryType = 'local';
+
+        function setDeliveryType(type) {
+            deliveryType = type;
+            document.getElementById('btnTypeLocal').classList.toggle('active', type === 'local');
+            document.getElementById('btnTypeWeb').classList.toggle('active', type === 'web');
+            document.getElementById('deliveryTypeHint').textContent = type === 'web'
+                ? 'Se pedirán tus datos al confirmar.'
+                : '';
+        }
+
+        function focusDeliveryInput(input) {
+            activeInput = input;
+        }
+
         function confirmOrder() {
             if (cart.length === 0) return;
+            if (deliveryType === 'web') {
+                document.getElementById('deliveryError').style.display = 'none';
+                document.getElementById('deliveryModal').classList.add('show');
+                return;
+            }
+            sendOrder({ delivery_type: 'local' });
+        }
+
+        function closeDeliveryModal() {
+            document.getElementById('deliveryModal').classList.remove('show');
+            activeInput = null;
+            closeKeyboard();
+        }
+
+        function confirmDelivery() {
+            const name = document.getElementById('deliveryName').value.trim();
+            const address = document.getElementById('deliveryAddress').value.trim();
+            const phone = document.getElementById('deliveryPhone').value.trim();
+            const error = document.getElementById('deliveryError');
+
+            if (!name || !address || !phone) {
+                error.textContent = 'Complete todos los campos para el delivery.';
+                error.style.display = 'block';
+                return;
+            }
+
+            error.style.display = 'none';
+            sendOrder({
+                delivery_type: 'web',
+                customer_name: name,
+                delivery_address: address,
+                contact_number: phone
+            });
+        }
+
+        function resetConfirmButton() {
+            const btn = document.getElementById('btnConfirm');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> CONFIRMAR';
+        }
+
+        function sendOrder(deliveryData) {
             const btn = document.getElementById('btnConfirm');
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            const payload = Object.assign({
+                items: JSON.stringify(cart.map(c => ({
+                    product_id: c.product_id,
+                    quantity: c.quantity,
+                    notes: c.notes || null,
+                    auxiliary_items: c.auxiliary_items && c.auxiliary_items.length > 0 ? c.auxiliary_items : null
+                })))
+            }, deliveryData);
 
             fetch('{{ route("autopedido.confirm") }}', {
                 method: 'POST',
@@ -426,27 +529,40 @@
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ items: JSON.stringify(cart.map(c => ({
-                    product_id: c.product_id,
-                    quantity: c.quantity,
-                    notes: c.notes || null,
-                    auxiliary_items: c.auxiliary_items && c.auxiliary_items.length > 0 ? c.auxiliary_items : null
-                }))) })
+                body: JSON.stringify(payload)
             })
-            .then(r => r.json())
+            .then(async (r) => {
+                const text = await r.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    if (r.status === 419) {
+                        alert('Sesión expirada. Recargando...');
+                        location.reload();
+                        return null;
+                    }
+                    throw new Error('Respuesta inválida');
+                }
+                if (!r.ok && data.errors) {
+                    const first = Object.values(data.errors)[0];
+                    alert(Array.isArray(first) ? first[0] : first);
+                    return null;
+                }
+                return data;
+            })
             .then(data => {
+                if (!data) { resetConfirmButton(); return; }
                 if (data.success) {
                     window.location.href = '/autopedido/success/' + data.order_id;
                 } else {
                     alert(data.message || 'Error al confirmar');
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-check"></i> CONFIRMAR';
+                    resetConfirmButton();
                 }
             })
-            .catch(err => {
+            .catch(() => {
                 alert('Error de conexión');
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-check"></i> CONFIRMAR';
+                resetConfirmButton();
             });
         }
     </script>

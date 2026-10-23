@@ -34,6 +34,17 @@
             @endforeach
         </div>
 
+        @if($order->delivery_type === 'web')
+        <div class="items" style="background:#eef7ff;">
+            <div style="font-size:13px;font-weight:bold;color:#0b6bcb;margin-bottom:6px;"><i class="fas fa-motorcycle"></i> Delivery</div>
+            <div style="font-size:14px;text-align:left;line-height:1.6;">
+                <div><strong>Cliente:</strong> {{ $order->customer_name }}</div>
+                <div><strong>Dirección:</strong> {{ $order->delivery_address }}</div>
+                <div><strong>Contacto:</strong> {{ $order->contact_number }}</div>
+            </div>
+        </div>
+        @endif
+
         <div class="info">
             <i class="fas fa-print"></i> Su ticket se está imprimiendo<br>
             <i class="fas fa-cash-register"></i> Pase a caja para pagar<br>

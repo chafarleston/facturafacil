@@ -42,8 +42,12 @@ class AutoPedidoController extends Controller
 
     public function confirmOrder(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'items' => 'required|json',
+            'delivery_type' => 'required|in:local,web',
+            'customer_name' => 'required_if:delivery_type,web|nullable|string|max:150',
+            'delivery_address' => 'required_if:delivery_type,web|nullable|string|max:250',
+            'contact_number' => 'required_if:delivery_type,web|nullable|string|max:50',
         ]);
 
         $companyId = Company::getMainCompany()->id;
@@ -76,6 +80,10 @@ class AutoPedidoController extends Controller
             'order_number' => RestaurantOrder::generateKioskoOrderNumber($companyId),
             'status' => 'PENDING_PAYMENT',
             'order_type' => 'kiosko',
+            'delivery_type' => $validated['delivery_type'],
+            'customer_name' => $validated['customer_name'] ?? null,
+            'delivery_address' => $validated['delivery_address'] ?? null,
+            'contact_number' => $validated['contact_number'] ?? null,
         ]);
 
         $total = 0;

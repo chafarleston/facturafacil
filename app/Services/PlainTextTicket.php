@@ -80,6 +80,13 @@ class PlainTextTicket
     {
         $this->left($text);
     }
+
+    public function textWrapped(string $text): void
+    {
+        foreach (explode("\n", wordwrap($text, $this->width, "\n", false)) as $line) {
+            $this->left($line);
+        }
+    }
     
     public function getText(): string
     {
@@ -325,6 +332,15 @@ class PlainTextTicket
         $t->center('FacturaFacil');
         $t->blank();
         $t->center($order->order_number, ' ');
+
+        if (($order->delivery_type ?? 'local') === 'web') {
+            $t->blank();
+            $t->center('*** DELIVERY ***', '*');
+            $t->textWrapped('Cliente: ' . ($order->customer_name ?? ''));
+            $t->textWrapped('Direccion: ' . ($order->delivery_address ?? ''));
+            $t->textWrapped('Contacto: ' . ($order->contact_number ?? ''));
+        }
+
         $t->separator();
         foreach ($order->items as $item) {
             $t->itemLine(number_format($item->quantity, 0), $item->product_name, 'S/ ' . number_format($item->total, 2));

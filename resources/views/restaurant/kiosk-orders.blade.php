@@ -16,6 +16,7 @@
                     <th>Total</th>
                     <th>Estado</th>
                     <th>Fecha</th>
+                    <th>Entrega</th>
                     <th>Acción</th>
                 </tr>
             </thead>
@@ -37,6 +38,18 @@
                         @endif
                     </td>
                     <td>{{ $order->created_at->format('d/m H:i') }}</td>
+                    <td>
+                        @if($order->delivery_type === 'web')
+                            <span class="badge badge-info">Delivery</span>
+                            <div style="font-size:12px; line-height:1.4; margin-top:4px;">
+                                <div><strong>{{ $order->customer_name }}</strong></div>
+                                <div>{{ $order->delivery_address }}</div>
+                                <div><i class="fas fa-phone"></i> {{ $order->contact_number }}</div>
+                            </div>
+                        @else
+                            <span class="badge badge-secondary">Local</span>
+                        @endif
+                    </td>
                     <td class="text-right">
                         @if($order->status === 'PENDING_PAYMENT')
                         <button class="btn btn-warning btn-sm" onclick="sendKioskToKitchen({{ $order->id }})">
@@ -56,7 +69,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="5" class="text-center py-4">No hay pedidos kiosko pendientes</td></tr>
+                <tr><td colspan="7" class="text-center py-4">No hay pedidos kiosko pendientes</td></tr>
                 @endforelse
             </tbody>
         </table>
