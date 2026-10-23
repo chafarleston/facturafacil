@@ -501,8 +501,7 @@ foreach ($ventas as $venta) {
 | `chargeOrder($id)` | POST `/restaurant/orders/{id}/charge` | Cobrar pedido |
 | `splitChargeOrder($id)` | POST `/restaurant/orders/{id}/split-charge` | Dividir cuenta en 2+ comprobantes |
 | `cancelOrder($id)` | POST `/restaurant/orders/{id}/cancel` | Anular pedido completo |
-| `getActiveOrders()` | GET `/restaurant/active-orders` | Polling |
-| `getTableLocks()` | GET `/restaurant/locks` | Polling bloqueos |
+| `getPollData()` | GET `/restaurant/poll` | Polling (pedidos + bloqueos) |
 | `getKitchenOrders()` | GET `/restaurant/kitchen-orders` | Polling KDS |
 
 **Lógica de `chargeOrder()`:**
@@ -681,8 +680,7 @@ function closeTab(tabId) { ... }
 
 | Vista | Función | Intervalo | Endpoint |
 |-------|---------|-----------|----------|
-| Restaurante | `pollActiveOrders()` | 10s | `/restaurant/active-orders` |
-| Restaurante | `pollTableLocks()` | 10s | `/restaurant/locks` |
+| Restaurante | `pollRestaurantData()` | 10s | `/restaurant/poll` |
 | Restaurante | `pollPrintServer()` | 10s | `/restaurant/print-status` |
 | KDS | `loadKitchenOrders()` | 5s | `/restaurant/kitchen-orders?kds={cocina\|cocina2\|bar}` |
 

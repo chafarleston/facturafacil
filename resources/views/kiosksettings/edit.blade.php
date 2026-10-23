@@ -26,6 +26,15 @@
                         <small class="text-muted">Nombre interno con el que se registran los pedidos del autoservicio.</small>
                     </div>
 
+                    <div class="form-group">
+                        <label for="delivery_type">Tipo de pedido del kiosko</label>
+                        <select name="delivery_type" id="delivery_type" class="form-control">
+                            <option value="local" {{ old('delivery_type', $deliveryType) === 'local' ? 'selected' : '' }}>Local (consumo en el local)</option>
+                            <option value="web" {{ old('delivery_type', $deliveryType) === 'web' ? 'selected' : '' }}>Delivery (Web)</option>
+                        </select>
+                        <small class="text-muted">Si es <b>Delivery</b>, el autopedido pedirá nombres, dirección y número de contacto antes de confirmar.</small>
+                    </div>
+
                     <hr>
 
                     <h5 class="mb-3"><i class="fas fa-images"></i> Visualización del catálogo</h5>
@@ -43,6 +52,25 @@
                         <input class="form-check-input" type="checkbox" name="catonly_kiosko" id="catonly_kiosko" value="1"
                             {{ $categoriesOnly ? 'checked' : '' }}>
                         <label class="form-check-label" for="catonly_kiosko">Mostrar solo categorías al inicio</label>
+                    </div>
+
+                    <hr>
+
+                    <h5 class="mb-3"><i class="fas fa-message"></i> Mensajes de confirmación</h5>
+                    <div class="form-group">
+                        <label for="success_ticket_text">Texto: ticket imprimiéndose</label>
+                        <input type="text" name="success_ticket_text" id="success_ticket_text" class="form-control" maxlength="200"
+                               value="{{ old('success_ticket_text', $successTicketText) }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="success_pay_text">Texto: pase a caja para pagar</label>
+                        <input type="text" name="success_pay_text" id="success_pay_text" class="form-control" maxlength="200"
+                               value="{{ old('success_pay_text', $successPayText) }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="success_prepare_text">Texto: preparación después del pago</label>
+                        <input type="text" name="success_prepare_text" id="success_prepare_text" class="form-control" maxlength="200"
+                               value="{{ old('success_prepare_text', $successPrepareText) }}" required>
                     </div>
                 </div>
                 <div class="card-footer d-flex justify-content-between">

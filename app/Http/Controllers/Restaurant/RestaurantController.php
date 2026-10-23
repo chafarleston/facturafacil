@@ -761,7 +761,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
         return response()->json(['success' => true]);
     }
 
-    public function getActiveOrders(Request $request)
+    public function getPollData(Request $request)
     {
         $companyId = $request->company_id ?? Company::first()->id;
 
@@ -770,7 +770,25 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             ->select('id', 'table_id', 'order_number')
             ->get();
 
-        return response()->json(['success' => true, 'orders' => $orders])
+        $locks = RestaurantTable::where('company_id', $companyId)
+            ->whereNotNull('locked_by')
+            ->with('lockedByUser:id,name')
+            ->get()
+            ->map(function ($table) {
+                if ($table->isLockExpired()) {
+                    $table->unlock();
+                    return null;
+                }
+                return [
+                    'table_id' => $table->id,
+                    'locked_by' => $table->locked_by,
+                    'user_name' => $table->lockedByUser ? $table->lockedByUser->name : 'Usuario',
+                ];
+            })
+            ->filter()
+            ->values();
+
+        return response()->json(['success' => true, 'orders' => $orders, 'locks' => $locks])
             ->header('Cache-Control', 'no-cache, must-revalidate, no-store, private')
             ->header('Pragma', 'no-cache');
     }
@@ -808,9 +826,19 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             }])
             ->select('id', 'order_number', 'status', 'table_id', 'user_id', 'notes', 'created_at', 'order_type')
             ->orderBy('created_at', 'asc')
-            ->get();
+        ->get();
 
-        $formattedOrders = $orders->map(function($order) {
+        $auxiliaryIds = $orders->flatMap(function ($order) {
+            return $order->items->flatMap(function ($item) {
+                return is_array($item->auxiliary_items) ? $item->auxiliary_items : [];
+            });
+        })->unique()->values();
+
+        $auxiliaryNames = $auxiliaryIds->isEmpty()
+            ? collect()
+            : \App\Models\AuxiliaryItem::whereIn('id', $auxiliaryIds)->pluck('name', 'id');
+
+        $formattedOrders = $orders->map(function($order) use ($auxiliaryNames) {
             return [
                 'id' => $order->id,
                 'order_number' => $order->order_number,
@@ -821,13 +849,12 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
                 'notes' => $order->notes,
                 'created_at' => $order->created_at->toIso8601String(),
                 'order_type' => $order->order_type ?? 'mozo',
-                'items' => $order->items->map(function($item) {
-                    $auxNames = [];
-                    if ($item->auxiliary_items) {
-                        $auxNames = \App\Models\AuxiliaryItem::whereIn('id', $item->auxiliary_items)
-                            ->pluck('name')
-                            ->toArray();
-                    }
+                'items' => $order->items->map(function($item) use ($auxiliaryNames) {
+                    $auxNames = collect($item->auxiliary_items ?? [])
+                        ->map(fn ($id) => $auxiliaryNames[$id] ?? null)
+                        ->filter()
+                        ->values()
+                        ->toArray();
                     return [
                         'id' => $item->id,
                         'product_name' => $item->product_name,
@@ -1597,31 +1624,6 @@ private function updateOrderTotals(RestaurantOrder $order)
                 'message' => $e->getMessage(),
             ], 500);
         }
-    }
-
-    public function getTableLocks(Request $request)
-    {
-        $companyId = $request->company_id ?? Company::first()->id;
-
-        $locks = RestaurantTable::where('company_id', $companyId)
-            ->whereNotNull('locked_by')
-            ->get()
-            ->map(function ($table) {
-                if ($table->isLockExpired()) {
-                    $table->unlock();
-                    return null;
-                }
-                return [
-                    'table_id' => $table->id,
-                    'locked_by' => $table->locked_by,
-                    'user_name' => $table->lockedByUser ? $table->lockedByUser->name : 'Usuario',
-                ];
-            })
-            ->filter()
-            ->values();
-
-        return response()->json(['success' => true, 'locks' => $locks])
-            ->header('Cache-Control', 'no-cache, must-revalidate, no-store, private');
     }
 
     public function kioskOrders(Request $request)

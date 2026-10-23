@@ -82,11 +82,6 @@
         .kb-key-action { background: #e94560; color: #fff; border-color: #c23a51; }
         .kb-row-top { margin-bottom: 4px; }
 
-        .delivery-type-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 15px; background: #fff; border-bottom: 1px solid #eee; }
-        .delivery-type-label { font-size: 13px; color: #666; font-weight: 600; }
-        .delivery-type-btn { padding: 9px 18px; border: 2px solid #ddd; background: #fff; border-radius: 25px; font-size: 15px; cursor: pointer; transition: all .2s; }
-        .delivery-type-btn.active { background: #e94560; border-color: #e94560; color: #fff; }
-        .delivery-type-hint { font-size: 12px; color: #999; }
         .delivery-label { display: block; font-size: 13px; color: #555; margin: 12px 0 4px; font-weight: 600; }
         .delivery-input { width: 100%; padding: 12px 14px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; outline: none; }
         .delivery-input:focus { border-color: #e94560; }
@@ -104,13 +99,6 @@
     <div class="search-bar">
         <input type="text" class="search-input" id="searchInput" placeholder="Buscar producto..." oninput="applyFilters()">
         <button class="search-btn" onclick="toggleKeyboard(document.getElementById('searchInput'))"><i class="fas fa-keyboard"></i></button>
-    </div>
-
-    <div class="delivery-type-bar">
-        <span class="delivery-type-label"><i class="fas fa-bag-shopping"></i> Tipo de pedido:</span>
-        <button type="button" class="delivery-type-btn active" id="btnTypeLocal" onclick="setDeliveryType('local')"><i class="fas fa-store"></i> Local</button>
-        <button type="button" class="delivery-type-btn" id="btnTypeWeb" onclick="setDeliveryType('web')"><i class="fas fa-motorcycle"></i> Delivery (Web)</button>
-        <span class="delivery-type-hint" id="deliveryTypeHint"></span>
     </div>
 
     <div class="categories {{ $categoriesOnly ? 'categories-only' : '' }}" id="categoriesContainer">
@@ -258,6 +246,7 @@
         let modalQty = 1;
         let activeInput = null;
         const companyId = {{ $companyId }};
+        const kioskDeliveryType = @json($deliveryType);
 
         function addProduct(id, name, price) {
             modalProductId = id;
@@ -449,30 +438,19 @@
             if (activeInput.id === 'searchInput') applyFilters();
         }
 
-        /* Tipo de pedido y confirmación */
-        let deliveryType = 'local';
-
-        function setDeliveryType(type) {
-            deliveryType = type;
-            document.getElementById('btnTypeLocal').classList.toggle('active', type === 'local');
-            document.getElementById('btnTypeWeb').classList.toggle('active', type === 'web');
-            document.getElementById('deliveryTypeHint').textContent = type === 'web'
-                ? 'Se pedirán tus datos al confirmar.'
-                : '';
-        }
-
+        /* Confirmación según el tipo configurado en Kiosko */
         function focusDeliveryInput(input) {
             activeInput = input;
         }
 
         function confirmOrder() {
             if (cart.length === 0) return;
-            if (deliveryType === 'web') {
+            if (kioskDeliveryType === 'web') {
                 document.getElementById('deliveryError').style.display = 'none';
                 document.getElementById('deliveryModal').classList.add('show');
                 return;
             }
-            sendOrder({ delivery_type: 'local' });
+            sendOrder({});
         }
 
         function closeDeliveryModal() {
@@ -495,7 +473,6 @@
 
             error.style.display = 'none';
             sendOrder({
-                delivery_type: 'web',
                 customer_name: name,
                 delivery_address: address,
                 contact_number: phone

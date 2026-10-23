@@ -36,18 +36,21 @@ class AutoPedidoController extends Controller
         $showProductImages = \App\Models\Setting::showProductImages('kiosko');
         $showCategoryImages = \App\Models\Setting::showCategoryImages('kiosko');
         $categoriesOnly = \App\Models\Setting::categoriesOnly('kiosko');
+        $deliveryType = \App\Models\Setting::kiosk('delivery_type', 'local');
 
-        return view('autopedido.index', compact('products', 'categories', 'companyId', 'showProductImages', 'showCategoryImages', 'categoriesOnly'));
+        return view('autopedido.index', compact('products', 'categories', 'companyId', 'showProductImages', 'showCategoryImages', 'categoriesOnly', 'deliveryType'));
     }
 
     public function confirmOrder(Request $request)
     {
+        $deliveryType = \App\Models\Setting::kiosk('delivery_type', 'local');
+        $isWeb = $deliveryType === 'web';
+
         $validated = $request->validate([
             'items' => 'required|json',
-            'delivery_type' => 'required|in:local,web',
-            'customer_name' => 'required_if:delivery_type,web|nullable|string|max:150',
-            'delivery_address' => 'required_if:delivery_type,web|nullable|string|max:250',
-            'contact_number' => 'required_if:delivery_type,web|nullable|string|max:50',
+            'customer_name' => $isWeb ? 'required|string|max:150' : 'nullable|string|max:150',
+            'delivery_address' => $isWeb ? 'required|string|max:250' : 'nullable|string|max:250',
+            'contact_number' => $isWeb ? 'required|string|max:50' : 'nullable|string|max:50',
         ]);
 
         $companyId = Company::getMainCompany()->id;
@@ -80,10 +83,10 @@ class AutoPedidoController extends Controller
             'order_number' => RestaurantOrder::generateKioskoOrderNumber($companyId),
             'status' => 'PENDING_PAYMENT',
             'order_type' => 'kiosko',
-            'delivery_type' => $validated['delivery_type'],
-            'customer_name' => $validated['customer_name'] ?? null,
-            'delivery_address' => $validated['delivery_address'] ?? null,
-            'contact_number' => $validated['contact_number'] ?? null,
+            'delivery_type' => $deliveryType,
+            'customer_name' => $isWeb ? ($validated['customer_name'] ?? null) : null,
+            'delivery_address' => $isWeb ? ($validated['delivery_address'] ?? null) : null,
+            'contact_number' => $isWeb ? ($validated['contact_number'] ?? null) : null,
         ]);
 
         $total = 0;
@@ -130,6 +133,13 @@ class AutoPedidoController extends Controller
     public function success($orderId)
     {
         $order = RestaurantOrder::with(['items'])->findOrFail($orderId);
-        return view('autopedido.success', compact('order'));
+
+        $successTexts = [
+            'ticket' => \App\Models\Setting::kiosk('success_ticket_text', 'Su ticket se está imprimiendo'),
+            'pay' => \App\Models\Setting::kiosk('success_pay_text', 'Pase a caja para pagar'),
+            'prepare' => \App\Models\Setting::kiosk('success_prepare_text', 'Su pedido comenzará a prepararse después del pago'),
+        ];
+
+        return view('autopedido.success', compact('order', 'successTexts'));
     }
 }

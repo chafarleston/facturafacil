@@ -46,9 +46,9 @@
         @endif
 
         <div class="info">
-            <i class="fas fa-print"></i> Su ticket se está imprimiendo<br>
-            <i class="fas fa-cash-register"></i> Pase a caja para pagar<br>
-            <i class="fas fa-clock"></i> Su pedido comenzará a prepararse después del pago
+            <i class="fas fa-print"></i> {{ $successTexts['ticket'] }}<br>
+            <i class="fas fa-cash-register"></i> {{ $successTexts['pay'] }}<br>
+            <i class="fas fa-clock"></i> {{ $successTexts['prepare'] }}
         </div>
 
         <a href="{{ route('autopedido.index') }}" class="btn-new"><i class="fas fa-plus"></i> Nuevo Pedido</a>

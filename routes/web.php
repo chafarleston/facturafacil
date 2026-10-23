@@ -235,7 +235,7 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     Route::post('/restaurant/tables/{tableId}/lock', [RestaurantController::class, 'lockTable'])->name('restaurant.tables.lock');
     Route::post('/restaurant/tables/{tableId}/unlock', [RestaurantController::class, 'unlockTable'])->name('restaurant.tables.unlock');
     Route::post('/restaurant/tables/unlock-all', [RestaurantController::class, 'unlockAllTables'])->name('restaurant.tables.unlockAll');
-    Route::get('/restaurant/locks', [RestaurantController::class, 'getTableLocks'])->name('restaurant.locks');
+    Route::get('/restaurant/poll', [RestaurantController::class, 'getPollData'])->name('restaurant.poll');
     Route::get('/restaurant/orders/{orderId}', [RestaurantController::class, 'getOrder'])->name('restaurant.orders.show');
     Route::post('/restaurant/orders/{orderId}/items', [RestaurantController::class, 'addItem'])->name('restaurant.orders.items');
     Route::put('/restaurant/orders/items/{itemId}', [RestaurantController::class, 'updateItem'])->name('restaurant.orders.items.update');
@@ -253,7 +253,6 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     Route::post('/restaurant/orders/{orderId}/merge', [RestaurantController::class, 'mergeOrder'])->name('restaurant.orders.merge');
     Route::post('/restaurant/toggle-mode', [RestaurantController::class, 'toggleMode'])->name('restaurant.toggleMode');
     Route::get('/restaurant/print-status', [\App\Http\Controllers\Admin\PrinterController::class, 'status'])->name('restaurant.printStatus');
-    Route::get('/restaurant/active-orders', [RestaurantController::class, 'getActiveOrders'])->name('restaurant.activeOrders');
 
     // Floor Routes
     Route::get('/restaurant/floors', [FloorController::class, 'index'])->name('restaurant.floors.index');

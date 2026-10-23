@@ -17,7 +17,7 @@ const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
   // aborta polling/SSE para estabilizar capturas (no rompe la carga inicial server-side)
   const polls = [
     '**/restaurant/stream', '**/restaurant/kitchen-stream',
-    '**/restaurant/active-orders', '**/restaurant/locks',
+    '**/restaurant/poll',
     '**/restaurant/print-status', '**/restaurant/kitchen-orders',
     '**/restaurant/kiosk-orders',
   ];

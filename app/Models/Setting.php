@@ -77,6 +77,16 @@ class Setting extends Model
         static::set('pos_' . $key, $value);
     }
 
+    public static function kiosk(string $key, $default = null)
+    {
+        return static::get('kiosk_' . $key, $default);
+    }
+
+    public static function setKiosk(string $key, $value): void
+    {
+        static::set('kiosk_' . $key, $value);
+    }
+
     public static function showProductImages(string $module): bool
     {
         return static::get('img_products_' . $module, '0') === '1';

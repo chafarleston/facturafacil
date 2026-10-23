@@ -334,6 +334,10 @@
                 <button class="btn btn-dark" id="audioBtn" onclick="initAudio(); playAlertSound();" title="Activar sonido">
                     <i class="fas fa-volume-up"></i> Sonido
                 </button>
+                <div class="kds-stat" id="kdsConnectionWarning" style="display:none;">
+                    <div class="kds-stat-value" style="color:#e94560; font-size:13px;"><i class="fas fa-wifi"></i></div>
+                    <div class="kds-stat-label">Sin conexión</div>
+                </div>
                 <div class="kds-stat">
                     <div class="kds-stat-value time" id="currentTime">--:--</div>
                     <div class="kds-stat-label">Hora</div>
@@ -429,7 +433,23 @@ function handlePollResponse(res) {
     return res.json();
 }
 
+let kdsPolling = false;
+let kdsPollFailures = 0;
+
+function showKdsConnectionWarning() {
+    const el = document.getElementById('kdsConnectionWarning');
+    if (el) el.style.display = 'block';
+}
+
+function hideKdsConnectionWarning() {
+    const el = document.getElementById('kdsConnectionWarning');
+    if (el) el.style.display = 'none';
+}
+
 function loadKitchenOrders() {
+    if (kdsPolling || document.hidden) return;
+    kdsPolling = true;
+
     fetch('/restaurant/kitchen-orders?_=' + Date.now() + '&kds=' + kdsFilter, {
         headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
     })
@@ -443,13 +463,22 @@ function loadKitchenOrders() {
             const prevCount = allOrders.length;
             allOrders = data.orders;
             renderKitchenOrders();
-            
+            kdsPollFailures = 0;
+            hideKdsConnectionWarning();
+
             if (prevCount > 0 && allOrders.length > prevCount) {
                 playAlertSound();
             }
         }
     })
-    .catch(err => console.error('KDS Error:', err));
+    .catch(err => {
+        console.error('KDS Error:', err);
+        kdsPollFailures++;
+        if (kdsPollFailures >= 3) showKdsConnectionWarning();
+    })
+    .finally(() => {
+        kdsPolling = false;
+    });
 }
 
 function getElapsedTime(dateString) {
@@ -676,6 +705,12 @@ if (orderMode === 'kds') {
 } else {
     stopKdsPolling();
 }
+
+document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && window.__kdsInterval) {
+        loadKitchenOrders();
+    }
+});
     </script>
 </body>
 </html>

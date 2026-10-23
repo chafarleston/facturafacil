@@ -496,6 +496,9 @@
                     Print Server {{ $printServerRunning ? 'activo' : 'inactivo' }}
                 </span>
                 @endif
+                <span class="badge badge-danger" id="connectionWarning" style="display:none; font-size:9px; margin-left:5px;">
+                    <i class="fas fa-wifi"></i> Sin conexión
+                </span>
                 @if(in_array(auth()->user()->role, ['admin', 'superadmin', 'cajero']))
                 <button onclick="unlockAllTables()" class="btn btn-sm btn-outline-warning ml-2" style="font-size:9px; padding:2px 8px;" title="Desbloquear todas las mesas">
                     <i class="fas fa-unlock"></i> Desbloquear Mesas
@@ -983,16 +986,21 @@ document.addEventListener('DOMContentLoaded', function() {
         const floorId = parseInt(firstFloor.dataset.floorId);
         selectFloor(floorId);
     }
-    pollActiveOrders();
-    setInterval(pollActiveOrders, 10000);
-    pollTableLocks();
-    setInterval(pollTableLocks, 10000);
-    
+    pollRestaurantData();
+    setInterval(pollRestaurantData, 10000);
+
     const psBadge = document.getElementById('printServerBadge');
     if (psBadge) {
         pollPrintServer();
         setInterval(pollPrintServer, 10000);
     }
+
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) {
+            pollRestaurantData();
+            if (psBadge) pollPrintServer();
+        }
+    });
     
     const chargeSearch = document.getElementById('chargeCustomerSearch');
     if (chargeSearch) {
@@ -1906,66 +1914,86 @@ function setTableCardState(card, state, hasOrder) {
     if (hasOrder) card.classList.add('has-order');
 }
 
-function pollActiveOrders() {
-    fetch('/restaurant/active-orders?_=' + Date.now(), {
-        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(handlePollResponse)
-    .then(data => {
-        if (!data.success) return;
-        const tablesWithOrders = {};
-        data.orders.forEach(order => {
-            tablesWithOrders[order.table_id] = order;
-            const card = document.querySelector(`.table-card[data-table-id="${order.table_id}"]`);
-            if (!card) return;
-            setTableCardState(card, 'occupied', true);
-            if (!orderModalOpen) {
-                card.dataset.orderId = order.id;
-            }
-            let orderDiv = card.querySelector('.table-order');
-            if (!orderDiv) {
-                orderDiv = document.createElement('div');
-                orderDiv.className = 'table-order';
-                card.appendChild(orderDiv);
-            }
-            orderDiv.textContent = order.order_number;
-        });
-        document.querySelectorAll('.table-card').forEach(card => {
-            const tid = parseInt(card.dataset.tableId);
-            if (!tid) return;
-            if (!tablesWithOrders[tid] && card.classList.contains('occupied')) {
-                setTableCardState(card, 'available', false);
-                card.dataset.orderId = '';
-                const orderDiv = card.querySelector('.table-order');
-                if (orderDiv) orderDiv.remove();
-            }
-        });
-    })
-    .catch(() => {});
+let restaurantPolling = false;
+let restaurantPollFailures = 0;
+
+function showConnectionWarning() {
+    const el = document.getElementById('connectionWarning');
+    if (el) el.style.display = 'inline-block';
 }
 
-function pollTableLocks() {
-    fetch('/restaurant/locks?_=' + Date.now(), {
+function hideConnectionWarning() {
+    const el = document.getElementById('connectionWarning');
+    if (el) el.style.display = 'none';
+}
+
+function updateTableOrders(orders) {
+    const tablesWithOrders = {};
+    orders.forEach(order => {
+        tablesWithOrders[order.table_id] = order;
+        const card = document.querySelector(`.table-card[data-table-id="${order.table_id}"]`);
+        if (!card) return;
+        setTableCardState(card, 'occupied', true);
+        if (!orderModalOpen) {
+            card.dataset.orderId = order.id;
+        }
+        let orderDiv = card.querySelector('.table-order');
+        if (!orderDiv) {
+            orderDiv = document.createElement('div');
+            orderDiv.className = 'table-order';
+            card.appendChild(orderDiv);
+        }
+        orderDiv.textContent = order.order_number;
+    });
+    document.querySelectorAll('.table-card').forEach(card => {
+        const tid = parseInt(card.dataset.tableId);
+        if (!tid) return;
+        if (!tablesWithOrders[tid] && card.classList.contains('occupied')) {
+            setTableCardState(card, 'available', false);
+            card.dataset.orderId = '';
+            const orderDiv = card.querySelector('.table-order');
+            if (orderDiv) orderDiv.remove();
+        }
+    });
+}
+
+function updateTableLocks(locks) {
+    document.querySelectorAll('.table-card').forEach(card => {
+        card.classList.remove('locked-by-other');
+        delete card.dataset.lockedBy;
+    });
+
+    (Array.isArray(locks) ? locks : []).forEach(lock => {
+        if (lock.locked_by === currentUserId) return;
+        const card = document.querySelector(`.table-card[data-table-id="${lock.table_id}"]`);
+        if (!card) return;
+        card.classList.add('locked-by-other');
+        card.dataset.lockedBy = lock.user_name;
+    });
+}
+
+function pollRestaurantData() {
+    if (restaurantPolling || document.hidden) return;
+    restaurantPolling = true;
+
+    fetch('/restaurant/poll?_=' + Date.now(), {
         headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
     })
     .then(handlePollResponse)
     .then(data => {
         if (!data.success) return;
-
-        document.querySelectorAll('.table-card').forEach(card => {
-            card.classList.remove('locked-by-other');
-            delete card.dataset.lockedBy;
-        });
-
-        (Array.isArray(data.locks) ? data.locks : []).forEach(lock => {
-            if (lock.locked_by === currentUserId) return;
-            const card = document.querySelector(`.table-card[data-table-id="${lock.table_id}"]`);
-            if (!card) return;
-            card.classList.add('locked-by-other');
-            card.dataset.lockedBy = lock.user_name;
-        });
+        updateTableOrders(data.orders || []);
+        updateTableLocks(data.locks || []);
+        restaurantPollFailures = 0;
+        hideConnectionWarning();
     })
-    .catch(() => {});
+    .catch(() => {
+        restaurantPollFailures++;
+        if (restaurantPollFailures >= 3) showConnectionWarning();
+    })
+    .finally(() => {
+        restaurantPolling = false;
+    });
 }
 
 function unlockAllTables() {
@@ -1992,7 +2020,12 @@ function unlockAllTables() {
     });
 }
 
+let printPolling = false;
+
 function pollPrintServer() {
+    if (printPolling || document.hidden) return;
+    printPolling = true;
+
     fetch('/restaurant/print-status?_=' + Date.now(), {
         headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
     })
@@ -2014,6 +2047,9 @@ function pollPrintServer() {
             badge.className = 'badge badge-danger';
             badge.innerHTML = '<i class="fas fa-times-circle"></i> Print Server inactivo';
         }
+    })
+    .finally(() => {
+        printPolling = false;
     });
 }
 

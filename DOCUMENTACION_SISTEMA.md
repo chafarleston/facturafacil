@@ -282,8 +282,7 @@ observaciones, referencia
 | `moveTable($orderId)` | POST `/restaurant/orders/{id}/move-table` | Mueve pedido a otra mesa |
 | `printPrebill($orderId)` | GET `/restaurant/orders/{id}/print-prebill` | Genera PDF de prebillete |
 | `saveOrderNotes($orderId)` | POST `/restaurant/orders/{id}/notes` | Guarda notas del pedido |
-| `getActiveOrders()` | GET `/restaurant/active-orders` | Órdenes activas (polling) |
-| `getTableLocks()` | GET `/restaurant/locks` | Mesas bloqueadas (polling) |
+| `getPollData()` | GET `/restaurant/poll` | Órdenes activas + mesas bloqueadas (polling unificado) |
 | `lockTable($tableId)` | POST `/restaurant/tables/{id}/lock` | Bloquea mesa para usuario |
 | `unlockTable($tableId)` | POST `/restaurant/tables/{id}/unlock` | Libera bloqueo de mesa |
 | `unlockAllTables()` | POST `/restaurant/tables/unlock-all` | Libera todas las mesas |
@@ -824,12 +823,11 @@ Apertura automática en POS:
 
 | Vista | Función | Intervalo |
 |-------|---------|-----------|
-| Restaurante | `pollActiveOrders()` | 10 segundos (también al cargar) |
-| Restaurante | `pollTableLocks()` | 10 segundos (también al cargar) |
+| Restaurante | `pollRestaurantData()` | 10 segundos (también al cargar; pedidos + bloqueos) |
 | Restaurante | `pollPrintServer()` | 10 segundos (solo si hay badge, modo impresión; también al cargar) |
 | KDS (Cocina) | `loadKitchenOrders()` | 5 segundos (solo en Modo KDS) |
 
-> **Nota**: `handlePollResponse()` redirige a `/login` si el polling recibe **401** (sesión expirada). Al actualizar el estado de una mesa, `pollActiveOrders` usa `setTableCardState()` (en vez de sobrescribir `className`) para **preservar la clase `locked-by-other`** y no borrar el bloqueo de otro usuario. En modo `print` (`companies.order_mode`) el menú oculta los ítems "KDS Cocina/Cocina 2/Bar", `loadKitchenOrders` no arranca (o se detiene en vivo vía `getKitchenOrders.order_mode`, mostrando "KDS INACTIVO") y las acciones KDS (`markKitchenReady`/`deliverKitchenOrder`/`completeOrder`) responden **400**. El aviso "KDS INACTIVO" incluye un botón **Reintentar** (`location.reload()`) para retomar el polling tras reactivar el modo (en inactivo no hay ninguna petición en segundo plano). El modo se cachea con `Company::orderMode()`/`mainCompanyId()` (`rememberForever`), invalidado por `Company::clearCache()` en `toggleMode` y en cambios de empresa (store/update/destroy/setMain).
+> **Nota**: `handlePollResponse()` redirige a `/login` si el polling recibe **401** (sesión expirada). Al actualizar el estado de una mesa, `pollRestaurantData` usa `setTableCardState()` (en vez de sobrescribir `className`) para **preservar la clase `locked-by-other`** y no borrar el bloqueo de otro usuario. En modo `print` (`companies.order_mode`) el menú oculta los ítems "KDS Cocina/Cocina 2/Bar", `loadKitchenOrders` no arranca (o se detiene en vivo vía `getKitchenOrders.order_mode`, mostrando "KDS INACTIVO") y las acciones KDS (`markKitchenReady`/`deliverKitchenOrder`/`completeOrder`) responden **400**. El aviso "KDS INACTIVO" incluye un botón **Reintentar** (`location.reload()`) para retomar el polling tras reactivar el modo (en inactivo no hay ninguna petición en segundo plano). El modo se cachea con `Company::orderMode()`/`mainCompanyId()` (`rememberForever`), invalidado por `Company::clearCache()` en `toggleMode` y en cambios de empresa (store/update/destroy/setMain).
 
 ### 13.2 Funciones Globales del Restaurante
 
@@ -851,7 +849,7 @@ Apertura automática en POS:
 | `cancelOrder()` | Anula pedido |
 | `searchProducts(query)` | Búsqueda de productos en tiempo real |
 | `filterProducts(categoryId)` | Filtra productos por categoría |
-| `pollTableLocks()` | Polling de bloqueos de mesas |
+| `pollRestaurantData()` | Polling de pedidos activos y bloqueos de mesas |
 | `unlockAllTables()` | Desbloquea todas las mesas (admin/cajero) |
 | `completeOrder(orderId)` | Marca pedido como completado desde KDS |
 
@@ -892,8 +890,7 @@ Apertura automática en POS:
 |--------|------|-----------|
 | GET | `/restaurant` | Vista restaurante |
 | GET | `/restaurant/kitchen` | Vista KDS |
-| GET | `/restaurant/active-orders` | Polling restaurante |
-| GET | `/restaurant/locks` | Mesas bloqueadas (polling) |
+| GET | `/restaurant/poll` | Polling restaurante (pedidos + bloqueos) |
 | GET | `/restaurant/kitchen-orders` | Polling KDS |
 | POST | `/restaurant/tables/{id}/open` | Abrir mesa |
 | POST | `/restaurant/tables/{id}/lock` | Bloquear mesa |
@@ -1519,7 +1516,7 @@ Encoding: detecta UTF-8, convierte a CP850, inserta ESC t 0x02
 ### 19.10 Polling (Tiempo Real sin WebSocket)
 
 ```
-Restaurante:  pollActiveOrders() [JS] → cada 3s
+Restaurante:  pollRestaurantData() [JS] → cada 10s (pedidos + bloqueos)
 KDS:           loadKitchenOrders() [JS] → cada 5s
 Print Server:  pollPrintServer() [JS] → cada 10s
 
@@ -1617,7 +1614,7 @@ Flujo:
 2. Usuario cierra modal → POST /restaurant/tables/{id}/unlock
    - Libera el bloqueo (owner o admin)
 
-3. Polling cada 3s → GET /restaurant/locks
+3. Polling cada 10s → GET /restaurant/poll (pedidos + bloqueos)
    - Actualiza visual: mesas bloqueadas por otro → borde naranja
    - Libera bloqueos expirados automáticamente
 
@@ -2544,10 +2541,11 @@ son v5.3.0 en composer.lock.)
 Propósito: Optimizar el polling del lado cliente y asegurar manejo correcto de errores.
 
 Pollings activos en restaurant/index.blade.php:
-- pollActiveOrders()     → cada 10s (antes 3s) → GET /restaurant/active-orders
-- pollTableLocks()       → cada 10s (antes 3s) → GET /restaurant/locks
+- pollRestaurantData()   → cada 10s → GET /restaurant/poll (pedidos + bloqueos)
 - pollPrintServer()      → cada 10s            → GET /restaurant/print-status
 - loadKitchenOrders()    → cada 5s (KDS)       → GET /restaurant/kitchen-orders
+
+Notas: guardas anti-solapamiento (`restaurantPolling`/`kdsPolling`/`printPolling`), pausa con pestaña oculta (`visibilitychange`) y aviso "Sin conexión" tras 3 fallos consecutivos.
 
 Cambios realizados:
 1. Intervalos de 3s subidos a 10s (reduce carga del servidor)
