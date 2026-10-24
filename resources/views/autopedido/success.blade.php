@@ -51,11 +51,11 @@
             <i class="fas fa-clock"></i> {{ $successTexts['prepare'] }}
         </div>
 
-        <a href="{{ route('autopedido.index') }}" class="btn-new"><i class="fas fa-plus"></i> Nuevo Pedido</a>
+        <a href="/autopedido" class="btn-new"><i class="fas fa-plus"></i> Nuevo Pedido</a>
     </div>
 
     <script>
-        setTimeout(function() { window.location.href = '{{ route("autopedido.index") }}'; }, 30000);
+        setTimeout(function() { window.location.href = '/autopedido'; }, 30000);
     </script>
 </body>
 </html>

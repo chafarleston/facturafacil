@@ -25,6 +25,15 @@ return Application::configure(basePath: dirname(__DIR__))
             'theme' => \App\Http\Middleware\ThemeMiddleware::class,
         ]);
 
+        // Confía en el proxy local (cloudflared) para detectar HTTPS vía X-Forwarded-Proto
+        $middleware->trustProxies(
+            at: ['127.0.0.1', '::1'],
+            headers: \Illuminate\Http\Request::HEADER_X_FORWARDED_FOR
+                | \Illuminate\Http\Request::HEADER_X_FORWARDED_HOST
+                | \Illuminate\Http\Request::HEADER_X_FORWARDED_PORT
+                | \Illuminate\Http\Request::HEADER_X_FORWARDED_PROTO
+        );
+
         $middleware->web(append: [
             \App\Http\Middleware\SystemLock::class,
         ]);

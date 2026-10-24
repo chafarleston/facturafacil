@@ -499,7 +499,7 @@
                 })))
             }, deliveryData);
 
-            fetch('{{ route("autopedido.confirm") }}', {
+            fetch('/autopedido/confirm', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
