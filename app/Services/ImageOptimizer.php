@@ -44,6 +44,22 @@ class ImageOptimizer
         $image = $this->applyExifOrientation($image, $sourcePath);
         $image = $this->resize($image);
 
+        // WebP no soporta imágenes de paleta (PNG/GIF indexados): convertir a truecolor.
+        if (!imageistruecolor($image)) {
+            if (!@imagepalettetotruecolor($image)) {
+                $width = imagesx($image);
+                $height = imagesy($image);
+                $trueColor = imagecreatetruecolor($width, $height);
+                imagealphablending($trueColor, false);
+                imagesavealpha($trueColor, true);
+                $transparent = imagecolorallocatealpha($trueColor, 0, 0, 0, 127);
+                imagefilledrectangle($trueColor, 0, 0, $width, $height, $transparent);
+                imagecopy($trueColor, $image, 0, 0, 0, 0, $width, $height);
+                imagedestroy($image);
+                $image = $trueColor;
+            }
+        }
+
         $tmpPath = tempnam(sys_get_temp_dir(), 'img');
         if ($tmpPath === false) {
             imagedestroy($image);

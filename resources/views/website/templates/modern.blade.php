@@ -114,7 +114,7 @@
 <nav class="navbar navbar-expand-lg sticky-top py-2" id="mainNav">
     <div class="container">
         <a class="navbar-brand d-flex align-items-center fw-bold" href="#inicio">
-            @if($logoUrl)<img src="{{ $logoUrl }}" alt="{{ $brandName }}">@endif
+            @if($logoUrl)<img src="{{ $logoUrl }}" alt="{{ $brandName }}" style="height: {{ $web['logo_height'] ?? 56 }}px; width:auto;">@endif
             <span>{{ $brandName }}</span>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" aria-label="Menú"><span class="navbar-toggler-icon"></span></button>
@@ -301,7 +301,7 @@
         <div class="row g-4">
             <div class="col-lg-4">
                 <div class="d-flex align-items-center mb-3">
-                    @if($logoUrl)<img src="{{ $logoUrl }}" alt="{{ $brandName }}" style="height:42px; margin-right:10px;">@endif
+                    @if($logoUrl)<img src="{{ $logoUrl }}" alt="{{ $brandName }}" style="height: {{ min((int) ($web['logo_height'] ?? 56), 56) }}px; width:auto; margin-right:10px;">@endif
                     <h5 class="text-white mb-0 fw-bold">{{ $brandName }}</h5>
                 </div>
                 <p class="small mb-0">{{ $web['footer_text'] }}</p>

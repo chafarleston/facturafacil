@@ -25,6 +25,7 @@ class WebsiteController extends Controller
             'primary_color' => Setting::web('primary_color', '#e94560'),
             'secondary_color' => Setting::web('secondary_color', '#3a1c4a'),
             'logo' => Setting::web('logo', ''),
+            'logo_height' => (int) Setting::web('logo_height', 56),
             'show_autopedido' => Setting::web('show_autopedido', '1') === '1',
             'slider_enabled' => Setting::web('slider_enabled', '1') === '1',
             'slide_1_image' => Setting::web('slide_1_image', ''),
@@ -155,6 +156,7 @@ class WebsiteController extends Controller
             'template' => 'nullable|in:modern,elegant,minimal,classic,dark,tropical',
             'font' => 'nullable|in:Poppins,Montserrat,Raleway,Playfair Display,Lora,Nunito',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'logo_height' => 'nullable|integer|min:32|max:120',
             'slide_1_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'slide_2_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'slide_3_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
@@ -178,6 +180,8 @@ class WebsiteController extends Controller
         foreach ($textKeys as $key) {
             Setting::setWeb($key, $validated[$key] ?? '');
         }
+
+        Setting::setWeb('logo_height', (int) ($validated['logo_height'] ?? 56));
 
         Setting::setWeb('show_catalog', $request->boolean('show_catalog') ? '1' : '0');
         Setting::setWeb('show_prices', $request->boolean('show_prices') ? '1' : '0');

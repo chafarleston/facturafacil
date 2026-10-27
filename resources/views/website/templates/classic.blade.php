@@ -95,7 +95,7 @@
 <nav class="navbar navbar-expand-lg sticky-top py-3" id="mainNav">
     <div class="container">
         <a class="navbar-brand d-flex align-items-center" href="#inicio">
-            @if($logoUrl)<img src="{{ $logoUrl }}" alt="{{ $brandName }}">@endif
+            @if($logoUrl)<img src="{{ $logoUrl }}" alt="{{ $brandName }}" style="height: {{ $web['logo_height'] ?? 56 }}px; width:auto;">@endif
             <span>{{ $brandName }}</span>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" aria-label="Menú"><span class="navbar-toggler-icon"></span></button>

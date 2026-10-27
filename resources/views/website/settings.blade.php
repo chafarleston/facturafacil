@@ -95,6 +95,12 @@
                             @else
                                 <small class="text-muted">Si no subes uno, se usa el logo de la empresa.</small>
                             @endif
+                            <div class="form-group mt-2 mb-0">
+                                <label>Tamaño del logo (alto en px)</label>
+                                <input type="number" name="logo_height" class="form-control" min="32" max="120"
+                                       value="{{ old('logo_height', $web['logo_height'] ?? 56) }}">
+                                <small class="text-muted">Recomendado 56–72 px. Se aplica en la barra superior.</small>
+                            </div>
                         </div>
                         <div class="col-md-6 form-group">
                             <label>Botón "Pedir en línea"</label>
