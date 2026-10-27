@@ -1,4 +1,10 @@
 @if(!empty($slides) && ($web['slider_enabled'] ?? false))
+<style>
+    @media (max-width: 576px) {
+        .web-slide-img, .web-slide-placeholder { height: 280px !important; }
+        .web-slide-caption { padding: 18px !important; }
+    }
+</style>
 <section class="py-4">
     <div class="container">
         <div id="webSlider" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5000">
@@ -12,12 +18,12 @@
                 @foreach($slides as $i => $slide)
                 <div class="carousel-item {{ $i === 0 ? 'active' : '' }}">
                     @if($slide['image'])
-                        <img src="{{ $slide['image'] }}" class="d-block w-100"
+                        <img src="{{ $slide['image'] }}" class="d-block w-100 web-slide-img"
                              style="height:440px; object-fit:cover;" alt="{{ $slide['title'] }}">
                     @else
-                        <div style="height:440px; background:linear-gradient(135deg, var(--primary, #e94560), var(--secondary, #3a1c4a));"></div>
+                        <div class="web-slide-placeholder" style="height:440px; background:linear-gradient(135deg, var(--primary, #e94560), var(--secondary, #3a1c4a));"></div>
                     @endif
-                    <div class="carousel-caption text-start"
+                    <div class="carousel-caption text-start web-slide-caption"
                          style="left:0; right:0; bottom:0; padding:30px; background:linear-gradient(0deg, rgba(0,0,0,.72), transparent);">
                         @if($slide['title'])<h3 class="fw-bold mb-2">{{ $slide['title'] }}</h3>@endif
                         @if($slide['text'])<p class="mb-2">{{ $slide['text'] }}</p>@endif
