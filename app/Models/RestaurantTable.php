@@ -15,6 +15,7 @@ class RestaurantTable extends Model
         'company_id',
         'floor_id',
         'name',
+        'slug',
         'capacity',
         'status',
         'color',

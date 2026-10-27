@@ -87,6 +87,26 @@ class Setting extends Model
         static::set('kiosk_' . $key, $value);
     }
 
+    public static function isVirtualPrebillEnabled(): bool
+    {
+        return static::get('precuenta_virtual_enabled', '0') === '1';
+    }
+
+    public static function setVirtualPrebillEnabled(bool $enabled): void
+    {
+        static::set('precuenta_virtual_enabled', $enabled ? '1' : '0');
+    }
+
+    public static function virtualPrebillDomain(): string
+    {
+        return (string) static::get('precuenta_virtual_domain', '');
+    }
+
+    public static function setVirtualPrebillDomain(string $domain): void
+    {
+        static::set('precuenta_virtual_domain', rtrim(trim($domain), '/'));
+    }
+
     public static function showProductImages(string $module): bool
     {
         return static::get('img_products_' . $module, '0') === '1';

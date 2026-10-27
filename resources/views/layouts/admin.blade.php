@@ -211,7 +211,7 @@ $__kdsActive = \App\Models\Company::orderMode() === 'kds';
 
             @can('permission', 'view_restaurant')
             <li class="nav-item">
-              <a href="#" class="nav-link {{ (request()->routeIs('restaurant.*') && !request()->routeIs('restaurant.kioskOrders')) || request()->routeIs('restaurant-settings.*') ? 'active' : '' }}">
+              <a href="#" class="nav-link {{ (request()->routeIs('restaurant.*') && !request()->routeIs('restaurant.kioskOrders')) || request()->routeIs('restaurant-settings.*') || request()->routeIs('virtual-prebill.*') ? 'active' : '' }}">
                 <i class="nav-icon fas fa-utensils"></i>
                 <p>Restaurante<i class="fas fa-angle-left right"></i></p>
               </a>
@@ -225,6 +225,7 @@ $__kdsActive = \App\Models\Company::orderMode() === 'kds';
                 @endif
                 @endcan
                 <li class="nav-item"><a href="{{ route('restaurant.floors.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Pisos</p></a></li>
+                <li class="nav-item"><a href="{{ route('virtual-prebill.index') }}" class="nav-link {{ request()->routeIs('virtual-prebill.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Precuenta Virtual</p></a></li>
     <li class="nav-item"><a href="{{ route('auxiliary-items.index') }}" class="nav-link {{ request()->routeIs('auxiliary-items.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Elementos Auxiliares</p></a></li>
                 @can('permission', 'view_order_mode')
                 <li class="nav-item"><a href="{{ route('restaurant.mode') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Modo de Pedidos</p></a></li>

@@ -7,10 +7,48 @@ use App\Models\RestaurantTable;
 use App\Models\Floor;
 use App\Models\Company;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class TableController extends Controller
 {
+    /**
+     * Slugs reservados para no chocar con rutas del sistema.
+     */
+    private const RESERVED_SLUGS = [
+        'login', 'logout', 'autopedido', 'dashboard', 'pos', 'restaurant',
+        'restaurant-settings', 'virtual-prebill', 'kiosk-settings', 'catalog-images',
+        'companies', 'products', 'categories', 'customers', 'cashregisters',
+        'cash-movements', 'cash-report-settings', 'users', 'roles', 'permissions',
+        'series', 'printers', 'personal', 'schedules', 'attendance', 'marcar', 'up',
+    ];
+
+    /**
+     * Genera un slug único por empresa a partir del nombre de la mesa.
+     */
+    private function generateSlug(string $name, int $companyId, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($name, '');
+        if ($base === '') {
+            $base = 'mesa' . uniqid();
+        }
+
+        if (in_array($base, self::RESERVED_SLUGS, true)) {
+            $base .= '-mesa';
+        }
+
+        $slug = $base;
+        $i = 2;
+
+        while (RestaurantTable::where('company_id', $companyId)
+            ->where('slug', $slug)
+            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+            ->exists()) {
+            $slug = $base . '-' . $i++;
+        }
+
+        return $slug;
+    }
     public function index(Request $request)
     {
         return redirect()->route('restaurant.floors.index', ['company_id' => $request->company_id ?? Company::first()->id]);
@@ -44,6 +82,7 @@ class TableController extends Controller
 
         $validated['capacity'] = $request->capacity ?? 4;
         $validated['color'] = $request->color ?? '#28a745';
+        $validated['slug'] = $this->generateSlug($validated['name'], $validated['company_id']);
 
         RestaurantTable::create($validated);
 
@@ -68,6 +107,11 @@ class TableController extends Controller
         ], [
             'name.unique' => 'Ya existe una mesa con ese nombre en este piso.',
         ]);
+
+        // El slug se mantiene estable (no cambia si se renombra la mesa)
+        if (empty($restaurantTable->slug)) {
+            $validated['slug'] = $this->generateSlug($validated['name'], $restaurantTable->company_id, $restaurantTable->id);
+        }
 
         $restaurantTable->update($validated);
 

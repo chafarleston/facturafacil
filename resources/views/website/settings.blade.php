@@ -52,8 +52,11 @@
                                 <option value="modern" {{ old('template', $web['template']) === 'modern' ? 'selected' : '' }}>Moderna</option>
                                 <option value="elegant" {{ old('template', $web['template']) === 'elegant' ? 'selected' : '' }}>Elegante</option>
                                 <option value="minimal" {{ old('template', $web['template']) === 'minimal' ? 'selected' : '' }}>Minimalista</option>
+                                <option value="classic" {{ old('template', $web['template']) === 'classic' ? 'selected' : '' }}>Clásica</option>
+                                <option value="dark" {{ old('template', $web['template']) === 'dark' ? 'selected' : '' }}>Oscura</option>
+                                <option value="tropical" {{ old('template', $web['template']) === 'tropical' ? 'selected' : '' }}>Tropical</option>
                             </select>
-                            <small class="text-muted">Moderna: colorida y con tarjetas. Elegante: sobria con líneas finas. Minimalista: limpia y espaciosa.</small>
+                            <small class="text-muted">Moderna: colorida. Elegante: sobria. Minimalista: limpia. Clásica: tradicional. Oscura: alto contraste. Tropical: fresca y colorida.</small>
                         </div>
                         <div class="col-md-4 form-group">
                             <label>Color principal</label>
@@ -74,6 +77,31 @@
                                     <option value="{{ $fontOption }}" {{ old('font', $web['font']) === $fontOption ? 'selected' : '' }}>{{ $fontOption }}</option>
                                 @endforeach
                             </select>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-6 form-group">
+                            <label>Logo de la web</label>
+                            <input type="file" name="logo" class="form-control-file" accept="image/*">
+                            @if($web['logo'])
+                                <div class="mt-2">
+                                    <img src="{{ asset('storage/' . $web['logo']) }}" alt="Logo" style="max-height:80px; background:#f5f5f5; padding:6px; border-radius:8px;">
+                                    <div class="form-check mt-2">
+                                        <input class="form-check-input" type="checkbox" name="remove_logo" id="remove_logo" value="1">
+                                        <label class="form-check-label" for="remove_logo">Eliminar logo actual</label>
+                                    </div>
+                                </div>
+                            @else
+                                <small class="text-muted">Si no subes uno, se usa el logo de la empresa.</small>
+                            @endif
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label>Botón "Pedir en línea"</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="show_autopedido" id="show_autopedido" value="1" {{ $web['show_autopedido'] ? 'checked' : '' }}>
+                                <label class="form-check-label" for="show_autopedido">Mostrar botón destacado para autopedido</label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -111,6 +139,51 @@
                             </div>
                         @endif
                     </div>
+                </div>
+            </div>
+
+            <div class="card card-primary">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-bullhorn"></i> Publicidad (Slider)</h3>
+                </div>
+                <div class="card-body">
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="slider_enabled" id="slider_enabled" value="1" {{ $web['slider_enabled'] ? 'checked' : '' }}>
+                        <label class="form-check-label" for="slider_enabled">Mostrar slider de publicidad en la web</label>
+                    </div>
+
+                    @for($i = 1; $i <= 3; $i++)
+                    <div class="border rounded p-3 mb-3">
+                        <h6 class="mb-2"><i class="fas fa-images"></i> Slide {{ $i }}</h6>
+                        <div class="row">
+                            <div class="col-md-5 form-group">
+                                <label>Imagen</label>
+                                <input type="file" name="slide_{{ $i }}_image" class="form-control-file" accept="image/*">
+                                @if($web['slide_'.$i.'_image'])
+                                    <div class="mt-2">
+                                        <img src="{{ asset('storage/' . $web['slide_'.$i.'_image']) }}" alt="Slide {{ $i }}" style="max-height:90px; border-radius:6px;">
+                                        <div class="form-check mt-1">
+                                            <input class="form-check-input" type="checkbox" name="remove_slide_{{ $i }}_image" id="remove_slide_{{ $i }}_image" value="1">
+                                            <label class="form-check-label" for="remove_slide_{{ $i }}_image">Eliminar</label>
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                            <div class="col-md-7">
+                                <div class="form-group">
+                                    <label>Título</label>
+                                    <input type="text" name="slide_{{ $i }}_title" class="form-control" maxlength="150"
+                                           value="{{ old('slide_'.$i.'_title', $web['slide_'.$i.'_title']) }}">
+                                </div>
+                                <div class="form-group mb-0">
+                                    <label>Texto</label>
+                                    <input type="text" name="slide_{{ $i }}_text" class="form-control" maxlength="300"
+                                           value="{{ old('slide_'.$i.'_text', $web['slide_'.$i.'_text']) }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endfor
                 </div>
             </div>
 

@@ -158,6 +158,8 @@
     </div>
 </section>
 
+@include('website.partials.slider')
+
 @if($web['feature_1_title'] || $web['feature_2_title'] || $web['feature_3_title'])
 <section class="py-5" id="beneficios">
     <div class="container py-4">
@@ -350,6 +352,8 @@
 
 @if($waNumber)<a href="https://wa.me/{{ $waNumber }}?text={{ urlencode('Hola, deseo hacer un pedido.') }}" class="wa-float" target="_blank" rel="noopener" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>@endif
 <button type="button" class="to-top" id="toTop" aria-label="Volver arriba"><i class="fas fa-arrow-up"></i></button>
+
+@include('website.partials.virtual-order-cta')
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>

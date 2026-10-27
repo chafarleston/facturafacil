@@ -24,6 +24,18 @@ class WebsiteController extends Controller
             'font' => Setting::web('font', 'Poppins'),
             'primary_color' => Setting::web('primary_color', '#e94560'),
             'secondary_color' => Setting::web('secondary_color', '#3a1c4a'),
+            'logo' => Setting::web('logo', ''),
+            'show_autopedido' => Setting::web('show_autopedido', '1') === '1',
+            'slider_enabled' => Setting::web('slider_enabled', '1') === '1',
+            'slide_1_image' => Setting::web('slide_1_image', ''),
+            'slide_1_title' => Setting::web('slide_1_title', ''),
+            'slide_1_text' => Setting::web('slide_1_text', ''),
+            'slide_2_image' => Setting::web('slide_2_image', ''),
+            'slide_2_title' => Setting::web('slide_2_title', ''),
+            'slide_2_text' => Setting::web('slide_2_text', ''),
+            'slide_3_image' => Setting::web('slide_3_image', ''),
+            'slide_3_title' => Setting::web('slide_3_title', ''),
+            'slide_3_text' => Setting::web('slide_3_text', ''),
             'hero_title' => Setting::web('hero_title', $company->nombre_comercial ?: $company->razon_social),
             'hero_subtitle' => Setting::web('hero_subtitle', ''),
             'hero_description' => Setting::web('hero_description', ''),
@@ -73,12 +85,26 @@ class WebsiteController extends Controller
 
         $categoryNames = $categories->pluck('nombre', 'id');
         $gallery = $products->filter(fn ($p) => (bool) $p->imagen_url)->take(8)->values();
-        $logoUrl = $company->getLogoUrl();
+        $logoUrl = $web['logo'] ? asset('storage/' . $web['logo']) : $company->getLogoUrl();
 
-        $templates = ['modern', 'elegant', 'minimal'];
+        $slides = [];
+        for ($i = 1; $i <= 3; $i++) {
+            $image = $web["slide_{$i}_image"] ?? '';
+            $title = $web["slide_{$i}_title"] ?? '';
+            $text = $web["slide_{$i}_text"] ?? '';
+            if ($image || $title || $text) {
+                $slides[] = [
+                    'image' => $image ? asset('storage/' . $image) : null,
+                    'title' => $title,
+                    'text' => $text,
+                ];
+            }
+        }
+
+        $templates = ['modern', 'elegant', 'minimal', 'classic', 'dark', 'tropical'];
         $template = in_array($web['template'], $templates, true) ? $web['template'] : 'modern';
 
-        return view('website.templates.' . $template, compact('company', 'web', 'categories', 'products', 'categoryNames', 'gallery', 'logoUrl'));
+        return view('website.templates.' . $template, compact('company', 'web', 'categories', 'products', 'categoryNames', 'gallery', 'logoUrl', 'slides'));
     }
 
     public function toggle()
@@ -126,8 +152,18 @@ class WebsiteController extends Controller
             'footer_text' => 'nullable|string|max:500',
             'primary_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'secondary_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'template' => 'nullable|in:modern,elegant,minimal',
+            'template' => 'nullable|in:modern,elegant,minimal,classic,dark,tropical',
             'font' => 'nullable|in:Poppins,Montserrat,Raleway,Playfair Display,Lora,Nunito',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'slide_1_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'slide_2_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'slide_3_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'slide_1_title' => 'nullable|string|max:150',
+            'slide_1_text' => 'nullable|string|max:300',
+            'slide_2_title' => 'nullable|string|max:150',
+            'slide_2_text' => 'nullable|string|max:300',
+            'slide_3_title' => 'nullable|string|max:150',
+            'slide_3_text' => 'nullable|string|max:300',
         ]);
 
         $textKeys = [
@@ -136,6 +172,7 @@ class WebsiteController extends Controller
             'feature_3_title', 'feature_3_text',
             'catalog_title', 'gallery_title', 'phone', 'email', 'address', 'whatsapp', 'facebook', 'instagram',
             'footer_text', 'primary_color', 'secondary_color', 'template', 'font',
+            'slide_1_title', 'slide_1_text', 'slide_2_title', 'slide_2_text', 'slide_3_title', 'slide_3_text',
         ];
 
         foreach ($textKeys as $key) {
@@ -144,16 +181,27 @@ class WebsiteController extends Controller
 
         Setting::setWeb('show_catalog', $request->boolean('show_catalog') ? '1' : '0');
         Setting::setWeb('show_prices', $request->boolean('show_prices') ? '1' : '0');
+        Setting::setWeb('show_autopedido', $request->boolean('show_autopedido') ? '1' : '0');
+        Setting::setWeb('slider_enabled', $request->boolean('slider_enabled') ? '1' : '0');
 
         // Imágenes: reemplazar, conservar o eliminar
-        foreach (['hero_image' => 1600, 'about_image' => 1200] as $field => $maxDimension) {
+        $imageFields = [
+            'hero_image' => 1600,
+            'about_image' => 1200,
+            'logo' => 600,
+            'slide_1_image' => 1600,
+            'slide_2_image' => 1600,
+            'slide_3_image' => 1600,
+        ];
+
+        foreach ($imageFields as $field => $maxDimension) {
             $current = Setting::web($field);
 
             if ($request->hasFile($field)) {
                 if ($current) {
                     Storage::disk('public')->delete($current);
                 }
-                $optimizer = new ImageOptimizer($maxDimension, 82);
+                $optimizer = new ImageOptimizer($maxDimension, $field === 'logo' ? 90 : 82);
                 Setting::setWeb($field, $optimizer->optimize($request->file($field), 'website'));
             } elseif ($request->boolean('remove_' . $field)) {
                 if ($current) {
