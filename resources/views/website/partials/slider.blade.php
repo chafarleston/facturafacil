@@ -1,8 +1,27 @@
 @if(!empty($slides) && ($web['slider_enabled'] ?? false))
 <style>
+    @media (max-width: 768px) {
+        .web-slide-img {
+            height: auto !important;
+            object-fit: contain !important;
+        }
+        .web-slide-placeholder { height: 220px !important; }
+        .web-slide-caption {
+            position: static !important;
+            left: auto !important;
+            right: auto !important;
+            bottom: auto !important;
+            padding: 14px 16px !important;
+            background: #1a1a2e !important;
+        }
+        .web-slide-caption h3 { font-size: 1.1rem; }
+        .web-slide-caption p { font-size: .85rem; margin-bottom: .5rem !important; }
+        .web-slide-caption .btn { font-size: .8rem; padding: .35rem .7rem; }
+    }
     @media (max-width: 576px) {
-        .web-slide-img, .web-slide-placeholder { height: 280px !important; }
-        .web-slide-caption { padding: 18px !important; }
+        .web-slide-img { height: auto !important; }
+        .web-slide-placeholder { height: 200px !important; }
+        .web-slide-caption { padding: 12px 14px !important; }
     }
 </style>
 <section class="py-4">
