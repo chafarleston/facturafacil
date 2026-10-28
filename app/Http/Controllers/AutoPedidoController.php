@@ -33,12 +33,17 @@ class AutoPedidoController extends Controller
                 ->get();
         });
 
+        $auxiliaryItems = \App\Models\AuxiliaryItem::where('company_id', $companyId)
+            ->active()
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         $showProductImages = \App\Models\Setting::showProductImages('kiosko');
         $showCategoryImages = \App\Models\Setting::showCategoryImages('kiosko');
         $categoriesOnly = \App\Models\Setting::categoriesOnly('kiosko');
         $deliveryType = \App\Models\Setting::kiosk('delivery_type', 'local');
 
-        return view('autopedido.index', compact('products', 'categories', 'companyId', 'showProductImages', 'showCategoryImages', 'categoriesOnly', 'deliveryType'));
+        return view('autopedido.index', compact('products', 'categories', 'companyId', 'showProductImages', 'showCategoryImages', 'categoriesOnly', 'deliveryType', 'auxiliaryItems'));
     }
 
     public function confirmOrder(Request $request)

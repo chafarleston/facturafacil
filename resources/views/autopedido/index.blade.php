@@ -246,6 +246,7 @@
         let modalQty = 1;
         let activeInput = null;
         const companyId = {{ $companyId }};
+        const autopedidoAuxiliaryItems = @json($auxiliaryItems);
         const kioskDeliveryType = @json($deliveryType);
 
         function addProduct(id, name, price) {
@@ -255,33 +256,31 @@
             document.getElementById('modalProductPrice').textContent = 'S/ ' + price.toFixed(2);
             document.getElementById('modalQtyDisplay').textContent = '1';
             document.getElementById('modalNotes').value = '';
-            document.getElementById('productModal').classList.add('show');
             loadModalAuxItems();
+            document.getElementById('productModal').classList.add('show');
         }
 
         function loadModalAuxItems() {
             const container = document.getElementById('modalAuxChips');
             const wrapper = document.getElementById('modalAuxContainer');
+            if (!container || !wrapper) return;
+
             container.innerHTML = '';
             wrapper.style.display = 'none';
 
-            fetch('/auxiliary-items/list?company_id=' + companyId, {
-                headers: { 'Accept': 'application/json' }
-            })
-            .then(r => r.json())
-            .then(items => {
-                if (items.length === 0) return;
-                items.forEach(item => {
-                    const chip = document.createElement('span');
-                    chip.className = 'modal-aux-chip';
-                    chip.dataset.id = item.id;
-                    chip.textContent = item.name;
-                    chip.onclick = function() { this.classList.toggle('selected'); };
-                    container.appendChild(chip);
-                });
-                wrapper.style.display = 'block';
-            })
-            .catch(() => {});
+            const items = autopedidoAuxiliaryItems || [];
+            if (items.length === 0) return;
+
+            items.forEach(item => {
+                const chip = document.createElement('span');
+                chip.className = 'modal-aux-chip';
+                chip.dataset.id = item.id;
+                chip.textContent = item.name;
+                chip.onclick = function() { this.classList.toggle('selected'); };
+                container.appendChild(chip);
+            });
+
+            wrapper.style.display = 'block';
         }
 
         function modalQtyChange(delta) {

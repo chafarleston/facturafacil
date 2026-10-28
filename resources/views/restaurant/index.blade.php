@@ -968,6 +968,7 @@ function restKbPressBackspace() {
 let orderModalOpen = false;
 const currentUserId = {{ auth()->id() }};
 const companyId = {{ $companyId }};
+let restaurantAuxiliaryItems = @json($auxiliaryItems);
 const printServerUrl = @json(config('print-server.url', 'http://127.0.0.1:9100'));
 let productsData = @json($products);
 let customersData = @json($customers);
@@ -1011,14 +1012,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     window._auxNames = {};
-    fetch('/auxiliary-items/list?company_id=' + companyId, {
-        headers: { 'Accept': 'application/json' }
-    })
-    .then(r => r.json())
-    .then(function(items) {
-        items.forEach(function(item) { window._auxNames[item.id] = item.name; });
-    })
-    .catch(function() {});
+    (restaurantAuxiliaryItems || []).forEach(function(item) {
+        window._auxNames[item.id] = item.name;
+    });
 });
 
 function selectFloor(floorId) {
@@ -1322,26 +1318,24 @@ function backToCategories() {
 function loadAuxiliaryItems() {
     const container = document.getElementById('auxiliaryChips');
     const wrapper = document.getElementById('auxiliaryContainer');
+    if (!container || !wrapper) return;
+
     container.innerHTML = '';
     wrapper.style.display = 'none';
-    
-    fetch('/auxiliary-items/list?company_id=' + companyId, {
-        headers: { 'Accept': 'application/json' }
-    })
-    .then(r => r.json())
-    .then(items => {
-        if (items.length === 0) return;
-        items.forEach(item => {
-            const chip = document.createElement('span');
-            chip.className = 'aux-chip';
-            chip.dataset.id = item.id;
-            chip.textContent = item.name;
-            chip.onclick = function() { this.classList.toggle('selected'); };
-            container.appendChild(chip);
-        });
-        wrapper.style.display = 'block';
-    })
-    .catch(() => {});
+
+    const items = restaurantAuxiliaryItems || [];
+    if (items.length === 0) return;
+
+    items.forEach(item => {
+        const chip = document.createElement('span');
+        chip.className = 'aux-chip';
+        chip.dataset.id = item.id;
+        chip.textContent = item.name;
+        chip.onclick = function() { this.classList.toggle('selected'); };
+        container.appendChild(chip);
+    });
+
+    wrapper.style.display = 'block';
 }
 
 function addProductToOrder(productId) {

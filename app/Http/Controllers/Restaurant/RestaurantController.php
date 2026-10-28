@@ -49,6 +49,11 @@ class RestaurantController extends Controller
             }])
             ->get();
 
+        $auxiliaryItems = \App\Models\AuxiliaryItem::where('company_id', $companyId)
+            ->active()
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         $products = Cache::remember('restaurant_products_' . $companyId, 300, function() use ($companyId) {
             return Product::where('company_id', $companyId)
                 ->where('estado', 'ACTIVO')
@@ -83,7 +88,7 @@ class RestaurantController extends Controller
         $showCategoryImages = \App\Models\Setting::showCategoryImages('restaurant');
         $categoriesOnly = \App\Models\Setting::categoriesOnly('restaurant');
 
-        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId', 'orderMode', 'printServerRunning', 'igvPercent', 'cajaAbierta', 'showProductImages', 'showCategoryImages', 'categoriesOnly'));
+        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId', 'orderMode', 'printServerRunning', 'igvPercent', 'cajaAbierta', 'showProductImages', 'showCategoryImages', 'categoriesOnly', 'auxiliaryItems'));
     }
 
     public function modeIndex()

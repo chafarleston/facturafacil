@@ -81,7 +81,7 @@
 - Table locks expire after 5 minutes. `unlockAllTables` endpoint available for admins.
 - KDS has separate sections: "MOZO — Pedidos de Mesas" vs "KIOSKO — Autoservicio". Determined by `order_type` field.
 - The `PENDING_PAYMENT` status for kiosko orders is in the `status` ENUM of `restaurant_orders` (added via migration, not in original ENUM).
-- **Elementos Auxiliares**: New module with CRUD at Restaurante → Elementos Auxiliares. Chips appear in product modal (POS + autopedido). Stored as JSON array in `restaurant_order_items.auxiliary_items`. Displayed in KDS and kitchen tickets.
+- **Elementos Auxiliares**: New module with CRUD at Restaurante → Elementos Auxiliares. Chips appear in product modal (POS + autopedido). Los auxiliares se cargan con la página (restaurante/autopedido) y el modal abre completo, sin fetch al abrirlo. Stored as JSON array in `restaurant_order_items.auxiliary_items`. Displayed in KDS and kitchen tickets.
 - **Autopedido modal**: Product selection opens a modal with quantity (+/−), kitchen notes (with virtual keyboard), and auxiliary items chips. Cart stores notes + aux items per product.
 - **Virtual keyboard**: Used for search input AND modal notes textarea. Driven by `activeInput` variable — `openKeyboard(input)` sets it, `pressKey`/`pressBackspace` write to `activeInput.value` using `selectionStart/End`.
 - **Marcador de asistencia (cámara)**: `getUserMedia` exige **contexto seguro** — `localhost`, HTTPS, o lanzar Chrome con `--unsafely-treat-insecure-origin-as-secure="http://IP:PUERTO"`. Incluye scripts `iniciar-marcador.bat` (normal) e `iniciar-marcador-kiosko.bat` (pantalla completa). Sin permiso de cámara, el marcador funciona igual (solo DNI, sin foto).
