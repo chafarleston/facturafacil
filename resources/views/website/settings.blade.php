@@ -165,6 +165,7 @@
                             <div class="col-md-5 form-group">
                                 <label>Imagen</label>
                                 <input type="file" name="slide_{{ $i }}_image" class="form-control-file" accept="image/*">
+                                <small class="form-text text-muted">Se guarda recortada a 1600×600 px (WebP).</small>
                                 @if($web['slide_'.$i.'_image'])
                                     <div class="mt-2">
                                         <img src="{{ asset('storage/' . $web['slide_'.$i.'_image']) }}" alt="Slide {{ $i }}" style="max-height:90px; border-radius:6px;">

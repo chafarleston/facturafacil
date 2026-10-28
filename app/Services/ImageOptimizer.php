@@ -43,23 +43,88 @@ class ImageOptimizer
 
         $image = $this->applyExifOrientation($image, $sourcePath);
         $image = $this->resize($image);
+        $image = $this->ensureTrueColor($image);
 
-        // WebP no soporta imágenes de paleta (PNG/GIF indexados): convertir a truecolor.
-        if (!imageistruecolor($image)) {
-            if (!@imagepalettetotruecolor($image)) {
-                $width = imagesx($image);
-                $height = imagesy($image);
-                $trueColor = imagecreatetruecolor($width, $height);
-                imagealphablending($trueColor, false);
-                imagesavealpha($trueColor, true);
-                $transparent = imagecolorallocatealpha($trueColor, 0, 0, 0, 127);
-                imagefilledrectangle($trueColor, 0, 0, $width, $height, $transparent);
-                imagecopy($trueColor, $image, 0, 0, 0, 0, $width, $height);
-                imagedestroy($image);
-                $image = $trueColor;
-            }
+        return $this->storeWebp($image, $directory, $this->quality);
+    }
+
+    public function optimizeFit(UploadedFile $file, string $directory, int $width, int $height, int $quality = 82): string
+    {
+        $contents = @file_get_contents($file->getRealPath());
+        if ($contents === false) {
+            throw new \RuntimeException('No se pudo leer la imagen.');
         }
 
+        $image = @imagecreatefromstring($contents);
+        if ($image === false) {
+            throw new \RuntimeException('Formato de imagen no soportado.');
+        }
+
+        $image = $this->applyExifOrientation($image, $file->getRealPath());
+        $image = $this->resizeToCover($image, $width, $height);
+        $image = $this->ensureTrueColor($image);
+
+        return $this->storeWebp($image, $directory, $quality);
+    }
+
+    private function resizeToCover(\GdImage $image, int $width, int $height): \GdImage
+    {
+        $sourceWidth = imagesx($image);
+        $sourceHeight = imagesy($image);
+        $targetRatio = $width / $height;
+        $sourceRatio = $sourceWidth / $sourceHeight;
+
+        if ($sourceRatio > $targetRatio) {
+            $cropHeight = $sourceHeight;
+            $cropWidth = max(1, (int) round($sourceHeight * $targetRatio));
+            $sourceX = (int) floor(($sourceWidth - $cropWidth) / 2);
+            $sourceY = 0;
+        } else {
+            $cropWidth = $sourceWidth;
+            $cropHeight = max(1, (int) round($sourceWidth / $targetRatio));
+            $sourceX = 0;
+            $sourceY = (int) floor(($sourceHeight - $cropHeight) / 2);
+        }
+
+        $cropWidth = min($cropWidth, $sourceWidth);
+        $cropHeight = min($cropHeight, $sourceHeight);
+
+        $resized = imagecreatetruecolor($width, $height);
+        imagealphablending($resized, false);
+        imagesavealpha($resized, true);
+        $transparent = imagecolorallocatealpha($resized, 0, 0, 0, 127);
+        imagefilledrectangle($resized, 0, 0, $width, $height, $transparent);
+        imagecopyresampled($resized, $image, 0, 0, $sourceX, $sourceY, $width, $height, $cropWidth, $cropHeight);
+        imagedestroy($image);
+
+        return $resized;
+    }
+
+    private function ensureTrueColor(\GdImage $image): \GdImage
+    {
+        if (imageistruecolor($image)) {
+            return $image;
+        }
+
+        if (@imagepalettetotruecolor($image)) {
+            return $image;
+        }
+
+        $width = imagesx($image);
+        $height = imagesy($image);
+        $trueColor = imagecreatetruecolor($width, $height);
+        imagealphablending($trueColor, false);
+        imagesavealpha($trueColor, true);
+        $transparent = imagecolorallocatealpha($trueColor, 0, 0, 0, 127);
+        imagefilledrectangle($trueColor, 0, 0, $width, $height, $transparent);
+        imagecopy($trueColor, $image, 0, 0, 0, 0, $width, $height);
+        imagedestroy($image);
+
+        return $trueColor;
+    }
+
+    private function storeWebp(\GdImage $image, string $directory, int $quality): string
+    {
         $tmpPath = tempnam(sys_get_temp_dir(), 'img');
         if ($tmpPath === false) {
             imagedestroy($image);
@@ -68,7 +133,7 @@ class ImageOptimizer
 
         imagealphablending($image, false);
         imagesavealpha($image, true);
-        $saved = imagewebp($image, $tmpPath, $this->quality);
+        $saved = imagewebp($image, $tmpPath, $quality);
         imagedestroy($image);
 
         if (!$saved) {

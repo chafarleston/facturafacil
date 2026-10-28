@@ -190,23 +190,35 @@ class WebsiteController extends Controller
 
         // Imágenes: reemplazar, conservar o eliminar
         $imageFields = [
-            'hero_image' => 1600,
-            'about_image' => 1200,
-            'logo' => 600,
-            'slide_1_image' => 1600,
-            'slide_2_image' => 1600,
-            'slide_3_image' => 1600,
+            'hero_image' => ['max' => 1600, 'quality' => 82],
+            'about_image' => ['max' => 1200, 'quality' => 82],
+            'logo' => ['max' => 600, 'quality' => 90],
+            'slide_1_image' => ['fit' => [1600, 600], 'quality' => 82],
+            'slide_2_image' => ['fit' => [1600, 600], 'quality' => 82],
+            'slide_3_image' => ['fit' => [1600, 600], 'quality' => 82],
         ];
 
-        foreach ($imageFields as $field => $maxDimension) {
+        foreach ($imageFields as $field => $config) {
             $current = Setting::web($field);
 
             if ($request->hasFile($field)) {
                 if ($current) {
                     Storage::disk('public')->delete($current);
                 }
-                $optimizer = new ImageOptimizer($maxDimension, $field === 'logo' ? 90 : 82);
-                Setting::setWeb($field, $optimizer->optimize($request->file($field), 'website'));
+
+                if (isset($config['fit'])) {
+                    $optimizer = new ImageOptimizer();
+                    Setting::setWeb($field, $optimizer->optimizeFit(
+                        $request->file($field),
+                        'website',
+                        $config['fit'][0],
+                        $config['fit'][1],
+                        $config['quality']
+                    ));
+                } else {
+                    $optimizer = new ImageOptimizer($config['max'], $config['quality']);
+                    Setting::setWeb($field, $optimizer->optimize($request->file($field), 'website'));
+                }
             } elseif ($request->boolean('remove_' . $field)) {
                 if ($current) {
                     Storage::disk('public')->delete($current);
