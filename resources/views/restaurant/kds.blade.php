@@ -87,6 +87,7 @@
         
         .kds-order.ready { border-left-color: #00ff88; }
         .kds-order.sent { border-left-color: #ffc107; }
+        .kds-order.preparing { border-left-color: #ff9800; }
         
         .kds-order-header {
             background: #1a1a2e;
@@ -100,6 +101,7 @@
         .kds-order-number { font-size: 14px; font-weight: bold; color: #e94560; }
         .kds-order.ready .kds-order-number { color: #00ff88; }
         .kds-order.sent .kds-order-number { color: #ffc107; }
+        .kds-order.preparing .kds-order-number { color: #ff9800; }
         
         .kds-order-table { font-size: 12px; color: #888; }
         .kds-order-user { font-size: 10px; color: #4fc3f7; margin-top: 1px; }
@@ -189,6 +191,7 @@
         .kds-btn:hover { transform: scale(1.02); }
         
         .kds-btn-ready { background: #00ff88; color: #000; }
+        .kds-btn-preparing { background: #ff9800; color: white; }
         .kds-btn-deliver { background: #4caf50; color: white; }
         .kds-btn-print { background: #2196f3; color: white; }
         .kds-btn-complete { background: #ff9800; color: white; }
@@ -322,15 +325,14 @@
                     <div class="kds-stat-label">Pendientes</div>
                 </div>
                 <div class="kds-stat">
-                    <div class="kds-stat-value" id="sentCount">0</div>
-                    <div class="kds-stat-label">En Cocina</div>
-                </div>
-                <div class="kds-stat">
-                    <div class="kds-stat-value" id="readyCount">0</div>
-                    <div class="kds-stat-label">Listos</div>
+                    <div class="kds-stat-value" id="preparingCount">0</div>
+                    <div class="kds-stat-label">En preparación</div>
                 </div>
             </div>
             <div class="kds-header-right">
+                <a href="{{ route('restaurant.kitchenHistory') }}" class="btn btn-dark" target="_blank" title="Historial y métricas de cocina">
+                    <i class="fas fa-chart-line"></i> Historial
+                </a>
                 <button class="btn btn-dark" id="audioBtn" onclick="initAudio(); playAlertSound();" title="Activar sonido">
                     <i class="fas fa-volume-up"></i> Sonido
                 </button>
@@ -503,15 +505,13 @@ function isOverdue(dateString) {
 function renderKitchenOrders() {
     const container = document.getElementById('kdsOrders');
     
-    let pendingOrders = allOrders.filter(o => o.status === 'OPEN');
-    let sentOrders = allOrders.filter(o => o.status === 'SENT_TO_KITCHEN');
-    let readyOrders = allOrders.filter(o => o.status === 'READY');
-    
+    let pendingOrders = allOrders.filter(o => o.status === 'SENT_TO_KITCHEN');
+    let preparingOrders = allOrders.filter(o => o.status === 'PREPARING');
+
     document.getElementById('pendingCount').textContent = pendingOrders.length;
-    document.getElementById('sentCount').textContent = sentOrders.length;
-    document.getElementById('readyCount').textContent = readyOrders.length;
-    
-    const sortedOrders = [...pendingOrders, ...sentOrders, ...readyOrders];
+    document.getElementById('preparingCount').textContent = preparingOrders.length;
+
+    const sortedOrders = [...pendingOrders, ...preparingOrders];
     
     if (sortedOrders.length === 0) {
         container.innerHTML = `
@@ -530,12 +530,15 @@ function renderKitchenOrders() {
     let html = '';
     
     function renderOrderCard(order) {
-        const elapsed = getElapsedTime(order.created_at);
-        const overdue = isOverdue(order.created_at);
         const isKiosko = order.order_type === 'kiosko';
-        const statusClass = order.status === 'READY' ? 'ready' : 
+        const statusClass = order.status === 'PREPARING' ? 'preparing' :
                            order.status === 'SENT_TO_KITCHEN' ? 'sent' : 'pending';
         const kioskoClass = isKiosko ? 'kiosko' : '';
+        const phaseStartedAt = order.status === 'PREPARING'
+            ? (order.preparing_started_at || order.sent_to_kitchen_at || order.created_at)
+            : (order.sent_to_kitchen_at || order.created_at);
+        const elapsed = getElapsedTime(phaseStartedAt);
+        const overdue = isOverdue(phaseStartedAt);
         
         const sortedItems = [...order.items].sort((a, b) => {
             const orderVal = { 'PENDING': 0, 'SENT': 1, 'READY': 2, 'DELIVERED': 3, 'CANCELLED': 4 };
@@ -574,21 +577,18 @@ function renderKitchenOrders() {
                     }).join('')}
                 </div>
                 <div class="kds-order-actions">
-                    ${order.status === 'OPEN' || order.status === 'SENT_TO_KITCHEN' ? `
-                        <button class="kds-btn kds-btn-ready" onclick="markOrderReady(${order.id})">
-                            <i class="fas fa-check"></i> LISTO
+                    ${order.status === 'SENT_TO_KITCHEN' ? `
+                        <button class="kds-btn kds-btn-preparing" onclick="markOrderPreparing(${order.id})">
+                            <i class="fas fa-fire"></i> PREPARAR TODO
                         </button>
                     ` : ''}
-                    ${order.status === 'READY' ? `
+                    ${order.status === 'PREPARING' ? `
                         <button class="kds-btn kds-btn-deliver" onclick="deliverOrder(${order.id})">
-                            <i class="fas fa-check-double"></i> ENTREGADO
+                            <i class="fas fa-check-double"></i> TERMINADO
                         </button>
                     ` : ''}
                     <button class="kds-btn kds-btn-print" onclick="printTicket(${order.id})">
                         <i class="fas fa-print"></i> IMPRIMIR
-                    </button>
-                    <button class="kds-btn kds-btn-complete" onclick="completeOrder(${order.id})" title="Marcar como completado">
-                        <i class="fas fa-flag-checkered"></i> COMPLETADO
                     </button>
                 </div>
             </div>
@@ -612,8 +612,8 @@ function renderKitchenOrders() {
     container.innerHTML = html;
 }
 
-function markOrderReady(orderId) {
-    fetch('/restaurant/kitchen/' + orderId + '/ready', {
+function markOrderPreparing(orderId) {
+    fetch('/restaurant/kitchen/' + orderId + '/preparing', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -626,12 +626,12 @@ function markOrderReady(orderId) {
         if (data.success) {
             loadKitchenOrders();
         } else {
-            alert(data.message || 'Error al marcar como listo');
+            alert(data.message || 'Error al marcar en preparación');
         }
     })
     .catch(err => {
         console.error('KDS Error:', err);
-        alert('Error de conexión al marcar como listo');
+        alert('Error de conexión al marcar en preparación');
     });
 }
 
@@ -649,41 +649,17 @@ function deliverOrder(orderId) {
         if (data.success) {
             loadKitchenOrders();
         } else {
-            alert(data.message || 'Error al entregar');
+            alert(data.message || 'Error al terminar');
         }
     })
     .catch(err => {
         console.error('KDS Error:', err);
-        alert('Error de conexión al entregar');
+        alert('Error de conexión al terminar');
     });
 }
 
 function printTicket(orderId) {
     window.open('/restaurant/orders/' + orderId + '/print-kitchen', '_blank');
-}
-
-function completeOrder(orderId) {
-    if (!confirm('¿Marcar este pedido como completado?')) return;
-    fetch('/restaurant/kitchen/' + orderId + '/complete', {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        }
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            loadKitchenOrders();
-        } else {
-            alert(data.message || 'Error al completar pedido');
-        }
-    })
-    .catch(err => {
-        console.error('KDS Error:', err);
-        alert('Error de conexión al completar');
-    });
 }
 
 function showKdsInactive() {

@@ -223,6 +223,7 @@ $__kdsActive = \App\Models\Company::orderMode() === 'kds';
                 <li class="nav-item"><a href="{{ route('restaurant.kitchen.cocina2') }}" class="nav-link" target="_blank"><i class="far fa-circle nav-icon"></i><p>KDS Cocina 2</p></a></li>
                 <li class="nav-item"><a href="{{ route('restaurant.kitchen.bar') }}" class="nav-link" target="_blank"><i class="far fa-circle nav-icon"></i><p>KDS Bar</p></a></li>
                 @endif
+                <li class="nav-item"><a href="{{ route('restaurant.kitchenHistory') }}" class="nav-link {{ request()->routeIs('restaurant.kitchenHistory') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Historial / Métricas KDS</p></a></li>
                 @endcan
                 <li class="nav-item"><a href="{{ route('restaurant.floors.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Pisos</p></a></li>
                 <li class="nav-item"><a href="{{ route('virtual-prebill.index') }}" class="nav-link {{ request()->routeIs('virtual-prebill.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Precuenta Virtual</p></a></li>

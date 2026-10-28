@@ -31,11 +31,17 @@
                     </td>
                     <td><strong class="text-success">S/ {{ number_format($order->total, 2) }}</strong></td>
                     <td>
-                        @if($order->status === 'PENDING_PAYMENT')
-                        <span class="badge badge-warning">Pendiente</span>
-                        @else
-                        <span class="badge badge-info">En Cocina</span>
-                        @endif
+                        @php
+                            $statusBadge = match($order->status) {
+                                'PENDING_PAYMENT' => ['warning', 'Pendiente'],
+                                'SENT_TO_KITCHEN' => ['info', 'Enviado'],
+                                'PREPARING' => ['primary', 'Preparando'],
+                                'DELIVERED' => ['success', 'Entregado'],
+                                'READY' => ['success', 'Listo'],
+                                default => ['secondary', $order->status],
+                            };
+                        @endphp
+                        <span class="badge badge-{{ $statusBadge[0] }}">{{ $statusBadge[1] }}</span>
                     </td>
                     <td>{{ $order->created_at->format('d/m H:i') }}</td>
                     <td>
@@ -203,8 +209,8 @@ function cancelKioskOrder(orderId) {
             const cells = row.querySelectorAll('td');
             orderNumber = cells[0].textContent.trim();
             itemsHtml = cells[1].innerHTML;
-            // Si tiene badge "En Cocina" requiere admin
-            requiresAdmin = cells[3].textContent.includes('En Cocina');
+            // Si ya salió de "Pendiente" (enviado/preparando/entregado) requiere admin
+            requiresAdmin = !cells[3].textContent.includes('Pendiente');
         }
     });
 

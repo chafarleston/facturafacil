@@ -14,7 +14,8 @@ class RestaurantOrder extends Model
     // Estados del pedido
     const STATUS_OPEN = 'OPEN';               // ABIERTO
     const STATUS_SENT_TO_KITCHEN = 'SENT_TO_KITCHEN'; // ENVIADO A COCINA
-    const STATUS_READY = 'READY';             // LISTO
+    const STATUS_PREPARING = 'PREPARING';     // EN PREPARACIÓN
+    const STATUS_READY = 'READY';             // LISTO (legado)
     const STATUS_DELIVERED = 'DELIVERED';     // ENTREGADO
     const STATUS_COMPLETED = 'COMPLETED';     // COMPLETADO
     const STATUS_CANCELLED = 'CANCELLED';     // ANULADO
@@ -37,6 +38,9 @@ class RestaurantOrder extends Model
         'customer_name',
         'delivery_address',
         'contact_number',
+        'sent_to_kitchen_at',
+        'preparing_started_at',
+        'finished_at',
         'subtotal',
         'igv',
         'total',
@@ -47,6 +51,9 @@ class RestaurantOrder extends Model
         'subtotal' => 'decimal:2',
         'igv' => 'decimal:2',
         'total' => 'decimal:2',
+        'sent_to_kitchen_at' => 'datetime',
+        'preparing_started_at' => 'datetime',
+        'finished_at' => 'datetime',
     ];
 
     public function company(): BelongsTo
@@ -142,6 +149,7 @@ class RestaurantOrder extends Model
         return match($this->status) {
             'OPEN'              => 'ABIERTO',
             'SENT_TO_KITCHEN'   => 'ENVIADO A COCINA',
+            'PREPARING'         => 'PREPARANDO',
             'READY'             => 'LISTO',
             'DELIVERED'         => 'ENTREGADO',
             'COMPLETED'         => 'COMPLETADO',
