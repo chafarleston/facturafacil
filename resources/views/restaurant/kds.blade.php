@@ -333,8 +333,8 @@
                 <a href="{{ route('restaurant.kitchenHistory') }}" class="btn btn-dark" target="_blank" title="Historial y métricas de cocina">
                     <i class="fas fa-chart-line"></i> Historial
                 </a>
-                <button class="btn btn-dark" id="audioBtn" onclick="initAudio(); playAlertSound();" title="Activar sonido">
-                    <i class="fas fa-volume-up"></i> Sonido
+                <button class="btn btn-dark" id="audioBtn" onclick="enableAudio()" title="Activar sonido">
+                    <i class="fas fa-volume-up"></i> Activar sonido
                 </button>
                 <div class="kds-stat" id="kdsConnectionWarning" style="display:none;">
                     <div class="kds-stat-value" style="color:#e94560; font-size:13px;"><i class="fas fa-wifi"></i></div>
@@ -362,6 +362,7 @@
 let kdsFilter = '{{ $kds ?? "cocina" }}';
 let orderMode = @json($orderMode ?? 'kds');
 let allOrders = [];
+let kdsInitialLoad = true;
 let audioContext = null;
 let alertSound = null;
 
@@ -419,6 +420,34 @@ function playAlertSound() {
     }
 }
 
+function enableAudio() {
+    if (!audioContext) {
+        initAudio();
+    }
+    if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume();
+    }
+
+    const btn = document.getElementById('audioBtn');
+    if (btn) {
+        btn.classList.remove('btn-dark');
+        btn.classList.add('btn-success');
+        btn.innerHTML = '<i class="fas fa-volume-up"></i> Sonido activo';
+    }
+
+    playAlertSound();
+}
+
+// El navegador exige una interacción para habilitar el audio:
+// cualquier clic reanuda el contexto para que suenen los próximos pedidos.
+document.addEventListener('click', function () {
+    if (!audioContext) {
+        initAudio();
+    } else if (audioContext.state === 'suspended') {
+        audioContext.resume();
+    }
+});
+
 function updateClock() {
     const now = new Date();
     document.getElementById('currentTime').textContent = now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
@@ -462,15 +491,20 @@ function loadKitchenOrders() {
             return;
         }
         if (data.success) {
-            const prevCount = allOrders.length;
+            const prevIds = new Set(allOrders.map(order => order.id));
             allOrders = data.orders;
+            const hasNewOrders = allOrders.some(order => !prevIds.has(order.id));
+
             renderKitchenOrders();
             kdsPollFailures = 0;
             hideKdsConnectionWarning();
 
-            if (prevCount > 0 && allOrders.length > prevCount) {
+            // Suena al entrar pedidos nuevos (incluido el primero, tras la carga inicial).
+            if (!kdsInitialLoad && hasNewOrders) {
                 playAlertSound();
             }
+
+            kdsInitialLoad = false;
         }
     })
     .catch(err => {
