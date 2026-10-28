@@ -484,6 +484,7 @@
 @endpush
 
 @section('content')
+@php($firstFloorId = $floors->first()?->id)
 <div class="restaurant-container">
     <div class="floors-section">
         <div class="floors-header">
@@ -529,6 +530,7 @@
                      data-table-id="{{ $table->id }}"
                      data-floor-id="{{ $floor->id }}"
                      data-order-id="{{ $table->activeOrder()?->id }}"
+                     @if($floor->id !== $firstFloorId) style="display:none;" @endif
                      onclick="selectTable({{ $table->id }})">
                     <i class="fas fa-chair"></i>
                     <div class="table-name">{{ $table->name }}</div>
