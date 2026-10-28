@@ -383,6 +383,41 @@
             min-width: 0;
         }
 
+        .kds-order.new-batch {
+            border-color: #ffc107;
+            box-shadow: 0 0 0 1px rgba(255, 193, 7, 0.35);
+        }
+
+        .kds-batch-tag {
+            display: inline-block;
+            background: #333;
+            color: #ddd;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 8px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+
+        .kds-batch-tag.new {
+            background: #ffc107;
+            color: #000;
+        }
+
+        .kds-order-batch-status {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 3px;
+        }
+
+        .kds-order-time.overdue {
+            color: #ff4444;
+            font-weight: 700;
+        }
+
         @media (max-width: 768px) {
             .kds-orders {
                 grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -676,44 +711,32 @@ function isOverdue(dateString) {
     return diffMins > 15;
 }
 
-function batchTime(order) {
-    const times = (order.batches || [])
-        .map(batch => new Date(batch.sent_at || order.created_at).getTime())
-        .filter(time => !isNaN(time));
-    return times.length ? Math.max(...times) : 0;
-}
-
-function oldestBatchTime(order) {
-    const times = (order.batches || [])
-        .map(batch => new Date(batch.sent_at || order.created_at).getTime())
-        .filter(time => !isNaN(time));
-    return times.length ? Math.min(...times) : new Date(order.created_at).getTime();
-}
-
 function renderKitchenOrders() {
     const container = document.getElementById('kdsOrders');
     if (!container) return;
 
-    const hasPreparing = order => (order.batches || []).some(batch => batch.status === 'PREPARING');
-    const pendingOnlyOrders = allOrders.filter(order => !hasPreparing(order));
-    const preparingOrders = allOrders.filter(hasPreparing);
+    const cards = [];
+    allOrders.forEach(order => {
+        (order.batches || []).forEach(batch => {
+            cards.push({ order, batch });
+        });
+    });
 
-    const pendingBatchCount = allOrders.reduce((total, order) => {
-        return total + (order.batches || []).filter(batch => batch.status === 'PENDING').length;
-    }, 0);
+    const pendingCards = cards
+        .filter(card => card.batch.status === 'PENDING')
+        .sort((a, b) => new Date(b.batch.sent_at || 0) - new Date(a.batch.sent_at || 0));
 
-    const preparingBatchCount = allOrders.reduce((total, order) => {
-        return total + (order.batches || []).filter(batch => batch.status === 'PREPARING').length;
-    }, 0);
+    const preparingCards = cards
+        .filter(card => card.batch.status === 'PREPARING')
+        .sort((a, b) => new Date(a.batch.preparing_started_at || a.batch.sent_at || 0)
+            - new Date(b.batch.preparing_started_at || b.batch.sent_at || 0));
 
-    document.getElementById('pendingCount').textContent = pendingBatchCount;
-    document.getElementById('preparingCount').textContent = preparingBatchCount;
+    document.getElementById('pendingCount').textContent = pendingCards.length;
+    document.getElementById('preparingCount').textContent = preparingCards.length;
 
-    preparingOrders.sort((a, b) => batchTime(b) - batchTime(a));
+    const sortedCards = [...pendingCards, ...preparingCards];
 
-    const sortedOrders = [...pendingOnlyOrders, ...preparingOrders];
-
-    if (sortedOrders.length === 0) {
+    if (sortedCards.length === 0) {
         container.innerHTML = `
             <div class="kds-empty">
                 <i class="fas fa-utensils"></i>
@@ -724,48 +747,52 @@ function renderKitchenOrders() {
         return;
     }
 
-    const mozoOrders = sortedOrders.filter(order => order.order_type !== 'kiosko');
-    const kioskoOrders = sortedOrders.filter(order => order.order_type === 'kiosko');
+    const mozoCards = sortedCards.filter(card => card.order.order_type !== 'kiosko');
+    const kioskoCards = sortedCards.filter(card => card.order.order_type === 'kiosko');
 
     let html = '';
 
-    if (mozoOrders.length > 0) {
+    if (mozoCards.length > 0) {
         html += `<div class="kds-section-title">
-            <span class="mozo-badge">MOZO</span> Pedidos de Mesas (${mozoOrders.length})
+            <span class="mozo-badge">MOZO</span> Lotes de Mesas (${mozoCards.length})
         </div>`;
-        mozoOrders.forEach(order => { html += renderOrderCard(order); });
+        mozoCards.forEach(card => { html += renderBatchCard(card.order, card.batch); });
     }
 
-    if (kioskoOrders.length > 0) {
+    if (kioskoCards.length > 0) {
         html += `<div class="kds-section-title">
-            <span class="kiosko-badge">KIOSKO</span> Autoservicio (${kioskoOrders.length})
+            <span class="kiosko-badge">KIOSKO</span> Lotes de Autoservicio (${kioskoCards.length})
         </div>`;
-        kioskoOrders.forEach(order => { html += renderOrderCard(order); });
+        kioskoCards.forEach(card => { html += renderBatchCard(card.order, card.batch); });
     }
 
     container.innerHTML = html;
 }
 
-function renderOrderCard(order) {
+function renderBatchCard(order, batch) {
     const isKiosko = order.order_type === 'kiosko';
-    const hasPreparing = (order.batches || []).some(batch => batch.status === 'PREPARING');
-    const statusClass = hasPreparing ? 'preparing' : 'sent';
-    const kioskoClass = isKiosko ? 'kiosko' : '';
-    const startedAt = new Date(oldestBatchTime(order)).toISOString();
+    const isPreparing = batch.status === 'PREPARING';
+    const isNew = batch.status === 'PENDING' && (batch.batch_number || 0) > 1;
+    const sentRecently = batch.sent_at && (Date.now() - new Date(batch.sent_at).getTime()) < 10 * 60 * 1000;
+    const startedAt = isPreparing ? (batch.preparing_started_at || batch.sent_at) : batch.sent_at;
     const elapsed = getElapsedTime(startedAt);
     const overdue = isOverdue(startedAt);
+    const statusClass = isPreparing ? 'preparing' : 'sent';
+    const kioskoClass = isKiosko ? 'kiosko' : '';
+    const newClass = isNew ? 'new-batch' : '';
 
-    const batches = [...(order.batches || [])]
-        .sort((a, b) => (b.batch_number || 0) - (a.batch_number || 0));
-
-    const pendingBatches = batches.filter(batch => batch.status === 'PENDING');
+    const sortedItems = [...(batch.items || [])].sort((a, b) => {
+        const orderVal = { 'PENDING': 0, 'SENT': 1, 'READY': 2, 'DELIVERED': 3, 'CANCELLED': 4 };
+        return (orderVal[a.kitchen_status] || 0) - (orderVal[b.kitchen_status] || 0);
+    });
 
     return `
-        <div class="kds-order ${statusClass} ${kioskoClass}" data-order-id="${order.id}">
+        <div class="kds-order ${statusClass} ${kioskoClass} ${newClass}" data-order-id="${order.id}" data-batch-id="${batch.id}">
             <div class="kds-order-header">
                 <div>
                     <div class="kds-order-number">
                         ${order.order_number}
+                        <span class="kds-batch-tag ${isNew ? 'new' : ''}">${isNew ? 'NUEVO LOTE' : 'LOTE'} ${batch.batch_number}</span>
                         ${isKiosko ? `<span class="kds-tag-kiosko"><i class="fas fa-shopping-cart"></i> KIOSKO</span>` : ''}
                     </div>
                     <div class="kds-order-table">
@@ -774,49 +801,16 @@ function renderOrderCard(order) {
                     </div>
                     ${order.user_name ? `<div class="kds-order-user"><i class="fas fa-user"></i> ${order.user_name}</div>` : ''}
                     ${order.notes ? `<div class="kds-order-notes"><i class="fas fa-sticky-note"></i> ${order.notes}</div>` : ''}
+                    <div class="kds-order-batch-status">
+                        <span class="kds-batch-status ${isPreparing ? 'preparing' : 'pending'}">
+                            ${isPreparing ? 'EN PREPARACIÓN' : 'PENDIENTE'}
+                        </span>
+                        ${isNew && sentRecently ? '<span class="kds-batch-new-label">RECIÉN ENVIADO</span>' : ''}
+                    </div>
                 </div>
                 <div class="kds-order-time ${overdue ? 'overdue' : ''}">${elapsed}</div>
             </div>
-            <div class="kds-order-batches">
-                ${batches.map(batch => renderBatch(batch)).join('')}
-            </div>
-            ${pendingBatches.length > 1 ? `
-                <div class="kds-order-actions">
-                    <button class="kds-btn kds-btn-preparing" onclick="prepareAllBatches(${order.id})">
-                        <i class="fas fa-fire"></i> PREPARAR TODO
-                    </button>
-                </div>
-            ` : ''}
-        </div>
-    `;
-}
-
-function renderBatch(batch) {
-    const isPreparing = batch.status === 'PREPARING';
-    const isNew = batch.status === 'PENDING' && (batch.batch_number || 0) > 1;
-    const sentRecently = batch.sent_at && (Date.now() - new Date(batch.sent_at).getTime()) < 10 * 60 * 1000;
-    const startedAt = isPreparing ? (batch.preparing_started_at || batch.sent_at) : batch.sent_at;
-    const elapsed = getElapsedTime(startedAt);
-    const overdue = isOverdue(startedAt);
-
-    const sortedItems = [...(batch.items || [])].sort((a, b) => {
-        const orderVal = { 'PENDING': 0, 'SENT': 1, 'READY': 2, 'DELIVERED': 3, 'CANCELLED': 4 };
-        return (orderVal[a.kitchen_status] || 0) - (orderVal[b.kitchen_status] || 0);
-    });
-
-    return `
-        <div class="kds-batch ${isNew ? 'new' : ''}" data-batch-id="${batch.id}">
-            <div class="kds-batch-header">
-                <div class="kds-batch-heading">
-                    <span class="kds-batch-title">${isNew ? 'NUEVO LOTE' : 'LOTE'} ${batch.batch_number}</span>
-                    <span class="kds-batch-status ${isPreparing ? 'preparing' : 'pending'}">
-                        ${isPreparing ? 'EN PREPARACIÓN' : 'PENDIENTE'}
-                    </span>
-                    ${isNew && sentRecently ? '<span class="kds-batch-new-label">RECIÉN ENVIADO</span>' : ''}
-                </div>
-                <span class="kds-batch-time ${overdue ? 'overdue' : ''}">${elapsed}</span>
-            </div>
-            <div class="kds-batch-items">
+            <div class="kds-items">
                 ${sortedItems.map(item => {
                     const qClass = item.kitchen_status === 'READY' ? 'q-ready' : item.kitchen_status === 'DELIVERED' ? 'q-delivered' : item.kitchen_status === 'CANCELLED' ? 'q-cancelled' : 'q-sent';
                     return `
@@ -830,7 +824,7 @@ function renderBatch(batch) {
                     </div>`;
                 }).join('')}
             </div>
-            <div class="kds-batch-actions">
+            <div class="kds-order-actions">
                 ${batch.status === 'PENDING' ? `
                     <button class="kds-btn kds-btn-preparing" onclick="prepareBatch(${batch.id})">
                         <i class="fas fa-fire"></i> PREPARAR LOTE
@@ -848,7 +842,6 @@ function renderBatch(batch) {
         </div>
     `;
 }
-
 function postBatchAction(batchId, action) {
     return fetch('/restaurant/kitchen-batches/' + batchId + '/' + action, {
         method: 'POST',
@@ -887,26 +880,6 @@ function deliverBatch(batchId) {
         .catch(err => {
             console.error('KDS Error:', err);
             alert('Error de conexión al terminar el lote');
-        });
-}
-
-function prepareAllBatches(orderId) {
-    const order = allOrders.find(item => item.id === orderId);
-    const batches = (order?.batches || []).filter(batch => batch.status === 'PENDING');
-
-    if (batches.length === 0) return;
-
-    Promise.all(batches.map(batch => postBatchAction(batch.id, 'preparing')))
-        .then(results => {
-            if (results.every(result => result.success)) {
-                loadKitchenOrders();
-            } else {
-                alert(results.find(result => !result.success)?.message || 'Error al preparar los lotes');
-            }
-        })
-        .catch(err => {
-            console.error('KDS Error:', err);
-            alert('Error de conexión al preparar los lotes');
         });
 }
 
