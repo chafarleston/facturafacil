@@ -375,38 +375,29 @@ function initAudio() {
             if (!audioContext) {
                 initAudio();
             }
-            
+
             if (audioContext.state === 'suspended') {
-                audioContext.resume();
+                audioContext.resume().catch(() => {});
             }
-            
-            const osc = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            
-            osc.connect(gain);
-            gain.connect(audioContext.destination);
-            
-            osc.frequency.value = 880;
-            osc.type = 'sine';
-            
-            gain.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-            
-            osc.start();
-            osc.stop(audioContext.currentTime + 0.3);
-            
-            setTimeout(() => {
-                const osc2 = audioContext.createOscillator();
-                const gain2 = audioContext.createGain();
-                osc2.connect(gain2);
-                gain2.connect(audioContext.destination);
-                osc2.frequency.value = 1046;
-                osc2.type = 'sine';
-                gain2.gain.setValueAtTime(0.3, audioContext.currentTime);
-                gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-                osc2.start();
-                osc2.stop(audioContext.currentTime + 0.3);
-            }, 400);
+
+            const tone = function (frequency, delay) {
+                setTimeout(function () {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+                    osc.frequency.value = frequency;
+                    osc.type = 'sine';
+                    gain.gain.setValueAtTime(0.6, audioContext.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.35);
+                    osc.start();
+                    osc.stop(audioContext.currentTime + 0.35);
+                }, delay);
+            };
+
+            tone(880, 0);
+            tone(1046, 400);
+            tone(1318, 800);
         }
     };
 }
@@ -420,32 +411,47 @@ function playAlertSound() {
     }
 }
 
+function markAudioButtonActive() {
+    const btn = document.getElementById('audioBtn');
+    if (!btn) return;
+    btn.classList.remove('btn-dark');
+    btn.classList.add('btn-success');
+    btn.innerHTML = '<i class="fas fa-volume-up"></i> Sonido activo';
+}
+
 function enableAudio() {
     if (!audioContext) {
         initAudio();
     }
     if (audioContext && audioContext.state === 'suspended') {
-        audioContext.resume();
+        audioContext.resume().catch(() => {});
     }
 
-    const btn = document.getElementById('audioBtn');
-    if (btn) {
-        btn.classList.remove('btn-dark');
-        btn.classList.add('btn-success');
-        btn.innerHTML = '<i class="fas fa-volume-up"></i> Sonido activo';
-    }
-
+    localStorage.setItem('kds_sound_enabled', '1');
+    markAudioButtonActive();
     playAlertSound();
 }
+
+// Sonido habilitado por defecto: intenta iniciar al cargar y lo deja activo.
+(function () {
+    initAudio();
+    if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume().catch(() => {});
+    }
+    localStorage.setItem('kds_sound_enabled', '1');
+    markAudioButtonActive();
+})();
 
 // El navegador exige una interacción para habilitar el audio:
 // cualquier clic reanuda el contexto para que suenen los próximos pedidos.
 document.addEventListener('click', function () {
     if (!audioContext) {
         initAudio();
-    } else if (audioContext.state === 'suspended') {
-        audioContext.resume();
     }
+    if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume().catch(() => {});
+    }
+    markAudioButtonActive();
 });
 
 function updateClock() {
@@ -719,6 +725,10 @@ if (orderMode === 'kds') {
 document.addEventListener('visibilitychange', function () {
     if (!document.hidden && window.__kdsInterval) {
         loadKitchenOrders();
+
+        if (audioContext && audioContext.state === 'suspended') {
+            audioContext.resume().catch(() => {});
+        }
     }
 });
     </script>
