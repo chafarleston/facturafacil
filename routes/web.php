@@ -230,11 +230,11 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     Route::get('/restaurant/kitchen/cocina2', function () { return redirect('/restaurant/kitchen?kds=cocina2'); })->name('restaurant.kitchen.cocina2');
     Route::get('/restaurant/kitchen/bar', function () { return redirect('/restaurant/kitchen?kds=bar'); })->name('restaurant.kitchen.bar');
     Route::get('/restaurant/kitchen-orders', [RestaurantController::class, 'getKitchenOrders'])->name('restaurant.kitchenOrders');
-    Route::get('/restaurant/kitchen-stream', [RestaurantController::class, 'kitchenStream'])->name('restaurant.kitchenStream');
     Route::get('/restaurant/stream', [RestaurantController::class, 'restaurantStream'])->name('restaurant.stream');
     Route::get('/restaurant/kitchen-history', [RestaurantController::class, 'kitchenHistory'])->name('restaurant.kitchenHistory');
-    Route::post('/restaurant/kitchen/{orderId}/preparing', [RestaurantController::class, 'markKitchenPreparing'])->name('restaurant.kitchenPreparing');
-    Route::post('/restaurant/kitchen/{orderId}/deliver', [RestaurantController::class, 'deliverKitchenOrder'])->name('restaurant.kitchenDeliver');
+    Route::post('/restaurant/kitchen-batches/{batchId}/preparing', [RestaurantController::class, 'markKitchenBatchPreparing'])->name('restaurant.kitchenBatchPreparing');
+    Route::post('/restaurant/kitchen-batches/{batchId}/deliver', [RestaurantController::class, 'deliverKitchenBatch'])->name('restaurant.kitchenBatchDeliver');
+    Route::get('/restaurant/kitchen-batches/{batchId}/print', [RestaurantController::class, 'printKitchenBatch'])->name('restaurant.kitchenBatchPrint');
     Route::post('/restaurant/tables/{tableId}/open', [RestaurantController::class, 'openTable'])->name('restaurant.tables.open');
     Route::post('/restaurant/tables/{tableId}/lock', [RestaurantController::class, 'lockTable'])->name('restaurant.tables.lock');
     Route::post('/restaurant/tables/{tableId}/unlock', [RestaurantController::class, 'unlockTable'])->name('restaurant.tables.unlock');

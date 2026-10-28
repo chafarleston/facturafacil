@@ -18,6 +18,7 @@ class RestaurantOrderItem extends Model
 
     protected $fillable = [
         'restaurant_order_id',
+        'kitchen_batch_id',
         'product_id',
         'product_name',
         'quantity',
@@ -46,6 +47,11 @@ class RestaurantOrderItem extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(RestaurantOrder::class, 'restaurant_order_id');
+    }
+
+    public function kitchenBatch(): BelongsTo
+    {
+        return $this->belongsTo(RestaurantKitchenBatch::class, 'kitchen_batch_id');
     }
 
     public function product(): BelongsTo

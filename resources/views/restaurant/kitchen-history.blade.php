@@ -13,15 +13,33 @@
         $rest = $seconds % 60;
         return $minutes . 'm ' . str_pad($rest, 2, '0', STR_PAD_LEFT) . 's';
     };
+
+    $stationLabel = function ($destination) {
+        return match ($destination) {
+            'cocina' => 'Cocina',
+            'cocina2' => 'Cocina 2',
+            'bar' => 'Bar',
+            default => ucfirst((string) $destination),
+        };
+    };
+
+    $stationBadge = function ($destination) {
+        return match ($destination) {
+            'cocina' => 'primary',
+            'cocina2' => 'warning',
+            'bar' => 'info',
+            default => 'secondary',
+        };
+    };
 @endphp
 
 <div class="row">
     <div class="col-12">
         <div class="card card-primary">
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-chart-line"></i> Historial y métricas de cocina</h3>
+                <h3 class="card-title"><i class="fas fa-chart-line"></i> Historial y métricas por lote</h3>
                 <div class="card-tools">
-                    <a href="{{ route('restaurant.kitchen', ['kds' => 'cocina']) }}" class="btn btn-sm btn-secondary">
+                    <a href="{{ route('restaurant.kitchen', ['kds' => $kdsFilter === 'all' ? 'cocina' : $kdsFilter]) }}" class="btn btn-sm btn-secondary">
                         <i class="fas fa-tv"></i> Volver al KDS
                     </a>
                 </div>
@@ -32,6 +50,13 @@
                     <input type="date" name="from" class="form-control form-control-sm mr-3" value="{{ $from->format('Y-m-d') }}">
                     <label class="mr-2">Hasta</label>
                     <input type="date" name="to" class="form-control form-control-sm mr-3" value="{{ $to->format('Y-m-d') }}">
+                    <label class="mr-2">Estación</label>
+                    <select name="kds" class="form-control form-control-sm mr-3">
+                        <option value="all" {{ $kdsFilter === 'all' ? 'selected' : '' }}>Todas</option>
+                        <option value="cocina" {{ $kdsFilter === 'cocina' ? 'selected' : '' }}>Cocina</option>
+                        <option value="cocina2" {{ $kdsFilter === 'cocina2' ? 'selected' : '' }}>Cocina 2</option>
+                        <option value="bar" {{ $kdsFilter === 'bar' ? 'selected' : '' }}>Bar</option>
+                    </select>
                     <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Filtrar</button>
                     <a href="{{ route('restaurant.kitchenHistory') }}" class="btn btn-outline-secondary btn-sm ml-2">Hoy</a>
                 </form>
@@ -41,9 +66,9 @@
                         <div class="small-box bg-info">
                             <div class="inner">
                                 <h3>{{ $metrics['count'] }}</h3>
-                                <p>Despachos</p>
+                                <p>Lotes entregados</p>
                             </div>
-                            <div class="icon"><i class="fas fa-utensils"></i></div>
+                            <div class="icon"><i class="fas fa-layer-group"></i></div>
                         </div>
                     </div>
                     <div class="col-md-3 col-6">
@@ -91,13 +116,47 @@
                     @endif
                 </div>
 
+                <div class="mb-4">
+                    <h6 class="mb-2"><i class="fas fa-calendar-day"></i> Resumen diario</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Lotes</th>
+                                    <th>Espera prom.</th>
+                                    <th>Preparación prom.</th>
+                                    <th>Total prom.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($daily as $day)
+                                <tr>
+                                    <td>{{ \Carbon\Carbon::parse($day->date)->format('d/m/Y') }}</td>
+                                    <td>{{ $day->count }}</td>
+                                    <td>{{ $fmt($day->avg_queue) }}</td>
+                                    <td>{{ $fmt($day->avg_prep) }}</td>
+                                    <td><strong>{{ $fmt($day->avg_total) }}</strong></td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-3">Sin lotes entregados en el rango.</td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <div class="table-responsive">
                     <table class="table table-sm table-hover">
                         <thead>
                             <tr>
                                 <th>Pedido</th>
                                 <th>Mesa / Kiosko</th>
-                                <th>Estado</th>
+                                <th>Estación</th>
+                                <th>Lote</th>
+                                <th>Ítems</th>
                                 <th>Enviado</th>
                                 <th>Preparado</th>
                                 <th>Terminado</th>
@@ -107,35 +166,41 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($orders as $order)
+                            @forelse($batches as $batch)
+                            @php
+                                $order = $batch->order;
+                                $isKiosko = $order && $order->order_type === 'kiosko';
+                            @endphp
                             <tr>
-                                <td><strong>{{ $order->order_number }}</strong></td>
+                                <td><strong>{{ $order->order_number ?? '-' }}</strong></td>
                                 <td>
-                                    @if($order->order_type === 'kiosko')
+                                    @if($isKiosko)
                                         <span class="badge badge-secondary">Kiosko</span>
                                     @else
                                         {{ $order->table->name ?? 'Mesa' }}
-                                        @if($order->table && $order->table->floor)
+                                        @if($order && $order->table && $order->table->floor)
                                             <small class="text-muted">({{ $order->table->floor->name }})</small>
                                         @endif
                                     @endif
                                 </td>
                                 <td>
-                                    <span class="badge badge-{{ $order->status === 'DELIVERED' ? 'success' : 'secondary' }}">
-                                        {{ $order->statusLabel() }}
+                                    <span class="badge badge-{{ $stationBadge($batch->kds_destination) }}">
+                                        {{ $stationLabel($batch->kds_destination) }}
                                     </span>
                                 </td>
-                                <td>{{ $order->sent_to_kitchen_at ? $order->sent_to_kitchen_at->format('d/m H:i:s') : '-' }}</td>
-                                <td>{{ $order->preparing_started_at ? $order->preparing_started_at->format('d/m H:i:s') : '-' }}</td>
-                                <td>{{ $order->finished_at ? $order->finished_at->format('d/m H:i:s') : '-' }}</td>
-                                <td>{{ $fmt($order->queue_seconds) }}</td>
-                                <td>{{ $fmt($order->prep_seconds) }}</td>
-                                <td><strong>{{ $fmt($order->total_seconds) }}</strong></td>
+                                <td><strong>Lote {{ $batch->batch_number }}</strong></td>
+                                <td>{{ $batch->items_count }}</td>
+                                <td>{{ $batch->sent_at ? $batch->sent_at->format('d/m H:i:s') : '-' }}</td>
+                                <td>{{ $batch->preparing_started_at ? $batch->preparing_started_at->format('d/m H:i:s') : '-' }}</td>
+                                <td>{{ $batch->finished_at ? $batch->finished_at->format('d/m H:i:s') : '-' }}</td>
+                                <td>{{ $fmt($batch->queue_seconds) }}</td>
+                                <td>{{ $fmt($batch->prep_seconds) }}</td>
+                                <td><strong>{{ $fmt($batch->total_seconds) }}</strong></td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="9" class="text-center text-muted py-4">
-                                    No hay pedidos entregados en el rango seleccionado.
+                                <td colspan="11" class="text-center text-muted py-4">
+                                    No hay lotes entregados en el rango seleccionado.
                                 </td>
                             </tr>
                             @endforelse
@@ -144,7 +209,7 @@
                 </div>
 
                 <small class="text-muted">
-                    El historial se conserva en la base de datos; esta página solo consulta los pedidos terminados.
+                    Cada envío a cocina genera un lote por estación. El historial conserva los lotes entregados y sus tiempos.
                 </small>
             </div>
         </div>

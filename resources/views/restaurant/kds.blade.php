@@ -295,6 +295,94 @@
             vertical-align: middle;
         }
         
+        .kds-order-batches {
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .kds-batch {
+            background: #101a30;
+            border: 1px solid #2d3a5a;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .kds-batch.new {
+            border-color: #ffc107;
+            box-shadow: 0 0 0 1px rgba(255, 193, 7, 0.35);
+        }
+
+        .kds-batch-header {
+            padding: 6px 8px;
+            background: #1a2540;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .kds-batch-heading {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .kds-batch-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #ffc107;
+            letter-spacing: 0.3px;
+        }
+
+        .kds-batch.new .kds-batch-title { color: #ffeb3b; }
+
+        .kds-batch-status {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 8px;
+            background: #333;
+            color: #ddd;
+        }
+
+        .kds-batch-status.preparing { background: #ff9800; color: #000; }
+        .kds-batch-status.pending { background: #ffc107; color: #000; }
+
+        .kds-batch-new-label {
+            font-size: 8px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 8px;
+            background: #ffeb3b;
+            color: #000;
+            letter-spacing: 0.3px;
+        }
+
+        .kds-batch-time { font-size: 10px; color: #888; white-space: nowrap; }
+        .kds-batch-time.overdue { color: #ff4444; font-weight: 700; }
+
+        .kds-batch-items { padding: 2px 8px; }
+
+        .kds-batch-actions {
+            padding: 4px 6px;
+            background: #1a1a2e;
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .kds-batch-actions .kds-btn {
+            font-size: 10px;
+            padding: 5px 4px;
+            min-width: 0;
+        }
+
         @media (max-width: 768px) {
             .kds-orders {
                 grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -311,10 +399,13 @@
 </head>
 <body>
     <div id="kdsInactiveNotice" style="display:none; position:fixed; top:0; left:0; right:0; z-index:9999; background:#e94560; color:#fff; text-align:center; padding:12px; font-size:16px; font-weight:bold;">
-        KDS INACTIVO - Modo Impresion 80mm activo. Active el Modo KDS para usar esta pantalla.
+        KDS INACTIVO - Modo Impresión 80mm activo. Active el Modo KDS para usar esta pantalla.
         <button type="button" onclick="location.reload()" style="margin-left:12px; padding:6px 16px; border:none; border-radius:20px; background:#fff; color:#e94560; font-weight:bold; font-size:14px; cursor:pointer; vertical-align:middle;">
             <i class="fas fa-sync-alt"></i> Reintentar
         </button>
+    </div>
+    <div id="audioUnlockNotice" style="display:none; position:fixed; top:0; left:0; right:0; z-index:99999; background:#ff9800; color:#000; text-align:center; padding:12px; font-size:16px; font-weight:700; cursor:pointer;">
+        <i class="fas fa-volume-up"></i> Toque la pantalla para activar el sonido de los pedidos
     </div>
     <div class="kds-container">
         <div class="kds-header">
@@ -322,11 +413,11 @@
             <div class="kds-stats">
                 <div class="kds-stat">
                     <div class="kds-stat-value" id="pendingCount">0</div>
-                    <div class="kds-stat-label">Pendientes</div>
+                    <div class="kds-stat-label">Lotes pendientes</div>
                 </div>
                 <div class="kds-stat">
                     <div class="kds-stat-value" id="preparingCount">0</div>
-                    <div class="kds-stat-label">En preparación</div>
+                    <div class="kds-stat-label">Lotes en preparación</div>
                 </div>
             </div>
             <div class="kds-header-right">
@@ -362,6 +453,7 @@
 let kdsFilter = '{{ $kds ?? "cocina" }}';
 let orderMode = @json($orderMode ?? 'kds');
 let allOrders = [];
+let prevBatchIds = new Set();
 let kdsInitialLoad = true;
 let audioContext = null;
 let alertSound = null;
@@ -403,6 +495,9 @@ function initAudio() {
 }
 
 function playAlertSound() {
+    if (!audioContext || audioContext.state !== 'running') {
+        return;
+    }
     if (!alertSound) {
         initAudio();
     }
@@ -411,47 +506,81 @@ function playAlertSound() {
     }
 }
 
-function markAudioButtonActive() {
+function updateAudioState() {
     const btn = document.getElementById('audioBtn');
-    if (!btn) return;
-    btn.classList.remove('btn-dark');
-    btn.classList.add('btn-success');
-    btn.innerHTML = '<i class="fas fa-volume-up"></i> Sonido activo';
+    const notice = document.getElementById('audioUnlockNotice');
+    const running = audioContext && audioContext.state === 'running';
+
+    if (btn) {
+        btn.classList.toggle('btn-success', running);
+        btn.classList.toggle('btn-dark', !running);
+        btn.innerHTML = running
+            ? '<i class="fas fa-volume-up"></i> Sonido activo'
+            : '<i class="fas fa-volume-up"></i> Activar sonido';
+    }
+
+    if (notice) {
+        notice.style.display = running ? 'none' : 'block';
+    }
+
+    if (running) {
+        localStorage.setItem('kds_sound_enabled', '1');
+    }
 }
 
 function enableAudio() {
     if (!audioContext) {
         initAudio();
     }
-    if (audioContext && audioContext.state === 'suspended') {
-        audioContext.resume().catch(() => {});
+    if (!audioContext) {
+        return;
     }
 
-    localStorage.setItem('kds_sound_enabled', '1');
-    markAudioButtonActive();
-    playAlertSound();
+    if (audioContext.state === 'suspended') {
+        audioContext.resume().then(function () {
+            updateAudioState();
+            playAlertSound();
+        }).catch(function () {
+            updateAudioState();
+        });
+    } else {
+        updateAudioState();
+        playAlertSound();
+    }
 }
 
-// Sonido habilitado por defecto: intenta iniciar al cargar y lo deja activo.
+// Intento de habilitar el audio al cargar (si el navegador lo permite).
 (function () {
     initAudio();
     if (audioContext && audioContext.state === 'suspended') {
-        audioContext.resume().catch(() => {});
+        audioContext.resume().catch(function () {});
     }
-    localStorage.setItem('kds_sound_enabled', '1');
-    markAudioButtonActive();
+    updateAudioState();
 })();
 
-// El navegador exige una interacción para habilitar el audio:
-// cualquier clic reanuda el contexto para que suenen los próximos pedidos.
-document.addEventListener('click', function () {
+// El navegador exige una interacción: cualquier clic/toque reanuda el audio.
+document.addEventListener('click', function (event) {
+    if (event.target && event.target.closest && event.target.closest('#audioBtn')) {
+        return;
+    }
+
     if (!audioContext) {
         initAudio();
     }
-    if (audioContext && audioContext.state === 'suspended') {
-        audioContext.resume().catch(() => {});
+    if (!audioContext) {
+        return;
     }
-    markAudioButtonActive();
+
+    if (audioContext.state === 'suspended') {
+        audioContext.resume().then(function () {
+            updateAudioState();
+            playAlertSound();
+        }).catch(function () {
+            updateAudioState();
+        });
+    } else {
+        updateAudioState();
+    }
 });
 
 function updateClock() {
@@ -497,16 +626,21 @@ function loadKitchenOrders() {
             return;
         }
         if (data.success) {
-            const prevIds = new Set(allOrders.map(order => order.id));
-            allOrders = data.orders;
-            const hasNewOrders = allOrders.some(order => !prevIds.has(order.id));
+            const orders = data.orders || [];
+            const hasNewBatches = orders.some(order =>
+                (order.batches || []).some(batch => !prevBatchIds.has(batch.id))
+            );
+
+            allOrders = orders;
+            prevBatchIds = new Set(
+                orders.flatMap(order => (order.batches || []).map(batch => batch.id))
+            );
 
             renderKitchenOrders();
             kdsPollFailures = 0;
             hideKdsConnectionWarning();
 
-            // Suena al entrar pedidos nuevos (incluido el primero, tras la carga inicial).
-            if (!kdsInitialLoad && hasNewOrders) {
+            if (!kdsInitialLoad && hasNewBatches) {
                 playAlertSound();
             }
 
@@ -528,7 +662,7 @@ function getElapsedTime(dateString) {
     const now = new Date();
     const diffMs = now - orderDate;
     const diffMins = Math.floor(diffMs / 60000);
-    
+
     if (diffMins < 1) return 'Ahora';
     if (diffMins < 60) return diffMins + ' min';
     const hours = Math.floor(diffMins / 60);
@@ -542,17 +676,43 @@ function isOverdue(dateString) {
     return diffMins > 15;
 }
 
+function batchTime(order) {
+    const times = (order.batches || [])
+        .map(batch => new Date(batch.sent_at || order.created_at).getTime())
+        .filter(time => !isNaN(time));
+    return times.length ? Math.max(...times) : 0;
+}
+
+function oldestBatchTime(order) {
+    const times = (order.batches || [])
+        .map(batch => new Date(batch.sent_at || order.created_at).getTime())
+        .filter(time => !isNaN(time));
+    return times.length ? Math.min(...times) : new Date(order.created_at).getTime();
+}
+
 function renderKitchenOrders() {
     const container = document.getElementById('kdsOrders');
-    
-    let pendingOrders = allOrders.filter(o => o.status === 'SENT_TO_KITCHEN');
-    let preparingOrders = allOrders.filter(o => o.status === 'PREPARING');
+    if (!container) return;
 
-    document.getElementById('pendingCount').textContent = pendingOrders.length;
-    document.getElementById('preparingCount').textContent = preparingOrders.length;
+    const hasPreparing = order => (order.batches || []).some(batch => batch.status === 'PREPARING');
+    const pendingOnlyOrders = allOrders.filter(order => !hasPreparing(order));
+    const preparingOrders = allOrders.filter(hasPreparing);
 
-    const sortedOrders = [...pendingOrders, ...preparingOrders];
-    
+    const pendingBatchCount = allOrders.reduce((total, order) => {
+        return total + (order.batches || []).filter(batch => batch.status === 'PENDING').length;
+    }, 0);
+
+    const preparingBatchCount = allOrders.reduce((total, order) => {
+        return total + (order.batches || []).filter(batch => batch.status === 'PREPARING').length;
+    }, 0);
+
+    document.getElementById('pendingCount').textContent = pendingBatchCount;
+    document.getElementById('preparingCount').textContent = preparingBatchCount;
+
+    preparingOrders.sort((a, b) => batchTime(b) - batchTime(a));
+
+    const sortedOrders = [...pendingOnlyOrders, ...preparingOrders];
+
     if (sortedOrders.length === 0) {
         container.innerHTML = `
             <div class="kds-empty">
@@ -563,148 +723,202 @@ function renderKitchenOrders() {
         `;
         return;
     }
-    
-    const mozoOrders = sortedOrders.filter(o => o.order_type !== 'kiosko');
-    const kioskoOrders = sortedOrders.filter(o => o.order_type === 'kiosko');
-    
+
+    const mozoOrders = sortedOrders.filter(order => order.order_type !== 'kiosko');
+    const kioskoOrders = sortedOrders.filter(order => order.order_type === 'kiosko');
+
     let html = '';
-    
-    function renderOrderCard(order) {
-        const isKiosko = order.order_type === 'kiosko';
-        const statusClass = order.status === 'PREPARING' ? 'preparing' :
-                           order.status === 'SENT_TO_KITCHEN' ? 'sent' : 'pending';
-        const kioskoClass = isKiosko ? 'kiosko' : '';
-        const phaseStartedAt = order.status === 'PREPARING'
-            ? (order.preparing_started_at || order.sent_to_kitchen_at || order.created_at)
-            : (order.sent_to_kitchen_at || order.created_at);
-        const elapsed = getElapsedTime(phaseStartedAt);
-        const overdue = isOverdue(phaseStartedAt);
-        
-        const sortedItems = [...order.items].sort((a, b) => {
-            const orderVal = { 'PENDING': 0, 'SENT': 1, 'READY': 2, 'DELIVERED': 3, 'CANCELLED': 4 };
-            return (orderVal[a.kitchen_status] || 0) - (orderVal[b.kitchen_status] || 0);
-        });
-        
-        return `
-            <div class="kds-order ${statusClass} ${kioskoClass}" data-order-id="${order.id}">
-                <div class="kds-order-header">
-                    <div>
-                        <div class="kds-order-number">
-                            ${order.order_number}
-                            ${isKiosko ? `<span class="kds-tag-kiosko"><i class="fas fa-shopping-cart"></i> KIOSKO</span>` : ''}
-                        </div>
-                        <div class="kds-order-table">
-                            <i class="fas ${isKiosko ? 'fa-shopping-cart' : 'fa-chair'}"></i> ${isKiosko ? 'Autoservicio' : (order.table_name || 'Mesa')}
-                            ${!isKiosko && order.floor_name ? ` <span style="opacity:0.6;">(${order.floor_name})</span>` : ''}
-                        </div>
-                        ${order.user_name ? `<div class="kds-order-user"><i class="fas fa-user"></i> ${order.user_name}</div>` : ''}
-                        ${order.notes ? `<div class="kds-order-notes"><i class="fas fa-sticky-note"></i> ${order.notes}</div>` : ''}
-                    </div>
-                    <div class="kds-order-time ${overdue ? 'overdue' : ''}">${elapsed}</div>
-                </div>
-                <div class="kds-items">
-                    ${sortedItems.map(item => {
-                        const qClass = item.kitchen_status === 'READY' ? 'q-ready' : item.kitchen_status === 'DELIVERED' ? 'q-delivered' : item.kitchen_status === 'CANCELLED' ? 'q-cancelled' : 'q-sent';
-                        return `
-                        <div class="kds-item ${qClass}">
-                            <span class="kds-item-qty">${item.quantity}x</span>
-                            <div>
-                                <div class="kds-item-name">${item.product_name}</div>
-                                ${item.notes ? `<div class="kds-item-notes">${item.notes}</div>` : ''}
-                                ${item.auxiliary_names && item.auxiliary_names.length > 0 ? `<div class="kds-item-aux" style="font-size:10px;color:#ce93d8;margin-top:2px;">+ ${item.auxiliary_names.join(', ')}</div>` : ''}
-                            </div>
-                        </div>`;
-                    }).join('')}
-                </div>
-                <div class="kds-order-actions">
-                    ${order.status === 'SENT_TO_KITCHEN' ? `
-                        <button class="kds-btn kds-btn-preparing" onclick="markOrderPreparing(${order.id})">
-                            <i class="fas fa-fire"></i> PREPARAR TODO
-                        </button>
-                    ` : ''}
-                    ${order.status === 'PREPARING' ? `
-                        <button class="kds-btn kds-btn-deliver" onclick="deliverOrder(${order.id})">
-                            <i class="fas fa-check-double"></i> TERMINADO
-                        </button>
-                    ` : ''}
-                    <button class="kds-btn kds-btn-print" onclick="printTicket(${order.id})">
-                        <i class="fas fa-print"></i> IMPRIMIR
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-    
+
     if (mozoOrders.length > 0) {
         html += `<div class="kds-section-title">
             <span class="mozo-badge">MOZO</span> Pedidos de Mesas (${mozoOrders.length})
         </div>`;
-        mozoOrders.forEach(o => { html += renderOrderCard(o); });
+        mozoOrders.forEach(order => { html += renderOrderCard(order); });
     }
-    
+
     if (kioskoOrders.length > 0) {
         html += `<div class="kds-section-title">
             <span class="kiosko-badge">KIOSKO</span> Autoservicio (${kioskoOrders.length})
         </div>`;
-        kioskoOrders.forEach(o => { html += renderOrderCard(o); });
+        kioskoOrders.forEach(order => { html += renderOrderCard(order); });
     }
-    
+
     container.innerHTML = html;
 }
 
-function markOrderPreparing(orderId) {
-    fetch('/restaurant/kitchen/' + orderId + '/preparing', {
+function renderOrderCard(order) {
+    const isKiosko = order.order_type === 'kiosko';
+    const hasPreparing = (order.batches || []).some(batch => batch.status === 'PREPARING');
+    const statusClass = hasPreparing ? 'preparing' : 'sent';
+    const kioskoClass = isKiosko ? 'kiosko' : '';
+    const startedAt = new Date(oldestBatchTime(order)).toISOString();
+    const elapsed = getElapsedTime(startedAt);
+    const overdue = isOverdue(startedAt);
+
+    const batches = [...(order.batches || [])]
+        .sort((a, b) => (b.batch_number || 0) - (a.batch_number || 0));
+
+    const pendingBatches = batches.filter(batch => batch.status === 'PENDING');
+
+    return `
+        <div class="kds-order ${statusClass} ${kioskoClass}" data-order-id="${order.id}">
+            <div class="kds-order-header">
+                <div>
+                    <div class="kds-order-number">
+                        ${order.order_number}
+                        ${isKiosko ? `<span class="kds-tag-kiosko"><i class="fas fa-shopping-cart"></i> KIOSKO</span>` : ''}
+                    </div>
+                    <div class="kds-order-table">
+                        <i class="fas ${isKiosko ? 'fa-shopping-cart' : 'fa-chair'}"></i> ${isKiosko ? 'Autoservicio' : (order.table_name || 'Mesa')}
+                        ${!isKiosko && order.floor_name ? ` <span style="opacity:0.6;">(${order.floor_name})</span>` : ''}
+                    </div>
+                    ${order.user_name ? `<div class="kds-order-user"><i class="fas fa-user"></i> ${order.user_name}</div>` : ''}
+                    ${order.notes ? `<div class="kds-order-notes"><i class="fas fa-sticky-note"></i> ${order.notes}</div>` : ''}
+                </div>
+                <div class="kds-order-time ${overdue ? 'overdue' : ''}">${elapsed}</div>
+            </div>
+            <div class="kds-order-batches">
+                ${batches.map(batch => renderBatch(batch)).join('')}
+            </div>
+            ${pendingBatches.length > 1 ? `
+                <div class="kds-order-actions">
+                    <button class="kds-btn kds-btn-preparing" onclick="prepareAllBatches(${order.id})">
+                        <i class="fas fa-fire"></i> PREPARAR TODO
+                    </button>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+function renderBatch(batch) {
+    const isPreparing = batch.status === 'PREPARING';
+    const isNew = batch.status === 'PENDING' && (batch.batch_number || 0) > 1;
+    const sentRecently = batch.sent_at && (Date.now() - new Date(batch.sent_at).getTime()) < 10 * 60 * 1000;
+    const startedAt = isPreparing ? (batch.preparing_started_at || batch.sent_at) : batch.sent_at;
+    const elapsed = getElapsedTime(startedAt);
+    const overdue = isOverdue(startedAt);
+
+    const sortedItems = [...(batch.items || [])].sort((a, b) => {
+        const orderVal = { 'PENDING': 0, 'SENT': 1, 'READY': 2, 'DELIVERED': 3, 'CANCELLED': 4 };
+        return (orderVal[a.kitchen_status] || 0) - (orderVal[b.kitchen_status] || 0);
+    });
+
+    return `
+        <div class="kds-batch ${isNew ? 'new' : ''}" data-batch-id="${batch.id}">
+            <div class="kds-batch-header">
+                <div class="kds-batch-heading">
+                    <span class="kds-batch-title">${isNew ? 'NUEVO LOTE' : 'LOTE'} ${batch.batch_number}</span>
+                    <span class="kds-batch-status ${isPreparing ? 'preparing' : 'pending'}">
+                        ${isPreparing ? 'EN PREPARACIÓN' : 'PENDIENTE'}
+                    </span>
+                    ${isNew && sentRecently ? '<span class="kds-batch-new-label">RECIÉN ENVIADO</span>' : ''}
+                </div>
+                <span class="kds-batch-time ${overdue ? 'overdue' : ''}">${elapsed}</span>
+            </div>
+            <div class="kds-batch-items">
+                ${sortedItems.map(item => {
+                    const qClass = item.kitchen_status === 'READY' ? 'q-ready' : item.kitchen_status === 'DELIVERED' ? 'q-delivered' : item.kitchen_status === 'CANCELLED' ? 'q-cancelled' : 'q-sent';
+                    return `
+                    <div class="kds-item ${qClass}">
+                        <span class="kds-item-qty">${item.quantity}x</span>
+                        <div>
+                            <div class="kds-item-name">${item.product_name}</div>
+                            ${item.notes ? `<div class="kds-item-notes">${item.notes}</div>` : ''}
+                            ${item.auxiliary_names && item.auxiliary_names.length > 0 ? `<div class="kds-item-aux" style="font-size:10px;color:#ce93d8;margin-top:2px;">+ ${item.auxiliary_names.join(', ')}</div>` : ''}
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>
+            <div class="kds-batch-actions">
+                ${batch.status === 'PENDING' ? `
+                    <button class="kds-btn kds-btn-preparing" onclick="prepareBatch(${batch.id})">
+                        <i class="fas fa-fire"></i> PREPARAR LOTE
+                    </button>
+                ` : ''}
+                ${batch.status === 'PREPARING' ? `
+                    <button class="kds-btn kds-btn-deliver" onclick="deliverBatch(${batch.id})">
+                        <i class="fas fa-check-double"></i> TERMINAR LOTE
+                    </button>
+                ` : ''}
+                <button class="kds-btn kds-btn-print" onclick="printBatch(${batch.id})">
+                    <i class="fas fa-print"></i> IMPRIMIR
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function postBatchAction(batchId, action) {
+    return fetch('/restaurant/kitchen-batches/' + batchId + '/' + action, {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            loadKitchenOrders();
-        } else {
-            alert(data.message || 'Error al marcar en preparación');
-        }
-    })
-    .catch(err => {
-        console.error('KDS Error:', err);
-        alert('Error de conexión al marcar en preparación');
-    });
+    }).then(res => res.json());
 }
 
-function deliverOrder(orderId) {
-    fetch('/restaurant/kitchen/' + orderId + '/deliver', {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        }
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            loadKitchenOrders();
-        } else {
-            alert(data.message || 'Error al terminar');
-        }
-    })
-    .catch(err => {
-        console.error('KDS Error:', err);
-        alert('Error de conexión al terminar');
-    });
+function prepareBatch(batchId) {
+    postBatchAction(batchId, 'preparing')
+        .then(data => {
+            if (data.success) {
+                loadKitchenOrders();
+            } else {
+                alert(data.message || 'Error al preparar el lote');
+            }
+        })
+        .catch(err => {
+            console.error('KDS Error:', err);
+            alert('Error de conexión al preparar el lote');
+        });
 }
 
-function printTicket(orderId) {
-    window.open('/restaurant/orders/' + orderId + '/print-kitchen', '_blank');
+function deliverBatch(batchId) {
+    postBatchAction(batchId, 'deliver')
+        .then(data => {
+            if (data.success) {
+                loadKitchenOrders();
+            } else {
+                alert(data.message || 'Error al terminar el lote');
+            }
+        })
+        .catch(err => {
+            console.error('KDS Error:', err);
+            alert('Error de conexión al terminar el lote');
+        });
 }
 
+function prepareAllBatches(orderId) {
+    const order = allOrders.find(item => item.id === orderId);
+    const batches = (order?.batches || []).filter(batch => batch.status === 'PENDING');
+
+    if (batches.length === 0) return;
+
+    Promise.all(batches.map(batch => postBatchAction(batch.id, 'preparing')))
+        .then(results => {
+            if (results.every(result => result.success)) {
+                loadKitchenOrders();
+            } else {
+                alert(results.find(result => !result.success)?.message || 'Error al preparar los lotes');
+            }
+        })
+        .catch(err => {
+            console.error('KDS Error:', err);
+            alert('Error de conexión al preparar los lotes');
+        });
+}
+
+function printBatch(batchId) {
+    window.open('/restaurant/kitchen-batches/' + batchId + '/print', '_blank');
+}
 function showKdsInactive() {
     const n = document.getElementById('kdsInactiveNotice');
     if (n) n.style.display = 'block';
+
+    const notice = document.getElementById('audioUnlockNotice');
+    if (notice) notice.style.display = 'none';
 }
 
 function stopKdsPolling() {
@@ -727,7 +941,7 @@ document.addEventListener('visibilitychange', function () {
         loadKitchenOrders();
 
         if (audioContext && audioContext.state === 'suspended') {
-            audioContext.resume().catch(() => {});
+            audioContext.resume().then(updateAudioState).catch(updateAudioState);
         }
     }
 });

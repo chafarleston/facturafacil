@@ -7,6 +7,7 @@ use App\Models\Floor;
 use App\Models\RestaurantTable;
 use App\Models\RestaurantOrder;
 use App\Models\RestaurantOrderItem;
+use App\Models\RestaurantKitchenBatch;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Company;
@@ -24,6 +25,7 @@ use Illuminate\Support\Facades\Log;
 use App\Events\KitchenOrderUpdated;
 use App\Services\PrintServerService;
 use App\Services\PrintService;
+use App\Services\KitchenBatchService;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class RestaurantController extends Controller
@@ -320,10 +322,25 @@ class RestaurantController extends Controller
 
         $this->updateOrderTotals($order);
 
+        if ($item->kitchen_batch_id) {
+            $batch = RestaurantKitchenBatch::find($item->kitchen_batch_id);
+            if ($batch) {
+                app(KitchenBatchService::class)->cancelBatchIfEmpty($batch);
+            }
+        }
+
         $activeItems = $order->items()->where('kitchen_status', '!=', 'CANCELLED')->count();
         if ($activeItems == 0) {
             $order->update(['status' => 'CANCELLED']);
+
+            $order->kitchenBatches()->update([
+                'status' => RestaurantKitchenBatch::STATUS_CANCELLED,
+                'finished_at' => now(),
+            ]);
+
             $order->table->update(['status' => 'AVAILABLE']);
+        } else {
+            app(KitchenBatchService::class)->syncOrderStatus($order);
         }
 
         event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
@@ -348,26 +365,9 @@ class RestaurantController extends Controller
                 ]);
             }
 
-            foreach ($pendingItems as $item) {
-                $item->kitchen_status = 'SENT';
-                $item->sent_to_kitchen_at = now();
-                $product = Product::find($item->product_id);
-                if ($product && $product->kds_destination) {
-                    $item->kds_destination = $product->kds_destination;
-                }
-                $item->save();
-            }
+            $batches = app(KitchenBatchService::class)
+                ->createFromItems($order, $pendingItems, auth()->id());
 
-            if ($order->status === 'PREPARING') {
-                // Los nuevos ítems se suman al pedido en preparación sin retroceder el estado.
-                $order->save();
-            } else {
-                $order->status = 'SENT_TO_KITCHEN';
-                $order->sent_to_kitchen_at = now();
-                $order->preparing_started_at = null;
-                $order->finished_at = null;
-                $order->save();
-            }
 
             event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
@@ -386,7 +386,12 @@ class RestaurantController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Pedido enviado a cocina',
-                'items_sent' => $pendingItems->count()
+                'items_sent' => $pendingItems->count(),
+                'batches' => $batches->map(fn ($batch) => [
+                    'id' => $batch->id,
+                    'batch_number' => $batch->batch_number,
+                    'kds_destination' => $batch->kds_destination,
+                ])->values(),
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -606,31 +611,19 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
 
             $order->items()->update(['restaurant_order_id' => $destinoOrder->id]);
 
+            foreach ($order->kitchenBatches()->get() as $batch) {
+                $nextNumber = (int) RestaurantKitchenBatch::where('restaurant_order_id', $destinoOrder->id)
+                    ->where('kds_destination', $batch->kds_destination)
+                    ->max('batch_number') + 1;
+
+                $batch->update([
+                    'restaurant_order_id' => $destinoOrder->id,
+                    'batch_number' => $nextNumber,
+                ]);
+            }
+
             $this->updateOrderTotals($destinoOrder);
-
-            $mergedItems = $destinoOrder->items()->get();
-            $hasSentItems = $mergedItems->whereIn('kitchen_status', ['SENT', 'READY'])->isNotEmpty();
-            $allDelivered = $mergedItems->whereNotIn('kitchen_status', ['DELIVERED', 'CANCELLED'])->isEmpty();
-            $wasPreparing = in_array('PREPARING', [$order->status, $destinoOrder->status], true);
-
-            $updates = [];
-
-            if ($allDelivered) {
-                $updates['status'] = 'DELIVERED';
-                $updates['finished_at'] = $destinoOrder->finished_at ?? $order->finished_at ?? now();
-            } elseif ($hasSentItems) {
-                $updates['status'] = $wasPreparing ? 'PREPARING' : 'SENT_TO_KITCHEN';
-                if (!$destinoOrder->sent_to_kitchen_at) {
-                    $updates['sent_to_kitchen_at'] = $order->sent_to_kitchen_at ?? now();
-                }
-                if ($wasPreparing && !$destinoOrder->preparing_started_at) {
-                    $updates['preparing_started_at'] = $order->preparing_started_at ?? now();
-                }
-            }
-
-            if (!empty($updates)) {
-                $destinoOrder->update($updates);
-            }
+            app(KitchenBatchService::class)->syncOrderStatus($destinoOrder);
 
             $order->delete();
 
@@ -719,6 +712,11 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
         }
         $order->update(['status' => 'CANCELLED']);
 
+        $order->kitchenBatches()->update([
+            'status' => RestaurantKitchenBatch::STATUS_CANCELLED,
+            'finished_at' => now(),
+        ]);
+
         if ($order->table) {
             $order->table->update(['status' => 'AVAILABLE']);
         }
@@ -773,33 +771,56 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
     {
         $companyId = $request->company_id ?? Company::mainCompanyId();
         $kds = $request->kds ?? 'cocina';
-        
+
         $orders = RestaurantOrder::where('company_id', $companyId)
-            ->whereIn('status', ['SENT_TO_KITCHEN', 'PREPARING'])
-            ->whereHas('items', function($q) use ($kds) {
-                $q->whereNull('paid_invoice_id')
-                  ->whereIn('kitchen_status', ['SENT', 'READY'])
-                  ->where('kds_destination', $kds);
+            ->whereHas('kitchenBatches', function ($q) use ($kds) {
+                $q->where('kds_destination', $kds)
+                    ->whereIn('status', [RestaurantKitchenBatch::STATUS_PENDING, RestaurantKitchenBatch::STATUS_PREPARING])
+                    ->whereHas('items', function ($items) {
+                        $items->whereIn('kitchen_status', ['SENT', 'READY']);
+                    });
             })
-            ->with(['items' => function($q) use ($kds) {
-                $q->whereNull('paid_invoice_id')
-                  ->whereIn('kitchen_status', ['SENT', 'READY', 'CANCELLED'])
-                  ->where('kds_destination', $kds)
-                  ->select('id', 'restaurant_order_id', 'product_name', 'quantity', 'unit_price', 'kitchen_status', 'notes', 'auxiliary_items', 'kds_destination');
-            }, 'table' => function($q) {
-                $q->select('id', 'name', 'floor_id');
-            }, 'table.floor' => function($q) {
-                $q->select('id', 'name');
-            }, 'user' => function($q) {
-                $q->select('id', 'name');
-            }])
+            ->with([
+                'kitchenBatches' => function ($q) use ($kds) {
+                    $q->where('kds_destination', $kds)
+                        ->whereIn('status', [RestaurantKitchenBatch::STATUS_PENDING, RestaurantKitchenBatch::STATUS_PREPARING])
+                        ->with(['items' => function ($items) {
+                            $items->whereIn('kitchen_status', ['SENT', 'READY', 'CANCELLED'])
+                                ->select(
+                                    'id',
+                                    'restaurant_order_id',
+                                    'kitchen_batch_id',
+                                    'product_name',
+                                    'quantity',
+                                    'unit_price',
+                                    'kitchen_status',
+                                    'notes',
+                                    'auxiliary_items',
+                                    'kds_destination',
+                                    'sent_to_kitchen_at'
+                                );
+                        }])
+                        ->orderBy('batch_number', 'desc');
+                },
+                'table' => function ($q) {
+                    $q->select('id', 'name', 'floor_id');
+                },
+                'table.floor' => function ($q) {
+                    $q->select('id', 'name');
+                },
+                'user' => function ($q) {
+                    $q->select('id', 'name');
+                },
+            ])
             ->select('id', 'order_number', 'status', 'table_id', 'user_id', 'notes', 'created_at', 'order_type', 'sent_to_kitchen_at', 'preparing_started_at')
             ->orderBy('created_at', 'asc')
-        ->get();
+            ->get();
 
         $auxiliaryIds = $orders->flatMap(function ($order) {
-            return $order->items->flatMap(function ($item) {
-                return is_array($item->auxiliary_items) ? $item->auxiliary_items : [];
+            return $order->kitchenBatches->flatMap(function ($batch) {
+                return $batch->items->flatMap(function ($item) {
+                    return is_array($item->auxiliary_items) ? $item->auxiliary_items : [];
+                });
             });
         })->unique()->values();
 
@@ -807,11 +828,15 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             ? collect()
             : \App\Models\AuxiliaryItem::whereIn('id', $auxiliaryIds)->pluck('name', 'id');
 
-        $formattedOrders = $orders->map(function($order) use ($auxiliaryNames) {
+        $formattedOrders = $orders->map(function ($order) use ($auxiliaryNames) {
+            $hasPreparing = $order->kitchenBatches->contains(
+                fn ($batch) => $batch->status === RestaurantKitchenBatch::STATUS_PREPARING
+            );
+
             return [
                 'id' => $order->id,
                 'order_number' => $order->order_number,
-                'status' => $order->status,
+                'status' => $hasPreparing ? 'PREPARING' : 'SENT_TO_KITCHEN',
                 'table_name' => $order->table ? $order->table->name : 'Mesa',
                 'floor_name' => $order->table && $order->table->floor ? $order->table->floor->name : null,
                 'user_name' => $order->user ? $order->user->name : null,
@@ -820,22 +845,35 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
                 'sent_to_kitchen_at' => $order->sent_to_kitchen_at?->toIso8601String(),
                 'preparing_started_at' => $order->preparing_started_at?->toIso8601String(),
                 'order_type' => $order->order_type ?? 'mozo',
-                'items' => $order->items->map(function($item) use ($auxiliaryNames) {
-                    $auxNames = collect($item->auxiliary_items ?? [])
-                        ->map(fn ($id) => $auxiliaryNames[$id] ?? null)
-                        ->filter()
-                        ->values()
-                        ->toArray();
+                'batches' => $order->kitchenBatches->map(function ($batch) use ($auxiliaryNames) {
                     return [
-                        'id' => $item->id,
-                        'product_name' => $item->product_name,
-                        'quantity' => $item->quantity,
-                        'kitchen_status' => $item->kitchen_status,
-                        'notes' => $item->notes,
-                        'auxiliary_items' => $item->auxiliary_items,
-                        'auxiliary_names' => $auxNames,
+                        'id' => $batch->id,
+                        'batch_number' => $batch->batch_number,
+                        'kds_destination' => $batch->kds_destination,
+                        'status' => $batch->status,
+                        'sent_at' => $batch->sent_at?->toIso8601String(),
+                        'preparing_started_at' => $batch->preparing_started_at?->toIso8601String(),
+                        'finished_at' => $batch->finished_at?->toIso8601String(),
+                        'items' => $batch->items->map(function ($item) use ($auxiliaryNames) {
+                            $auxNames = collect($item->auxiliary_items ?? [])
+                                ->map(fn ($id) => $auxiliaryNames[$id] ?? null)
+                                ->filter()
+                                ->values()
+                                ->toArray();
+
+                            return [
+                                'id' => $item->id,
+                                'product_name' => $item->product_name,
+                                'quantity' => $item->quantity,
+                                'kitchen_status' => $item->kitchen_status,
+                                'notes' => $item->notes,
+                                'auxiliary_items' => $item->auxiliary_items,
+                                'auxiliary_names' => $auxNames,
+                                'sent_to_kitchen_at' => $item->sent_to_kitchen_at?->toIso8601String(),
+                            ];
+                        })->values(),
                     ];
-                })
+                })->values(),
             ];
         });
 
@@ -867,35 +905,31 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             [$from, $to] = [$to->copy()->startOfDay(), $from->copy()->endOfDay()];
         }
 
-        $orders = RestaurantOrder::where('company_id', $companyId)
+        $kdsFilter = $request->input('kds', 'all');
+        if (!in_array($kdsFilter, ['all', 'cocina', 'cocina2', 'bar'], true)) {
+            $kdsFilter = 'all';
+        }
+
+        $batches = RestaurantKitchenBatch::where('company_id', $companyId)
+            ->where('status', RestaurantKitchenBatch::STATUS_DELIVERED)
             ->whereNotNull('finished_at')
             ->whereBetween('finished_at', [$from, $to])
-            ->with(['table.floor', 'user'])
+            ->when($kdsFilter !== 'all', fn ($query) => $query->where('kds_destination', $kdsFilter))
+            ->with(['order.table.floor', 'order'])
+            ->withCount('items')
             ->orderByDesc('finished_at')
             ->get();
 
-        foreach ($orders as $order) {
-            $order->queue_seconds = ($order->sent_to_kitchen_at && $order->preparing_started_at)
-                ? max(0, $order->sent_to_kitchen_at->diffInSeconds($order->preparing_started_at))
-                : null;
-            $order->prep_seconds = ($order->preparing_started_at && $order->finished_at)
-                ? max(0, $order->preparing_started_at->diffInSeconds($order->finished_at))
-                : null;
-            $order->total_seconds = ($order->sent_to_kitchen_at && $order->finished_at)
-                ? max(0, $order->sent_to_kitchen_at->diffInSeconds($order->finished_at))
-                : null;
-        }
-
-        $queueValues = $orders->pluck('queue_seconds')->filter(fn ($v) => !is_null($v));
-        $prepValues = $orders->pluck('prep_seconds')->filter(fn ($v) => !is_null($v));
-        $totalValues = $orders->pluck('total_seconds')->filter(fn ($v) => !is_null($v));
+        $queueValues = $batches->pluck('queue_seconds')->filter(fn ($value) => !is_null($value));
+        $prepValues = $batches->pluck('prep_seconds')->filter(fn ($value) => !is_null($value));
+        $totalValues = $batches->pluck('total_seconds')->filter(fn ($value) => !is_null($value));
 
         $avgQueue = $queueValues->isNotEmpty() ? (int) round($queueValues->avg()) : null;
         $avgPrep = $prepValues->isNotEmpty() ? (int) round($prepValues->avg()) : null;
         $avgTotal = $totalValues->isNotEmpty() ? (int) round($totalValues->avg()) : null;
 
         $metrics = [
-            'count' => $orders->count(),
+            'count' => $batches->count(),
             'avg_queue' => $avgQueue,
             'avg_prep' => $avgPrep,
             'avg_total' => $avgTotal,
@@ -903,121 +937,45 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             'prep_ratio' => ($avgTotal && $avgPrep !== null) ? (int) round($avgPrep / $avgTotal * 100) : null,
         ];
 
-        return view('restaurant.kitchen-history', compact('orders', 'metrics', 'from', 'to'));
+        $daily = $batches
+            ->groupBy(fn ($batch) => $batch->finished_at->format('Y-m-d'))
+            ->map(function ($group, $date) {
+                $queueValues = $group->pluck('queue_seconds')->filter(fn ($value) => !is_null($value));
+                $prepValues = $group->pluck('prep_seconds')->filter(fn ($value) => !is_null($value));
+                $totalValues = $group->pluck('total_seconds')->filter(fn ($value) => !is_null($value));
+
+                return (object) [
+                    'date' => $date,
+                    'count' => $group->count(),
+                    'avg_queue' => $queueValues->isNotEmpty() ? (int) round($queueValues->avg()) : null,
+                    'avg_prep' => $prepValues->isNotEmpty() ? (int) round($prepValues->avg()) : null,
+                    'avg_total' => $totalValues->isNotEmpty() ? (int) round($totalValues->avg()) : null,
+                ];
+            })
+            ->sortKeysDesc()
+            ->values();
+
+        return view('restaurant.kitchen-history', compact('batches', 'metrics', 'from', 'to', 'kdsFilter', 'daily'));
     }
 
-    public function kitchenStream(Request $request)
-    {
-        $companyId = $request->company_id ?? Company::first()->id;
-        $kds = $request->kds ?? 'cocina';
-        
-        header('Content-Type: text/event-stream');
-        header('Cache-Control: no-cache');
-        header('Connection: keep-alive');
-        header('X-Accel-Buffering: no');
-        
-        echo "retry: 2000\n";
-        
-        while (ob_get_level()) {
-            ob_end_clean();
-        }
-        
-        $lastStatusChange = null;
-        $lastCheck = time();
-        $lastCacheKey = 'kitchen_updated_' . $companyId;
-        
-        while (true) {
-            if (connection_aborted()) {
-                break;
-            }
-            
-            $currentTime = time();
-            $currentCache = Cache::get($lastCacheKey);
-            
-            $shouldSend = false;
-            
-            if ($currentCache !== $lastStatusChange) {
-                $shouldSend = true;
-                $lastStatusChange = $currentCache;
-            }
-            
-            if ($currentTime - $lastCheck >= 5) {
-                $shouldSend = true;
-                $lastCheck = $currentTime;
-            }
-            
-            if ($shouldSend) {
-                $orders = RestaurantOrder::where('company_id', $companyId)
-                    ->whereIn('status', ['SENT_TO_KITCHEN', 'PREPARING'])
-                    ->whereHas('items', function($q) use ($kds) {
-                        $q->whereNull('paid_invoice_id')
-                          ->whereIn('kitchen_status', ['SENT', 'READY'])
-                          ->where('kds_destination', $kds);
-                    })
-                    ->with(['items' => function($q) use ($kds) {
-                        $q->whereNull('paid_invoice_id')
-                          ->whereIn('kitchen_status', ['SENT', 'READY', 'CANCELLED'])
-                          ->where('kds_destination', $kds);
-                    }, 'table.floor', 'user'])
-                    ->orderBy('created_at', 'asc')
-                    ->get();
-                
-                $formattedOrders = $orders->map(function($order) {
-                    return [
-                        'id' => $order->id,
-                        'order_number' => $order->order_number,
-                        'status' => $order->status,
-                        'table_id' => $order->table_id,
-                        'table_name' => $order->table ? $order->table->name : 'Mesa',
-                        'floor_name' => $order->table && $order->table->floor ? $order->table->floor->name : null,
-                        'user_name' => $order->user ? $order->user->name : null,
-                        'notes' => $order->notes,
-                        'created_at' => $order->created_at->toIso8601String(),
-                        'items' => $order->items->map(function($item) {
-                            return [
-                                'id' => $item->id,
-                                'product_name' => $item->product_name,
-                                'quantity' => $item->quantity,
-                                'kitchen_status' => $item->kitchen_status,
-                                'notes' => $item->notes,
-                            ];
-                        })
-                    ];
-                });
-                
-                $eventId = time();
-                echo "id: {$eventId}\n";
-                echo "data: " . json_encode(['success' => true, 'orders' => $formattedOrders, 'timestamp' => date('H:i:s')]) . "\n\n";
-                flush();
-            }
-            
-            usleep(3000000);
-        }
-        
-        return response()->json(['success' => true]);
-    }
-
-    public function markKitchenPreparing($orderId)
+    public function markKitchenBatchPreparing($batchId)
     {
         if (Company::orderMode() === 'print') {
             return response()->json(['success' => false, 'message' => 'Modo Impresión activo — el KDS está inactivo'], 400);
         }
-        try {
-            $order = RestaurantOrder::with('items')->findOrFail($orderId);
 
-            if (!in_array($order->status, ['SENT_TO_KITCHEN', 'READY'], true)) {
-                return response()->json(['success' => false, 'message' => 'El pedido no está pendiente de preparación'], 400);
+        try {
+            $batch = RestaurantKitchenBatch::with('order')->findOrFail($batchId);
+
+            if ($batch->status !== RestaurantKitchenBatch::STATUS_PENDING) {
+                return response()->json(['success' => false, 'message' => 'El lote no está pendiente de preparación'], 400);
             }
 
-            $order->update([
-                'status' => 'PREPARING',
-                'sent_to_kitchen_at' => $order->sent_to_kitchen_at ?? now(),
-                'preparing_started_at' => now(),
-            ]);
+            app(KitchenBatchService::class)->prepare($batch);
 
-            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
-            Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
-            Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
+            event(new KitchenOrderUpdated($batch->company_id, 'kitchen'));
+            Cache::put('kitchen_updated_' . $batch->company_id, now()->timestamp, 10);
+            Cache::put('restaurant_updated_' . $batch->company_id, now()->timestamp, 10);
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
@@ -1025,37 +983,52 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
         }
     }
 
-    public function deliverKitchenOrder($orderId)
+    public function deliverKitchenBatch($batchId)
     {
         if (Company::orderMode() === 'print') {
             return response()->json(['success' => false, 'message' => 'Modo Impresión activo — el KDS está inactivo'], 400);
         }
+
         try {
-            $order = RestaurantOrder::with('items')->findOrFail($orderId);
+            $batch = RestaurantKitchenBatch::with('order')->findOrFail($batchId);
 
-            if (!in_array($order->status, ['PREPARING', 'READY'], true)) {
-                return response()->json(['success' => false, 'message' => 'Primero debe marcar el pedido en preparación'], 400);
+            if ($batch->status !== RestaurantKitchenBatch::STATUS_PREPARING) {
+                return response()->json(['success' => false, 'message' => 'Primero debe marcar el lote en preparación'], 400);
             }
 
-            $order->items()->whereIn('kitchen_status', ['SENT', 'READY'])->update(['kitchen_status' => 'DELIVERED']);
+            app(KitchenBatchService::class)->deliver($batch);
 
-            $remaining = $order->items()->whereNotIn('kitchen_status', ['DELIVERED', 'CANCELLED'])->exists();
-
-            if (!$remaining) {
-                $order->update([
-                    'status' => 'DELIVERED',
-                    'finished_at' => now(),
-                ]);
-            }
-
-            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
-            Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
-            Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
+            event(new KitchenOrderUpdated($batch->company_id, 'kitchen'));
+            Cache::put('kitchen_updated_' . $batch->company_id, now()->timestamp, 10);
+            Cache::put('restaurant_updated_' . $batch->company_id, now()->timestamp, 10);
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+    }
+
+    public function printKitchenBatch($batchId)
+    {
+        $batch = RestaurantKitchenBatch::with(['order.table.floor', 'order.user', 'items'])->findOrFail($batchId);
+        $items = $batch->items->where('kitchen_status', '!=', 'CANCELLED');
+
+        if ($items->isEmpty()) {
+            return back()->with('error', 'No hay productos para imprimir');
+        }
+
+        $order = $batch->order;
+        $order->setRelation('items', $items);
+
+        $pdf = Pdf::loadView('restaurant.tickets.kitchen', compact('order'))
+            ->setPaper([0, 0, 226.77, 1000], 'portrait')
+            ->setOption('margin-top', 0)
+            ->setOption('margin-right', 0)
+            ->setOption('margin-bottom', 0)
+            ->setOption('margin-left', 0)
+            ->setOption('encoding', 'UTF-8');
+
+        return $pdf->stream('ticket-cocina-' . $order->order_number . '-lote-' . $batch->batch_number . '.pdf');
     }
 
     function numberToWords($number)
@@ -1111,15 +1084,8 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             // Opción B: enviar automáticamente a cocina/bar los items pendientes antes de facturar
             $pendingToSend = $items->where('kitchen_status', 'PENDING');
             if ($pendingToSend->isNotEmpty()) {
-                foreach ($pendingToSend as $item) {
-                    $item->kitchen_status = 'SENT';
-                    $item->sent_to_kitchen_at = now();
-                    $product = Product::find($item->product_id);
-                    if ($product && $product->kds_destination) {
-                        $item->kds_destination = $product->kds_destination;
-                    }
-                    $item->save();
-                }
+                app(KitchenBatchService::class)
+                    ->createFromItems($order, $pendingToSend, auth()->id());
 
                 $company = Company::find($order->company_id);
                 if ($company && ($company->order_mode ?? 'kds') === 'print') {
@@ -1223,15 +1189,8 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             // Opción B: enviar automáticamente a cocina/bar los items pendientes antes de dividir/cobrar
             $pendingToSend = $availableItems->where('kitchen_status', 'PENDING');
             if ($pendingToSend->isNotEmpty()) {
-                foreach ($pendingToSend as $item) {
-                    $item->kitchen_status = 'SENT';
-                    $item->sent_to_kitchen_at = now();
-                    $product = Product::find($item->product_id);
-                    if ($product && $product->kds_destination) {
-                        $item->kds_destination = $product->kds_destination;
-                    }
-                    $item->save();
-                }
+                app(KitchenBatchService::class)
+                    ->createFromItems($order, $pendingToSend, auth()->id());
 
                 $company = Company::find($order->company_id);
                 if ($company && ($company->order_mode ?? 'kds') === 'print') {
@@ -1242,6 +1201,10 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
                         \Log::error('Auto-send print error: ' . $e->getMessage());
                     }
                 }
+
+                event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
+                Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+                Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
             }
 
             $splits = $request->splits ?? [];
@@ -1694,21 +1657,8 @@ private function updateOrderTotals(RestaurantOrder $order)
                 return response()->json(['success' => false, 'message' => 'El pedido ya fue enviado a cocina']);
             }
 
-            foreach ($order->items as $item) {
-                $item->kitchen_status = 'SENT';
-                $item->sent_to_kitchen_at = now();
-                $product = Product::find($item->product_id);
-                if ($product && $product->kds_destination) {
-                    $item->kds_destination = $product->kds_destination;
-                }
-                $item->save();
-            }
-
-            $order->status = 'SENT_TO_KITCHEN';
-            $order->sent_to_kitchen_at = now();
-            $order->preparing_started_at = null;
-            $order->finished_at = null;
-            $order->save();
+            $batches = app(KitchenBatchService::class)
+                ->createFromItems($order, $order->items, auth()->id());
 
             event(new \App\Events\KitchenOrderUpdated($order->company_id, 'kitchen'));
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);

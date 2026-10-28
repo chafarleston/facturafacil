@@ -76,6 +76,11 @@ class RestaurantOrder extends Model
         return $this->hasMany(RestaurantOrderItem::class, 'restaurant_order_id');
     }
 
+    public function kitchenBatches(): HasMany
+    {
+        return $this->hasMany(RestaurantKitchenBatch::class, 'restaurant_order_id');
+    }
+
     public function getPendingItemsAttribute()
     {
         return $this->items->where('kitchen_status', 'PENDING');
