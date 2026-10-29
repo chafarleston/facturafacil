@@ -24,20 +24,28 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 - Apertura de cajón de efectivo desde el POS y Restaurante (botón manual) y **apertura automática al cobrar en efectivo**
 
 ### Restaurante
-- Gestión de **Pisos** y **Mesas** con estado visual (Disponible/Ocupada)
-- Pedidos con productos, cantidades, notas, precios y **elementos auxiliares** (chips tipo "Mayonesa", "Kétchup")
+- Gestión de **Pisos** y **Mesas** con estado visual (Disponible/Ocupada); al abrir `/restaurant` muestra directamente el **primer salón** (las mesas de los demás salones se cargan ocultas para evitar el flash)
+- Pedidos con productos, cantidades, notas, precios y **elementos auxiliares** (chips tipo "Mayonesa", "Kétchup"); los auxiliares se cargan con la página y el modal de producto abre completo, sin `fetch` al abrirlo
 - **Búsqueda de productos** en tiempo real (solo por descripción/nombre; la búsqueda por código y código de barras existe en el POS)
 - Envío a cocina (modo **KDS** en pantalla o **Impresión 80mm** a impresora térmica)
-- **KDS (Kitchen Display System)**: pantalla en tiempo real con alertas sonoras al recibir nuevos pedidos, colores por estado y secciones MOZO / KIOSKO
+- **KDS (Kitchen Display System) por lotes**: cada envío genera un lote por estación (**Cocina**, **Cocina 2**, **Bar**); cada lote es un card independiente con su estado, timer, ítems y acciones; el lote nuevo aparece arriba con **NUEVO LOTE**, alerta sonora por lote nuevo, colores por estado y secciones MOZO / KIOSKO. Incluye **Historial / Métricas KDS** por lote y estación
+- **KDS flujo por lote**: `PENDIENTE` → `EN PREPARACIÓN` → `ENTREGADO`; acciones `PREPARAR LOTE`, `TERMINAR LOTE` e `IMPRIMIR`; el pedido se entrega cuando terminan todos sus lotes; la mesa sigue `OCCUPIED` hasta cobrar
 - Precuenta con selección de impresora (Precuenta 1, 2 o 3), **IGV dinámico** según empresa, **datos de la empresa** en el encabezado (nombre, RUC, dirección, teléfono, email) y aviso al pie *"Esto no es un comprobante de venta, si desea pedir boleta o factura escriba sus datos."*; **excluye los productos ya pagados** (Dividir Cuenta)
-- **Dividir Cuenta**: reparte el pedido en 2+ comprobantes (NV/Boleta/Factura) por cantidades, cada división con su cliente, método de pago y solo consumo; los items pagados se marcan "Pagado", desaparecen del KDS y ya no aparecen en la precuenta
-- **Kiosko / Autoservicio**: pedidos por pantalla táctil (`/autopedido`), numeración A-XXX ligada a la caja abierta, estados Pendiente/En Cocina y cobro en el cajero
+- **Dividir Cuenta**: reparte el pedido en 2+ comprobantes (NV/Boleta/Factura) por cantidades, cada división con su cliente, método de pago y solo consumo; los items pagados se marcan "Pagado" y ya no aparecen en la precuenta, pero **permanecen en el KDS mientras su lote siga activo** (el cobro no oculta lotes activos)
+- **Kiosko / Autoservicio**: pedidos por pantalla táctil (`/autopedido`), numeración A-XXX ligada a la caja abierta, estados `Pendiente/Enviado/Preparando/Entregado` y cobro en el cajero (incluye entregados impagos)
 - Cobro con **cliente por defecto** (Cliente Varios DNI 88888888) y **confirmación de impresión**
 - **Solo consumo**: cobrar todo el pedido como "POR CONSUMO" con desglose de productos
 - **Mover pedido** entre mesas
+- **Fusionar mesas**: une pedidos conservando ítems y lotes; bloquea si hay ítems facturados o pedidos kiosko
 - Anulación/eliminación de productos y pedidos con **autorización por contraseña** (usuario autenticado con permiso `authorize_cancel_orders` — admin o cajero, cada uno con su propia contraseña) para items ya enviados a cocina
 - **Login del mozo**: el rol `mozo` se redirige directo a `/restaurant`; si no hay caja abierta se muestra el modal **"Caja no aperturada"** (debe aperturarla el Administrador o el Cajero; botones Ir a Caja / Reintentar / Entendido)
 - Notas por producto y por pedido
+
+### Página Web y Precuenta Virtual
+- Página pública configurable (Empresa → **Configuración de Página Web**): 6 plantillas (`modern`, `elegant`, `minimal`, `classic`, `dark`, `tropical`), logo, colores/fuente, hero/nosotros, slider de 3 slides, catálogo, galería y CTA "Pedir en línea" hacia `/autopedido`
+- Los 3 slides se recortan a **1600×600 px** (cover) y se guardan en **WebP q82** al subir
+- **Precuenta Virtual** (`/virtual-prebill`): QR por mesa (`/mesa01`), consulta pública de ítems no pagados ni anulados; se activa/desactiva y configura el dominio desde el admin
+- Imágenes de la web en `storage/website/`
 
 ### Caja Registradora
 - Apertura y cierre con **Nombre de referencia** (ej: "25-05-mañana", "25-05-tarde")
@@ -88,7 +96,7 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 - **Precio de compra** (`precio_compra`) para valorar inventario a costo
 - **Reporte de Inventario** (`/products/inventory-report`) con totales a precio venta y costo, filtro por categoría y exportación Excel/PDF
 - Importación/exportación de productos y duplicado con código secuencial automático
-- **Imágenes opcionales** de productos y categorías (se optimizan a WebP al subir) y selector global en **Empresa → "Imágenes de Venta"** para mostrarlas en POS, Restaurante y/o Kiosko (desactivado por defecto). El mismo panel incluye **"Mostrar solo categorías"** por módulo: Restaurante/Kiosko arrancan mostrando solo las categorías (tarjetas grandes) y muestran los productos al hacer clic en una categoría (con botón para volver); el POS ya funciona así
+- **Imágenes opcionales** de productos y categorías (se optimizan a WebP, máx. 800 px) y selector global en **Empresa → "Imágenes de Venta"** para mostrarlas en POS, Restaurante y/o Kiosko (desactivado por defecto). El mismo panel incluye **"Mostrar solo categorías"** por módulo: Restaurante/Kiosko arrancan mostrando solo las categorías (tarjetas grandes) y muestran los productos al hacer clic en una categoría (con botón para volver); el POS ya funciona así. Las imágenes de la web se guardan en `storage/website/` y los slides se recortan a **1600×600 px** (WebP q82).
 
 ### Consumo Interno (Salidas de Stock)
 - Registro de consumos de cocina sin generar venta (mermas, degustaciones, consumo interno)
@@ -134,7 +142,14 @@ Navegador (cliente)
 - **Quick Edit Mode desactivado** para evitar congelamiento por clic
 - **start-hidden.vbs** para ejecución en segundo plano sin ventana
 
-**Reintentos automáticos**: el comando `php artisan print:process-queue` está programado cada minuto en `routes/console.php` (`Schedule::command(...)->everyMinute()`, Laravel 11+ ya no usa `App\Console\Kernel::schedule()`). Se invoca ejecutando `php artisan schedule:run` vía `scheduler.vbs` o una tarea de Windows creada fuera del repo (`FacturaFacilScheduler`).
+**Tareas programadas** (`routes/console.php`; Laravel 11+ ya no usa `App\Console\Kernel::schedule()`):
+- `print:process-queue` — cada minuto.
+- `sunat:send-daily-summary` — 09:00 y 12:00.
+- `sunat:check-summaries` — 09:05, 09:20, 12:05 y 12:20.
+- `sunat:verify-unresolved` — 12:06 (alerta si quedan boletas pendientes).
+- `sunat:download-padron` — domingos 02:00.
+
+Se ejecutan con `php artisan schedule:run` (cron/tarea de Windows), `scheduler.vbs` o `php artisan schedule:work` en desarrollo.
 
 ---
 
@@ -144,7 +159,7 @@ Navegador (cliente)
 - **MySQL** 8.0+ / MariaDB 10.4+ (entorno del cliente: MySQL 8.0.30 — Laragon)
 - **Composer**
 - **Node.js** 18+ (para Print Server)
-- Extensiones PHP: `openssl`, `xml`, `zip`, `soap`, `intl`, `mbstring`, `pdo_mysql`, `curl`
+- Extensiones PHP: `openssl`, `xml`, `zip`, `soap`, `intl`, `mbstring`, `pdo_mysql`, `curl`, `gd` (con soporte WebP) y `fileinfo`
 
 ---
 
@@ -288,10 +303,12 @@ Los permisos `view_cashregister_history` (historial de cajas) y `authorize_cance
 4. Seleccionar cliente y método de pago
 5. Cobrar → emite comprobante, envía a SUNAT
 
-### KDS (Cocina)
-- `/restaurant/kitchen` — Pantalla de cocina, actualiza automáticamente cada 5s (**solo en Modo KDS**; en Modo Impresión 80mm el menú oculta los ítems KDS, la pantalla muestra "KDS INACTIVO" y no hace polling)
-- Botones: Marcar Listo / Entregar (responden 400 en Modo Impresión)
-- Alerta sonora al recibir nuevos pedidos
+### KDS (Cocina / Cocina 2 / Bar)
+- `/restaurant/kitchen` — Pantalla de cocina; actualiza automáticamente cada 5s (**solo en Modo KDS**; en Modo Impresión 80mm el menú oculta los ítems KDS, la pantalla muestra "KDS INACTIVO" y no hace polling)
+- Cada envío crea un **lote por estación**; el KDS muestra un card independiente por lote, el lote nuevo arriba (`NUEVO LOTE`) y **sonido por lote nuevo**
+- Acciones por lote: **PREPARAR LOTE**, **TERMINAR LOTE**, **IMPRIMIR**; contadores de lotes pendientes/en preparación
+- **Historial / Métricas KDS** (`/restaurant/kitchen-history`): filtros por fecha y estación, espera/preparación/total y resumen diario
+- El cobro no oculta lotes activos; la mesa sigue ocupada hasta cobrar
 - Si la sesión expira, el polling redirige a `/login`
 
 ### Caja Registradora
@@ -330,6 +347,23 @@ php artisan db:seed --class=UbigeoSeeder
 # Cola de impresión
 php artisan print:process-queue
 
+# SUNAT
+php artisan sunat:send-daily-summary
+php artisan sunat:check-summaries
+php artisan sunat:retry-pending
+php artisan sunat:verify-unresolved
+php artisan sunat:download-padron
+
+# Imágenes
+php artisan products:generate-images
+php artisan categories:generate-images
+php artisan products:fetch-images
+php artisan categories:fetch-images
+
+# Scheduler / desarrollo
+php artisan schedule:work
+php artisan serve
+
 # pro51 (facturación externa)
 php artisan pro51:sync-products          # Sincronizar productos
 php artisan pro51:retry-pending          # Reintentar comprobantes pendientes
@@ -343,9 +377,21 @@ php artisan route:list
 # Optimizar
 php artisan optimize
 
+# Tests
+php artisan test
+
 # Logs
 tail -50 storage/logs/laravel.log
 ```
+
+---
+
+## Cambios recientes
+- KDS por lotes y estación, cards independientes, sonido por lote e historial/métricas.
+- Restaurante abre en el primer salón sin flash de todas las mesas.
+- Auxiliares precargados en restaurante y autopedido; el modal abre completo.
+- Slides de la web recortados a 1600×600 px (WebP q82) al subir.
+- Página web pública y Precuenta Virtual.
 
 ---
 
