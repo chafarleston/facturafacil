@@ -647,7 +647,7 @@
                     {{ $deliveryType === 'web' ? 'Delivery' : 'Pide desde tu mesa' }}
                 </span>
                 <h1>¿Qué vas a pedir hoy?</h1>
-                <p>Explora el menú, personaliza tu pedido y confirma. El pago se realiza en caja.</p>
+                <p>Explora el menú, personaliza tu pedido y confirma. {{ $deliveryType === 'web' ? 'El pago se realiza vía Plin o Yape.' : 'El pago se realiza en caja.' }}</p>
             </div>
             <div class="hero-mark" aria-hidden="true"><i class="fas fa-bowl-food"></i></div>
         </section>
@@ -747,7 +747,7 @@
                 <span>Total</span>
                 <strong id="cartPanelTotal">S/ 0.00</strong>
             </div>
-            <p class="cart-hint"><i class="fas fa-info-circle"></i> El pago se realiza en caja.</p>
+            <p class="cart-hint"><i class="fas fa-info-circle"></i> {{ $deliveryType === 'web' ? 'El pago se realiza vía Plin o Yape.' : 'El pago se realiza en caja.' }}</p>
             <button type="button" class="btn-confirm" id="btnConfirm" disabled onclick="confirmOrder()">
                 <i class="fas fa-check"></i> Confirmar pedido
             </button>
