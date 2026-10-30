@@ -144,6 +144,14 @@ class PlainTextTicket
     {
         $t = new self($format, $width);
         $t->buildKitchenHeader($order, $dest);
+        if (($order->delivery_type ?? 'local') === 'web') {
+            $t->textWrapped('Cliente: ' . ($order->customer_name ?? ''));
+            $t->textWrapped('Direccion: ' . ($order->delivery_address ?? ''));
+            if ($order->delivery_reference) {
+                $t->textWrapped('Referencia: ' . $order->delivery_reference);
+            }
+            $t->textWrapped('Contacto: ' . ($order->contact_number ?? ''));
+        }
         $t->separator();
         $t->itemLine('CANT.', 'DESCRIPCIÓN', '');
         $items = $order->items ?? $order->pendingItems ?? [];
@@ -338,6 +346,9 @@ class PlainTextTicket
             $t->center('*** DELIVERY ***', '*');
             $t->textWrapped('Cliente: ' . ($order->customer_name ?? ''));
             $t->textWrapped('Direccion: ' . ($order->delivery_address ?? ''));
+            if ($order->delivery_reference) {
+                $t->textWrapped('Referencia: ' . $order->delivery_reference);
+            }
             $t->textWrapped('Contacto: ' . ($order->contact_number ?? ''));
         }
 

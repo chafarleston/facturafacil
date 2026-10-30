@@ -88,6 +88,7 @@ class AutoPedidoController extends Controller
             'items' => 'required|json',
             'customer_name' => $isWeb ? 'required|string|max:150' : 'nullable|string|max:150',
             'delivery_address' => $isWeb ? 'required|string|max:250' : 'nullable|string|max:250',
+            'delivery_reference' => 'nullable|string|max:250',
             'contact_number' => $isWeb ? 'required|string|max:50' : 'nullable|string|max:50',
         ]);
 
@@ -124,6 +125,7 @@ class AutoPedidoController extends Controller
             'delivery_type' => $deliveryType,
             'customer_name' => $isWeb ? ($validated['customer_name'] ?? null) : null,
             'delivery_address' => $isWeb ? ($validated['delivery_address'] ?? null) : null,
+            'delivery_reference' => $isWeb ? (($validated['delivery_reference'] ?? null) ?: null) : null,
             'contact_number' => $isWeb ? ($validated['contact_number'] ?? null) : null,
         ]);
 

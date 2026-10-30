@@ -794,6 +794,8 @@
             <input type="text" id="deliveryName" class="delivery-input" placeholder="Nombres y apellidos" onfocus="focusDeliveryInput(this)">
             <label class="delivery-label" for="deliveryAddress">Dirección de delivery *</label>
             <input type="text" id="deliveryAddress" class="delivery-input" placeholder="Dirección de entrega" onfocus="focusDeliveryInput(this)">
+            <label class="delivery-label" for="deliveryReference">Referencia de entrega (opcional)</label>
+            <input type="text" id="deliveryReference" class="delivery-input" placeholder="Ej. frente al parque, portón azul" onfocus="focusDeliveryInput(this)">
             <label class="delivery-label" for="deliveryPhone">Número de contacto *</label>
             <input type="tel" id="deliveryPhone" class="delivery-input" placeholder="Número de contacto" onfocus="focusDeliveryInput(this)">
             <div class="delivery-error" id="deliveryError" style="display:none;"></div>
@@ -1206,6 +1208,7 @@
         function confirmDelivery() {
             const name = document.getElementById('deliveryName').value.trim();
             const address = document.getElementById('deliveryAddress').value.trim();
+            const reference = document.getElementById('deliveryReference').value.trim();
             const phone = document.getElementById('deliveryPhone').value.trim();
             const error = document.getElementById('deliveryError');
 
@@ -1219,6 +1222,7 @@
             sendOrder({
                 customer_name: name,
                 delivery_address: address,
+                delivery_reference: reference || null,
                 contact_number: phone
             });
         }

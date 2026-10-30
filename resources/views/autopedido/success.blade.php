@@ -265,6 +265,9 @@
                 <div class="delivery-title"><i class="fas fa-motorcycle"></i> Delivery</div>
                 <div><strong>Cliente:</strong> {{ $order->customer_name }}</div>
                 <div><strong>Dirección:</strong> {{ $order->delivery_address }}</div>
+                @if($order->delivery_reference)
+                    <div><strong>Referencia:</strong> {{ $order->delivery_reference }}</div>
+                @endif
                 <div><strong>Contacto:</strong> {{ $order->contact_number }}</div>
             </div>
         @endif

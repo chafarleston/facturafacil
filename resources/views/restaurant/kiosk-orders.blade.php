@@ -50,6 +50,9 @@
                             <div style="font-size:12px; line-height:1.4; margin-top:4px;">
                                 <div><strong>{{ $order->customer_name }}</strong></div>
                                 <div>{{ $order->delivery_address }}</div>
+                                @if($order->delivery_reference)
+                                    <div><i class="fas fa-location-dot"></i> {{ $order->delivery_reference }}</div>
+                                @endif
                                 <div><i class="fas fa-phone"></i> {{ $order->contact_number }}</div>
                             </div>
                         @else

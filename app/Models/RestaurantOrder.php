@@ -37,6 +37,7 @@ class RestaurantOrder extends Model
         'delivery_type',
         'customer_name',
         'delivery_address',
+        'delivery_reference',
         'contact_number',
         'sent_to_kitchen_at',
         'preparing_started_at',
