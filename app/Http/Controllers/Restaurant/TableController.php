@@ -121,8 +121,9 @@ class TableController extends Controller
 
     public function destroy(RestaurantTable $restaurantTable)
     {
-        if ($restaurantTable->activeOrder()) {
-            return back()->with('error', 'No se puede eliminar una mesa con pedidos activos');
+        if ($restaurantTable->activeOrder()
+            || \App\Models\RestaurantOrder::where('table_id', $restaurantTable->id)->exists()) {
+            return back()->with('error', 'No se puede eliminar una mesa con pedidos (activos o históricos).');
         }
 
         $companyId = $restaurantTable->company_id;

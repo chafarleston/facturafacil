@@ -67,6 +67,12 @@ class FloorController extends Controller
     public function destroy(Floor $floor)
     {
         $companyId = $floor->company_id;
+
+        if ($floor->tables()->exists()) {
+            return redirect()->route('restaurant.floors.index', ['company_id' => $companyId])
+                ->with('error', 'No se puede eliminar un piso que tiene mesas. Elimine o mueva las mesas primero.');
+        }
+
         $floor->delete();
 
         return redirect()->route('restaurant.floors.index', ['company_id' => $companyId])
