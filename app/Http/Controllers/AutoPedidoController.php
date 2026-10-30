@@ -15,9 +15,40 @@ use Illuminate\Support\Facades\Cache;
 
 class AutoPedidoController extends Controller
 {
+    private function branding(Company $company): array
+    {
+        $templates = ['modern', 'elegant', 'minimal', 'classic', 'dark', 'tropical'];
+        $template = \App\Models\Setting::web('template', 'modern');
+        if (!in_array($template, $templates, true)) {
+            $template = 'modern';
+        }
+
+        $fonts = ['Poppins', 'Montserrat', 'Raleway', 'Playfair Display', 'Lora', 'Nunito'];
+        $font = \App\Models\Setting::web('font', 'Poppins');
+        if (!in_array($font, $fonts, true)) {
+            $font = 'Poppins';
+        }
+
+        $logo = \App\Models\Setting::web('logo', '');
+        $logoUrl = $logo ? asset('storage/' . $logo) : $company->getLogoUrl();
+
+        return [
+            'template' => $template,
+            'font' => $font,
+            'fontUrl' => 'https://fonts.googleapis.com/css2?family=' . str_replace(' ', '+', $font) . ':wght@400;500;600;700&display=swap',
+            'primary_color' => \App\Models\Setting::web('primary_color', '#e94560'),
+            'secondary_color' => \App\Models\Setting::web('secondary_color', '#3a1c4a'),
+            'logo' => $logo,
+            'logoUrl' => $logoUrl,
+            'logo_height' => (int) \App\Models\Setting::web('logo_height', 56),
+            'company_name' => $company->nombre_comercial ?: $company->razon_social,
+        ];
+    }
+
     public function index()
     {
-        $companyId = Company::getMainCompany()->id;
+        $company = Company::getMainCompany();
+        $companyId = $company->id;
 
         $products = Cache::remember('kiosko_products_' . $companyId, 60, function () use ($companyId) {
             return Product::where('company_id', $companyId)
@@ -43,7 +74,9 @@ class AutoPedidoController extends Controller
         $categoriesOnly = \App\Models\Setting::categoriesOnly('kiosko');
         $deliveryType = \App\Models\Setting::kiosk('delivery_type', 'local');
 
-        return view('autopedido.index', compact('products', 'categories', 'companyId', 'showProductImages', 'showCategoryImages', 'categoriesOnly', 'deliveryType', 'auxiliaryItems'));
+        $web = $this->branding($company);
+
+        return view('autopedido.index', compact('products', 'categories', 'companyId', 'showProductImages', 'showCategoryImages', 'categoriesOnly', 'deliveryType', 'auxiliaryItems', 'company', 'web'));
     }
 
     public function confirmOrder(Request $request)
@@ -137,6 +170,8 @@ class AutoPedidoController extends Controller
 
     public function success($orderId)
     {
+        $company = Company::getMainCompany();
+        $web = $this->branding($company);
         $order = RestaurantOrder::with(['items'])->findOrFail($orderId);
 
         $successTexts = [
@@ -145,6 +180,6 @@ class AutoPedidoController extends Controller
             'prepare' => \App\Models\Setting::kiosk('success_prepare_text', 'Su pedido comenzará a prepararse después del pago'),
         ];
 
-        return view('autopedido.success', compact('order', 'successTexts'));
+        return view('autopedido.success', compact('order', 'successTexts', 'company', 'web'));
     }
 }
