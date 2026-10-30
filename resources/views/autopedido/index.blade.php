@@ -862,6 +862,12 @@
         let cart = [];
         const categoriesOnly = @json($categoriesOnly ?? false);
         let activeCategory = categoriesOnly ? null : 'all';
+
+        const normalizeSearch = value => (value || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim();
         let showCart = false;
         let modalProductId = null;
         let modalQty = 1;
@@ -1080,7 +1086,7 @@
 
         function applyFilters() {
             const input = document.getElementById('searchInput');
-            const query = input.value.toLowerCase().trim();
+            const query = normalizeSearch(input.value);
             const container = document.getElementById('productsContainer');
             const categories = document.getElementById('categoriesContainer');
             const backButton = document.getElementById('backToCategories');
@@ -1107,7 +1113,7 @@
                 const categoryMatch = activeCategory === 'all'
                     || activeCategory === null
                     || card.dataset.category == activeCategory;
-                const nameMatch = !query || card.dataset.name.includes(query);
+                const nameMatch = !query || normalizeSearch(card.dataset.name).includes(query);
                 const show = categoryMatch && nameMatch;
 
                 card.style.display = show ? '' : 'none';
