@@ -200,27 +200,23 @@
 
         .product {
             display: flex;
-            align-items: flex-start;
+            align-items: center;
             gap: 12px;
             min-width: 0;
         }
 
-        .product-img,
-        .product-placeholder {
-            width: 92px;
-            height: 92px;
-            flex-shrink: 0;
-            border-radius: var(--radius-sm);
-            background: var(--surface-2);
-            object-fit: cover;
-        }
-
-        .product-placeholder {
+        .product-icon {
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--muted);
-            font-size: 26px;
+            width: 46px;
+            height: 46px;
+            flex-shrink: 0;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--surface-2);
+            color: var(--primary);
+            font-size: 18px;
         }
 
         .product-body { min-width: 0; }
@@ -237,17 +233,10 @@
 
         .product-name {
             color: var(--text);
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 700;
             line-height: 1.35;
             overflow-wrap: anywhere;
-        }
-
-        .product-price {
-            margin-top: 3px;
-            color: var(--muted);
-            font-size: 12px;
-            font-weight: 600;
         }
 
         .combo-sep {
@@ -338,7 +327,6 @@
 
         @media (min-width: 760px) {
             .menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .product-img, .product-placeholder { width: 104px; height: 104px; }
             .hero { padding: 34px 30px 30px; }
         }
 
@@ -351,7 +339,7 @@
             .hero { padding: 24px 16px 22px; }
             .company { font-size: 18px; }
             .section-head h2 { font-size: 16px; }
-            .product-img, .product-placeholder { width: 78px; height: 78px; }
+            .product-icon { width: 42px; height: 42px; font-size: 16px; }
             .combo-products { padding: 14px; }
             .combo-head, .combo-footer { padding-left: 14px; padding-right: 14px; }
         }
@@ -380,12 +368,12 @@
             </div>
             <span class="kicker">Menú Virtual</span>
             <h1>Nuestros menús</h1>
-            <p>Combinaciones disponibles de menú y segundo, preparadas para ti.</p>
+            <p>Consulta nuestros menús y segundos disponibles.</p>
         </header>
 
         @if(count($menus))
             <div class="section-head">
-                <h2>Menús disponibles</h2>
+                <h2>Menús</h2>
                 <span>{{ count($menus) }} {{ count($menus) === 1 ? 'opción' : 'opciones' }}</span>
             </div>
 
@@ -394,47 +382,22 @@
                     <article class="combo">
                         <div class="combo-head">
                             <span class="combo-number">Menú {{ $menu['number'] }}</span>
-                            <span class="combo-label">
-                                {{ $menu['second'] ? 'Menú + segundo' : 'Solo menú' }}
-                            </span>
                         </div>
 
                         <div class="combo-products">
                             <div class="product">
-                                @if($menu['main']->imagen_url)
-                                    <img src="{{ $menu['main']->imagen_url }}" class="product-img" alt="{{ $menu['main']->descripcion }}" loading="lazy">
-                                @else
-                                    <span class="product-placeholder"><i class="fas fa-utensils"></i></span>
-                                @endif
+                                <span class="product-icon"><i class="fas fa-utensils"></i></span>
                                 <div class="product-body">
                                     <span class="product-role">Menú</span>
-                                    <div class="product-name">{{ $menu['main']->descripcion }}</div>
-                                    <div class="product-price">S/ {{ number_format($menu['main']->precio, 2) }}</div>
+                                    <div class="product-name">{{ $menu['main_name'] }}</div>
                                 </div>
                             </div>
 
-                            @if($menu['second'])
-                                <div class="combo-sep"><span>+</span></div>
-                                <div class="product">
-                                    @if($menu['second']->imagen_url)
-                                        <img src="{{ $menu['second']->imagen_url }}" class="product-img" alt="{{ $menu['second']->descripcion }}" loading="lazy">
-                                    @else
-                                        <span class="product-placeholder"><i class="fas fa-bowl-rice"></i></span>
-                                    @endif
-                                    <div class="product-body">
-                                        <span class="product-role">Segundo</span>
-                                        <div class="product-name">{{ $menu['second']->descripcion }}</div>
-                                        <div class="product-price">S/ {{ number_format($menu['second']->precio, 2) }}</div>
-                                    </div>
-                                </div>
-                            @else
-                                <div class="no-second">Este menú no incluye segundo asignado.</div>
-                            @endif
                         </div>
 
                         <div class="combo-footer">
                             <span>Precio del menú</span>
-                            <strong>S/ {{ number_format($menu['total'], 2) }}</strong>
+                            <strong>S/ {{ number_format($menu['price'], 2) }}</strong>
                         </div>
                     </article>
                 @endforeach
@@ -444,6 +407,32 @@
                 <i class="fas fa-book-open"></i>
                 <h2>Menú virtual en preparación</h2>
                 <p>Pronto publicaremos nuestras combinaciones.</p>
+            </div>
+        @endif
+
+        @if(count($seconds))
+            <div class="section-head">
+                <h2>Segundos</h2>
+                <span>{{ count($seconds) }} {{ count($seconds) === 1 ? 'opción' : 'opciones' }}</span>
+            </div>
+
+            <div class="menu-grid">
+                @foreach($seconds as $second)
+                    <article class="combo">
+                        <div class="combo-head">
+                            <span class="combo-number">Segundo {{ $second['number'] }}</span>
+                        </div>
+                        <div class="combo-products">
+                            <div class="product">
+                                <span class="product-icon"><i class="fas fa-bowl-rice"></i></span>
+                                <div class="product-body">
+                                    <span class="product-role">Segundo</span>
+                                    <div class="product-name">{{ $second['name'] }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                @endforeach
             </div>
         @endif
 

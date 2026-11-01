@@ -127,28 +127,40 @@ class Setting extends Model
         static::set('menu_virtual_domain', rtrim(trim($domain), '/'));
     }
 
-    public static function virtualMenuProducts(): array
+    public static function virtualMenuNames(): array
     {
-        $ids = json_decode((string) static::get('menu_virtual_products', '[]'), true);
+        $names = json_decode((string) static::get('menu_virtual_names', '[]'), true);
 
-        return is_array($ids) ? array_values($ids) : [];
+        return is_array($names) ? array_values($names) : [];
     }
 
-    public static function setVirtualMenuProducts(array $ids): void
+    public static function setVirtualMenuNames(array $names): void
     {
-        static::set('menu_virtual_products', json_encode(array_values($ids)));
+        static::set('menu_virtual_names', json_encode(array_values($names)));
     }
 
-    public static function virtualMenuSeconds(): array
+    public static function virtualMenuSecondNames(): array
     {
-        $ids = json_decode((string) static::get('menu_virtual_seconds', '[]'), true);
+        $names = json_decode((string) static::get('menu_virtual_second_names', '[]'), true);
 
-        return is_array($ids) ? array_values($ids) : [];
+        return is_array($names) ? array_values($names) : [];
     }
 
-    public static function setVirtualMenuSeconds(array $ids): void
+    public static function setVirtualMenuSecondNames(array $names): void
     {
-        static::set('menu_virtual_seconds', json_encode(array_values($ids)));
+        static::set('menu_virtual_second_names', json_encode(array_values($names)));
+    }
+
+    public static function virtualMenuPrices(): array
+    {
+        $prices = json_decode((string) static::get('menu_virtual_prices', '[]'), true);
+
+        return is_array($prices) ? array_values($prices) : [];
+    }
+
+    public static function setVirtualMenuPrices(array $prices): void
+    {
+        static::set('menu_virtual_prices', json_encode(array_values($prices)));
     }
 
     public static function showProductImages(string $module): bool

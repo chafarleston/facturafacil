@@ -66,45 +66,54 @@
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i>
                         Se emparejan por orden: <b>Menú 1</b> con <b>Segundo 1</b>, <b>Menú 2</b> con <b>Segundo 2</b>, y así sucesivamente.
-                        Si dejas un segundo vacío, ese menú se mostrará solo con el plato principal.
+                        Si dejas un segundo vacío, ese menú se mostrará solo con el menú principal.
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-7">
                             <h5 class="mb-3"><i class="fas fa-utensils"></i> Platos de menú (5)</h5>
                             @for($i = 0; $i < 5; $i++)
                                 <div class="form-group">
-                                    <label for="menu_product_{{ $i }}">Menú {{ $i + 1 }}</label>
-                                    <select name="menu_products[]" id="menu_product_{{ $i }}" class="form-control">
-                                        <option value="">— Seleccionar plato —</option>
-                                        @foreach($products as $product)
-                                            <option value="{{ $product->id }}"
-                                                @selected((string) old('menu_products.' . $i, $menuIds[$i] ?? '') === (string) $product->id)>
-                                                {{ $product->descripcion }} — S/ {{ number_format($product->precio, 2) }}
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                    <label for="menu_name_{{ $i }}">Menú {{ $i + 1 }}</label>
+                                    <input type="text" name="menu_names[]" id="menu_name_{{ $i }}" class="form-control"
+                                           maxlength="150" placeholder="Escribe el nombre del plato"
+                                           value="{{ old('menu_names.' . $i, $menuNames[$i] ?? '') }}">
                                 </div>
                             @endfor
                         </div>
 
-                        <div class="col-md-6">
-                            <h5 class="mb-3"><i class="fas fa-bowl-rice"></i> Segundos (4)</h5>
-                            @for($i = 0; $i < 4; $i++)
+                        <div class="col-md-5">
+                            <h5 class="mb-3"><i class="fas fa-money-bill-wave"></i> Costo por menú</h5>
+                            @for($i = 0; $i < 5; $i++)
                                 <div class="form-group">
-                                    <label for="second_product_{{ $i }}">Segundo {{ $i + 1 }}</label>
-                                    <select name="second_products[]" id="second_product_{{ $i }}" class="form-control">
-                                        <option value="">— Seleccionar segundo —</option>
-                                        @foreach($products as $product)
-                                            <option value="{{ $product->id }}"
-                                                @selected((string) old('second_products.' . $i, $secondIds[$i] ?? '') === (string) $product->id)>
-                                                {{ $product->descripcion }} — S/ {{ number_format($product->precio, 2) }}
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                    <label for="menu_price_{{ $i }}">Costo Menú {{ $i + 1 }}</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text">S/</span>
+                                        </div>
+                                        <input type="number" name="menu_prices[]" id="menu_price_{{ $i }}" class="form-control"
+                                               min="0" max="999999.99" step="0.01" placeholder="0.00"
+                                               value="{{ old('menu_prices.' . $i, $menuPrices[$i] ?? '') }}">
+                                    </div>
                                 </div>
                             @endfor
                         </div>
+                    </div>
+
+                    <hr>
+
+                    <h5 class="mb-3"><i class="fas fa-bowl-rice"></i> Segundos (5)</h5>
+                    <div class="row">
+                        @for($i = 0; $i < 5; $i++)
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="second_name_{{ $i }}">Segundo {{ $i + 1 }}</label>
+                                    <input type="text" name="second_names[]" id="second_name_{{ $i }}" class="form-control"
+                                           maxlength="150" placeholder="Escribe el nombre del segundo"
+                                           value="{{ old('second_names.' . $i, $secondNames[$i] ?? '') }}">
+                                </div>
+                            </div>
+                        @endfor
                     </div>
 
                 </div>
@@ -119,6 +128,24 @@
                     <a href="{{ route('restaurant.index') }}" class="btn btn-secondary">Cancelar</a>
                 </div>
             </form>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-qrcode"></i> QR del Menú Virtual</h3>
+            </div>
+            <div class="card-body text-center">
+                <img src="{{ $qr }}" alt="QR del Menú Virtual" style="width:100%; max-width:240px; height:auto;">
+                <div class="text-muted small mt-2 text-break">{{ $publicUrl }}</div>
+                <div class="mt-3">
+                    <a href="{{ $qr }}" download="menu-virtual-qr.png" class="btn btn-primary">
+                        <i class="fas fa-download"></i> Descargar QR
+                    </a>
+                    <a href="{{ $publicUrl }}" target="_blank" rel="noopener" class="btn btn-outline-secondary">
+                        <i class="fas fa-external-link-alt"></i> Abrir menú virtual
+                    </a>
+                </div>
+            </div>
         </div>
 
     </div>

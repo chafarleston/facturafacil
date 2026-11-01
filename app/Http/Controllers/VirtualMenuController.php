@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Company;
-use App\Models\Product;
 use App\Models\Setting;
+use App\Services\VirtualPrebillQrService;
 use App\Services\WebBrandingService;
 use Illuminate\Http\Request;
 
@@ -13,13 +13,6 @@ class VirtualMenuController extends Controller
     private function authorizeSettings(): void
     {
         $this->authorize('permission', 'view_restaurant');
-    }
-
-    private function productQuery(Company $company)
-    {
-        return Product::where('company_id', $company->id)
-            ->where('estado', 'ACTIVO')
-            ->orderBy('descripcion');
     }
 
     private function publicUrl(): string
@@ -36,21 +29,23 @@ class VirtualMenuController extends Controller
         $this->authorizeSettings();
 
         $company = Company::getMainCompany();
-        $products = $this->productQuery($company)->get(['id', 'descripcion', 'precio']);
-        $menuIds = Setting::virtualMenuProducts();
-        $secondIds = Setting::virtualMenuSeconds();
+        $menuNames = array_pad(Setting::virtualMenuNames(), 5, '');
+        $secondNames = array_pad(Setting::virtualMenuSecondNames(), 5, '');
+        $menuPrices = array_pad(Setting::virtualMenuPrices(), 5, '');
         $enabled = Setting::isVirtualMenuEnabled();
         $domain = Setting::virtualMenuDomain();
         $publicUrl = $this->publicUrl();
+        $qr = VirtualPrebillQrService::dataUri($publicUrl, 320);
 
         return view('virtualmenu.index', compact(
             'company',
-            'products',
-            'menuIds',
-            'secondIds',
+            'menuNames',
+            'secondNames',
+            'menuPrices',
             'enabled',
             'domain',
-            'publicUrl'
+            'publicUrl',
+            'qr'
         ));
     }
 
@@ -61,31 +56,46 @@ class VirtualMenuController extends Controller
         $request->validate([
             'enabled' => 'nullable|boolean',
             'domain' => 'required|url|max:255',
-            'menu_products' => 'nullable|array|max:5',
-            'menu_products.*' => 'nullable|integer|exists:products,id',
-            'second_products' => 'nullable|array|max:4',
-            'second_products.*' => 'nullable|integer|exists:products,id',
+            'menu_names' => 'nullable|array|max:5',
+            'menu_names.*' => 'nullable|string|max:150',
+            'second_names' => 'nullable|array|max:5',
+            'second_names.*' => 'nullable|string|max:150',
+            'menu_prices' => 'nullable|array|max:5',
+            'menu_prices.*' => 'nullable|numeric|min:0|max:999999.99',
         ]);
 
-        $company = Company::getMainCompany();
-        $allowed = $this->productQuery($company)->pluck('id')->map(fn ($id) => (int) $id)->all();
-
-        $menuIds = collect($request->input('menu_products', []))
-            ->map(fn ($id) => $id && in_array((int) $id, $allowed, true) ? (int) $id : 0)
+        $menuNames = collect($request->input('menu_names', []))
+            ->map(fn ($name) => trim((string) $name))
             ->take(5)
             ->values()
             ->all();
+        while (count($menuNames) < 5) {
+            $menuNames[] = '';
+        }
 
-        $secondIds = collect($request->input('second_products', []))
-            ->map(fn ($id) => $id && in_array((int) $id, $allowed, true) ? (int) $id : 0)
-            ->take(4)
+        $secondNames = collect($request->input('second_names', []))
+            ->map(fn ($name) => trim((string) $name))
+            ->take(5)
             ->values()
             ->all();
+        while (count($secondNames) < 5) {
+            $secondNames[] = '';
+        }
+
+        $menuPrices = collect($request->input('menu_prices', []))
+            ->map(fn ($price) => is_numeric($price) ? round((float) $price, 2) : 0)
+            ->take(5)
+            ->values()
+            ->all();
+        while (count($menuPrices) < 5) {
+            $menuPrices[] = 0;
+        }
 
         Setting::setVirtualMenuEnabled($request->boolean('enabled'));
         Setting::setVirtualMenuDomain($request->input('domain'));
-        Setting::setVirtualMenuProducts($menuIds);
-        Setting::setVirtualMenuSeconds($secondIds);
+        Setting::setVirtualMenuNames($menuNames);
+        Setting::setVirtualMenuSecondNames($secondNames);
+        Setting::setVirtualMenuPrices($menuPrices);
 
         return redirect()->route('virtual-menu.index')
             ->with('success', 'Menú Virtual actualizado correctamente.');
@@ -98,34 +108,45 @@ class VirtualMenuController extends Controller
         }
 
         $company = Company::getMainCompany();
-        $menuIds = Setting::virtualMenuProducts();
-        $secondIds = Setting::virtualMenuSeconds();
-        $ids = array_values(array_unique(array_filter(array_merge($menuIds, $secondIds))));
-
-        $products = Product::where('company_id', $company->id)
-            ->whereIn('id', $ids)
-            ->where('estado', 'ACTIVO')
-            ->get()
-            ->keyBy('id');
+        $menuNames = array_pad(Setting::virtualMenuNames(), 5, '');
+        $secondNames = array_pad(Setting::virtualMenuSecondNames(), 5, '');
+        $menuPrices = array_pad(Setting::virtualMenuPrices(), 5, 0);
 
         $menus = [];
-        foreach ($menuIds as $index => $id) {
-            $main = $products->get((int) $id);
-            if (! $main) {
+        foreach ($menuNames as $index => $name) {
+            $name = trim((string) $name);
+            if ($name === '') {
                 continue;
             }
 
-            $second = $products->get((int) ($secondIds[$index] ?? 0));
+            $second = trim((string) ($secondNames[$index] ?? ''));
+
             $menus[] = [
                 'number' => $index + 1,
-                'main' => $main,
-                'second' => $second,
-                'total' => (float) $main->precio + (float) ($second->precio ?? 0),
+                'main_name' => $name,
+                'second_name' => $second !== '' ? $second : null,
+                'price' => (float) ($menuPrices[$index] ?? 0),
+            ];
+        }
+
+        $seconds = [];
+        foreach ($secondNames as $index => $name) {
+            $name = trim((string) $name);
+            if ($name === '') {
+                continue;
+            }
+
+            $menuName = trim((string) ($menuNames[$index] ?? ''));
+
+            $seconds[] = [
+                'number' => $index + 1,
+                'name' => $name,
+                'menu_number' => $menuName !== '' ? $index + 1 : null,
             ];
         }
 
         $web = app(WebBrandingService::class)->for($company);
 
-        return view('virtualmenu.show', compact('company', 'menus', 'web'));
+        return view('virtualmenu.show', compact('company', 'menus', 'seconds', 'web'));
     }
 }
