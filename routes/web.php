@@ -225,6 +225,9 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     // Precuenta Virtual (configuración y QR por mesa)
     Route::get('/virtual-prebill', [\App\Http\Controllers\VirtualPrebillController::class, 'index'])->name('virtual-prebill.index');
     Route::post('/virtual-prebill', [\App\Http\Controllers\VirtualPrebillController::class, 'update'])->name('virtual-prebill.update');
+
+    Route::get('/menu-virtual', [\App\Http\Controllers\VirtualMenuController::class, 'index'])->name('virtual-menu.index');
+    Route::post('/menu-virtual', [\App\Http\Controllers\VirtualMenuController::class, 'update'])->name('virtual-menu.update');
     Route::get('/restaurant/kitchen', [RestaurantController::class, 'kitchenIndex'])->name('restaurant.kitchen');
     Route::get('/restaurant/kitchen/cocina', function () { return redirect('/restaurant/kitchen?kds=cocina'); })->name('restaurant.kitchen.cocina');
     Route::get('/restaurant/kitchen/cocina2', function () { return redirect('/restaurant/kitchen?kds=cocina2'); })->name('restaurant.kitchen.cocina2');
@@ -285,6 +288,9 @@ Route::get('/logout', function () {
 })->name('logout.get');
 
 // Precuenta virtual pública por slug de mesa (debe quedar al final)
+Route::get('/menuvirtual', [\App\Http\Controllers\VirtualMenuController::class, 'show'])
+    ->name('virtual-menu.show');
+
 Route::get('/{slug}', [\App\Http\Controllers\VirtualPrebillController::class, 'show'])
     ->where('slug', '[A-Za-z0-9][A-Za-z0-9\-]*')
     ->name('virtual-prebill.show');

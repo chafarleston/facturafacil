@@ -107,6 +107,50 @@ class Setting extends Model
         static::set('precuenta_virtual_domain', rtrim(trim($domain), '/'));
     }
 
+    public static function isVirtualMenuEnabled(): bool
+    {
+        return static::get('menu_virtual_enabled', '0') === '1';
+    }
+
+    public static function setVirtualMenuEnabled(bool $enabled): void
+    {
+        static::set('menu_virtual_enabled', $enabled ? '1' : '0');
+    }
+
+    public static function virtualMenuDomain(): string
+    {
+        return (string) static::get('menu_virtual_domain', '');
+    }
+
+    public static function setVirtualMenuDomain(string $domain): void
+    {
+        static::set('menu_virtual_domain', rtrim(trim($domain), '/'));
+    }
+
+    public static function virtualMenuProducts(): array
+    {
+        $ids = json_decode((string) static::get('menu_virtual_products', '[]'), true);
+
+        return is_array($ids) ? array_values($ids) : [];
+    }
+
+    public static function setVirtualMenuProducts(array $ids): void
+    {
+        static::set('menu_virtual_products', json_encode(array_values($ids)));
+    }
+
+    public static function virtualMenuSeconds(): array
+    {
+        $ids = json_decode((string) static::get('menu_virtual_seconds', '[]'), true);
+
+        return is_array($ids) ? array_values($ids) : [];
+    }
+
+    public static function setVirtualMenuSeconds(array $ids): void
+    {
+        static::set('menu_virtual_seconds', json_encode(array_values($ids)));
+    }
+
     public static function showProductImages(string $module): bool
     {
         return static::get('img_products_' . $module, '0') === '1';
