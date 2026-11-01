@@ -180,11 +180,11 @@
 
         .brand {
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 14px;
-            flex-wrap: wrap;
-            text-align: left;
+            gap: 10px;
+            text-align: center;
         }
 
         .brand img {
@@ -199,6 +199,7 @@
             font-weight: 800;
             line-height: 1.15;
             letter-spacing: .02em;
+            text-align: center;
             text-transform: var(--brand-transform);
         }
 
@@ -211,6 +212,7 @@
             color: var(--muted);
             font-size: 11px;
             line-height: 1.5;
+            text-align: center;
         }
 
         .meta span { display: inline-flex; align-items: center; gap: 4px; }
