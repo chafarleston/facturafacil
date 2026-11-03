@@ -274,7 +274,7 @@ observaciones, referencia
 | `getOrder($orderId)` | GET `/restaurant/orders/{id}` | Obtiene orden con items |
 | `addItem($orderId)` | POST `/restaurant/orders/{id}/items` | Agrega producto al pedido |
 | `updateItem($itemId)` | PUT `/restaurant/orders/items/{id}` | Actualiza cantidad/notas |
-| `removeItem($itemId)` | DELETE `/restaurant/orders/items/{id}` | Elimina item. PENDING → borra físicamente; SENT/READY/DELIVERED → marca CANCELLED (exige la contraseña del usuario autenticado con permiso `authorize_cancel_orders` + auditoría + ticket) |
+| `removeItem($itemId)` | DELETE `/restaurant/orders/items/{id}` | Elimina item. PENDING → borra físicamente (no cuenta como línea eliminada); SENT/READY/DELIVERED → marca CANCELLED (exige la contraseña del usuario autenticado con permiso `authorize_cancel_orders` + auditoría + ticket) |
 | `sendToKitchen($orderId)` | POST `/restaurant/orders/{id}/send-to-kitchen` | Envía items a cocina |
 | `closeOrder($orderId)` | POST `/restaurant/orders/{id}/close` | Cierra pedido (COMPLETED) |
 | `cancelOrder($orderId)` | POST `/restaurant/orders/{id}/cancel` | Anula pedido completo |
@@ -1129,7 +1129,7 @@ PUT /restaurant/orders/items/{id}
 DELETE /restaurant/orders/items/{id}
 → removeItem() [PHP]:
    0. Si el item tiene paid_invoice_id: se bloquea (ya facturado, A4)
-   1. Si el item está PENDING (no enviado a cocina): se elimina físicamente (DELETE), sin rastro
+   1. Si el item está PENDING (no enviado a cocina/KDS): se elimina físicamente (DELETE) y no cuenta como línea eliminada en caja
     2. Si el item está SENT/READY/DELIVERED: requiere admin_password (usuario autenticado con permiso `authorize_cancel_orders`, verificado con su propia contraseña)
    3. Verifica contraseña con Hash::check()
    4. cancelled_from = estado actual (ej: SENT)

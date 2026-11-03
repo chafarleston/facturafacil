@@ -313,8 +313,10 @@ class CashRegisterController extends Controller
             ->where('kitchen_status', 'CANCELLED')
             ->whereNotNull('cancelled_from')
             ->whereIn('cancelled_from', ['SENT', 'READY', 'DELIVERED'])
+            ->whereHas('order', fn ($query) => $query->where('company_id', $cashregister->company_id))
             ->where('cancelled_at', '>=', $fechaApertura)
             ->where('cancelled_at', '<=', $fechaCierre)
+            ->orderBy('cancelled_at')
             ->get();
 
         $facturas = $ventas->where('tipo_documento', '01');
