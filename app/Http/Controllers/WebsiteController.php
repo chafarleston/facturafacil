@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Product;
 use App\Models\Setting;
 use App\Services\ImageOptimizer;
+use App\Services\VirtualMenuDataService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -74,6 +75,12 @@ class WebsiteController extends Controller
         $company = Company::getMainCompany();
         $web = $this->defaults();
 
+        $virtualMenu = Setting::isVirtualMenuEnabled()
+            ? app(VirtualMenuDataService::class)->data()
+            : ['menus' => [], 'seconds' => []];
+        $virtualMenus = $virtualMenu['menus'];
+        $virtualSeconds = $virtualMenu['seconds'];
+
         $categories = Category::where('company_id', $company->id)
             ->whereIn('estado', ['ACTIVO', 'ACT'])
             ->orderBy('nombre')
@@ -105,7 +112,7 @@ class WebsiteController extends Controller
         $templates = ['modern', 'elegant', 'minimal', 'classic', 'dark', 'tropical'];
         $template = in_array($web['template'], $templates, true) ? $web['template'] : 'modern';
 
-        return view('website.templates.' . $template, compact('company', 'web', 'categories', 'products', 'categoryNames', 'gallery', 'logoUrl', 'slides'));
+        return view('website.templates.' . $template, compact('company', 'web', 'categories', 'products', 'categoryNames', 'gallery', 'logoUrl', 'slides', 'virtualMenus', 'virtualSeconds'));
     }
 
     public function toggle()

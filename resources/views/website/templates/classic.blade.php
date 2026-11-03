@@ -185,6 +185,8 @@
 </section>
 @endif
 
+@include('website.partials.virtual-menu')
+
 @if($web['show_catalog'] && $products->count())
 <section class="py-5" id="catalogo" style="background:#fff;">
     <div class="container py-4">
