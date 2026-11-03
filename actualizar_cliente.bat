@@ -65,8 +65,10 @@ echo        (Permisos + impresoras - NO resetea series ni contrasenas)
 call php artisan db:seed --class=ActualizarSeeder --force
 if errorlevel 1 goto :error
 
-echo [6/10] npm install (solo si falta node_modules)
-if not exist "node_modules" (
+echo [6/10] npm ci (instala dependencias declaradas)
+call npm ci
+if errorlevel 1 (
+    echo   npm ci fallo; intentando npm install...
     call npm install
     if errorlevel 1 goto :error
 )
