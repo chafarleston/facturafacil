@@ -122,6 +122,12 @@ class CashRegisterController extends Controller
             ->where('sunat_estado', '!=', 'ANULADO')
             ->get();
 
+        $paymentTotals = $this->paymentTotals($ventas);
+        $totalVentas = round($ventas->sum('total'), 2);
+        if (abs($totalVentas - $paymentTotals['total']) > 0.01) {
+            return back()->with('error', 'No se puede cerrar caja: hay comprobantes con pagos incompletos. Faltante: S/ ' . number_format($totalVentas - $paymentTotals['total'], 2));
+        }
+
         $efectivo = 0;
         $tarjeta = 0;
         $yape = 0;
@@ -221,46 +227,24 @@ class CashRegisterController extends Controller
         $data = $this->getCashRegisterData($cashregister);
         extract($data);
         
-        $ventasEfectivo = 0;
-        $ventasTarjeta = 0;
-        $ventasYape = 0;
-        $ventasPlin = 0;
-        $ventasOtro = 0;
+        $paymentTotals = $this->paymentTotals($ventas);
+        $ventasEfectivo = $paymentTotals['efectivo'];
+        $ventasTarjeta = $paymentTotals['tarjeta'];
+        $ventasYape = $paymentTotals['yape'];
+        $ventasPlin = $paymentTotals['plin'];
+        $ventasOtro = $paymentTotals['otro'];
+        $totalMetodos = $paymentTotals['total'];
+        $totalVentas = round($ventas->sum('total'), 2);
+        $diferenciaPagos = round($totalVentas - $totalMetodos, 2);
+        $comprobantesDescuadrados = $ventas->map(function ($venta) use ($paymentTotals) {
+            $pagado = $paymentTotals['porComprobante'][$venta->id] ?? 0;
 
-        foreach ($ventas as $venta) {
-            $pago = $venta->metodo_pago ?? 'EFECTIVO';
-            if (str_contains($pago, ' + ')) {
-                $parts = explode(' + ', $pago);
-                foreach ($parts as $part) {
-                    $part = trim($part);
-                    if (str_contains($part, '/')) {
-                        [$metName, $metAmt] = explode('/', $part);
-                        $amt = min((float) $metAmt, $venta->total);
-                    } else {
-                        $metName = $part;
-                        $amt = round($venta->total / count($parts), 2);
-                    }
-                    $key = strtoupper($metName);
-                    match (true) {
-                        str_starts_with($key, 'EFECT') => $ventasEfectivo += $amt,
-                        str_starts_with($key, 'TARJ') => $ventasTarjeta += $amt,
-                        $key === 'YAPE' => $ventasYape += $amt,
-                        $key === 'PLIN' => $ventasPlin += $amt,
-                        default => $ventasOtro += $amt,
-                    };
-                }
-            } else {
-                $key = strtoupper(explode('/', $pago)[0]);
-                match (true) {
-                    str_starts_with($key, 'EFECT') => $ventasEfectivo += $venta->total,
-                    str_starts_with($key, 'TARJ') => $ventasTarjeta += $venta->total,
-                    $key === 'YAPE' => $ventasYape += $venta->total,
-                    $key === 'PLIN' => $ventasPlin += $venta->total,
-                    default => $ventasOtro += $venta->total,
-                };
-            }
-        }
-        $totalMetodos = $ventasEfectivo + $ventasTarjeta + $ventasYape + $ventasPlin + $ventasOtro;
+            return [
+                'venta' => $venta,
+                'pagado' => $pagado,
+                'faltante' => round((float) $venta->total - $pagado, 2),
+            ];
+        })->filter(fn ($item) => $item['faltante'] > 0.009)->values();
 
         // Saldo Final de Efectivo = apertura(ingreso) + ventas_efectivo + ingresos - egresos - cierre(egreso)
         $saldoFinalEfectivo = round(
@@ -279,8 +263,65 @@ class CashRegisterController extends Controller
             'categoriasVentas', 'productosVendidos',
             'ventasEfectivo', 'ventasTarjeta', 'ventasYape', 'ventasPlin', 'ventasOtro',
             'totalMetodos', 'lineasEliminadas', 'kioskoTotal', 'kioskoCount',
-            'movimientos', 'totalIngresos', 'totalEgresos', 'saldoFinalEfectivo'
+            'movimientos', 'totalIngresos', 'totalEgresos', 'saldoFinalEfectivo',
+            'totalVentas', 'diferenciaPagos', 'comprobantesDescuadrados'
         ));
+    }
+
+    private function paymentTotals($ventas): array
+    {
+        $totals = [
+            'efectivo' => 0.0,
+            'tarjeta' => 0.0,
+            'yape' => 0.0,
+            'plin' => 0.0,
+            'otro' => 0.0,
+            'porComprobante' => [],
+        ];
+
+        foreach ($ventas as $venta) {
+            $metodo = trim((string) ($venta->metodo_pago ?? 'EFECTIVO'));
+            $parts = str_contains($metodo, ' + ') ? explode(' + ', $metodo) : [$metodo];
+            $count = max(1, count($parts));
+            $pagado = 0.0;
+
+            foreach ($parts as $part) {
+                $part = trim($part);
+                if ($part === '') continue;
+
+                if (str_contains($part, '/')) {
+                    [$met, $amt] = explode('/', $part, 2);
+                    $amt = (float) $amt;
+                } else {
+                    $met = $part;
+                    $amt = (float) $venta->total / $count;
+                }
+
+                $amt = min($amt, (float) $venta->total);
+                $pagado += $amt;
+
+                $key = match (strtoupper(trim($met))) {
+                    'EFECTIVO' => 'efectivo',
+                    'TARJETA' => 'tarjeta',
+                    'YAPE' => 'yape',
+                    'PLIN' => 'plin',
+                    default => 'otro',
+                };
+                $totals[$key] += $amt;
+            }
+
+            $totals['porComprobante'][$venta->id] = round($pagado, 2);
+        }
+
+        foreach (['efectivo', 'tarjeta', 'yape', 'plin', 'otro'] as $key) {
+            $totals[$key] = round($totals[$key], 2);
+        }
+        $totals['total'] = round(
+            $totals['efectivo'] + $totals['tarjeta'] + $totals['yape'] + $totals['plin'] + $totals['otro'],
+            2
+        );
+
+        return $totals;
     }
 
     private function getCashRegisterData(CashRegister $cashregister)
@@ -419,6 +460,16 @@ class CashRegisterController extends Controller
         // Config de reporte (si no existe, se tratan como "todo visible" en las vistas)
         $reportConfig = \App\Models\CashReportSetting::where('company_id', $cashregister->company_id)->first();
 
+        $paymentTotals = $this->paymentTotals($ventas);
+        $cashregister->setAttribute('ventas_efectivo', $paymentTotals['efectivo']);
+        $cashregister->setAttribute('ventas_tarjeta', $paymentTotals['tarjeta']);
+        $cashregister->setAttribute('ventas_yape', $paymentTotals['yape']);
+        $cashregister->setAttribute('ventas_plin', $paymentTotals['plin']);
+        $cashregister->setAttribute('ventas_otro', $paymentTotals['otro']);
+        $cashregister->setAttribute('total_ventas', round($ventas->sum('total'), 2));
+        $cashregister->setAttribute('total_pagos', $paymentTotals['total']);
+        $cashregister->setAttribute('diferencia_pagos', round($ventas->sum('total') - $paymentTotals['total'], 2));
+
         return compact('cashregister', 'facturas', 'boletas', 'nvs', 'ventasPorMetodo', 'categoriasVentas', 'productosVendidos', 'lineasEliminadas', 'ventas', 'movimientos', 'totalIngresos', 'totalEgresos', 'saldoFinalEfectivo', 'ventasEfectivo', 'reportConfig');
     }
 
@@ -514,46 +565,15 @@ class CashRegisterController extends Controller
         $data = $this->getCashRegisterData($cashregister);
 
         $ventas = $data['ventas'];
-        $data['total_ventas'] = $ventas->sum('total');
-        $data['efectivo'] = 0;
-        $data['tarjeta'] = 0;
-        $data['yape'] = 0;
-        $data['plin'] = 0;
-        $data['otro'] = 0;
-
-        foreach ($ventas as $venta) {
-            $pago = $venta->metodo_pago ?? 'EFECTIVO';
-            if (str_contains($pago, ' + ')) {
-                $parts = explode(' + ', $pago);
-                foreach ($parts as $part) {
-                    $part = trim($part);
-                    if (str_contains($part, '/')) {
-                        [$metName, $metAmt] = explode('/', $part);
-                        $amt = min((float) $metAmt, $venta->total);
-                    } else {
-                        $metName = $part;
-                        $amt = round($venta->total / count($parts), 2);
-                    }
-                    $key = strtoupper($metName);
-                    match (true) {
-                        str_starts_with($key, 'EFECT') => $data['efectivo'] += $amt,
-                        str_starts_with($key, 'TARJ') => $data['tarjeta'] += $amt,
-                        $key === 'YAPE' => $data['yape'] += $amt,
-                        $key === 'PLIN' => $data['plin'] += $amt,
-                        default => $data['otro'] += $amt,
-                    };
-                }
-            } else {
-                $key = strtoupper(explode('/', $pago)[0]);
-                match (true) {
-                    str_starts_with($key, 'EFECT') => $data['efectivo'] += $venta->total,
-                    str_starts_with($key, 'TARJ') => $data['tarjeta'] += $venta->total,
-                    $key === 'YAPE' => $data['yape'] += $venta->total,
-                    $key === 'PLIN' => $data['plin'] += $venta->total,
-                    default => $data['otro'] += $venta->total,
-                };
-            }
-        }
+        $paymentTotals = $this->paymentTotals($ventas);
+        $data['total_ventas'] = round($ventas->sum('total'), 2);
+        $data['efectivo'] = $paymentTotals['efectivo'];
+        $data['tarjeta'] = $paymentTotals['tarjeta'];
+        $data['yape'] = $paymentTotals['yape'];
+        $data['plin'] = $paymentTotals['plin'];
+        $data['otro'] = $paymentTotals['otro'];
+        $data['total_pagos'] = $paymentTotals['total'];
+        $data['diferenciaPagos'] = round($data['total_ventas'] - $paymentTotals['total'], 2);
 
         return $data;
     }

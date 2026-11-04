@@ -330,6 +330,12 @@ class PlainTextTicket
                 $t->text(($mov->tipo === 'INGRESO' ? 'I ' : 'E ') . $mov->motivo . ' - S/ ' . number_format($mov->monto, 2));
             }
         }
+
+        $diferenciaPagos = (float) ($data['diferenciaPagos'] ?? 0);
+        if ($diferenciaPagos > 0.009) {
+            $t->separator();
+            $t->center('PAGOS INCOMPLETOS: FALTAN S/ ' . number_format($diferenciaPagos, 2));
+        }
         return $format === 'escpos' ? $t->getEscPos() : $t->getText();
     }
 

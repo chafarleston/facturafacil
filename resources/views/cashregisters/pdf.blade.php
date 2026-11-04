@@ -121,6 +121,12 @@
         </tr>
     </table>
 
+    @if(($cashregister->diferencia_pagos ?? 0) > 0.009)
+    <div class="bold" style="color:#c00; border-top:1px solid #c00; padding-top:4px; margin-top:4px;">
+        PAGOS INCOMPLETOS: faltan S/ {{ number_format($cashregister->diferencia_pagos, 2) }}
+    </div>
+    @endif
+
     @if(count($categoriasVentas) > 0)
     <div class="border-top py-2 mt-2 mb-1 bold">RESUMEN POR CATEGORÍA</div>
     <table>

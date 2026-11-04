@@ -172,6 +172,47 @@
     </div>
 </div>
 
+@if(($diferenciaPagos ?? 0) > 0.009)
+<div class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle"></i>
+    <strong>Pagos incompletos:</strong> los pagos registrados no cubren el total de ventas.
+    Total comprobantes: <strong>S/ {{ number_format($totalVentas ?? 0, 2) }}</strong>;
+    pagos registrados: <strong>S/ {{ number_format($totalMetodos ?? 0, 2) }}</strong>;
+    faltante: <strong>S/ {{ number_format($diferenciaPagos, 2) }}</strong>
+    en {{ count($comprobantesDescuadrados ?? []) }} comprobante(s).
+</div>
+@endif
+
+@if(count($comprobantesDescuadrados ?? []) > 0)
+<h4 class="mt-4">Comprobantes con pago incompleto</h4>
+<div class="table-responsive">
+    <table class="table table-sm table-bordered">
+        <thead class="thead-dark">
+            <tr>
+                <th>Comprobante</th>
+                <th>Cliente</th>
+                <th class="text-right">Total</th>
+                <th class="text-right">Pagado</th>
+                <th class="text-right">Faltante</th>
+                <th>Pago registrado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($comprobantesDescuadrados as $item)
+            <tr class="table-danger">
+                <td>{{ $item['venta']->full_number }}</td>
+                <td>{{ $item['venta']->customer->nombre ?? 'Clientes Varios' }}</td>
+                <td class="text-right">S/ {{ number_format($item['venta']->total, 2) }}</td>
+                <td class="text-right">S/ {{ number_format($item['pagado'], 2) }}</td>
+                <td class="text-right"><strong>S/ {{ number_format($item['faltante'], 2) }}</strong></td>
+                <td>{{ $item['venta']->metodo_pago ?? 'EFECTIVO' }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+</div>
+@endif
+
 @if(count($categoriasVentas) > 0)
 <h4 class="mt-4">Resumen por Categoría</h4>
 <div class="table-responsive">

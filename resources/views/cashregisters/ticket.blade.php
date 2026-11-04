@@ -75,6 +75,11 @@
         <div>Plin: S/ {{ number_format($calcPlin, 2) }}</div>
         <div>Otro: S/ {{ number_format($calcOtro, 2) }}</div>
     </div>
+    @if(($cashregister->diferencia_pagos ?? 0) > 0.009)
+    <div class="border-top py-1 mt-1 bold" style="color:#c00;">
+        PAGOS INCOMPLETOS: FALTAN S/ {{ number_format($cashregister->diferencia_pagos, 2) }}
+    </div>
+    @endif
 
     @if(!$reportConfig || $reportConfig->mostrar_lista_comprobantes)
     <div class="border-top py-1 mt-1 mb-1 bold">LISTA DE COMPROBANTES</div>

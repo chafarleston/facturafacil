@@ -1086,7 +1086,10 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
                 ], 400);
             }
 
-            // Opción B: enviar automáticamente a cocina/bar los items pendientes antes de facturar
+            $payments = $request->payments ?? [['method' => 'EFECTIVO', 'amount' => $items->sum('total')]];
+            $this->assertPaymentsCoverTotal($payments, (float) $items->sum('total'));
+
+            // Opci��n B: enviar automǭticamente a cocina/bar los items pendientes antes de facturar
             $pendingToSend = $items->where('kitchen_status', 'PENDING');
             if ($pendingToSend->isNotEmpty()) {
                 app(KitchenBatchService::class)
@@ -1109,7 +1112,6 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             
             $customerId = $request->customer_id;
             $documentType = $request->document_type ?? 'NV';
-            $payments = $request->payments ?? [['method' => 'EFECTIVO', 'amount' => $items->sum('total')]];
             $reference = $request->reference ?? '';
             $soloConsumo = $request->boolean('solo_consumo');
 
@@ -1235,9 +1237,21 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
                 if ($requested > (float) $item->quantity + 0.001) {
                     return response()->json([
                         'success' => false,
-                        'message' => "La división de '{$item->product_name}' excede lo disponible. Disponible: {$item->quantity}, solicitado: {$requested}"
+                        'message' => "La divisi��n de '{$item->product_name}' excede lo disponible. Disponible: {$item->quantity}, solicitado: {$requested}"
                     ], 400);
                 }
+            }
+
+            foreach ($splits as $split) {
+                $totalSplit = 0;
+                foreach (($split['items'] ?? []) as $itemSel) {
+                    $origItem = $availableItems->firstWhere('id', $itemSel['item_id'] ?? null);
+                    if (!$origItem) continue;
+                    $qty = (float) ($itemSel['quantity'] ?? 0);
+                    $totalSplit += $qty * (float) $origItem->unit_price;
+                }
+                $payments = $split['payments'] ?? [['method' => 'EFECTIVO', 'amount' => $totalSplit]];
+                $this->assertPaymentsCoverTotal($payments, round($totalSplit, 2));
             }
 
             $invoices = [];
@@ -1331,6 +1345,15 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
         }
     }
 
+    private function assertPaymentsCoverTotal($payments, float $total): void
+    {
+        $totalPagado = collect($payments)->sum(fn ($p) => (float) ($p['amount'] ?? 0));
+
+        if ($totalPagado + 0.001 < $total) {
+            throw new \Exception('El pago no cubre el total de la venta. Faltan S/ ' . number_format($total - $totalPagado, 2));
+        }
+    }
+
     private function createInvoiceFromItems($order, $items, $customerId, $documentType, $payments, $soloConsumo, $reference, $cajaAbierta, $mainCompany, $companyId)
     {
         $serie = Serie::where('company_id', $companyId)
@@ -1365,7 +1388,10 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             }
         }
 
-        $totalPagado = collect($payments)->sum('amount');
+        $totalPagado = collect($payments)->sum(fn ($p) => (float) ($p['amount'] ?? 0));
+        if ($totalPagado + 0.001 < $total) {
+            throw new \Exception('El pago no cubre el total de la venta. Faltan S/ ' . number_format($total - $totalPagado, 2));
+        }
         $vuelto = max(0, $totalPagado - $total);
 
         // El vuelto solo se descuenta del EFECTIVO (efectivo neto = efectivo - vuelto)

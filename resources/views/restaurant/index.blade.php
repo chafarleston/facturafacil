@@ -2467,6 +2467,26 @@ function confirmSplit() {
     }
     // Los items no asignados quedan pendientes para el botón "Cobrar"
     
+    let paymentError = null;
+    validSplits.forEach(function(s, idx) {
+        let splitTotal = 0;
+        s.items.forEach(function(si) {
+            const orig = splitItemPool.find(function(p) { return p.id === si.item_id; });
+            if (orig) splitTotal += (parseFloat(si.quantity) || 0) * (parseFloat(orig.unit_price) || 0);
+        });
+        const paid = (s.payments || []).reduce(function(sum, p) {
+            return sum + (parseFloat(p.amount) || 0);
+        }, 0);
+        if (paid + 0.001 < splitTotal) {
+            paymentError = 'La División ' + (idx + 1) + ' no cubre su total. Faltan S/ ' + (splitTotal - paid).toFixed(2) + '.';
+        }
+    });
+    if (paymentError) {
+        errorDiv.textContent = paymentError;
+        errorDiv.style.display = 'block';
+        return;
+    }
+
     // Construir payload
     const payload = validSplits.map(function(s) {
         return {
@@ -2626,6 +2646,15 @@ function onCustomerCreated(customer) {
 
 function processCharge() {
     if (!currentOrderId) return;
+    const total = parseFloat(document.getElementById('chargeTotal').textContent.replace('S/ ', '')) || 0;
+    let paid = 0;
+    document.querySelectorAll('.payment-row').forEach(function(row) {
+        paid += parseFloat(row.querySelector('.payment-amount').value) || 0;
+    });
+    if (paid + 0.001 < total) {
+        showError('El pago no cubre el total. Faltan S/ ' + (total - paid).toFixed(2));
+        return;
+    }
     const btn = document.getElementById('btnProcessCharge');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
