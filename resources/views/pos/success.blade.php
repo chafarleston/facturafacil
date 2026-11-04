@@ -133,6 +133,12 @@
         </div>
         <div class="success-total">S/ {{ number_format($invoice->total, 2) }}</div>
 
+        @if(session('vuelto') && session('vuelto') > 0)
+            <div class="alert alert-info py-2">
+                <i class="fas fa-hand-holding-usd"></i> <strong>Vuelto: S/ {{ number_format(session('vuelto'), 2) }}</strong>
+            </div>
+        @endif
+
         @php
             $sunatResult = session('sunat_sent');
             $estadoSunat = $invoice->sunat_estado;

@@ -87,7 +87,7 @@ class PosController extends Controller
         }
         
         $documentType = $request->document_type ?? 'NV';
-        
+
         $serie = Serie::where('company_id', $companyId)
             ->where('tipo_documento', $documentType)
             ->where('estado', 'ACTIVO')
@@ -120,7 +120,18 @@ class PosController extends Controller
         }
         
         $total = $subtotal + $igv;
-        
+
+        try {
+            $paymentData = $this->preparePayments($request, (float) $total);
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage())->withInput();
+        }
+
+        $payments = $paymentData['payments'];
+        $vuelto = $paymentData['vuelto'];
+        $hasCash = $paymentData['hasCash'];
+        $metodoPago = $paymentData['metodoPago'];
+
         $invoice = \App\Models\Invoice::create([
             'company_id' => $companyId,
             'customer_id' => $customerId,
@@ -137,7 +148,7 @@ class PosController extends Controller
             'total' => $total,
             'subtotal' => $subtotal,
             'total_letras' => strtoupper($this->numberToLetter($total)) . ' SOLES',
-            'metodo_pago' => $request->payment_method ?? 'EFECTIVO',
+            'metodo_pago' => $metodoPago,
             'referencia_pago' => $request->reference ?? null,
             'sunat_estado' => 'PENDIENTE',
         ]);
@@ -182,19 +193,21 @@ class PosController extends Controller
         // Actualizar caja registradora en vivo (misma lógica que createInvoiceFromItems)
         $cajaAbierta->cantidad_ventas = ($cajaAbierta->cantidad_ventas ?? 0) + 1;
         $cajaAbierta->total_ventas = ($cajaAbierta->total_ventas ?? 0) + $total;
-        $paymentMethod = $request->payment_method ?? 'EFECTIVO';
-        $paymentField = match ($paymentMethod) {
-            'EFECTIVO' => 'ventas_efectivo',
-            'TARJETA' => 'ventas_tarjeta',
-            'YAPE' => 'ventas_yape',
-            'PLIN' => 'ventas_plin',
-            default => 'ventas_otro',
-        };
-        $cajaAbierta->$paymentField = ($cajaAbierta->$paymentField ?? 0) + $total;
+
+        foreach ($payments as $payment) {
+            $paymentField = match ($payment['method']) {
+                'EFECTIVO' => 'ventas_efectivo',
+                'TARJETA' => 'ventas_tarjeta',
+                'YAPE' => 'ventas_yape',
+                'PLIN' => 'ventas_plin',
+                default => 'ventas_otro',
+            };
+            $cajaAbierta->$paymentField = ($cajaAbierta->$paymentField ?? 0) + $payment['amount'];
+        }
         $cajaAbierta->save();
 
-        // Abrir cajón automáticamente en pagos en efectivo (necesita dar vuelto)
-        if ($paymentMethod === 'EFECTIVO' && \App\Models\Setting::pos('open_drawer_cash', '1') === '1') {
+        // Abrir caj��n automǭticamente si hubo efectivo
+        if ($hasCash && \App\Models\Setting::pos('open_drawer_cash', '1') === '1') {
             try {
                 $printer = \App\Models\Printer::where('assigned_to', 'caja')->where('active', true)->first();
                 if ($printer) {
@@ -229,9 +242,95 @@ class PosController extends Controller
             }
         }
 
-        return redirect()->route('pos.success', $invoice->id)->with('sunat_sent', $sunatResult);
+        return redirect()->route('pos.success', $invoice->id)
+            ->with('sunat_sent', $sunatResult)
+            ->with('vuelto', $vuelto);
     }
-    
+
+    private function preparePayments(Request $request, float $total): array
+    {
+        $rawPayments = $request->input('payments');
+        $payments = is_string($rawPayments) ? json_decode($rawPayments, true) : $rawPayments;
+
+        if (!is_array($payments) || empty($payments)) {
+            $legacyMethod = strtoupper(trim((string) ($request->payment_method ?? 'EFECTIVO')));
+            if (!in_array($legacyMethod, ['EFECTIVO', 'TARJETA', 'YAPE', 'PLIN', 'TRANSFERENCIA', 'MIXTO'], true)) {
+                throw new \Exception('Método de pago inválido');
+            }
+            $payments = [['method' => $legacyMethod, 'amount' => $total]];
+        }
+
+        $allowed = ['EFECTIVO', 'TARJETA', 'YAPE', 'PLIN', 'TRANSFERENCIA', 'MIXTO'];
+        $normalized = [];
+        $totalPagado = 0.0;
+        $virtualTotal = 0.0;
+        $hasCash = false;
+
+        foreach ($payments as $payment) {
+            $method = strtoupper(trim((string) ($payment['method'] ?? '')));
+            $amount = round((float) ($payment['amount'] ?? 0), 2);
+
+            if (!in_array($method, $allowed, true) || $amount < 0) {
+                throw new \Exception('Método o monto de pago inválido');
+            }
+            if ($amount <= 0) {
+                continue;
+            }
+
+            if ($method === 'EFECTIVO') {
+                $hasCash = true;
+            }
+            if (in_array($method, ['YAPE', 'PLIN', 'TARJETA'], true)) {
+                $virtualTotal += $amount;
+            }
+
+            $totalPagado += $amount;
+            $normalized[] = ['method' => $method, 'amount' => $amount];
+        }
+
+        if ($totalPagado + 0.001 < $total) {
+            throw new \Exception('El pago no cubre el total de la venta. Faltan S/ ' . number_format($total - $totalPagado, 2));
+        }
+        if ($virtualTotal > $total + 0.001) {
+            throw new \Exception('Los pagos con Yape/Plin/Tarjeta son exactos y no pueden exceder el total');
+        }
+
+        $vuelto = round(max(0, $totalPagado - $total), 2);
+
+        if ($vuelto > 0) {
+            $restante = $vuelto;
+            $nuevos = [];
+            foreach ($normalized as $payment) {
+                if ($payment['method'] === 'EFECTIVO') {
+                    $restar = min($payment['amount'], $restante);
+                    $payment['amount'] = round($payment['amount'] - $restar, 2);
+                    $restante = round($restante - $restar, 2);
+                }
+                $nuevos[] = $payment;
+            }
+
+            if ($restante > 0.001) {
+                throw new \Exception('El efectivo no cubre el vuelto de S/ ' . number_format($vuelto, 2));
+            }
+
+            $normalized = array_values(array_filter(
+                $nuevos,
+                fn ($payment) => $payment['amount'] > 0.001
+            ));
+        }
+
+        $metodoPago = collect($normalized)
+            ->map(fn ($payment) => $payment['method'] . '/' . number_format($payment['amount'], 2, '.', ''))
+            ->implode(' + ');
+
+        return [
+            'payments' => $normalized,
+            'vuelto' => $vuelto,
+            'hasCash' => $hasCash,
+            'metodoPago' => $metodoPago,
+        ];
+    }
+
     private function numberToLetter($number)
     {
         $formatter = new \NumberFormatter('es', \NumberFormatter::SPELLOUT);

@@ -415,17 +415,17 @@
                 </div>
             </div>
             
-            <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;">
                 <div style="flex: 1;">
-                    <label>Metodo de Pago</label>
-                    <select id="paymentMethod" class="form-control form-control-sm">
-                        <option value="EFECTIVO" {{ $defaultPaymentMethod === 'EFECTIVO' ? 'selected' : '' }}>EFECTIVO</option>
-                        <option value="TARJETA" {{ $defaultPaymentMethod === 'TARJETA' ? 'selected' : '' }}>TARJETA</option>
-                        <option value="TRANSFERENCIA" {{ $defaultPaymentMethod === 'TRANSFERENCIA' ? 'selected' : '' }}>TRANSFERENCIA</option>
-                        <option value="YAPE" {{ $defaultPaymentMethod === 'YAPE' ? 'selected' : '' }}>YAPE</option>
-                        <option value="PLIN" {{ $defaultPaymentMethod === 'PLIN' ? 'selected' : '' }}>PLIN</option>
-                        <option value="MIXTO" {{ $defaultPaymentMethod === 'MIXTO' ? 'selected' : '' }}>MIXTO</option>
-                    </select>
+                    <label>Pagos</label>
+                    <div id="posPaymentsContainer"></div>
+                    <button type="button" class="btn btn-link btn-sm" onclick="addPaymentRow()" style="padding: 2px 0;">
+                        <i class="fas fa-plus"></i> Agregar método de pago
+                    </button>
+                    <div style="display: flex; justify-content: flex-end; gap: 14px; font-size: 12px; font-weight: 600; margin-top: 4px;">
+                        <span>Pendiente: S/ <span id="posPaymentPending">0.00</span></span>
+                        <span>Vuelto: S/ <span id="posPaymentChange">0.00</span></span>
+                    </div>
                 </div>
                 <div style="flex: 1;">
                     <label>Referencia</label>
@@ -467,7 +467,7 @@
     @csrf
     <input type="hidden" name="customer_id" id="customerIdInput">
     <input type="hidden" name="document_type" id="documentTypeInput">
-    <input type="hidden" name="payment_method" id="paymentMethodInput">
+    <input type="hidden" name="payments" id="paymentsInput">
     <input type="hidden" name="reference" id="referenceInput">
     <input type="hidden" name="items_json" id="itemsJson">
     <input type="hidden" name="total" id="totalInput">
@@ -543,6 +543,12 @@ const showProductImages = {{ $showProductImages ? 'true' : 'false' }};
 const showCategoryImages = {{ $showCategoryImages ? 'true' : 'false' }};
 const defaultDocumentType = @json($defaultDocumentType);
 const defaultPaymentMethod = @json($defaultPaymentMethod);
+const posPaymentMethods = ['EFECTIVO', 'TARJETA', 'YAPE', 'PLIN', 'TRANSFERENCIA'];
+
+function normalizePaymentMethod(method) {
+    method = String(method || '').toUpperCase();
+    return posPaymentMethods.includes(method) ? method : 'EFECTIVO';
+}
 
 // === MULTI-TAB SYSTEM ===
 let saleTabs = [];
@@ -565,6 +571,19 @@ function loadTabsFromStorage() {
         saleTabs = saved ? JSON.parse(saved) : [];
         activeTabId = parseInt(localStorage.getItem(STORAGE_ACTIVE)) || null;
         nextTabId = parseInt(localStorage.getItem(STORAGE_NEXTID)) || 1;
+        saleTabs.forEach(function(tab) {
+            if (!Array.isArray(tab.payments) || tab.payments.length === 0) {
+                tab.payments = [{ method: normalizePaymentMethod(tab.paymentMethod || defaultPaymentMethod), amount: 0, auto: true }];
+            } else {
+                tab.payments = tab.payments.map(function(payment) {
+                    return {
+                        method: normalizePaymentMethod(payment.method),
+                        amount: parseFloat(payment.amount) || 0,
+                        auto: !!payment.auto
+                    };
+                });
+            }
+        });
     } catch(e) {
         saleTabs = []; activeTabId = null; nextTabId = 1;
     }
@@ -582,7 +601,7 @@ function addNewTab() {
         customerId: null,
         customerName: '',
         documentType: defaultDocumentType,
-        paymentMethod: defaultPaymentMethod,
+        payments: [{ method: normalizePaymentMethod(defaultPaymentMethod), amount: 0, auto: true }],
         createdAt: new Date().toISOString()
     };
     nextTabId++;
@@ -599,7 +618,7 @@ function switchToTab(tabId) {
             cur.customerId = document.getElementById('customerId').value || null;
             cur.customerName = document.getElementById('customerSearch').value || '';
             cur.documentType = document.getElementById('documentType').value;
-            cur.paymentMethod = document.getElementById('paymentMethod').value;
+            cur.payments = collectPaymentsFromUI();
         }
     }
     activeTabId = tabId;
@@ -610,12 +629,122 @@ function switchToTab(tabId) {
     document.getElementById('customerId').value = tab.customerId || '';
     document.getElementById('customerSearch').value = tab.customerName || '';
     document.getElementById('documentType').value = tab.documentType || defaultDocumentType;
-    document.getElementById('paymentMethod').value = tab.paymentMethod || defaultPaymentMethod;
     updateSerieByType();
     
     renderTabs();
+    renderPayments(tab);
     renderSaleItems();
     saveTabsToStorage();
+}
+
+function renderPayments(tab) {
+    var container = document.getElementById('posPaymentsContainer');
+    if (!container) return;
+
+    if (!tab) {
+        container.innerHTML = '';
+        updatePaymentSummary();
+        return;
+    }
+
+    if (!Array.isArray(tab.payments) || tab.payments.length === 0) {
+        tab.payments = [{ method: normalizePaymentMethod(defaultPaymentMethod), amount: 0, auto: true }];
+    }
+
+    var html = '';
+    tab.payments.forEach(function(payment, index) {
+        var options = posPaymentMethods.map(function(method) {
+            return '<option value="' + method + '"' + (payment.method === method ? ' selected' : '') + '>' + method + '</option>';
+        }).join('');
+        var amountValue = payment.amount > 0 ? Number(payment.amount).toFixed(2) : '';
+        html += '<div class="pos-payment-row" data-index="' + index + '" style="display:flex; gap:4px; margin-bottom:4px;">' +
+            '<select class="form-control form-control-sm pos-payment-method" onchange="updatePaymentRow(' + index + ', \'method\', this.value)">' + options + '</select>' +
+            '<input type="number" class="form-control form-control-sm pos-payment-amount" step="0.01" min="0" placeholder="Monto" value="' + amountValue + '" oninput="updatePaymentRow(' + index + ', \'amount\', this.value)">' +
+            '<button type="button" class="btn btn-sm btn-danger" onclick="removePaymentRow(' + index + ')" title="Quitar"><i class="fas fa-times"></i></button>' +
+            '</div>';
+    });
+    container.innerHTML = html;
+    updatePaymentSummary();
+}
+
+function collectPaymentsFromUI() {
+    var tab = getActiveTab();
+    if (!tab) return [];
+
+    var rows = document.querySelectorAll('#posPaymentsContainer .pos-payment-row');
+    if (rows.length === 0) {
+        return tab.payments || [];
+    }
+
+    var payments = [];
+    rows.forEach(function(row) {
+        var method = row.querySelector('.pos-payment-method').value;
+        var amount = parseFloat(row.querySelector('.pos-payment-amount').value) || 0;
+        payments.push({
+            method: normalizePaymentMethod(method),
+            amount: amount,
+            auto: false
+        });
+    });
+    return payments;
+}
+
+function addPaymentRow() {
+    if (!activeTabId) addNewTab();
+    var tab = getActiveTab();
+    if (!tab) return;
+
+    tab.payments.forEach(function(payment) { payment.auto = false; });
+    tab.payments.push({ method: 'EFECTIVO', amount: 0, auto: false });
+    renderPayments(tab);
+    saveTabsToStorage();
+}
+
+function removePaymentRow(index) {
+    var tab = getActiveTab();
+    if (!tab || !Array.isArray(tab.payments) || tab.payments.length <= 1) return;
+
+    tab.payments.splice(index, 1);
+    renderPayments(tab);
+    saveTabsToStorage();
+}
+
+function updatePaymentRow(index, field, value) {
+    var tab = getActiveTab();
+    if (!tab || !tab.payments[index]) return;
+
+    if (field === 'method') {
+        tab.payments[index].method = normalizePaymentMethod(value);
+    } else {
+        tab.payments[index].amount = parseFloat(value) || 0;
+        tab.payments[index].auto = false;
+    }
+
+    updatePaymentSummary();
+    saveTabsToStorage();
+}
+
+function updatePaymentSummary() {
+    var tab = getActiveTab();
+    var total = getTotal();
+    var payments = tab ? (tab.payments || []) : [];
+    var paid = 0;
+
+    payments.forEach(function(payment) {
+        paid += parseFloat(payment.amount) || 0;
+    });
+
+    var pending = Math.max(0, total - paid);
+    var change = Math.max(0, paid - total);
+    var pendingEl = document.getElementById('posPaymentPending');
+    var changeEl = document.getElementById('posPaymentChange');
+    if (pendingEl) pendingEl.textContent = pending.toFixed(2);
+    if (changeEl) changeEl.textContent = change.toFixed(2);
+
+    var btn = document.getElementById('btnPay');
+    if (btn) {
+        btn.disabled = !tab || !tab.items || tab.items.length === 0 || paid <= 0 || pending > 0.001;
+    }
 }
 
 function closeTab(tabId) {
@@ -633,8 +762,8 @@ function closeTab(tabId) {
             document.getElementById('customerId').value = '';
             document.getElementById('customerSearch').value = '';
             document.getElementById('documentType').value = defaultDocumentType;
-            document.getElementById('paymentMethod').value = defaultPaymentMethod;
             updateSerieByType();
+            renderPayments(null);
             renderTabs();
             renderSaleItems();
         }
@@ -774,13 +903,18 @@ function renderSaleItems() {
     });
     
     container.innerHTML = html;
-    document.getElementById('btnPay').disabled = false;
     calculateTotals();
 }
 
 function calculateTotals() {
     var tab = getActiveTab();
-    if (!tab) { document.getElementById('total').textContent = 'S/ 0.00'; return; }
+    if (!tab) {
+        document.getElementById('subtotal').textContent = 'S/ 0.00';
+        document.getElementById('igv').textContent = 'S/ 0.00';
+        document.getElementById('total').textContent = 'S/ 0.00';
+        updatePaymentSummary();
+        return;
+    }
     
     let total = 0;
     tab.items.forEach(item => { total += item.price * item.quantity; });
@@ -791,6 +925,16 @@ function calculateTotals() {
     document.getElementById('subtotal').textContent = 'S/ ' + base.toFixed(2);
     document.getElementById('igv').textContent = 'S/ ' + igv.toFixed(2);
     document.getElementById('total').textContent = 'S/ ' + total.toFixed(2);
+
+    if (tab.payments && tab.payments.length === 1 && tab.payments[0].auto) {
+        tab.payments[0].amount = Math.round(total * 100) / 100;
+        var amountInput = document.querySelector('.pos-payment-amount');
+        if (amountInput) {
+            amountInput.value = tab.payments[0].amount > 0 ? tab.payments[0].amount.toFixed(2) : '';
+        }
+    }
+
+    updatePaymentSummary();
 }
 
 function getTotal() {
@@ -807,13 +951,40 @@ function processSale() {
         showError('No hay productos en esta venta');
         return;
     }
-    
+
+    var total = getTotal();
+    var payments = collectPaymentsFromUI().filter(function(payment) {
+        return (parseFloat(payment.amount) || 0) > 0;
+    });
+    var paid = payments.reduce(function(sum, payment) {
+        return sum + (parseFloat(payment.amount) || 0);
+    }, 0);
+
+    if (paid + 0.001 < total) {
+        showError('El pago no cubre el total. Faltan S/ ' + (total - paid).toFixed(2));
+        return;
+    }
+
+    var virtualTotal = payments
+        .filter(function(payment) { return ['YAPE', 'PLIN', 'TARJETA'].includes(payment.method); })
+        .reduce(function(sum, payment) { return sum + (parseFloat(payment.amount) || 0); }, 0);
+
+    if (virtualTotal > total + 0.001) {
+        showError('Los pagos con Yape/Plin/Tarjeta no pueden exceder el total');
+        return;
+    }
+
+    tab.payments = payments;
+    saveTabsToStorage();
+
     document.getElementById('customerIdInput').value = document.getElementById('customerId').value;
     document.getElementById('documentTypeInput').value = document.getElementById('documentType').value;
-    document.getElementById('paymentMethodInput').value = document.getElementById('paymentMethod').value;
+    document.getElementById('paymentsInput').value = JSON.stringify(payments.map(function(payment) {
+        return { method: payment.method, amount: payment.amount };
+    }));
     document.getElementById('referenceInput').value = document.getElementById('reference').value;
     document.getElementById('itemsJson').value = JSON.stringify(tab.items);
-    document.getElementById('totalInput').value = getTotal();
+    document.getElementById('totalInput').value = total;
     
     document.getElementById('saleForm').submit();
 }
@@ -967,12 +1138,6 @@ function onCustomerCreated(customer) {
     $('#customerModal').modal('hide');
     selectCustomer(customer.id, customer.nombre);
 }
-
-// === PAYMENT METHOD SAVE ===
-document.getElementById('paymentMethod').addEventListener('change', function() {
-    var tab = getActiveTab();
-    if (tab) { tab.paymentMethod = this.value; saveTabsToStorage(); }
-});
 
 // === INIT ===
 document.addEventListener('keydown', function(e) { if (e.key === 'Escape') cancelSale(); });
