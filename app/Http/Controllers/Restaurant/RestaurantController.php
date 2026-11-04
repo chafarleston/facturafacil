@@ -1088,6 +1088,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
 
             $payments = $request->payments ?? [['method' => 'EFECTIVO', 'amount' => $items->sum('total')]];
             $this->assertPaymentsCoverTotal($payments, (float) $items->sum('total'));
+            $this->assertVirtualPaymentsWithinTotal($payments, (float) $items->sum('total'));
 
             // Opci��n B: enviar automǭticamente a cocina/bar los items pendientes antes de facturar
             $pendingToSend = $items->where('kitchen_status', 'PENDING');
@@ -1252,6 +1253,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
                 }
                 $payments = $split['payments'] ?? [['method' => 'EFECTIVO', 'amount' => $totalSplit]];
                 $this->assertPaymentsCoverTotal($payments, round($totalSplit, 2));
+                $this->assertVirtualPaymentsWithinTotal($payments, round($totalSplit, 2));
             }
 
             $invoices = [];
@@ -1354,6 +1356,21 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
         }
     }
 
+    private function assertVirtualPaymentsWithinTotal($payments, float $total): void
+    {
+        $virtualTotal = collect($payments)
+            ->filter(fn ($p) => in_array(
+                strtoupper(trim((string) ($p['method'] ?? ''))),
+                ['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA'],
+                true
+            ))
+            ->sum(fn ($p) => (float) ($p['amount'] ?? 0));
+
+        if ($virtualTotal > $total + 0.001) {
+            throw new \Exception('Los pagos virtuales (Yape, Plin, Tarjeta y Transferencia) deben ser exactos y no pueden superar el total de la venta.');
+        }
+    }
+
     private function createInvoiceFromItems($order, $items, $customerId, $documentType, $payments, $soloConsumo, $reference, $cajaAbierta, $mainCompany, $companyId)
     {
         $serie = Serie::where('company_id', $companyId)
@@ -1380,13 +1397,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             $payments = [['method' => 'EFECTIVO', 'amount' => $total]];
         }
 
-        // Los pagos virtuales (YAPE/PLIN/TARJETA) son EXACTOS: no pueden exceder el total (no hay vuelto en ellos)
-        foreach ($payments as $p) {
-            $m = strtoupper($p['method']);
-            if (in_array($m, ['YAPE', 'PLIN', 'TARJETA']) && ((float) $p['amount']) > $total + 0.001) {
-                throw new \Exception('Los pagos con Yape/Plin/Tarjeta de crédito son exactos y no pueden exceder el total de la venta');
-            }
-        }
+        $this->assertVirtualPaymentsWithinTotal($payments, $total);
 
         $totalPagado = collect($payments)->sum(fn ($p) => (float) ($p['amount'] ?? 0));
         if ($totalPagado + 0.001 < $total) {

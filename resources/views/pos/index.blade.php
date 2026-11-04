@@ -966,11 +966,11 @@ function processSale() {
     }
 
     var virtualTotal = payments
-        .filter(function(payment) { return ['YAPE', 'PLIN', 'TARJETA'].includes(payment.method); })
+        .filter(function(payment) { return ['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA'].includes(payment.method); })
         .reduce(function(sum, payment) { return sum + (parseFloat(payment.amount) || 0); }, 0);
 
     if (virtualTotal > total + 0.001) {
-        showError('Los pagos con Yape/Plin/Tarjeta no pueden exceder el total');
+        showError('Los pagos virtuales (Yape, Plin, Tarjeta y Transferencia) deben ser exactos y no pueden superar el total. Solo el efectivo permite vuelto.');
         return;
     }
 

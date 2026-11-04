@@ -280,7 +280,7 @@ class PosController extends Controller
             if ($method === 'EFECTIVO') {
                 $hasCash = true;
             }
-            if (in_array($method, ['YAPE', 'PLIN', 'TARJETA'], true)) {
+            if (in_array($method, ['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA'], true)) {
                 $virtualTotal += $amount;
             }
 
@@ -292,7 +292,7 @@ class PosController extends Controller
             throw new \Exception('El pago no cubre el total de la venta. Faltan S/ ' . number_format($total - $totalPagado, 2));
         }
         if ($virtualTotal > $total + 0.001) {
-            throw new \Exception('Los pagos con Yape/Plin/Tarjeta son exactos y no pueden exceder el total');
+            throw new \Exception('Los pagos virtuales (Yape, Plin, Tarjeta y Transferencia) deben ser exactos y no pueden superar el total');
         }
 
         $vuelto = round(max(0, $totalPagado - $total), 2);

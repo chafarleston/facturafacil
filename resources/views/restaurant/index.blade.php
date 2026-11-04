@@ -2098,37 +2098,48 @@ function removePaymentRow(btn) {
     updatePaymentSummary();
 }
 
+let virtualPaymentWarningShown = false;
+
 function updatePaymentSummary() {
     const total = parseFloat(document.getElementById('chargeTotal').textContent.replace('S/ ', '')) || 0;
     const amounts = document.querySelectorAll('.payment-amount');
     const methods = document.querySelectorAll('.payment-method');
     let sum = 0;
-    amounts.forEach(function(inp) { sum += parseFloat(inp.value) || 0; });
-    const pending = Math.max(0, total - sum);
-    const vuelto = Math.max(0, sum - total);
-    document.getElementById('pendingAmount').textContent = pending.toFixed(2);
-    document.getElementById('chargeVuelto').textContent = vuelto.toFixed(2);
+    let virtualTotal = 0;
 
-    // Los pagos virtuales (Yape/Plin/Tarjeta) son exactos: no pueden exceder el total
-    let virtualExcedido = false;
     amounts.forEach(function(inp, idx) {
-        const m = methods[idx] ? methods[idx].value.toUpperCase() : '';
-        if (['YAPE', 'PLIN', 'TARJETA'].includes(m) && (parseFloat(inp.value) || 0) > total + 0.001) {
-            virtualExcedido = true;
+        const amount = parseFloat(inp.value) || 0;
+        sum += amount;
+        const method = methods[idx] ? methods[idx].value.toUpperCase() : '';
+        if (['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA'].includes(method)) {
+            virtualTotal += amount;
         }
     });
 
+    const virtualExcedido = virtualTotal > total + 0.001;
+    const pending = Math.max(0, total - sum);
+    const vuelto = virtualExcedido ? 0 : Math.max(0, sum - total);
+    document.getElementById('pendingAmount').textContent = pending.toFixed(2);
+    document.getElementById('chargeVuelto').textContent = vuelto.toFixed(2);
+
     const btn = document.getElementById('btnProcessCharge');
     if (virtualExcedido) {
+        if (!virtualPaymentWarningShown) {
+            virtualPaymentWarningShown = true;
+            showError('Los pagos virtuales (Yape, Plin, Tarjeta y Transferencia) deben ser exactos y no pueden superar el total. Solo el efectivo permite vuelto.');
+        }
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-credit-card"></i> PAGO VIRTUAL EXCEDE EL TOTAL';
+        btn.innerHTML = '<i class="fas fa-credit-card"></i> PAGOS VIRTUALES EXCEDEN EL TOTAL';
     } else if (pending === 0 && sum > 0) {
+        virtualPaymentWarningShown = false;
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-credit-card"></i> COBRAR S/ ' + total.toFixed(2);
     } else if (sum === 0) {
+        virtualPaymentWarningShown = false;
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-credit-card"></i> COBRAR S/ ' + total.toFixed(2);
     } else {
+        virtualPaymentWarningShown = false;
         btn.disabled = true;
         btn.innerHTML = 'Faltan S/ ' + pending.toFixed(2);
     }
@@ -2477,6 +2488,14 @@ function confirmSplit() {
         const paid = (s.payments || []).reduce(function(sum, p) {
             return sum + (parseFloat(p.amount) || 0);
         }, 0);
+        const virtualTotal = (s.payments || []).filter(function(p) {
+            return ['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA'].includes(String(p.method || '').toUpperCase());
+        }).reduce(function(sum, p) {
+            return sum + (parseFloat(p.amount) || 0);
+        }, 0);
+        if (virtualTotal > splitTotal + 0.001) {
+            paymentError = 'La División ' + (idx + 1) + ': los pagos virtuales deben ser exactos y no pueden superar su total.';
+        }
         if (paid + 0.001 < splitTotal) {
             paymentError = 'La División ' + (idx + 1) + ' no cubre su total. Faltan S/ ' + (splitTotal - paid).toFixed(2) + '.';
         }
@@ -2648,9 +2667,19 @@ function processCharge() {
     if (!currentOrderId) return;
     const total = parseFloat(document.getElementById('chargeTotal').textContent.replace('S/ ', '')) || 0;
     let paid = 0;
+    let virtualTotal = 0;
     document.querySelectorAll('.payment-row').forEach(function(row) {
-        paid += parseFloat(row.querySelector('.payment-amount').value) || 0;
+        const amount = parseFloat(row.querySelector('.payment-amount').value) || 0;
+        const method = row.querySelector('.payment-method').value.toUpperCase();
+        paid += amount;
+        if (['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA'].includes(method)) {
+            virtualTotal += amount;
+        }
     });
+    if (virtualTotal > total + 0.001) {
+        showError('Los pagos virtuales (Yape, Plin, Tarjeta y Transferencia) deben ser exactos y no pueden superar el total. Solo el efectivo permite vuelto.');
+        return;
+    }
     if (paid + 0.001 < total) {
         showError('El pago no cubre el total. Faltan S/ ' + (total - paid).toFixed(2));
         return;
