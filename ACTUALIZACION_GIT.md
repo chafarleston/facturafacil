@@ -6,6 +6,28 @@
 
 > Regla principal: **backup primero, migraciones después, seeders solo si es necesario y nunca `git clean -fdx` sin revisar qué borra**.
 
+## Script seguro para el cliente
+
+Usar `actualizar_cliente.bat` (delega en `actualizar_cliente.ps1`). Antes de tocar código:
+
+- Verifica PHP, Git, Composer, npm y `mysqldump` de Laragon.
+- Exige repositorio limpio y rama `main`.
+- Detecta la base desde `.env` y permite indicar otra con `-Database` (por ejemplo `facturafacil2`).
+- Crea backup de la base, `.env` y certificados antes de activar mantenimiento.
+- Usa `git pull --ff-only`; no hace merge ni `reset --hard`.
+- No ejecuta `ActualizarSeeder` por defecto, para no resetear permisos.
+- No cae a `npm install` si falla `npm ci`.
+- Ejecuta `php artisan down` y garantiza `php artisan up` incluso si falla.
+- Deja un log en `backups\update_YYYYMMDD_HHMMSS.log`.
+
+Simulación sin cambios:
+
+```powershell
+actualizar_cliente.bat -DryRun -Database facturafacil2
+```
+
+Si se necesitan permisos nuevos, ejecutar el seeder manualmente o con `-RunSeeder`, revisando antes el impacto.
+
 ---
 
 ## 0. Antes de actualizar
@@ -470,3 +492,15 @@ Evita `php artisan db:seed` sin revisar. Puede resetear permisos o recrear cuent
 - [ ] Revisar logs.
 - [ ] `composer audit` y `npm audit`.
 - [ ] Revisar `resultadoseguridad.md`.
+
+---
+
+## 16. Concurrencia de restaurante (nov-2026)
+
+Si la actualizacion incluye cambios de restaurante:
+
+- `order_version` debe viajar en acciones destructivas; si falta, el backend lo permite por compatibilidad, pero el cliente debe recargar.
+- `chargeOrder`/`splitChargeOrder` requieren caja abierta y bloquean pedido/items/caja/serie.
+- `openTable`/`lockTable` usan bloqueo transaccional; no ejecutar dos navegadores sobre la misma mesa sin refrescar.
+- Despues de actualizar, probar con dos navegadores: un mozo agrega/modifica y el cajero cobra; la accion vieja debe responder `409 requires_reload`.
+- Los items impagos de pedidos `COMPLETED` no se cancelan automaticamente; usar `limpiar_huerfanos.bat` para revisarlos, no `eliminar_ventas_productos.bat`.

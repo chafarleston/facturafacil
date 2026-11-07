@@ -2747,7 +2747,7 @@ Exportación:
 | Certificado no se sube | Validación mimes rechaza .p12 | No usar `mimes:p12,pfx` en la validación |
 | Certificado contraseña incorrecta | OpenSSL no puede leer .p12 | Verificar contraseña del certificado |
 | Pedido no aparece en mesa | Fetch sin headers JSON | Agregar `Accept: application/json` a todos los fetch |
-| Dos usuarios abren misma mesa | Race condition en openTable | Usar sistema de bloqueo con locked_by/locked_at |
+| Dos usuarios abren misma mesa | Race condition en openTable | **Corregido (nov-2026):** `openTable` usa transaccion + bloqueo de mesa y `order_version`; ver seccion 32 |
 | Serie no se puede editar | Parámetro de ruta incorrecto | Usar `->parameters(['series' => 'serie'])` en Route::resource |
 | Ubigeo no funciona | Inputs de texto en lugar de selects | Usar selects con cascada JavaScript |
 | Class "Address" not found | Falta import en SummaryService | Agregar `use Greenter\Model\Company\Address` |
@@ -4172,6 +4172,57 @@ Configuración global **por módulo** en la tabla `settings` (`catonly_{pos,rest
 - **POS**: ya arranca mostrando solo categorías por diseño, por lo que su switch no altera el comportamiento del POS.
 
 Implementación en JS: variable `categoriesOnly` (`@json($categoriesOnly)`) y `activeCategory` inicia en `null` cuando el modo está activo; `applyFilters()` oculta el contenedor si no hay categoría seleccionada ni búsqueda.
+
+---
+
+## 32. Actualizacion 2026-11-07: concurrencia, actualizador y modulos recientes
+
+Esta seccion resume los cambios que deben tenerse en cuenta al operar con varios mozos y al actualizar el cliente.
+
+### 32.1 Concurrencia de pedidos (1 cajero + varios mozos)
+
+- `restaurant_orders` expone `version` calculado con pedido + items (`RestaurantOrder::getVersionAttribute`). No es una columna nueva.
+- Las acciones destructivas envian `order_version`; si otro usuario cambio items/estado/pagos, el backend responde **409 `requires_reload`**.
+- `openTable` y `lockTable` usan transaccion y `lockForUpdate` sobre la mesa; la empresa se bloquea para serializar la numeracion de pedidos.
+- `chargeOrder` y `splitChargeOrder` van en una sola transaccion con bloqueo de pedido, items, caja y serie.
+- `sendToKitchen` reconsulta items `PENDING` dentro del bloqueo; `KitchenBatchService::createFromItems` hace lo mismo para evitar lotes duplicados.
+- `updateItem`, `removeItem`, `saveOrderNotes`, `moveTable`, `mergeOrder`, `closeOrder` y `cancelOrder` validan version/bloqueo.
+- `syncOrderStatus` bloquea el pedido y no sobrescribe `COMPLETED`/`CANCELLED`.
+- El frontend renueva el bloqueo de mesa cada 60 s, refresca el pedido abierto en el polling y libera la mesa al completar/cerrar/anular.
+- El detalle de factura calcula el IGV de linea como `IGV unitario * cantidad` (corregido).
+
+### 32.2 Actualizador seguro del cliente
+
+- `actualizar_cliente.bat` delega en `actualizar_cliente.ps1`.
+- Opciones: `-DryRun`, `-Database facturafacil2`, `-RunSeeder`, `-Yes`.
+- Verifica PHP, Git, Composer, npm y `mysqldump`; exige rama `main` y repositorio limpio.
+- Respalda base de datos, `.env` y certificados antes de activar mantenimiento.
+- Usa `git pull --ff-only`, `composer install --no-dev`, `npm ci` (sin fallback a `npm install`) y `migrate --force`.
+- **No ejecuta `ActualizarSeeder` por defecto** porque `PermissionsSeeder` puede resetear permisos personalizados.
+- Garantiza `php artisan up` incluso ante error y deja log en `backups/update_*.log`.
+
+### 32.3 Limpieza de huerfanos
+
+`limpiar_huerfanos.bat` / `scripts/limpiar_huerfanos.php`:
+
+- Hace simulacion (`--dry-run`), permite `--db=facturafacil2` y crea backup antes de aplicar.
+- Cancela items de pedidos `CANCELLED` y lotes activos de `CANCELLED`/`COMPLETED`.
+- Los items impagos de pedidos `COMPLETED` se listan para reabrir/cobrar y **no se cancelan**.
+- No elimina pedidos.
+
+### 32.4 Modulos recientes
+
+- **Menu Virtual**: `/menu-virtual` (admin) y `/menuvirtual` (publico), 5 menus + 5 entradas configurables, QR y seccion en la web.
+- **Referencia de delivery**: `restaurant_orders.delivery_reference` en autopedido, cocina y pedidos kiosko.
+- **Lineas eliminadas**: solo cuentan `SENT`/`READY`/`DELIVERED`; los `PENDING` se eliminan fisicamente y no cuentan.
+- **Pagos**: validacion de pagos virtuales exactos, vuelto solo en efectivo, cobro mixto POS y bloqueo de cierre con comprobantes incompletos.
+
+### 32.5 Pendientes conocidos
+
+- Permisos de rutas del restaurante/caja (auditoria de roles).
+- Numeros de pedido historicos duplicados; no hay indice unico.
+- Numeracion/concurrencia especifica de kiosko/autopedido.
+- SUNAT e impresion siguen dentro de la transaccion de cobro (pueden alargar el bloqueo).
 
 ---
 

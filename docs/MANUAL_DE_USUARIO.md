@@ -378,4 +378,35 @@ Administra los **slots de impresoras**: cocina 1, cocina 2, bar, precuenta 1/2/3
 
 ---
 
+## 19. Actualizacion segura
+
+Para actualizar el sistema no se debe hacer `git pull` manual en la maquina del cliente.
+
+1. Cerrar el trabajo de caja y restaurante.
+2. Ejecutar primero una simulacion:
+
+```bat
+actualizar_cliente.bat -DryRun -Database facturafacil2
+```
+
+3. Si no hay errores, ejecutar:
+
+```bat
+actualizar_cliente.bat -Database facturafacil2
+```
+
+El script:
+
+- Revisa PHP, Git, Composer, npm y `mysqldump`.
+- Exige repositorio limpio y rama `main`.
+- Crea backup de la base, `.env` y certificados en `backups\`.
+- Activa mantenimiento y lo desactiva al terminar, incluso si hay error.
+- Usa `git pull --ff-only` y `composer install --no-dev`.
+- No ejecuta `ActualizarSeeder` por defecto, para no resetear permisos. Solo con `-RunSeeder`.
+- Deja un log `backups\update_YYYYMMDD_HHMMSS.log`.
+
+Si el cliente usa una base distinta a la del `.env` (por ejemplo `facturafacil2`), indicarla con `-Database facturafacil2`. No interrumpir el proceso durante el backup o las migraciones.
+
+---
+
 *Documento generado para el uso del sistema FacturaFácil.*

@@ -486,6 +486,14 @@ Mayor probabilidad de que vulnerabilidades o secretos pasen desapercibidos.
 
 ---
 
+## 8.1 Actualizacion de seguridad 2026-11-07
+
+- **Concurrencia de restaurante**: se agrego `order_version` (409 `requires_reload`), transacciones/bloqueos en cobro, division, apertura de mesa, edicion/eliminacion y sincronizacion KDS; el bloqueo de mesa se renueva cada 60 s.
+- **Actualizador**: `actualizar_cliente.bat`/`.ps1` hace backup de BD, `.env` y certificados, exige repo limpio/rama `main`, usa `git pull --ff-only`, activa mantenimiento y garantiza `php artisan up`; **no ejecuta `ActualizarSeeder` por defecto**.
+- **Sigue pendiente de seguridad**: permisos por rol en rutas del restaurante/caja (`view_restaurant`, `manage_orders`), aislamiento por empresa en endpoints con ID, proteccion de rutas KDS y numeracion historica duplicada. No considerar el sistema listo para produccion solo por estos cambios de concurrencia.
+
+---
+
 ## 8. Recomendación final
 
 El sistema tiene buenos controles base (CSRF, rate limit de login, permisos por rol, validación de imágenes y Eloquent), pero **no está listo para producción** sin corregir los puntos críticos anteriores, especialmente dependencias, configuración de debug, secretos versionados, cuentas por defecto y XSS.

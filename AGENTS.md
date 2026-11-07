@@ -9,6 +9,18 @@
 ## Code conventions
 - **Comentarios de código**: TODOS los comentarios (PHP, Blade, JS, CSS, comandos) deben escribirse en **español**, breves y descriptivos. Mantenerlo en los desarrollos y cambios futuros.
 
+## Regla obligatoria: GitNexus antes de razonar o editar
+
+- **Siempre** usar GitNexus antes de analizar un flujo, editar/renombrar/eliminar un simbolo o proponer un cambio de arquitectura.
+- Si el indice esta desactualizado: `node .gitnexus/run.cjs analyze`.
+- Antes de tocar un simbolo: `node .gitnexus/run.cjs impact <simbolo> --repo facturafacil --direction upstream`; reportar callers, procesos afectados y riesgo.
+- Para contexto de callers/callees/procesos: `node .gitnexus/run.cjs context <simbolo> --repo facturafacil`.
+- Para flujos de ejecucion: `node .gitnexus/run.cjs query "concepto" --repo facturafacil`.
+- **Antes de commitear**: `node .gitnexus/run.cjs detect-changes --repo facturafacil`; no commitear sin revisar el alcance.
+- Si GitNexus no esta disponible o el indice no carga, avisarlo explicitamente y usar busqueda manual; nunca fingir que se uso.
+- Si `impact` devuelve riesgo HIGH/CRITICAL, advertirlo antes de editar y extremar pruebas/backup.
+- No editar archivos generados de `.gitnexus/` ni usar `find-and-replace` para renombrar simbolos.
+
 ## Commands
 - `php artisan serve` — dev server
 - `php artisan migrate` — run pending migrations
@@ -25,6 +37,7 @@
 - `php artisan cache:clear && php artisan view:clear && php artisan route:clear` — full cache flush (do this after any route/view change)
 - `php -l path/to/file.php` — PHP syntax check (no linter configured)
 - `php artisan tinker --execute="..."` — inline tinker (avoid heredoc in PowerShell)
+- `actualizar_cliente.bat` — actualización segura del cliente (delega en `actualizar_cliente.ps1`): exige repo limpio/rama `main`, backup de BD + `.env` + certificados, `git pull --ff-only`, mantenimiento con `up` garantizado y log en `backups/`. Opciones: `-DryRun`, `-Database facturafacil2`, `-RunSeeder` (el seeder se omite por defecto para no resetear permisos).
 - `actualizar-gitnexus.bat` — refresca el índice GitNexus local (idempotente: `node .gitnexus/run.cjs analyze` o analiza desde cero si falta; CLI global v1.6.9, sin MCP)
 - `eliminar_ventas_productos.bat` — menú para eliminar ventas y/o productos (scripts `eliminar-ventas-productos/clean_ventas.php` y `clean_productos.php` vía tinker con `base_path`). `clean_ventas` además **pone el stock de todos los productos (normales y compuestos) en 0**. Crea backup MySQL previo en `eliminar-ventas-productos/backup/` y pide confirmación `SI`. DESTRUCTIVO.
 - `limpiar_huerfanos.bat` — menú para limpiar **huérfanos** (script `scripts/limpiar_huerfanos.php`): cancela ítems de pedidos `CANCELLED` y lotes activos de `CANCELLED`/`COMPLETED`; los ítems impagos de pedidos `COMPLETED` solo se listan para reabrir/cobrar y **no se cancelan**; elimina ítems/lotes sin pedido. Hace simulación previa, permite `--db=` (ej. `facturafacil2`), crea backup MySQL en `backups/` y pide confirmación `SI`. No elimina pedidos. DESTRUCTIVO.

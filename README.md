@@ -40,6 +40,7 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 - Anulación/eliminación de productos y pedidos con **autorización por contraseña** (usuario autenticado con permiso `authorize_cancel_orders` — admin o cajero, cada uno con su propia contraseña) para items ya enviados a cocina
 - **Login del mozo**: el rol `mozo` se redirige directo a `/restaurant`; si no hay caja abierta se muestra el modal **"Caja no aperturada"** (debe aperturarla el Administrador o el Cajero; botones Ir a Caja / Reintentar / Entendido)
 - Notas por producto y por pedido
+- **Concurrencia multi-mozo (nov-2026)**: cada pedido expone un `version` calculado; las acciones destructivas envían `order_version` y reciben `409 requires_reload` si otro usuario cambió el pedido. `openTable`/`lockTable` usan bloqueo transaccional de mesa, el frontend renueva el bloqueo cada 60 s y refresca el pedido abierto. `chargeOrder`/`splitChargeOrder` bloquean pedido, ítems, caja y serie; los envíos a cocina reconsultan ítems `PENDING` para no duplicar lotes.
 
 ### Página Web y Precuenta Virtual
 - Página pública configurable (Empresa → **Configuración de Página Web**): 6 plantillas (`modern`, `elegant`, `minimal`, `classic`, `dark`, `tropical`), logo, colores/fuente, hero/nosotros, slider de 3 slides, catálogo, galería y CTA "Pedir en línea" hacia `/autopedido`
@@ -394,6 +395,31 @@ tail -50 storage/logs/laravel.log
 - Página web pública y Precuenta Virtual.
 
 ---
+
+## Menú Virtual (nov-2026)
+
+- Submenú **Restaurante → Menú Virtual** (`/menu-virtual`).
+- Configuración manual de **5 menús + 5 entradas** (nombres y costos), sin depender de productos.
+- Página pública en `/menuvirtual` con QR descargable (`menu-virtual-qr.png`) y sección integrada en las 6 plantillas de la web.
+- Las etiquetas se muestran como **Entrada / Entrada N**.
+
+## Concurrencia y actualización segura (nov-2026)
+
+- El sistema está optimizado para **1 cajero y varios mozos**. Las acciones desde una vista vieja no pisan el pedido: se valida `order_version` y se responde `409 requires_reload`.
+- `chargeOrder`/`splitChargeOrder` van en una sola transacción con bloqueo de pedido, ítems, caja y serie.
+- `openTable`/`lockTable` son transaccionales; la mesa se libera al cobrar, cerrar o anular.
+- La cocina no puede revertir un pedido cobrado: `syncOrderStatus` bloquea el pedido y respeta estados terminales.
+- **Actualización del cliente**: usar `actualizar_cliente.bat`, que delega en `actualizar_cliente.ps1`.
+  - Verifica PHP, Git, Composer, npm y `mysqldump`.
+  - Exige repo limpio y rama `main`.
+  - Crea backup de base, `.env` y certificados.
+  - Usa `git pull --ff-only`, activa mantenimiento y garantiza `php artisan up`.
+  - **No ejecuta `ActualizarSeeder` por defecto** para no resetear permisos.
+  - Simulación: `actualizar_cliente.bat -DryRun -Database facturafacil2`.
+  - Si el cliente usa `facturafacil2`, indicarlo con `-Database facturafacil2`.
+- **Limpieza de huérfanos**: `limpiar_huerfanos.bat` hace simulación, backup y no elimina pedidos; los ítems impagos de pedidos `COMPLETED` se listan para revisión y no se cancelan automáticamente.
+- **Líneas eliminadas en caja**: solo cuentan ítems `SENT`, `READY` o `DELIVERED`; los `PENDING` eliminados físicamente no se reportan como anulación.
+- Pendiente conocido: permisos de rutas del restaurante, numeración histórica duplicada de pedidos y concurrencia específica de kiosko.
 
 ## Licencia
 

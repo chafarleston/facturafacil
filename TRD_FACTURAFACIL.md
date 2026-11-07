@@ -8,6 +8,37 @@
 
 ---
 
+## Actualizacion tecnica 2026-11-07
+
+### Concurrencia de restaurante
+
+- `RestaurantOrder` agrega el atributo calculado `version` (hash de pedido + items). No requiere migracion.
+- Endpoints destructivos reciben `order_version`; si no coincide responden `409 {success:false, requires_reload:true}`.
+- `openTable`/`lockTable`: transaccion + `lockForUpdate` sobre `restaurant_tables`; numeracion de pedidos serializada por empresa.
+- `chargeOrder`/`splitChargeOrder`: transaccion unica; locks de pedido, items, caja y serie; reconsulta de items antes de facturar.
+- `KitchenBatchService::createFromItems`: reconsulta items `PENDING` dentro del lock del pedido.
+- `KitchenBatchService::syncOrderStatus`: bloquea el pedido y respeta `COMPLETED`/`CANCELLED`.
+- `updateItem`, `removeItem`, `saveOrderNotes`, `moveTable`, `mergeOrder`, `closeOrder`, `cancelOrder`: transaccion/version.
+- La mesa se libera al cobrar/cerrar/anular; el frontend renueva el bloqueo cada 60 s.
+
+### Actualizacion segura
+
+- `actualizar_cliente.bat` -> `actualizar_cliente.ps1`.
+- Parametros: `-DryRun`, `-Database`, `-RunSeeder`, `-Yes`.
+- Preflight de PHP/Git/Composer/npm/mysqldump, repo limpio y rama `main`.
+- Backup de base, `.env` y certificados; `git pull --ff-only`; mantenimiento con `up` garantizado.
+- `ActualizarSeeder` desactivado por defecto (`-RunSeeder` explicito).
+- `npm ci` sin fallback; `route:cache` opcional con `route:clear` si falla.
+
+### Pendientes
+
+- Permisos de rutas del restaurante/caja.
+- Duplicados historicos de `order_number` y falta de indice unico.
+- Concurrencia especifica de kiosko/autopedido.
+- Envio SUNAT/impresion dentro de la transaccion de cobro.
+
+---
+
 ## 1. Arquitectura del Sistema
 
 ```

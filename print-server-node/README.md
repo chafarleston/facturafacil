@@ -197,6 +197,16 @@ Script de inicio para Windows. Detecta Node.js, instala dependencias si es neces
 
 ---
 
+## Actualizacion del cliente (nov-2026)
+
+El actualizador `actualizar_cliente.bat`/`actualizar_cliente.ps1` **no reinicia** este servidor de impresion. Despues de actualizar el sistema:
+
+- Ejecutar `start-hidden.vbs` (o `start.bat`) para reiniciar el Print Server.
+- Verificar `http://127.0.0.1:9100/status`.
+- Revisar que no queden trabajos atascados en `/printers/queue`.
+
+---
+
 ## Puertos
 
 | Puerto | Uso |

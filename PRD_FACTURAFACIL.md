@@ -8,6 +8,17 @@
 
 ---
 
+## Actualizacion 2026-11-07
+
+- **Concurrencia multi-mozo**: 1 cajero + varios mozos; `order_version` con respuesta `409 requires_reload`, bloqueo transaccional de mesa/pedido, renovacion de bloqueo cada 60 s y refresco del pedido abierto.
+- **Cobro/division**: `chargeOrder`/`splitChargeOrder` en una transaccion con bloqueo de pedido, items, caja y serie.
+- **Cocina**: reconsulta de items `PENDING` para evitar lotes duplicados; `syncOrderStatus` no revierte pedidos completados/anulados.
+- **Actualizador del cliente**: `actualizar_cliente.bat` + `actualizar_cliente.ps1` con backup de BD/.env/certificados, mantenimiento, `git pull --ff-only` y sin seeder automatico.
+- **Menu Virtual**: 5 menus + 5 entradas, QR y pagina publica `/menuvirtual`.
+- **Pendientes**: permisos de rutas del restaurante/caja, numeracion historica duplicada y concurrencia de kiosko.
+
+---
+
 ## 1. Objetivo del Sistema
 
 FacturaFácil es un sistema integral para restaurantes peruanos que unifica:

@@ -214,6 +214,28 @@ El error de `APP_KEY` no explica el borrado. Las mesas **55 y 56** se crearon y 
 
 ---
 
+## 9.1 Actualizacion segura del cliente (nov-2026)
+
+Para aplicar cambios de codigo no usar `git pull` manual. Usar:
+
+```bat
+actualizar_cliente.bat -DryRun -Database facturafacil2
+actualizar_cliente.bat -Database facturafacil2
+```
+
+`actualizar_cliente.bat` delega en `actualizar_cliente.ps1` y:
+
+- Exige repositorio limpio y rama `main`.
+- Crea backup de la base, `.env` y certificados.
+- Usa `git pull --ff-only` y `composer install --no-dev`.
+- Activa mantenimiento y garantiza `php artisan up`.
+- No ejecuta `ActualizarSeeder` por defecto; si se necesita, usar `-RunSeeder` revisando antes el impacto en permisos.
+- No borra ni restaura datos por si solo; para rollback usar el backup y el commit indicado por el script.
+
+Este procedimiento es independiente de la reparacion de `APP_KEY`/caches de este documento.
+
+---
+
 ## 10. Seguridad
 
 Después de reparar, revisar `resultadoseguridad.md` y priorizar:

@@ -37,3 +37,13 @@ Orden recomendado: Primero (ventas) → luego (productos).
 > NOTA: los archivos viven en la RAÍZ del proyecto (carpeta eliminar-ventas-productos/),
 > por eso se usan con base_path(), no storage_path().
 > En storage/app/tmp/ hay una copia antigua compacta de clean_ventas.php; no usarla.
+
+---
+
+## Limpieza de huerfanos (no usar este script)
+
+Para pedidos/items huerfanos usar `limpiar_huerfanos.bat` (script `scripts/limpiar_huerfanos.php`), no `eliminar_ventas_productos.bat`.
+
+- `limpiar_huerfanos.bat` hace simulacion, backup y no elimina pedidos.
+- Cancela items de pedidos `CANCELLED` y lotes activos; deja los items impagos de `COMPLETED` para revision.
+- `eliminar_ventas_productos.bat` es destructivo y reinicia datos de ventas/stock; no usarlo para corregir pedidos huerfanos.
