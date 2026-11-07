@@ -65,8 +65,8 @@
 
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i>
-                        Se emparejan por orden: <b>Menú 1</b> con <b>Segundo 1</b>, <b>Menú 2</b> con <b>Segundo 2</b>, y así sucesivamente.
-                        Si dejas un segundo vacío, ese menú se mostrará solo con el menú principal.
+                        Se emparejan por orden: <b>Menú 1</b> con <b>Entrada 1</b>, <b>Menú 2</b> con <b>Entrada 2</b>, y así sucesivamente.
+                        Si dejas una entrada vacía, ese menú se mostrará solo con el menú principal.
                     </div>
 
                     <div class="row">
@@ -102,14 +102,14 @@
 
                     <hr>
 
-                    <h5 class="mb-3"><i class="fas fa-bowl-rice"></i> Segundos (5)</h5>
+                    <h5 class="mb-3"><i class="fas fa-bowl-rice"></i> Entrada (5)</h5>
                     <div class="row">
                         @for($i = 0; $i < 5; $i++)
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="second_name_{{ $i }}">Segundo {{ $i + 1 }}</label>
+                                    <label for="second_name_{{ $i }}">Entrada {{ $i + 1 }}</label>
                                     <input type="text" name="second_names[]" id="second_name_{{ $i }}" class="form-control"
-                                           maxlength="150" placeholder="Escribe el nombre del segundo"
+                                           maxlength="150" placeholder="Escribe el nombre de la entrada"
                                            value="{{ old('second_names.' . $i, $secondNames[$i] ?? '') }}">
                                 </div>
                             </div>

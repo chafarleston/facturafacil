@@ -368,7 +368,7 @@
             </div>
             <span class="kicker">Menú Virtual</span>
             <h1>Nuestros menús</h1>
-            <p>Consulta nuestros menús y segundos disponibles.</p>
+            <p>Consulta nuestros menús y entradas disponibles.</p>
         </header>
 
         @if(count($menus))
@@ -412,7 +412,7 @@
 
         @if(count($seconds))
             <div class="section-head">
-                <h2>Segundos</h2>
+                <h2>Entrada</h2>
                 <span>{{ count($seconds) }} {{ count($seconds) === 1 ? 'opción' : 'opciones' }}</span>
             </div>
 
@@ -420,13 +420,13 @@
                 @foreach($seconds as $second)
                     <article class="combo">
                         <div class="combo-head">
-                            <span class="combo-number">Segundo {{ $second['number'] }}</span>
+                            <span class="combo-number">Entrada {{ $second['number'] }}</span>
                         </div>
                         <div class="combo-products">
                             <div class="product">
                                 <span class="product-icon"><i class="fas fa-bowl-rice"></i></span>
                                 <div class="product-body">
-                                    <span class="product-role">Segundo</span>
+                                    <span class="product-role">Entrada</span>
                                     <div class="product-name">{{ $second['name'] }}</div>
                                 </div>
                             </div>

@@ -298,7 +298,7 @@
         <div class="vm-head">
             <div class="vm-eyebrow">Menú Virtual</div>
             <h2 class="vm-title">Nuestros menús</h2>
-            <p class="vm-subtitle">Consulta nuestros menús y segundos disponibles.</p>
+            <p class="vm-subtitle">Consulta nuestros menús y entradas disponibles.</p>
         </div>
 
         @if(count($virtualMenus))
@@ -332,20 +332,20 @@
 
         @if(count($virtualSeconds))
             <div class="vm-subhead">
-                <h3>Segundos</h3>
+                <h3>Entrada</h3>
                 <span>{{ count($virtualSeconds) }} {{ count($virtualSeconds) === 1 ? 'opción' : 'opciones' }}</span>
             </div>
             <div class="vm-grid">
                 @foreach($virtualSeconds as $second)
                     <article class="vm-card">
                         <div class="vm-card-head">
-                            <span class="vm-number">Segundo {{ $second['number'] }}</span>
+                            <span class="vm-number">Entrada {{ $second['number'] }}</span>
                         </div>
                         <div class="vm-card-body">
                             <div class="vm-item">
                                 <span class="vm-icon"><i class="fas fa-bowl-rice"></i></span>
                                 <div class="vm-item-body">
-                                    <span class="vm-role">Segundo</span>
+                                    <span class="vm-role">Entrada</span>
                                     <div class="vm-name">{{ $second['name'] }}</div>
                                 </div>
                             </div>
