@@ -191,6 +191,13 @@ class RestaurantController extends Controller
             $product = Product::findOrFail($validated['product_id']);
             $order = RestaurantOrder::findOrFail($orderId);
 
+            if (in_array($order->status, ['CANCELLED', 'COMPLETED'], true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El pedido ya fue anulado o cerrado. Recargue la mesa.'
+                ], 400);
+            }
+
             $existingItem = RestaurantOrderItem::where('restaurant_order_id', $order->id)
                 ->where('product_id', $product->id)
                 ->where('kitchen_status', 'PENDING')
@@ -246,6 +253,13 @@ class RestaurantController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Este producto ya fue facturado y no se puede modificar.'
+            ], 400);
+        }
+
+        if ($item->order && in_array($item->order->status, ['CANCELLED', 'COMPLETED'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El pedido ya fue anulado o cerrado. Recargue la mesa.'
             ], 400);
         }
         
@@ -338,6 +352,12 @@ class RestaurantController extends Controller
         if ($activeItems == 0) {
             $order->update(['status' => 'CANCELLED']);
 
+            Log::info('Pedido cancelado por eliminación de todos los ítems', [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'user_id' => auth()->id(),
+            ]);
+
             $order->kitchenBatches()->update([
                 'status' => RestaurantKitchenBatch::STATUS_CANCELLED,
                 'finished_at' => now(),
@@ -359,6 +379,13 @@ class RestaurantController extends Controller
     {
         try {
             $order = RestaurantOrder::with('items')->findOrFail($orderId);
+
+            if (in_array($order->status, ['CANCELLED', 'COMPLETED'], true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El pedido ya fue anulado o cerrado. Recargue la mesa.'
+                ], 400);
+            }
             
             $pendingItems = $order->items()->where('kitchen_status', 'PENDING')
                 ->whereNull('paid_invoice_id')->get();
@@ -373,6 +400,14 @@ class RestaurantController extends Controller
             $batches = app(KitchenBatchService::class)
                 ->createFromItems($order, $pendingItems, auth()->id());
 
+            Log::info('Pedido enviado a cocina', [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'mode' => Company::orderMode(),
+                'items' => $pendingItems->count(),
+                'batches' => $batches->count(),
+                'user_id' => auth()->id(),
+            ]);
 
             event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
@@ -515,9 +550,35 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
         }
 
         $order = RestaurantOrder::with('items')->findOrFail($orderId);
-        
+
+        $unpaidItems = $order->items()
+            ->where('kitchen_status', '!=', 'CANCELLED')
+            ->whereNull('paid_invoice_id')
+            ->count();
+
+        if ($unpaidItems > 0) {
+            Log::warning('Intento de cerrar pedido con productos sin cobrar', [
+                'order_id' => $order->id,
+                'user_id' => auth()->id(),
+                'unpaid_items' => $unpaidItems,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'No se puede cerrar: hay productos sin cobrar. Use Cobrar.'
+            ], 400);
+        }
+
         $order->update(['status' => 'COMPLETED']);
-        $order->table->update(['status' => 'AVAILABLE']);
+        if ($order->table) {
+            $order->table->update(['status' => 'AVAILABLE']);
+        }
+
+        Log::info('Pedido cerrado', [
+            'order_id' => $order->id,
+            'order_number' => $order->order_number,
+            'user_id' => auth()->id(),
+        ]);
 
         Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
@@ -613,6 +674,13 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             }
 
             $oldTable = $order->table;
+
+            Log::info('Pedido fusionado', [
+                'source_order_id' => $order->id,
+                'source_order_number' => $order->order_number,
+                'destination_order_id' => $destinoOrder->id,
+                'user_id' => auth()->id(),
+            ]);
 
             $order->items()->update(['restaurant_order_id' => $destinoOrder->id]);
 
@@ -716,6 +784,12 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             $item->save();
         }
         $order->update(['status' => 'CANCELLED']);
+
+        Log::info('Pedido anulado', [
+            'order_id' => $order->id,
+            'order_number' => $order->order_number,
+            'user_id' => auth()->id(),
+        ]);
 
         $order->kitchenBatches()->update([
             'status' => RestaurantKitchenBatch::STATUS_CANCELLED,
@@ -1065,6 +1139,13 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             
             $order = RestaurantOrder::with('items')->findOrFail($orderId);
 
+            if (in_array($order->status, ['CANCELLED', 'COMPLETED'], true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El pedido ya fue anulado o cerrado. Recargue la mesa.'
+                ], 400);
+            }
+
             if ($order->status === 'OPEN') {
                 return response()->json([
                     'success' => false,
@@ -1175,6 +1256,13 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             }
             
             $order = RestaurantOrder::with('items')->findOrFail($orderId);
+
+            if (in_array($order->status, ['CANCELLED', 'COMPLETED'], true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El pedido ya fue anulado o cerrado. Recargue la mesa.'
+                ], 400);
+            }
 
             if ($order->status === 'OPEN') {
                 return response()->json([

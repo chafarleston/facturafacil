@@ -719,7 +719,9 @@
         @else
         <button class="btn-action btn-kitchen" onclick="sendToKitchen()"><i class="fas fa-paper-plane"></i><br>Enviar a KDS</button>
         <button class="btn-action btn-prebill" onclick="showPrebillOptions(event)" id="btnPrebill" disabled><i class="fas fa-receipt"></i><br>Precuenta</button>
-        <button class="btn-action btn-close-order" onclick="closeTable()"><i class="fas fa-check"></i><br>Cerrar</button>
+        @if(!auth()->user()->isMozo())
+        <button class="btn-action btn-close-order" id="btnCloseOrder" onclick="closeTable()"><i class="fas fa-check"></i><br>Cerrar</button>
+        @endif
         @endif
         @if(!auth()->user()->isMozo())
         <button class="btn-action btn-charge" onclick="showChargeModal()" id="btnCharge" disabled><i class="fas fa-credit-card"></i><br>Cobrar</button>
@@ -1206,6 +1208,8 @@ function renderOrder(order) {
         if (chargeBtn) chargeBtn.disabled = true;
         const splitBtn = document.getElementById('btnSplit');
         if (splitBtn) splitBtn.disabled = true;
+        const closeBtnEmpty = document.getElementById('btnCloseOrder');
+        if (closeBtnEmpty) closeBtnEmpty.disabled = false;
         document.getElementById('btnPrebill').disabled = true;
         return;
     }
@@ -1214,6 +1218,14 @@ function renderOrder(order) {
     if (chargeBtn) chargeBtn.disabled = order.status === 'OPEN';
     const splitBtn = document.getElementById('btnSplit');
     if (splitBtn) splitBtn.disabled = order.status === 'OPEN';
+    const closeBtn = document.getElementById('btnCloseOrder');
+    if (closeBtn) {
+        const unpaidCount = order.items.filter(function(item) {
+            return item.kitchen_status !== 'CANCELLED' && !item.paid_invoice_id;
+        }).length;
+        closeBtn.disabled = order.status === 'OPEN' || unpaidCount > 0;
+        closeBtn.title = unpaidCount > 0 ? 'Cobre el pedido antes de cerrar' : '';
+    }
     document.getElementById('btnPrebill').disabled = false;
     
     let html = '';

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Log;
 
 class RestaurantOrder extends Model
 {
@@ -56,6 +57,35 @@ class RestaurantOrder extends Model
         'preparing_started_at' => 'datetime',
         'finished_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::updated(function (self $order) {
+            if (!$order->wasChanged('status')) {
+                return;
+            }
+
+            Log::info('Restaurant order status changed', [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'table_id' => $order->table_id,
+                'order_type' => $order->order_type,
+                'from' => $order->getOriginal('status'),
+                'to' => $order->status,
+                'user_id' => auth()->id(),
+            ]);
+        });
+
+        static::deleted(function (self $order) {
+            Log::warning('Restaurant order deleted', [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'table_id' => $order->table_id,
+                'status' => $order->status,
+                'user_id' => auth()->id(),
+            ]);
+        });
+    }
 
     public function company(): BelongsTo
     {
