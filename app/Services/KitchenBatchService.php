@@ -12,29 +12,45 @@ class KitchenBatchService
 {
     public function createFromItems(RestaurantOrder $order, Collection $items, ?int $userId = null): Collection
     {
-        $items = $items
+        $itemIds = $items
             ->filter(fn ($item) => $item instanceof RestaurantOrderItem)
-            ->filter(fn ($item) => !$item->paid_invoice_id)
-            ->filter(fn ($item) => $item->kitchen_status === RestaurantOrderItem::PENDING)
+            ->pluck('id')
+            ->unique()
             ->values();
 
-        if ($items->isEmpty()) {
+        if ($itemIds->isEmpty()) {
             return collect();
         }
 
-        $items->each(function (RestaurantOrderItem $item) {
-            $product = $item->product;
-            if ($product && $product->kds_destination) {
-                $item->kds_destination = $product->kds_destination;
-            }
-
-            if (!$item->kds_destination) {
-                $item->kds_destination = 'cocina';
-            }
-        });
-
-        return DB::transaction(function () use ($order, $items, $userId) {
+        return DB::transaction(function () use ($order, $itemIds, $userId) {
             $lockedOrder = RestaurantOrder::lockForUpdate()->findOrFail($order->id);
+
+            if (in_array($lockedOrder->status, [RestaurantOrder::STATUS_COMPLETED, RestaurantOrder::STATUS_CANCELLED], true)) {
+                return collect();
+            }
+
+            $items = RestaurantOrderItem::whereIn('id', $itemIds)
+                ->where('restaurant_order_id', $lockedOrder->id)
+                ->where('kitchen_status', RestaurantOrderItem::PENDING)
+                ->whereNull('paid_invoice_id')
+                ->lockForUpdate()
+                ->get();
+
+            if ($items->isEmpty()) {
+                return collect();
+            }
+
+            $items->each(function (RestaurantOrderItem $item) {
+                $product = $item->product;
+                if ($product && $product->kds_destination) {
+                    $item->kds_destination = $product->kds_destination;
+                }
+
+                if (!$item->kds_destination) {
+                    $item->kds_destination = 'cocina';
+                }
+            });
+
             $sentAt = now();
             $batches = collect();
 
@@ -131,7 +147,7 @@ class KitchenBatchService
 
     public function syncOrderStatus(RestaurantOrder $order): void
     {
-        $order = RestaurantOrder::with('kitchenBatches')->find($order->id);
+        $order = RestaurantOrder::with('kitchenBatches')->lockForUpdate()->find($order->id);
 
         if (!$order || in_array($order->status, [RestaurantOrder::STATUS_COMPLETED, RestaurantOrder::STATUS_CANCELLED], true)) {
             return;

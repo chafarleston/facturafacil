@@ -112,35 +112,60 @@ class RestaurantController extends Controller
     public function openTable(Request $request, $tableId)
     {
         try {
-            $table = RestaurantTable::findOrFail($tableId);
-            
-            $existingOrder = RestaurantOrder::where('table_id', $table->id)
-                ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
-                ->first();
+            return DB::transaction(function () use ($tableId) {
+                $table = RestaurantTable::lockForUpdate()->findOrFail($tableId);
+                $userId = Auth::id();
 
-            if ($existingOrder) {
+                if ($table->locked_by
+                    && !$table->isLockedBy((int) $userId)
+                    && !$table->isLockExpired()) {
+                    return response()->json([
+                        'success' => false,
+                        'requires_reload' => true,
+                        'message' => 'La mesa fue tomada por otro usuario. Recargue la pantalla.'
+                    ], 409);
+                }
+
+                $existingOrder = RestaurantOrder::where('table_id', $table->id)
+                    ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($existingOrder) {
+                    if (!$table->isLockedBy((int) $userId)) {
+                        $table->lock((int) $userId);
+                    }
+
+                    return response()->json([
+                        'success' => true,
+                        'order_id' => $existingOrder->id,
+                        'message' => 'Pedido existente cargado'
+                    ]);
+                }
+
+                // Serializa la numeración por empresa para evitar números repetidos entre mozos.
+                Company::where('id', $table->company_id)->lockForUpdate()->first();
+
+                $order = RestaurantOrder::create([
+                    'company_id' => $table->company_id,
+                    'table_id' => $table->id,
+                    'user_id' => Auth::id(),
+                    'order_number' => RestaurantOrder::generateOrderNumber($table->company_id),
+                    'status' => 'OPEN',
+                ]);
+
+                $table->update([
+                    'status' => 'OCCUPIED',
+                    'locked_by' => $userId,
+                    'locked_at' => now(),
+                ]);
+
                 return response()->json([
                     'success' => true,
-                    'order_id' => $existingOrder->id,
-                    'message' => 'Pedido existente cargado'
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
                 ]);
-            }
-
-            $order = RestaurantOrder::create([
-                'company_id' => $table->company_id,
-                'table_id' => $table->id,
-                'user_id' => Auth::id(),
-                'order_number' => RestaurantOrder::generateOrderNumber(),
-                'status' => 'OPEN',
-            ]);
-
-            $table->update(['status' => 'OCCUPIED']);
-
-            return response()->json([
-                'success' => true,
-                'order_id' => $order->id,
-                'order_number' => $order->order_number,
-            ]);
+            });
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -193,6 +218,11 @@ class RestaurantController extends Controller
 
             return DB::transaction(function () use ($orderId, $product, $validated) {
             $order = RestaurantOrder::lockForUpdate()->findOrFail($orderId);
+
+            $lockError = $this->tableLockError($order);
+            if ($lockError) {
+                return $lockError;
+            }
 
             if (in_array($order->status, ['CANCELLED', 'COMPLETED'], true)) {
                 return response()->json([
@@ -251,158 +281,238 @@ class RestaurantController extends Controller
 
     public function updateItem(Request $request, $itemId)
     {
-        $item = RestaurantOrderItem::findOrFail($itemId);
-
-        if ($item->paid_invoice_id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Este producto ya fue facturado y no se puede modificar.'
-            ], 400);
-        }
-
-        if ($item->order && in_array($item->order->status, ['CANCELLED', 'COMPLETED'], true)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'El pedido ya fue anulado o cerrado. Recargue la mesa.'
-            ], 400);
-        }
-        
         $validated = $request->validate([
             'quantity' => 'nullable|numeric|min:0.01',
             'quantity_delta' => 'nullable|integer',
             'notes' => 'nullable|string|max:500',
         ]);
 
-        if (isset($validated['quantity_delta'])) {
-            $item->quantity += $validated['quantity_delta'];
-            if ($item->quantity < 1) {
-                $item->quantity = 1;
-            }
-        } elseif (isset($validated['quantity'])) {
-            $item->quantity = $validated['quantity'];
-        }
-        
-        if (array_key_exists('notes', $validated)) {
-            $item->notes = $validated['notes'];
-        }
-        
-        $item->total = $item->quantity * $item->unit_price;
-        $item->save();
+        try {
+            return DB::transaction(function () use ($request, $itemId, $validated) {
+                $itemRef = RestaurantOrderItem::select('id', 'restaurant_order_id')->findOrFail($itemId);
+                $order = RestaurantOrder::with('items')->lockForUpdate()->findOrFail($itemRef->restaurant_order_id);
+                $item = RestaurantOrderItem::lockForUpdate()->findOrFail($itemId);
 
-        $this->updateOrderTotals($item->order);
+                $lockError = $this->tableLockError($order);
+                if ($lockError) {
+                    return $lockError;
+                }
 
-        return response()->json(['success' => true, 'item' => $item]);
+                $versionError = $this->orderVersionError($request, $order);
+                if ($versionError) {
+                    return $versionError;
+                }
+
+                if ($item->paid_invoice_id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Este producto ya fue facturado y no se puede modificar.'
+                    ], 400);
+                }
+
+                if (in_array($order->status, ['CANCELLED', 'COMPLETED'], true)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'El pedido ya fue anulado o cerrado. Recargue la mesa.'
+                    ], 400);
+                }
+
+                if (isset($validated['quantity_delta'])) {
+                    $item->quantity += $validated['quantity_delta'];
+                    if ($item->quantity < 1) {
+                        $item->quantity = 1;
+                    }
+                } elseif (isset($validated['quantity'])) {
+                    $item->quantity = $validated['quantity'];
+                }
+
+                if (array_key_exists('notes', $validated)) {
+                    $item->notes = $validated['notes'];
+                }
+
+                $item->total = $item->quantity * $item->unit_price;
+                $item->save();
+
+                $this->updateOrderTotals($order);
+
+                return response()->json(['success' => true, 'item' => $item]);
+            });
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function removeItem(Request $request, $itemId)
     {
-        $item = RestaurantOrderItem::findOrFail($itemId);
-        $order = $item->order;
+        try {
+            return DB::transaction(function () use ($request, $itemId) {
+                $itemRef = RestaurantOrderItem::select('id', 'restaurant_order_id')->findOrFail($itemId);
+                $order = RestaurantOrder::with('items')->lockForUpdate()->findOrFail($itemRef->restaurant_order_id);
+                $item = RestaurantOrderItem::lockForUpdate()->findOrFail($itemId);
 
-        if ($item->paid_invoice_id) {
+                $lockError = $this->tableLockError($order);
+                if ($lockError) {
+                    return $lockError;
+                }
+
+                $versionError = $this->orderVersionError($request, $order);
+                if ($versionError) {
+                    return $versionError;
+                }
+
+                if ($item->paid_invoice_id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Este producto ya fue facturado y no se puede eliminar.'
+                    ], 400);
+                }
+
+                $batchId = $item->kitchen_batch_id;
+
+                if (in_array($item->kitchen_status, ['SENT', 'READY', 'DELIVERED'])) {
+                    $adminPassword = $request->input('admin_password');
+                    if (!$adminPassword) {
+                        return response()->json([
+                            'success' => false,
+                            'requires_admin' => true,
+                            'message' => 'El producto ya está enviado a cocina. Requiere autorización de administrador o cajero.'
+                        ]);
+                    }
+
+                    if (!$this->checkAuthorizedPassword($adminPassword)) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Contraseña incorrecta'
+                        ]);
+                    }
+
+                    $item->cancelled_from = $item->kitchen_status;
+                    $item->cancelled_at = now();
+                    $item->cancelled_by = auth()->id();
+                    $item->kitchen_status = 'CANCELLED';
+                    $item->save();
+
+                    $company = Company::find($order->company_id);
+                    if ($company && ($company->order_mode ?? 'kds') === 'print') {
+                        try {
+                            $printService = app(PrintService::class);
+                            $order->load(['table', 'items']);
+                            $printService->printCancelNotification($order, $item);
+                        } catch (\Exception $e) {
+                            \Log::error('Cancel print error: ' . $e->getMessage());
+                        }
+                    }
+                } else {
+                    $item->delete();
+                }
+
+                $this->updateOrderTotals($order);
+
+                if ($batchId) {
+                    $batch = RestaurantKitchenBatch::find($batchId);
+                    if ($batch) {
+                        app(KitchenBatchService::class)->cancelBatchIfEmpty($batch);
+                    }
+                }
+
+                $activeItems = $order->items()->where('kitchen_status', '!=', 'CANCELLED')->count();
+                if ($activeItems == 0) {
+                    $order->update(['status' => 'CANCELLED']);
+
+                    Log::info('Pedido cancelado por eliminación de todos los ítems', [
+                        'order_id' => $order->id,
+                        'order_number' => $order->order_number,
+                        'user_id' => auth()->id(),
+                    ]);
+
+                    $order->kitchenBatches()->update([
+                        'status' => RestaurantKitchenBatch::STATUS_CANCELLED,
+                        'finished_at' => now(),
+                    ]);
+
+                    $this->releaseTableIfFree($order);
+                } else {
+                    app(KitchenBatchService::class)->syncOrderStatus($order);
+                }
+
+                event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
+                Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+                Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
+
+                return response()->json(['success' => true]);
+            });
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Este producto ya fue facturado y no se puede eliminar.'
-            ], 400);
+                'message' => $e->getMessage(),
+            ], 500);
         }
-
-        if (in_array($item->kitchen_status, ['SENT', 'READY', 'DELIVERED'])) {
-            $adminPassword = $request->input('admin_password');
-            if (!$adminPassword) {
-                return response()->json([
-                    'success' => false,
-                    'requires_admin' => true,
-                    'message' => 'El producto ya está enviado a cocina. Requiere autorización de administrador o cajero.'
-                ]);
-            }
-
-            if (!$this->checkAuthorizedPassword($adminPassword)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Contraseña incorrecta'
-                ]);
-            }
-
-            $item->cancelled_from = $item->kitchen_status;
-            $item->cancelled_at = now();
-            $item->cancelled_by = auth()->id();
-            $item->kitchen_status = 'CANCELLED';
-            $item->save();
-
-            $company = Company::find($order->company_id);
-            if ($company && ($company->order_mode ?? 'kds') === 'print') {
-                try {
-                    $printService = app(PrintService::class);
-                    $order->load(['table', 'items']);
-                    $printService->printCancelNotification($order, $item);
-                } catch (\Exception $e) {
-                    \Log::error('Cancel print error: ' . $e->getMessage());
-                }
-            }
-        } else {
-            $item->delete();
-        }
-
-        $this->updateOrderTotals($order);
-
-        if ($item->kitchen_batch_id) {
-            $batch = RestaurantKitchenBatch::find($item->kitchen_batch_id);
-            if ($batch) {
-                app(KitchenBatchService::class)->cancelBatchIfEmpty($batch);
-            }
-        }
-
-        $activeItems = $order->items()->where('kitchen_status', '!=', 'CANCELLED')->count();
-        if ($activeItems == 0) {
-            $order->update(['status' => 'CANCELLED']);
-
-            Log::info('Pedido cancelado por eliminación de todos los ítems', [
-                'order_id' => $order->id,
-                'order_number' => $order->order_number,
-                'user_id' => auth()->id(),
-            ]);
-
-            $order->kitchenBatches()->update([
-                'status' => RestaurantKitchenBatch::STATUS_CANCELLED,
-                'finished_at' => now(),
-            ]);
-
-            $order->table->update(['status' => 'AVAILABLE']);
-        } else {
-            app(KitchenBatchService::class)->syncOrderStatus($order);
-        }
-
-        event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
-        Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
-        Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
-
-        return response()->json(['success' => true]);
     }
 
     public function sendToKitchen(Request $request, $orderId)
     {
         try {
-            $order = RestaurantOrder::with('items')->findOrFail($orderId);
+            $result = DB::transaction(function () use ($request, $orderId) {
+                $order = RestaurantOrder::with('items')->lockForUpdate()->findOrFail($orderId);
 
-            if (in_array($order->status, ['CANCELLED', 'COMPLETED'], true)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'El pedido ya fue anulado o cerrado. Recargue la mesa.'
-                ], 400);
-            }
-            
-            $pendingItems = $order->items()->where('kitchen_status', 'PENDING')
-                ->whereNull('paid_invoice_id')->get();
-            
-            if ($pendingItems->isEmpty()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No hay productos pendientes para enviar'
-                ]);
+                $lockError = $this->tableLockError($order);
+                if ($lockError) {
+                    return $lockError;
+                }
+
+                $versionError = $this->orderVersionError($request, $order);
+                if ($versionError) {
+                    return $versionError;
+                }
+
+                if (in_array($order->status, ['CANCELLED', 'COMPLETED'], true)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'El pedido ya fue anulado o cerrado. Recargue la mesa.'
+                    ], 400);
+                }
+
+                $pendingItems = RestaurantOrderItem::where('restaurant_order_id', $order->id)
+                    ->where('kitchen_status', 'PENDING')
+                    ->whereNull('paid_invoice_id')
+                    ->lockForUpdate()
+                    ->get();
+
+                if ($pendingItems->isEmpty()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No hay productos pendientes para enviar'
+                    ]);
+                }
+
+                $batches = app(KitchenBatchService::class)
+                    ->createFromItems($order, $pendingItems, auth()->id());
+
+                if ($batches->isEmpty()) {
+                    return response()->json([
+                        'success' => false,
+                        'requires_reload' => true,
+                        'message' => 'El pedido ya fue enviado por otro usuario. Recargue la mesa.'
+                    ], 409);
+                }
+
+                return [
+                    'order' => $order,
+                    'items' => $pendingItems,
+                    'batches' => $batches,
+                ];
+            });
+
+            if ($result instanceof \Illuminate\Http\JsonResponse) {
+                return $result;
             }
 
-            $batches = app(KitchenBatchService::class)
-                ->createFromItems($order, $pendingItems, auth()->id());
+            $order = $result['order'];
+            $pendingItems = $result['items'];
+            $batches = $result['batches'];
 
             Log::info('Pedido enviado a cocina', [
                 'order_id' => $order->id,
@@ -553,8 +663,20 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             return response()->json(['success' => false, 'message' => 'No tienes permiso para cerrar mesas'], 403);
         }
 
-        return DB::transaction(function () use ($orderId) {
+        return DB::transaction(function () use ($request, $orderId) {
         $order = RestaurantOrder::with('items')->lockForUpdate()->findOrFail($orderId);
+
+        $versionError = $this->orderVersionError($request, $order);
+        if ($versionError) {
+            return $versionError;
+        }
+
+        if (in_array($order->status, ['CANCELLED', 'COMPLETED'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El pedido ya fue anulado o cerrado. Recargue la mesa.'
+            ], 400);
+        }
 
         $unpaidItems = $order->items()
             ->where('kitchen_status', '!=', 'CANCELLED')
@@ -575,9 +697,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
         }
 
         $order->update(['status' => 'COMPLETED']);
-        if ($order->table) {
-            $order->table->update(['status' => 'AVAILABLE']);
-        }
+        $this->releaseTableIfFree($order);
 
         Log::info('Pedido cerrado', [
             'order_id' => $order->id,
@@ -596,49 +716,98 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
 
     public function moveTable(Request $request, $orderId)
     {
-        $order = RestaurantOrder::findOrFail($orderId);
-        $newTableId = $request->input('table_id');
+        try {
+            return DB::transaction(function () use ($request, $orderId) {
+                $order = RestaurantOrder::with('table')->lockForUpdate()->findOrFail($orderId);
 
-        if (!$newTableId) {
-            return response()->json(['success' => false, 'message' => 'Seleccione una mesa destino']);
+                $lockError = $this->tableLockError($order);
+                if ($lockError) {
+                    return $lockError;
+                }
+
+                $versionError = $this->orderVersionError($request, $order);
+                if ($versionError) {
+                    return $versionError;
+                }
+
+                if (in_array($order->status, ['CANCELLED', 'COMPLETED'], true)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'El pedido ya fue anulado o cerrado. Recargue la mesa.'
+                    ], 400);
+                }
+
+                $newTableId = $request->input('table_id');
+
+                if (!$newTableId) {
+                    return response()->json(['success' => false, 'message' => 'Seleccione una mesa destino']);
+                }
+
+                if ($order->table_id == $newTableId) {
+                    return response()->json(['success' => false, 'message' => 'La mesa seleccionada es la misma']);
+                }
+
+                $newTable = RestaurantTable::lockForUpdate()->findOrFail($newTableId);
+                $userId = (int) auth()->id();
+
+                if ($newTable->locked_by
+                    && !$newTable->isLockedBy($userId)
+                    && !$newTable->isLockExpired()) {
+                    return response()->json([
+                        'success' => false,
+                        'requires_reload' => true,
+                        'message' => 'La mesa destino está en uso por otro usuario.'
+                    ], 409);
+                }
+
+                $destinationOrder = RestaurantOrder::where('table_id', $newTable->id)
+                    ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($destinationOrder) {
+                    return response()->json(['success' => false, 'message' => 'La mesa destino ya tiene un pedido activo']);
+                }
+
+                $oldTable = $order->table;
+
+                $order->update(['table_id' => $newTableId]);
+
+                if ($oldTable) {
+                    $otherOrders = RestaurantOrder::where('table_id', $oldTable->id)
+                        ->where('id', '!=', $orderId)
+                        ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
+                        ->count();
+
+                    if ($otherOrders == 0) {
+                        $oldTable->update([
+                            'status' => 'AVAILABLE',
+                            'locked_by' => null,
+                            'locked_at' => null,
+                        ]);
+                    }
+                }
+
+                $newTable->update([
+                    'status' => 'OCCUPIED',
+                    'locked_by' => $userId,
+                    'locked_at' => now(),
+                ]);
+
+                event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
+                Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+                Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pedido movido a ' . $newTable->name,
+                    'old_table_id' => $oldTable?->id,
+                    'new_table_id' => $newTable->id,
+                ]);
+            });
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error al mover: ' . $e->getMessage()], 500);
         }
-
-        if ($order->table_id == $newTableId) {
-            return response()->json(['success' => false, 'message' => 'La mesa seleccionada es la misma']);
-        }
-
-        $newTable = RestaurantTable::findOrFail($newTableId);
-
-        if ($newTable->activeOrder()) {
-            return response()->json(['success' => false, 'message' => 'La mesa destino ya tiene un pedido activo']);
-        }
-
-        $oldTable = $order->table;
-
-        $order->update(['table_id' => $newTableId]);
-
-        if ($oldTable) {
-            $otherOrders = RestaurantOrder::where('table_id', $oldTable->id)
-                ->where('id', '!=', $orderId)
-                ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
-                ->count();
-            if ($otherOrders == 0) {
-                $oldTable->update(['status' => 'AVAILABLE']);
-            }
-        }
-
-        $newTable->update(['status' => 'OCCUPIED']);
-
-        event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
-        Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
-        Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Pedido movido a ' . $newTable->name,
-            'old_table_id' => $oldTable?->id,
-            'new_table_id' => $newTable->id,
-        ]);
     }
 
     public function mergeOrder(Request $request, $orderId)
@@ -648,85 +817,116 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
         }
 
         try {
-            $order = RestaurantOrder::with('items')->findOrFail($orderId);
-            $newTableId = $request->input('table_id');
+            return DB::transaction(function () use ($request, $orderId) {
+                $order = RestaurantOrder::with('items', 'table')->lockForUpdate()->findOrFail($orderId);
 
-            if (!$newTableId) {
-                return response()->json(['success' => false, 'message' => 'Seleccione una mesa destino']);
-            }
-
-            if ($order->table_id == $newTableId) {
-                return response()->json(['success' => false, 'message' => 'La mesa seleccionada es la misma']);
-            }
-
-            $newTable = RestaurantTable::findOrFail($newTableId);
-            $destinoOrder = $newTable->activeOrder();
-
-            if (!$destinoOrder) {
-                return response()->json(['success' => false, 'message' => 'La mesa destino no tiene un pedido activo para fusionar']);
-            }
-
-            if ($order->order_type === 'kiosko' || $destinoOrder->order_type === 'kiosko') {
-                return response()->json(['success' => false, 'message' => 'No se pueden fusionar pedidos de kiosko']);
-            }
-
-            $origenFacturado = $order->items()->whereNotNull('paid_invoice_id')->exists();
-            $destinoFacturado = $destinoOrder->items()->whereNotNull('paid_invoice_id')->exists();
-            if ($origenFacturado || $destinoFacturado) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se puede fusionar: hay productos ya facturados en los pedidos'
-                ], 400);
-            }
-
-            $oldTable = $order->table;
-
-            Log::info('Pedido fusionado', [
-                'source_order_id' => $order->id,
-                'source_order_number' => $order->order_number,
-                'destination_order_id' => $destinoOrder->id,
-                'user_id' => auth()->id(),
-            ]);
-
-            $order->items()->update(['restaurant_order_id' => $destinoOrder->id]);
-
-            foreach ($order->kitchenBatches()->get() as $batch) {
-                $nextNumber = (int) RestaurantKitchenBatch::where('restaurant_order_id', $destinoOrder->id)
-                    ->where('kds_destination', $batch->kds_destination)
-                    ->max('batch_number') + 1;
-
-                $batch->update([
-                    'restaurant_order_id' => $destinoOrder->id,
-                    'batch_number' => $nextNumber,
-                ]);
-            }
-
-            $this->updateOrderTotals($destinoOrder);
-            app(KitchenBatchService::class)->syncOrderStatus($destinoOrder);
-
-            $order->delete();
-
-            if ($oldTable) {
-                $otherOrders = RestaurantOrder::where('table_id', $oldTable->id)
-                    ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
-                    ->count();
-                if ($otherOrders == 0) {
-                    $oldTable->update(['status' => 'AVAILABLE']);
+                $lockError = $this->tableLockError($order);
+                if ($lockError) {
+                    return $lockError;
                 }
-            }
 
-            $newTable->update(['status' => 'OCCUPIED']);
+                $versionError = $this->orderVersionError($request, $order);
+                if ($versionError) {
+                    return $versionError;
+                }
 
-            event(new KitchenOrderUpdated($destinoOrder->company_id, 'kitchen'));
-            Cache::put('kitchen_updated_' . $destinoOrder->company_id, now()->timestamp, 10);
-            Cache::put('restaurant_updated_' . $destinoOrder->company_id, now()->timestamp, 10);
+                if (in_array($order->status, ['CANCELLED', 'COMPLETED'], true)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'El pedido ya fue anulado o cerrado. Recargue la mesa.'
+                    ], 400);
+                }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Pedidos fusionados en ' . $newTable->name,
-                'old_table_id' => $oldTable?->id,
-                'new_table_id' => $newTable->id,
-            ]);
+                $newTableId = $request->input('table_id');
+
+                if (!$newTableId) {
+                    return response()->json(['success' => false, 'message' => 'Seleccione una mesa destino']);
+                }
+
+                if ($order->table_id == $newTableId) {
+                    return response()->json(['success' => false, 'message' => 'La mesa seleccionada es la misma']);
+                }
+
+                $newTable = RestaurantTable::lockForUpdate()->findOrFail($newTableId);
+                $destinoOrder = RestaurantOrder::where('table_id', $newTable->id)
+                    ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$destinoOrder) {
+                    return response()->json(['success' => false, 'message' => 'La mesa destino no tiene un pedido activo para fusionar']);
+                }
+
+                if ($order->order_type === 'kiosko' || $destinoOrder->order_type === 'kiosko') {
+                    return response()->json(['success' => false, 'message' => 'No se pueden fusionar pedidos de kiosko']);
+                }
+
+                $origenFacturado = $order->items()->whereNotNull('paid_invoice_id')->exists();
+                $destinoFacturado = $destinoOrder->items()->whereNotNull('paid_invoice_id')->exists();
+                if ($origenFacturado || $destinoFacturado) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No se puede fusionar: hay productos ya facturados en los pedidos'
+                    ], 400);
+                }
+
+                $oldTable = $order->table;
+
+                Log::info('Pedido fusionado', [
+                    'source_order_id' => $order->id,
+                    'source_order_number' => $order->order_number,
+                    'destination_order_id' => $destinoOrder->id,
+                    'user_id' => auth()->id(),
+                ]);
+
+                $order->items()->update(['restaurant_order_id' => $destinoOrder->id]);
+
+                foreach ($order->kitchenBatches()->get() as $batch) {
+                    $nextNumber = (int) RestaurantKitchenBatch::where('restaurant_order_id', $destinoOrder->id)
+                        ->where('kds_destination', $batch->kds_destination)
+                        ->max('batch_number') + 1;
+
+                    $batch->update([
+                        'restaurant_order_id' => $destinoOrder->id,
+                        'batch_number' => $nextNumber,
+                    ]);
+                }
+
+                $this->updateOrderTotals($destinoOrder);
+                app(KitchenBatchService::class)->syncOrderStatus($destinoOrder);
+
+                $order->delete();
+
+                if ($oldTable) {
+                    $otherOrders = RestaurantOrder::where('table_id', $oldTable->id)
+                        ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
+                        ->count();
+                    if ($otherOrders == 0) {
+                        $oldTable->update([
+                            'status' => 'AVAILABLE',
+                            'locked_by' => null,
+                            'locked_at' => null,
+                        ]);
+                    }
+                }
+
+                $newTable->update([
+                    'status' => 'OCCUPIED',
+                    'locked_by' => (int) auth()->id(),
+                    'locked_at' => now(),
+                ]);
+
+                event(new KitchenOrderUpdated($destinoOrder->company_id, 'kitchen'));
+                Cache::put('kitchen_updated_' . $destinoOrder->company_id, now()->timestamp, 10);
+                Cache::put('restaurant_updated_' . $destinoOrder->company_id, now()->timestamp, 10);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pedidos fusionados en ' . $newTable->name,
+                    'old_table_id' => $oldTable?->id,
+                    'new_table_id' => $newTable->id,
+                ]);
+            });
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error al fusionar: ' . $e->getMessage()], 500);
         }
@@ -740,7 +940,12 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
         
         return DB::transaction(function () use ($request, $orderId) {
         $order = RestaurantOrder::with('items')->lockForUpdate()->findOrFail($orderId);
-        
+
+        $versionError = $this->orderVersionError($request, $order);
+        if ($versionError) {
+            return $versionError;
+        }
+
         $hasPaidItems = $order->items->whereNotNull('paid_invoice_id')->isNotEmpty();
         if ($hasPaidItems) {
             return response()->json([
@@ -803,9 +1008,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             'finished_at' => now(),
         ]);
 
-        if ($order->table) {
-            $order->table->update(['status' => 'AVAILABLE']);
-        }
+        $this->releaseTableIfFree($order);
 
         event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
             Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
@@ -821,7 +1024,8 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
 
         $orders = RestaurantOrder::where('company_id', $companyId)
             ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
-            ->select('id', 'table_id', 'order_number')
+            ->with('items')
+            ->select('id', 'table_id', 'order_number', 'status', 'notes', 'subtotal', 'igv', 'total', 'updated_at')
             ->get();
 
         $locks = RestaurantTable::where('company_id', $companyId)
@@ -1131,108 +1335,118 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
         }
 
         try {
-            $mainCompany = Company::getMainCompany();
-            $companyId = $mainCompany->id;
-            
-            $cajaAbierta = CashRegister::where('company_id', $companyId)
-                ->where('estado', 'ABIERTA')
-                ->first();
-                
-            if (!$cajaAbierta) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No hay caja abierta. Abra una caja antes de cobrar.'
-                ], 400);
-            }
-            
-            $order = RestaurantOrder::with('items')->findOrFail($orderId);
+            return DB::transaction(function () use ($request, $orderId) {
+                $mainCompany = Company::getMainCompany();
+                $companyId = $mainCompany->id;
 
-            if (in_array($order->status, ['CANCELLED', 'COMPLETED'], true)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'El pedido ya fue anulado o cerrado. Recargue la mesa.'
-                ], 400);
-            }
+                $order = RestaurantOrder::with('items')->lockForUpdate()->findOrFail($orderId);
 
-            if ($order->status === 'OPEN') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Debe enviar el pedido a cocina antes de cobrar'
-                ], 400);
-            }
-
-            // A2/A5: solo items no cancelados y no pagados (remanente)
-            $order->setRelation('items', $order->items
-                ->where('kitchen_status', '!=', 'CANCELLED')
-                ->whereNull('paid_invoice_id'));
-            
-            $items = $order->items;
-            
-            if ($items->isEmpty()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'El pedido no tiene productos por cobrar'
-                ], 400);
-            }
-
-            $payments = $request->payments ?? [['method' => 'EFECTIVO', 'amount' => $items->sum('total')]];
-            $this->assertPaymentsCoverTotal($payments, (float) $items->sum('total'));
-            $this->assertVirtualPaymentsWithinTotal($payments, (float) $items->sum('total'));
-
-            // Opci��n B: enviar automǭticamente a cocina/bar los items pendientes antes de facturar
-            $pendingToSend = $items->where('kitchen_status', 'PENDING');
-            if ($pendingToSend->isNotEmpty()) {
-                app(KitchenBatchService::class)
-                    ->createFromItems($order, $pendingToSend, auth()->id());
-
-                $company = Company::find($order->company_id);
-                if ($company && ($company->order_mode ?? 'kds') === 'print') {
-                    try {
-                        $printService = app(PrintService::class);
-                        $printService->printKitchenOrder($order->fresh(['table.floor', 'user']), $pendingToSend);
-                    } catch (\Exception $e) {
-                        \Log::error('Auto-send print error: ' . $e->getMessage());
-                    }
+                $versionError = $this->orderVersionError($request, $order);
+                if ($versionError) {
+                    return $versionError;
                 }
+
+                if (in_array($order->status, ['CANCELLED', 'COMPLETED'], true)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'El pedido ya fue anulado o cerrado. Recargue la mesa.'
+                    ], 400);
+                }
+
+                if ($order->status === 'OPEN') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Debe enviar el pedido a cocina antes de cobrar'
+                    ], 400);
+                }
+
+                $cajaAbierta = CashRegister::where('company_id', $companyId)
+                    ->where('estado', 'ABIERTA')
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$cajaAbierta) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No hay caja abierta. Abra una caja antes de cobrar.'
+                    ], 400);
+                }
+
+                // Reconsulta bloqueada: evita cobrar una vista vieja mientras otro mozo agrega.
+                $order->load(['items' => function ($query) {
+                    $query->where('kitchen_status', '!=', 'CANCELLED')
+                        ->whereNull('paid_invoice_id')
+                        ->lockForUpdate();
+                }]);
+
+                $items = $order->items;
+
+                if ($items->isEmpty()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'El pedido no tiene productos por cobrar'
+                    ], 400);
+                }
+
+                $payments = $request->payments ?? [['method' => 'EFECTIVO', 'amount' => $items->sum('total')]];
+                $this->assertPaymentsCoverTotal($payments, (float) $items->sum('total'));
+                $this->assertVirtualPaymentsWithinTotal($payments, (float) $items->sum('total'));
+
+                // Opci��n B: enviar automǭticamente a cocina/bar los items pendientes antes de facturar
+                $pendingToSend = $items->where('kitchen_status', 'PENDING');
+                if ($pendingToSend->isNotEmpty()) {
+                    app(KitchenBatchService::class)
+                        ->createFromItems($order, $pendingToSend, auth()->id());
+
+                    $company = Company::find($order->company_id);
+                    if ($company && ($company->order_mode ?? 'kds') === 'print') {
+                        try {
+                            $printService = app(PrintService::class);
+                            $printService->printKitchenOrder($order->fresh(['table.floor', 'user']), $pendingToSend);
+                        } catch (\Exception $e) {
+                            \Log::error('Auto-send print error: ' . $e->getMessage());
+                        }
+                    }
+
+                    event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
+                    Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
+                    Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
+                }
+
+                $customerId = $request->customer_id;
+                $documentType = $request->document_type ?? 'NV';
+                $reference = $request->reference ?? '';
+                $soloConsumo = $request->boolean('solo_consumo');
+
+                $result = $this->createInvoiceFromItems(
+                    $order, $items, $customerId, $documentType, $payments,
+                    $soloConsumo, $reference, $cajaAbierta, $mainCompany, $companyId
+                );
+                $invoice = $result['invoice'];
+
+                // Marcar items como pagados
+                RestaurantOrderItem::whereIn('id', $items->pluck('id'))
+                    ->update(['paid_invoice_id' => $invoice->id]);
+
+                $order->status = 'COMPLETED';
+                $order->save();
+
+                $this->releaseTableIfFree($order);
 
                 event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
                 Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
                 Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
-            }
-            
-            $customerId = $request->customer_id;
-            $documentType = $request->document_type ?? 'NV';
-            $reference = $request->reference ?? '';
-            $soloConsumo = $request->boolean('solo_consumo');
 
-            $result = $this->createInvoiceFromItems(
-                $order, $items, $customerId, $documentType, $payments,
-                $soloConsumo, $reference, $cajaAbierta, $mainCompany, $companyId
-            );
-            $invoice = $result['invoice'];
-
-            // Marcar items como pagados
-            RestaurantOrderItem::whereIn('id', $items->pluck('id'))
-                ->update(['paid_invoice_id' => $invoice->id]);
-
-            $order->status = 'COMPLETED';
-            $order->save();
-            
-            $order->table->update(['status' => 'AVAILABLE']);
-            
-            event(new KitchenOrderUpdated($order->company_id, 'kitchen'));
-            Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
-            Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
-
-            return response()->json([
-                'success' => true,
-                'invoice_id' => $invoice->id,
-                'full_number' => $result['full_number'],
-                'total' => $result['total'],
-                'document_type' => $result['document_type'],
-                'vuelto' => $result['vuelto'],
-                'sunat' => $result['sunat'] ?? null,
-            ]);
+                return response()->json([
+                    'success' => true,
+                    'invoice_id' => $invoice->id,
+                    'full_number' => $result['full_number'],
+                    'total' => $result['total'],
+                    'document_type' => $result['document_type'],
+                    'vuelto' => $result['vuelto'],
+                    'sunat' => $result['sunat'] ?? null,
+                ]);
+            });
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -1249,39 +1463,50 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
         }
 
         try {
-            $mainCompany = Company::getMainCompany();
-            $companyId = $mainCompany->id;
-            
-            $cajaAbierta = CashRegister::where('company_id', $companyId)
-                ->where('estado', 'ABIERTA')
-                ->first();
-                
-            if (!$cajaAbierta) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No hay caja abierta. Abra una caja antes de cobrar.'
-                ], 400);
-            }
-            
-            $order = RestaurantOrder::with('items')->findOrFail($orderId);
+            return DB::transaction(function () use ($request, $orderId) {
+                $mainCompany = Company::getMainCompany();
+                $companyId = $mainCompany->id;
 
-            if (in_array($order->status, ['CANCELLED', 'COMPLETED'], true)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'El pedido ya fue anulado o cerrado. Recargue la mesa.'
-                ], 400);
-            }
+                $order = RestaurantOrder::with('items')->lockForUpdate()->findOrFail($orderId);
 
-            if ($order->status === 'OPEN') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Debe enviar el pedido a cocina antes de cobrar'
-                ], 400);
-            }
+                $versionError = $this->orderVersionError($request, $order);
+                if ($versionError) {
+                    return $versionError;
+                }
 
-            $availableItems = $order->items
-                ->where('kitchen_status', '!=', 'CANCELLED')
-                ->whereNull('paid_invoice_id');
+                if (in_array($order->status, ['CANCELLED', 'COMPLETED'], true)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'El pedido ya fue anulado o cerrado. Recargue la mesa.'
+                    ], 400);
+                }
+
+                if ($order->status === 'OPEN') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Debe enviar el pedido a cocina antes de cobrar'
+                    ], 400);
+                }
+
+                $cajaAbierta = CashRegister::where('company_id', $companyId)
+                    ->where('estado', 'ABIERTA')
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$cajaAbierta) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No hay caja abierta. Abra una caja antes de cobrar.'
+                    ], 400);
+                }
+
+                $order->load(['items' => function ($query) {
+                    $query->where('kitchen_status', '!=', 'CANCELLED')
+                        ->whereNull('paid_invoice_id')
+                        ->lockForUpdate();
+                }]);
+
+                $availableItems = $order->items;
 
             if ($availableItems->isEmpty()) {
                 return response()->json([
@@ -1418,7 +1643,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             if ($remainingItems->isEmpty()) {
                 $order->status = 'COMPLETED';
                 $order->save();
-                $order->table->update(['status' => 'AVAILABLE']);
+                $this->releaseTableIfFree($order);
                 $orderCompleted = true;
             } else {
                 $this->updateOrderTotals($order);
@@ -1434,6 +1659,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
                 'remaining_total' => $remainingTotal,
                 'order_completed' => $orderCompleted,
             ]);
+            });
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -1472,6 +1698,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
         $serie = Serie::where('company_id', $companyId)
             ->where('tipo_documento', $documentType)
             ->where('estado', 'ACTIVO')
+            ->lockForUpdate()
             ->first();
 
         if (!$serie) {
@@ -1584,7 +1811,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
                     'umedida' => 'NIU',
                     'precio_unitario' => round($unitBase, 2),
                     'precio_venta' => $item->unit_price * $item->quantity,
-                    'igv' => round($itemIgv, 2),
+                    'igv' => round($itemIgv * $item->quantity, 2),
                     'tipo_afectacion' => '10',
                     'igv_percent' => round($igvRate * 100, 2),
                 ]);
@@ -1669,18 +1896,31 @@ private function updateOrderTotals(RestaurantOrder $order)
 
     public function saveOrderNotes(Request $request, $orderId)
     {
+        $validated = $request->validate([
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
         try {
-            $validated = $request->validate([
-                'notes' => 'nullable|string|max:1000',
-            ]);
+            return DB::transaction(function () use ($request, $orderId, $validated) {
+                $order = RestaurantOrder::lockForUpdate()->findOrFail($orderId);
 
-            $order = RestaurantOrder::findOrFail($orderId);
-            $order->update(['notes' => $validated['notes'] ?? null]);
+                $lockError = $this->tableLockError($order);
+                if ($lockError) {
+                    return $lockError;
+                }
 
-            return response()->json([
-                'success' => true,
-                'order' => $order->fresh(['items']),
-            ]);
+                $versionError = $this->orderVersionError($request, $order);
+                if ($versionError) {
+                    return $versionError;
+                }
+
+                $order->update(['notes' => $validated['notes'] ?? null]);
+
+                return response()->json([
+                    'success' => true,
+                    'order' => $order->fresh(['items']),
+                ]);
+            });
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -1692,27 +1932,28 @@ private function updateOrderTotals(RestaurantOrder $order)
     public function lockTable(Request $request, $tableId)
     {
         try {
-            $table = RestaurantTable::findOrFail($tableId);
-            $userId = Auth::id();
+            return DB::transaction(function () use ($tableId) {
+                $table = RestaurantTable::lockForUpdate()->findOrFail($tableId);
+                $userId = Auth::id();
 
-            if ($table->isLocked() && !$table->isLockedBy($userId) && !$table->isLockExpired()) {
-                $lockedBy = $table->lockedByUser;
+                if ($table->isLocked()
+                    && !$table->isLockedBy((int) $userId)
+                    && !$table->isLockExpired()) {
+                    $lockedBy = $table->lockedByUser;
+                    return response()->json([
+                        'success' => false,
+                        'requires_reload' => true,
+                        'message' => 'Mesa en uso por ' . ($lockedBy ? $lockedBy->name : 'otro usuario'),
+                    ], 409);
+                }
+
+                $table->lock((int) $userId);
+
                 return response()->json([
-                    'success' => false,
-                    'message' => 'Mesa en uso por ' . ($lockedBy ? $lockedBy->name : 'otro usuario'),
+                    'success' => true,
+                    'locked_by' => $userId,
                 ]);
-            }
-
-            if ($table->isLockExpired()) {
-                $table->unlock();
-            }
-
-            $table->lock($userId);
-
-            return response()->json([
-                'success' => true,
-                'locked_by' => $userId,
-            ]);
+            });
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -1724,19 +1965,21 @@ private function updateOrderTotals(RestaurantOrder $order)
     public function unlockTable(Request $request, $tableId)
     {
         try {
-            $table = RestaurantTable::findOrFail($tableId);
-            $userId = Auth::id();
+            return DB::transaction(function () use ($tableId) {
+                $table = RestaurantTable::lockForUpdate()->findOrFail($tableId);
+                $userId = Auth::id();
 
-            if ($table->isLocked() && !$table->isLockedBy($userId) && !auth()->user()->isAdmin()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No puedes desbloquear esta mesa',
-                ], 403);
-            }
+                if ($table->isLocked() && !$table->isLockedBy((int) $userId) && !auth()->user()->isAdmin()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No puedes desbloquear esta mesa',
+                    ], 403);
+                }
 
-            $table->unlock();
+                $table->unlock();
 
-            return response()->json(['success' => true]);
+                return response()->json(['success' => true]);
+            });
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -1855,6 +2098,73 @@ private function updateOrderTotals(RestaurantOrder $order)
         } catch (\Exception $e) {
             \Log::error('Kiosko charge error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    private function orderVersionError(Request $request, RestaurantOrder $order): ?\Illuminate\Http\JsonResponse
+    {
+        $requested = $request->input('order_version');
+
+        if (!$requested) {
+            return null;
+        }
+
+        $order->load('items');
+        $actual = $order->version;
+
+        if (!$actual || !hash_equals($actual, (string) $requested)) {
+            return response()->json([
+                'success' => false,
+                'requires_reload' => true,
+                'message' => 'Otro usuario actualizó este pedido. Recargue la mesa antes de continuar.',
+            ], 409);
+        }
+
+        return null;
+    }
+
+    private function tableLockError(RestaurantOrder $order): ?\Illuminate\Http\JsonResponse
+    {
+        if (!auth()->check() || !auth()->user()->isMozo()) {
+            return null;
+        }
+
+        $order->loadMissing('table');
+
+        if (!$order->table || !$order->table->locked_by) {
+            return null;
+        }
+
+        if ($order->table->isLockedBy((int) auth()->id()) || $order->table->isLockExpired()) {
+            return null;
+        }
+
+        return response()->json([
+            'success' => false,
+            'requires_reload' => true,
+            'message' => 'La mesa fue tomada por ' . ($order->table->lockedByUser->name ?? 'otro usuario') . '. Recargue la pantalla.',
+        ], 409);
+    }
+
+    private function releaseTableIfFree(RestaurantOrder $order): void
+    {
+        $order->loadMissing('table');
+
+        if (!$order->table) {
+            return;
+        }
+
+        $hasOtherOrder = RestaurantOrder::where('table_id', $order->table_id)
+            ->where('id', '!=', $order->id)
+            ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
+            ->exists();
+
+        if (!$hasOtherOrder) {
+            $order->table->update([
+                'status' => 'AVAILABLE',
+                'locked_by' => null,
+                'locked_at' => null,
+            ]);
         }
     }
 

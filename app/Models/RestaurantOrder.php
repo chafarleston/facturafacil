@@ -58,6 +58,40 @@ class RestaurantOrder extends Model
         'finished_at' => 'datetime',
     ];
 
+    protected $appends = ['version'];
+
+    public function getVersionAttribute(): string
+    {
+        $items = $this->relationLoaded('items')
+            ? $this->items
+            : $this->items()->get();
+
+        $payload = [
+            'id' => $this->id,
+            'table_id' => $this->table_id,
+            'status' => $this->status,
+            'notes' => $this->notes,
+            'subtotal' => (string) $this->subtotal,
+            'igv' => (string) $this->igv,
+            'total' => (string) $this->total,
+            'updated_at' => $this->updated_at?->toJSON(),
+            'items' => $items->sortBy('id')->map(fn ($item) => [
+                'id' => $item->id,
+                'quantity' => (string) $item->quantity,
+                'unit_price' => (string) $item->unit_price,
+                'total' => (string) $item->total,
+                'kitchen_status' => $item->kitchen_status,
+                'paid_invoice_id' => $item->paid_invoice_id,
+                'notes' => $item->notes,
+                'auxiliary_items' => $item->auxiliary_items,
+                'sent_to_kitchen_at' => $item->sent_to_kitchen_at?->toJSON(),
+                'cancelled_at' => $item->cancelled_at?->toJSON(),
+            ])->values()->all(),
+        ];
+
+        return sha1(json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    }
+
     protected static function booted(): void
     {
         static::updated(function (self $order) {
@@ -137,11 +171,12 @@ class RestaurantOrder extends Model
         return $this->items->where('kitchen_status', '!=', 'DELIVERED')->isEmpty();
     }
 
-    public static function generateOrderNumber(): string
+    public static function generateOrderNumber(?int $companyId = null): string
     {
-        $companyId = auth()->check() ? auth()->user()->company_id : 1;
+        $companyId = $companyId ?? (auth()->check() ? auth()->user()->company_id : 1);
         $date = now()->format('Ymd');
         $lastOrder = self::where('company_id', $companyId)
+            ->where('order_number', 'like', 'P-%')
             ->whereDate('created_at', today())
             ->orderBy('id', 'desc')
             ->first();
