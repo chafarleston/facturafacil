@@ -27,6 +27,7 @@
 - `php artisan tinker --execute="..."` — inline tinker (avoid heredoc in PowerShell)
 - `actualizar-gitnexus.bat` — refresca el índice GitNexus local (idempotente: `node .gitnexus/run.cjs analyze` o analiza desde cero si falta; CLI global v1.6.9, sin MCP)
 - `eliminar_ventas_productos.bat` — menú para eliminar ventas y/o productos (scripts `eliminar-ventas-productos/clean_ventas.php` y `clean_productos.php` vía tinker con `base_path`). `clean_ventas` además **pone el stock de todos los productos (normales y compuestos) en 0**. Crea backup MySQL previo en `eliminar-ventas-productos/backup/` y pide confirmación `SI`. DESTRUCTIVO.
+- `limpiar_huerfanos.bat` — menú para limpiar **huérfanos** (script `scripts/limpiar_huerfanos.php`): cancela ítems de pedidos `CANCELLED` y lotes activos de `CANCELLED`/`COMPLETED`; los ítems impagos de pedidos `COMPLETED` solo se listan para reabrir/cobrar y **no se cancelan**; elimina ítems/lotes sin pedido. Hace simulación previa, permite `--db=` (ej. `facturafacil2`), crea backup MySQL en `backups/` y pide confirmación `SI`. No elimina pedidos. DESTRUCTIVO.
 - Tests: `php artisan test` (uses SQLite :memory:, no DB needed)
 
 ## Architecture notes

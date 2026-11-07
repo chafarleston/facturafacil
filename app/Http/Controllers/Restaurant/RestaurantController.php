@@ -20,6 +20,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use App\Events\KitchenOrderUpdated;
@@ -189,7 +190,9 @@ class RestaurantController extends Controller
             ]);
 
             $product = Product::findOrFail($validated['product_id']);
-            $order = RestaurantOrder::findOrFail($orderId);
+
+            return DB::transaction(function () use ($orderId, $product, $validated) {
+            $order = RestaurantOrder::lockForUpdate()->findOrFail($orderId);
 
             if (in_array($order->status, ['CANCELLED', 'COMPLETED'], true)) {
                 return response()->json([
@@ -236,6 +239,7 @@ class RestaurantController extends Controller
                 'item' => $item,
                 'order_total' => $order->fresh()->total,
             ]);
+            });
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -549,7 +553,8 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             return response()->json(['success' => false, 'message' => 'No tienes permiso para cerrar mesas'], 403);
         }
 
-        $order = RestaurantOrder::with('items')->findOrFail($orderId);
+        return DB::transaction(function () use ($orderId) {
+        $order = RestaurantOrder::with('items')->lockForUpdate()->findOrFail($orderId);
 
         $unpaidItems = $order->items()
             ->where('kitchen_status', '!=', 'CANCELLED')
@@ -586,6 +591,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             'success' => true,
             'message' => 'Mesa cerrada exitosamente'
         ]);
+        });
     }
 
     public function moveTable(Request $request, $orderId)
@@ -732,7 +738,8 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             return response()->json(['success' => false, 'message' => 'No tienes permiso para anular pedidos'], 403);
         }
         
-        $order = RestaurantOrder::with('items')->findOrFail($orderId);
+        return DB::transaction(function () use ($request, $orderId) {
+        $order = RestaurantOrder::with('items')->lockForUpdate()->findOrFail($orderId);
         
         $hasPaidItems = $order->items->whereNotNull('paid_invoice_id')->isNotEmpty();
         if ($hasPaidItems) {
@@ -805,6 +812,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
 
         return response()->json(['success' => true]);
+        });
     }
 
     public function getPollData(Request $request)
