@@ -420,6 +420,7 @@ tail -50 storage/logs/laravel.log
 - **Limpieza de huérfanos**: `limpiar_huerfanos.bat` hace simulación, backup y no elimina pedidos; los ítems impagos de pedidos `COMPLETED` se listan para revisión y no se cancelan automáticamente.
 - **Líneas eliminadas en caja**: solo cuentan ítems `SENT`, `READY` o `DELIVERED`; los `PENDING` eliminados físicamente no se reportan como anulación.
 - Pendiente conocido: permisos de rutas del restaurante, numeración histórica duplicada de pedidos y concurrencia específica de kiosko.
+- Hoja de ruta y pruebas pendientes: `PENDIENTES_PEDIDOS_PERDIDOS.md`.
 
 ## Licencia
 

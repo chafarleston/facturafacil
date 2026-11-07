@@ -4219,6 +4219,8 @@ Esta seccion resume los cambios que deben tenerse en cuenta al operar con varios
 
 ### 32.5 Pendientes conocidos
 
+La hoja de ruta detallada, decisiones de negocio y pruebas de aceptación está en `PENDIENTES_PEDIDOS_PERDIDOS.md`.
+
 - Permisos de rutas del restaurante/caja (auditoria de roles).
 - Numeros de pedido historicos duplicados; no hay indice unico.
 - Numeracion/concurrencia especifica de kiosko/autopedido.

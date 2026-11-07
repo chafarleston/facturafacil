@@ -20,6 +20,7 @@
 - Si GitNexus no esta disponible o el indice no carga, avisarlo explicitamente y usar busqueda manual; nunca fingir que se uso.
 - Si `impact` devuelve riesgo HIGH/CRITICAL, advertirlo antes de editar y extremar pruebas/backup.
 - No editar archivos generados de `.gitnexus/` ni usar `find-and-replace` para renombrar simbolos.
+- **Pendientes de pedidos perdidos**: la hoja de ruta y pruebas queda en `PENDIENTES_PEDIDOS_PERDIDOS.md`; revisarla antes de retomar el tema.
 
 ## Commands
 - `php artisan serve` — dev server
