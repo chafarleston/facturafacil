@@ -4210,10 +4210,13 @@ Esta seccion resume los cambios que deben tenerse en cuenta al operar con varios
 - Los items impagos de pedidos `COMPLETED` se listan para reabrir/cobrar y **no se cancelan**.
 - No elimina pedidos.
 
+**Pedidos vacios (aplicado 2026-11-08):** `limpiar_pedidos_vacios.bat` / `scripts/limpiar_pedidos_vacios.php` elimino **469 pedidos `CANCELLED` sin items** y **7 pedidos `COMPLETED` sin pago** (IDs 3,4,6,7,8,9,10). Conservo facturas e items pagados y dejo los 6 pedidos que aun tienen items impagos. Backup: `backups/pre-delete-orders-20261108-000801.sql`.
+
 ### 32.4 Modulos recientes
 
 - **Tema Chifa**: septima plantilla de la web (`modern`, `elegant`, `minimal`, `classic`, `dark`, `tropical`, `chifa`), con paleta rojo/dorado. La plantilla seleccionada se aplica tambien a autopedido, menu virtual, precuenta virtual y seccion de menu de la web.
 
+- **Salud de Pedidos**: `/order-health` (`OrderHealthController`, `RestaurantOrderHealthService`) para admin/cajero con `authorize_cancel_orders`. Muestra pedidos vacios, completados sin pago, pagos parciales, huerfanos y numeros duplicados; la limpieza crea backup, usa transaccion y protege facturas/items pagados/activos.
 - **Menu Virtual**: `/menu-virtual` (admin) y `/menuvirtual` (publico), 5 menus + 5 entradas configurables, QR y seccion en la web.
 - **Referencia de delivery**: `restaurant_orders.delivery_reference` en autopedido, cocina y pedidos kiosko.
 - **Lineas eliminadas**: solo cuentan `SENT`/`READY`/`DELIVERED`; los `PENDING` se eliminan fisicamente y no cuentan.

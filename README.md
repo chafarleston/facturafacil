@@ -404,6 +404,17 @@ tail -50 storage/logs/laravel.log
 - Las etiquetas se muestran como **Entrada / Entrada N**.
 - El tema seleccionado en la web se aplica a **autopedido, menú virtual, precuenta virtual** y a la sección de menú de la web (incluido el tema `chifa`).
 
+## Salud de Pedidos
+
+Panel **Restaurante → Salud de Pedidos** (`/order-health`) para admin y cajero con permiso `authorize_cancel_orders`.
+
+- Detecta pedidos `CANCELLED` vacíos, `COMPLETED` sin pago, pagos parciales, ítems/lotes huérfanos y números de pedido duplicados.
+- Permite eliminar pedidos vacíos y huérfanos seguros.
+- Los `COMPLETED` sin pago se pueden seleccionar y eliminar con confirmación `ELIMINAR`.
+- Los pedidos con facturas o ítems pagados aparecen protegidos y no se borran.
+- Antes de eliminar genera backup, usa transacción y registra la operación en el log.
+- No borra facturas, pedidos activos, mesas ni stock.
+
 ## Concurrencia y actualización segura (nov-2026)
 
 - El sistema está optimizado para **1 cajero y varios mozos**. Las acciones desde una vista vieja no pisan el pedido: se valida `order_version` y se responde `409 requires_reload`.
@@ -419,6 +430,7 @@ tail -50 storage/logs/laravel.log
   - Simulación: `actualizar_cliente.bat -DryRun -Database facturafacil2`.
   - Si el cliente usa `facturafacil2`, indicarlo con `-Database facturafacil2`.
 - **Limpieza de huérfanos**: `limpiar_huerfanos.bat` hace simulación, backup y no elimina pedidos; los ítems impagos de pedidos `COMPLETED` se listan para revisión y no se cancelan automáticamente.
+- **Pedidos vacíos eliminados**: `limpiar_pedidos_vacios.bat` borra pedidos `CANCELLED` sin ítems y los `COMPLETED` sin pago (IDs 3,4,6,7,8,9,10), con simulación y backup. No toca facturas ni pedidos con ítems pagados.
 - **Líneas eliminadas en caja**: solo cuentan ítems `SENT`, `READY` o `DELIVERED`; los `PENDING` eliminados físicamente no se reportan como anulación.
 - Pendiente conocido: permisos de rutas del restaurante, numeración histórica duplicada de pedidos y concurrencia específica de kiosko.
 - Hoja de ruta y pruebas pendientes: `PENDIENTES_PEDIDOS_PERDIDOS.md`.

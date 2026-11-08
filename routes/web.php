@@ -261,6 +261,10 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     Route::post('/restaurant/toggle-mode', [RestaurantController::class, 'toggleMode'])->name('restaurant.toggleMode');
     Route::get('/restaurant/print-status', [\App\Http\Controllers\Admin\PrinterController::class, 'status'])->name('restaurant.printStatus');
 
+    // Salud de pedidos (admin y cajero con permiso authorize_cancel_orders)
+    Route::get('/order-health', [\App\Http\Controllers\OrderHealthController::class, 'index'])->name('order-health.index');
+    Route::post('/order-health/cleanup', [\App\Http\Controllers\OrderHealthController::class, 'cleanup'])->name('order-health.cleanup');
+
     // Floor Routes
     Route::get('/restaurant/floors', [FloorController::class, 'index'])->name('restaurant.floors.index');
     Route::get('/restaurant/floors/create', [FloorController::class, 'create'])->name('restaurant.floors.create');

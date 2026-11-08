@@ -21,6 +21,7 @@
 - Frontend: refresca el pedido abierto en el polling, renueva el bloqueo cada 60 s y libera la mesa al cobrar/cerrar/anular.
 - IGV de linea corregido en el detalle de factura.
 - Limpieza aplicada en `facturafacil2`: 19 items y 1,581 lotes marcados `CANCELLED`; backup en `backups/pre-clean-orphans-20261107-171548.sql`; 0 huerfanos activos.
+- Limpieza de pedidos vacios aplicada el 2026-11-08: **469 pedidos `CANCELLED` sin items** y **7 pedidos `COMPLETED` sin items pagados** (IDs 3,4,6,7,8,9,10). Backup: `backups/pre-delete-orders-20261108-000801.sql`. Facturas e items pagados intactos.
 
 ---
 
@@ -34,11 +35,13 @@
   - Dos envios simultaneos a cocina no deben crear lotes duplicados.
   - Resultado esperado: no se pierden items ni se duplican comprobantes.
 
-- [ ] **Definir que hacer con los 13 pedidos `COMPLETED` con items impagos (22 items).**
+- [ ] **Definir que hacer con los 6 pedidos `COMPLETED` que aun tienen items impagos (10 items).**
+  - Quedan: **1296, 9526, 9880, 10148, 10305, 10463**.
   - Incluye el pedido **10148** (`P-20261102-0002`, Mesa 25) con 3 Pilsen grandes impagos.
+  - Los 7 pedidos sin pago (3,4,6,7,8,9,10) y los 469 pedidos vacios ya fueron eliminados.
   - No hay flujo de "reabrir y cobrar"; hoy `chargeOrder` rechaza `COMPLETED`.
   - Decision pendiente: reabrir/cobrar, anular items o dejar como historico.
-  - No ejecutar `limpiar_huerfanos.bat --apply` de nuevo sin revisar.
+  - No ejecutar `limpiar_huerfanos.bat --apply` ni `limpiar_pedidos_vacios.bat --apply` de nuevo sin revisar.
 
 - [ ] **Cerrar el tema de permisos de rutas.**
   - Las rutas de restaurante estan bajo `auth`, sin `view_restaurant`/`manage_orders`.
@@ -134,6 +137,7 @@
 - `DOCUMENTACION_SISTEMA.md` seccion 32
 - `ACTUALIZACION_GIT.md` seccion 16
 - `limpiar_huerfanos.bat` / `scripts/limpiar_huerfanos.php`
+- `limpiar_pedidos_vacios.bat` / `scripts/limpiar_pedidos_vacios.php`
 - `actualizar_cliente.bat` / `actualizar_cliente.ps1`
 
 ---

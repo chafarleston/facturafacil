@@ -41,6 +41,8 @@
 - `actualizar_cliente.bat` — actualización segura del cliente (delega en `actualizar_cliente.ps1`): exige repo limpio/rama `main`, backup de BD + `.env` + certificados, `git pull --ff-only`, mantenimiento con `up` garantizado y log en `backups/`. Opciones: `-DryRun`, `-Database facturafacil2`, `-RunSeeder` (el seeder se omite por defecto para no resetear permisos).
 - `actualizar-gitnexus.bat` — refresca el índice GitNexus local (idempotente: `node .gitnexus/run.cjs analyze` o analiza desde cero si falta; CLI global v1.6.9, sin MCP)
 - `eliminar_ventas_productos.bat` — menú para eliminar ventas y/o productos (scripts `eliminar-ventas-productos/clean_ventas.php` y `clean_productos.php` vía tinker con `base_path`). `clean_ventas` además **pone el stock de todos los productos (normales y compuestos) en 0**. Crea backup MySQL previo en `eliminar-ventas-productos/backup/` y pide confirmación `SI`. DESTRUCTIVO.
+- **Salud de Pedidos** (`/order-health`, `order-health.index`): panel admin/cajero con permiso `authorize_cancel_orders` para diagnosticar pedidos vacios, completados sin pago, pagos parciales, items/lotes huerfanos y numeros duplicados. La limpieza crea backup, usa transaccion y protege facturas/items pagados/activos.
+- `limpiar_pedidos_vacios.bat` — elimina pedidos `CANCELLED` sin items y los 7 `COMPLETED` sin pago (IDs 3,4,6,7,8,9,10); no borra pedidos con facturas/items pagados, activos, mesas ni stock. Hace simulacion, backup y pide confirmacion `SI`. DESTRUCTIVO.
 - `limpiar_huerfanos.bat` — menú para limpiar **huérfanos** (script `scripts/limpiar_huerfanos.php`): cancela ítems de pedidos `CANCELLED` y lotes activos de `CANCELLED`/`COMPLETED`; los ítems impagos de pedidos `COMPLETED` solo se listan para reabrir/cobrar y **no se cancelan**; elimina ítems/lotes sin pedido. Hace simulación previa, permite `--db=` (ej. `facturafacil2`), crea backup MySQL en `backups/` y pide confirmación `SI`. No elimina pedidos. DESTRUCTIVO.
 - Tests: `php artisan test` (uses SQLite :memory:, no DB needed)
 
@@ -126,7 +128,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **facturafacil** (3994 symbols, 7960 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **facturafacil** (4000 symbols, 7976 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
