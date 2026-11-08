@@ -11,8 +11,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --primary: #e94560;
-            --secondary: #3a1c4a;
+            --primary: {{ $web['primary_color'] ?: '#e94560' }};
+            --secondary: {{ $web['secondary_color'] ?: '#3a1c4a' }};
             --bg: #f6f7fb;
             --surface: #ffffff;
             --surface-2: #f1f5f9;
@@ -24,7 +24,7 @@
             --radius: 20px;
             --shadow: 0 18px 40px rgba(15, 23, 42, 0.10);
             --shadow-sm: 0 8px 22px rgba(15, 23, 42, 0.07);
-            --brand-font: 'Poppins', sans-serif;
+            --brand-font: '{{ $web['font'] }}', sans-serif;
         }
 
         body[data-theme="minimal"] {
@@ -83,6 +83,21 @@
             --muted: #9a3412;
             --border: #fed7aa;
             --radius: 22px;
+        }
+
+        body[data-theme="chifa"] {
+            --bg: #fff8ee;
+            --surface: #fffdf8;
+            --surface-2: #fff0d8;
+            --text: #3f1710;
+            --muted: #8a5a45;
+            --border: #e6c9a0;
+            --radius: 10px;
+            --shadow: 0 18px 40px rgba(139, 0, 0, .12);
+            --shadow-sm: 0 8px 22px rgba(139, 0, 0, .08);
+            background-image:
+                radial-gradient(circle at 12% 8%, rgba(212,175,55,.12) 0 2px, transparent 3px),
+                radial-gradient(circle at 88% 18%, rgba(158,27,27,.07) 0 2px, transparent 3px);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }

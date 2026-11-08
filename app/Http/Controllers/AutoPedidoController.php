@@ -17,7 +17,7 @@ class AutoPedidoController extends Controller
 {
     private function branding(Company $company): array
     {
-        $templates = ['modern', 'elegant', 'minimal', 'classic', 'dark', 'tropical'];
+        $templates = ['modern', 'elegant', 'minimal', 'classic', 'dark', 'tropical', 'chifa'];
         $template = \App\Models\Setting::web('template', 'modern');
         if (!in_array($template, $templates, true)) {
             $template = 'modern';
@@ -32,12 +32,24 @@ class AutoPedidoController extends Controller
         $logo = \App\Models\Setting::web('logo', '');
         $logoUrl = $logo ? asset('storage/' . $logo) : $company->getLogoUrl();
 
+        $primaryColor = \App\Models\Setting::web('primary_color', '#e94560') ?: '#e94560';
+        $secondaryColor = \App\Models\Setting::web('secondary_color', '#3a1c4a') ?: '#3a1c4a';
+
+        if ($template === 'chifa') {
+            if ($primaryColor === '#e94560') {
+                $primaryColor = '#9e1b1b';
+            }
+            if ($secondaryColor === '#3a1c4a') {
+                $secondaryColor = '#d4af37';
+            }
+        }
+
         return [
             'template' => $template,
             'font' => $font,
             'fontUrl' => 'https://fonts.googleapis.com/css2?family=' . str_replace(' ', '+', $font) . ':wght@400;500;600;700&display=swap',
-            'primary_color' => \App\Models\Setting::web('primary_color', '#e94560'),
-            'secondary_color' => \App\Models\Setting::web('secondary_color', '#3a1c4a'),
+            'primary_color' => $primaryColor,
+            'secondary_color' => $secondaryColor,
             'logo' => $logo,
             'logoUrl' => $logoUrl,
             'logo_height' => (int) \App\Models\Setting::web('logo_height', 56),

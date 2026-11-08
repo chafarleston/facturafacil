@@ -43,7 +43,7 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 - **Concurrencia multi-mozo (nov-2026)**: cada pedido expone un `version` calculado; las acciones destructivas envían `order_version` y reciben `409 requires_reload` si otro usuario cambió el pedido. `openTable`/`lockTable` usan bloqueo transaccional de mesa, el frontend renueva el bloqueo cada 60 s y refresca el pedido abierto. `chargeOrder`/`splitChargeOrder` bloquean pedido, ítems, caja y serie; los envíos a cocina reconsultan ítems `PENDING` para no duplicar lotes.
 
 ### Página Web y Precuenta Virtual
-- Página pública configurable (Empresa → **Configuración de Página Web**): 6 plantillas (`modern`, `elegant`, `minimal`, `classic`, `dark`, `tropical`), logo, colores/fuente, hero/nosotros, slider de 3 slides, catálogo, galería y CTA "Pedir en línea" hacia `/autopedido`
+- Página pública configurable (Empresa → **Configuración de Página Web**): 7 plantillas (`modern`, `elegant`, `minimal`, `classic`, `dark`, `tropical`, `chifa`), logo, colores/fuente, hero/nosotros, slider de 3 slides, catálogo, galería y CTA "Pedir en línea" hacia `/autopedido`
 - Los 3 slides se recortan a **1600×600 px** (cover) y se guardan en **WebP q82** al subir
 - **Precuenta Virtual** (`/virtual-prebill`): QR por mesa (`/mesa01`), consulta pública de ítems no pagados ni anulados; se activa/desactiva y configura el dominio desde el admin
 - Imágenes de la web en `storage/website/`
@@ -400,8 +400,9 @@ tail -50 storage/logs/laravel.log
 
 - Submenú **Restaurante → Menú Virtual** (`/menu-virtual`).
 - Configuración manual de **5 menús + 5 entradas** (nombres y costos), sin depender de productos.
-- Página pública en `/menuvirtual` con QR descargable (`menu-virtual-qr.png`) y sección integrada en las 6 plantillas de la web.
+- Página pública en `/menuvirtual` con QR descargable (`menu-virtual-qr.png`) y sección integrada en las 7 plantillas de la web.
 - Las etiquetas se muestran como **Entrada / Entrada N**.
+- El tema seleccionado en la web se aplica a **autopedido, menú virtual, precuenta virtual** y a la sección de menú de la web (incluido el tema `chifa`).
 
 ## Concurrencia y actualización segura (nov-2026)
 

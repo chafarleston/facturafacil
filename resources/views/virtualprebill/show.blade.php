@@ -152,6 +152,32 @@
             --body-image: radial-gradient(circle at 90% 100%, rgba(0, 184, 148, .12), transparent 40%);
         }
 
+        body[data-theme="chifa"] {
+            --bg: #fff8ee;
+            --surface: #fffdf8;
+            --surface-2: #fff0d8;
+            --text: #3f1710;
+            --muted: #8a5a45;
+            --border: #e6c9a0;
+            --radius: 8px;
+            --radius-sm: 6px;
+            --shadow: 0 16px 40px rgba(139, 0, 0, .12);
+            --banner-bg: linear-gradient(135deg, var(--primary), var(--secondary));
+            --banner-color: #fffdf8;
+            --banner-border: 0;
+            --banner-letter: 3px;
+            --banner-shadow: 0 8px 22px rgba(139, 0, 0, .18);
+            --card-border: 1px solid #e6c9a0;
+            --head-border: 1px dashed #d7b88a;
+            --grand-color: var(--primary);
+            --button-bg: var(--primary);
+            --button-color: #fffdf8;
+            --brand-transform: none;
+            --body-image:
+                radial-gradient(circle at 12% 8%, rgba(212,175,55,.13) 0 2px, transparent 3px),
+                radial-gradient(circle at 88% 18%, rgba(158,27,27,.08) 0 2px, transparent 3px);
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {

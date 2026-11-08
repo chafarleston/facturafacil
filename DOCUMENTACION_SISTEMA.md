@@ -4212,6 +4212,8 @@ Esta seccion resume los cambios que deben tenerse en cuenta al operar con varios
 
 ### 32.4 Modulos recientes
 
+- **Tema Chifa**: septima plantilla de la web (`modern`, `elegant`, `minimal`, `classic`, `dark`, `tropical`, `chifa`), con paleta rojo/dorado. La plantilla seleccionada se aplica tambien a autopedido, menu virtual, precuenta virtual y seccion de menu de la web.
+
 - **Menu Virtual**: `/menu-virtual` (admin) y `/menuvirtual` (publico), 5 menus + 5 entradas configurables, QR y seccion en la web.
 - **Referencia de delivery**: `restaurant_orders.delivery_reference` en autopedido, cocina y pedidos kiosko.
 - **Lineas eliminadas**: solo cuentan `SENT`/`READY`/`DELIVERED`; los `PENDING` se eliminan fisicamente y no cuentan.

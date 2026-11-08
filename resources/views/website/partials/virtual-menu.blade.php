@@ -94,6 +94,18 @@
             --vm-shadow: 0 10px 26px rgba(255, 122, 89, .10);
         }
 
+        .vm-section[data-vm-theme="chifa"] {
+            --vm-bg: #fff8ee;
+            --vm-surface: #fffdf8;
+            --vm-surface-2: #fff0d8;
+            --vm-text: #3f1710;
+            --vm-muted: #8a5a45;
+            --vm-border: #e6c9a0;
+            --vm-radius: 8px;
+            --vm-radius-sm: 6px;
+            --vm-shadow: 0 10px 26px rgba(139, 0, 0, .10);
+        }
+
         .vm-head {
             max-width: 680px;
             margin: 0 auto 28px;

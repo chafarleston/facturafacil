@@ -19,12 +19,24 @@ class WebsiteController extends Controller
     private function defaults(): array
     {
         $company = Company::getMainCompany();
+        $template = Setting::web('template', 'modern');
+        $primaryColor = Setting::web('primary_color', '#e94560') ?: '#e94560';
+        $secondaryColor = Setting::web('secondary_color', '#3a1c4a') ?: '#3a1c4a';
+
+        if ($template === 'chifa') {
+            if ($primaryColor === '#e94560') {
+                $primaryColor = '#9e1b1b';
+            }
+            if ($secondaryColor === '#3a1c4a') {
+                $secondaryColor = '#d4af37';
+            }
+        }
 
         return [
-            'template' => Setting::web('template', 'modern'),
+            'template' => $template,
             'font' => Setting::web('font', 'Poppins'),
-            'primary_color' => Setting::web('primary_color', '#e94560'),
-            'secondary_color' => Setting::web('secondary_color', '#3a1c4a'),
+            'primary_color' => $primaryColor,
+            'secondary_color' => $secondaryColor,
             'logo' => Setting::web('logo', ''),
             'logo_height' => (int) Setting::web('logo_height', 56),
             'show_autopedido' => Setting::web('show_autopedido', '1') === '1',
@@ -109,7 +121,7 @@ class WebsiteController extends Controller
             }
         }
 
-        $templates = ['modern', 'elegant', 'minimal', 'classic', 'dark', 'tropical'];
+        $templates = ['modern', 'elegant', 'minimal', 'classic', 'dark', 'tropical', 'chifa'];
         $template = in_array($web['template'], $templates, true) ? $web['template'] : 'modern';
 
         return view('website.templates.' . $template, compact('company', 'web', 'categories', 'products', 'categoryNames', 'gallery', 'logoUrl', 'slides', 'virtualMenus', 'virtualSeconds'));
@@ -160,7 +172,7 @@ class WebsiteController extends Controller
             'footer_text' => 'nullable|string|max:500',
             'primary_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'secondary_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'template' => 'nullable|in:modern,elegant,minimal,classic,dark,tropical',
+            'template' => 'nullable|in:modern,elegant,minimal,classic,dark,tropical,chifa',
             'font' => 'nullable|in:Poppins,Montserrat,Raleway,Playfair Display,Lora,Nunito',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
             'logo_height' => 'nullable|integer|min:32|max:120',

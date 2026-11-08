@@ -55,8 +55,9 @@
                                 <option value="classic" {{ old('template', $web['template']) === 'classic' ? 'selected' : '' }}>Clásica</option>
                                 <option value="dark" {{ old('template', $web['template']) === 'dark' ? 'selected' : '' }}>Oscura</option>
                                 <option value="tropical" {{ old('template', $web['template']) === 'tropical' ? 'selected' : '' }}>Tropical</option>
+                                <option value="chifa" {{ old('template', $web['template']) === 'chifa' ? 'selected' : '' }}>Chifa</option>
                             </select>
-                            <small class="text-muted">Moderna: colorida. Elegante: sobria. Minimalista: limpia. Clásica: tradicional. Oscura: alto contraste. Tropical: fresca y colorida.</small>
+                            <small class="text-muted">Moderna: colorida. Elegante: sobria. Minimalista: limpia. Clásica: tradicional. Oscura: alto contraste. Tropical: fresca y colorida. Chifa: rojo, dorado y estilo oriental.</small>
                         </div>
                         <div class="col-md-4 form-group">
                             <label>Color principal</label>
