@@ -253,6 +253,7 @@
         @else
             <p class="text-muted">
                 Estos pedidos tienen items pagados o facturas. No se eliminan completos para no perder el historial.
+                <strong>Opcion 1:</strong> conservar como historial. <strong>Opcion 2:</strong> anular solo los items impagos.
             </p>
 
             @if($health['completed_partial']->isNotEmpty())
@@ -267,6 +268,7 @@
                                 <th>Impagos</th>
                                 <th>Total</th>
                                 <th>Creado</th>
+                                <th>Accion</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -279,6 +281,17 @@
                                     <td>{{ $order->unpaid_items_count }}</td>
                                     <td>S/ {{ number_format((float) $order->total, 2) }}</td>
                                     <td>{{ $order->created_at?->format('d/m/Y H:i') }}</td>
+                                    <td>
+                                        <form method="POST" action="{{ route('order-health.cleanup') }}"
+                                              onsubmit="return confirmHealthCleanup(this, 'Se anularan {{ $order->unpaid_items_count }} item(s) impago(s) del pedido {{ $order->order_number }}.', 'ANULAR')">
+                                            @csrf
+                                            <input type="hidden" name="mode" value="partial">
+                                            <input type="hidden" name="order_id" value="{{ $order->id }}">
+                                            <button type="submit" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-ban"></i> Anular impagos
+                                            </button>
+                                        </form>
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -352,9 +365,10 @@
 </div>
 
 <script>
-    function confirmHealthCleanup(form, message) {
-        var value = prompt(message + '\n\nEscriba ELIMINAR para continuar:');
-        return value === 'ELIMINAR';
+    function confirmHealthCleanup(form, message, token) {
+        token = token || 'ELIMINAR';
+        var value = prompt(message + '\n\nEscriba ' + token + ' para continuar:');
+        return value === token;
     }
 
     document.addEventListener('DOMContentLoaded', function() {

@@ -32,7 +32,7 @@ Sistema integral de facturación electrónica SUNAT (Perú) con módulo completo
 - **KDS flujo por lote**: `PENDIENTE` → `EN PREPARACIÓN` → `ENTREGADO`; acciones `PREPARAR LOTE`, `TERMINAR LOTE` e `IMPRIMIR`; el pedido se entrega cuando terminan todos sus lotes; la mesa sigue `OCCUPIED` hasta cobrar
 - Precuenta con selección de impresora (Precuenta 1, 2 o 3), **IGV dinámico** según empresa, **datos de la empresa** en el encabezado (nombre, RUC, dirección, teléfono, email) y aviso al pie *"Esto no es un comprobante de venta, si desea pedir boleta o factura escriba sus datos."*; **excluye los productos ya pagados** (Dividir Cuenta)
 - **Dividir Cuenta**: reparte el pedido en 2+ comprobantes (NV/Boleta/Factura) por cantidades, cada división con su cliente, método de pago y solo consumo; los items pagados se marcan "Pagado" y ya no aparecen en la precuenta, pero **permanecen en el KDS mientras su lote siga activo** (el cobro no oculta lotes activos)
-- **Kiosko / Autoservicio**: pedidos por pantalla táctil (`/autopedido`), numeración A-XXX ligada a la caja abierta, estados `Pendiente/Enviado/Preparando/Entregado` y cobro en el cajero (incluye entregados impagos)
+- **Kiosko / Autoservicio**: pedidos por pantalla táctil (`/autopedido`), numeración A-### global por empresa (secuencia atomica), estados `Pendiente/Enviado/Preparando/Entregado` y cobro en el cajero (incluye entregados impagos)
 - Cobro con **cliente por defecto** (Cliente Varios DNI 88888888) y **confirmación de impresión**
 - **Solo consumo**: cobrar todo el pedido como "POR CONSUMO" con desglose de productos
 - **Mover pedido** entre mesas
@@ -372,6 +372,10 @@ php artisan pro51:retry-pending          # Reintentar comprobantes pendientes
 # Programar tareas (Windows)
 schtasks /run /tn "FacturaFacilScheduler"
 
+# Numeracion de pedidos
+php artisan orders:renumber-duplicates --db=facturafacil2 --dry-run
+php artisan orders:renumber-duplicates --db=facturafacil2 --apply
+
 # Ver rutas
 php artisan route:list
 
@@ -411,9 +415,26 @@ Panel **Restaurante → Salud de Pedidos** (`/order-health`) para admin y cajero
 - Detecta pedidos `CANCELLED` vacíos, `COMPLETED` sin pago, pagos parciales, ítems/lotes huérfanos y números de pedido duplicados.
 - Permite eliminar pedidos vacíos y huérfanos seguros.
 - Los `COMPLETED` sin pago se pueden seleccionar y eliminar con confirmación `ELIMINAR`.
-- Los pedidos con facturas o ítems pagados aparecen protegidos y no se borran.
-- Antes de eliminar genera backup, usa transacción y registra la operación en el log.
+- Los pedidos con facturas o ítems pagados aparecen protegidos y no se borran completos.
+- En esos casos se puede **conservar el historial** o **anular solo los ítems impagos**: se mantienen los ítems pagados, las facturas y se recalcula el total del pedido.
+- Antes de eliminar o anular genera backup, usa transacción y registra la operación en el log.
 - No borra facturas, pedidos activos, mesas ni stock.
+
+## Base de datos y comandos
+
+- El `.env` local de esta copia apunta a `facturafacil`.
+- La base trabajada para el cliente es `facturafacil2`.
+- Para comandos de reparacion usar `--db=facturafacil2` o el `.bat` correspondiente.
+- La pagina `/order-health` usa la base configurada en `.env`; si debe mostrar el cliente, cambiar `DB_DATABASE=facturafacil2` y limpiar la cache de configuracion.
+
+## Numeracion de pedidos
+
+- Nueva secuencia atomica por empresa/fecha en `restaurant_order_sequences`.
+- Formato: `P-YYYYMMDD-####` para mozos y `A-###` para kiosko.
+- Indice unico por empresa + numero de pedido.
+- Los duplicados historicos se renumeraron conservando el numero anterior en `legacy_order_number`.
+- Proceso seguro: `reparar_numeros_pedido.bat` o `php artisan orders:renumber-duplicates --dry-run|--apply`.
+- No se borran pedidos; las facturas y pagos no se modifican.
 
 ## Concurrencia y actualización segura (nov-2026)
 
@@ -432,7 +453,7 @@ Panel **Restaurante → Salud de Pedidos** (`/order-health`) para admin y cajero
 - **Limpieza de huérfanos**: `limpiar_huerfanos.bat` hace simulación, backup y no elimina pedidos; los ítems impagos de pedidos `COMPLETED` se listan para revisión y no se cancelan automáticamente.
 - **Pedidos vacíos eliminados**: `limpiar_pedidos_vacios.bat` borra pedidos `CANCELLED` sin ítems y los `COMPLETED` sin pago (IDs 3,4,6,7,8,9,10), con simulación y backup. No toca facturas ni pedidos con ítems pagados.
 - **Líneas eliminadas en caja**: solo cuentan ítems `SENT`, `READY` o `DELIVERED`; los `PENDING` eliminados físicamente no se reportan como anulación.
-- Pendiente conocido: permisos de rutas del restaurante, numeración histórica duplicada de pedidos y concurrencia específica de kiosko.
+- Pendiente conocido: permisos de rutas del restaurante y concurrencia transaccional de kiosko/autopedido. La numeracion historica ya fue corregida.
 - Hoja de ruta y pruebas pendientes: `PENDIENTES_PEDIDOS_PERDIDOS.md`.
 
 ## Licencia

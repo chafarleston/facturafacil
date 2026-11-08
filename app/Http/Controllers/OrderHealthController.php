@@ -26,9 +26,10 @@ class OrderHealthController extends Controller
         $this->authorize('permission', 'authorize_cancel_orders');
 
         $validated = $request->validate([
-            'mode' => 'required|in:safe,completed',
+            'mode' => 'required|in:safe,completed,partial',
             'orders' => 'nullable|array|max:500',
             'orders.*' => 'integer',
+            'order_id' => 'required_if:mode,partial|nullable|integer',
         ]);
 
         if ($validated['mode'] === 'completed' && empty($validated['orders'])) {
@@ -41,6 +42,17 @@ class OrderHealthController extends Controller
             if ($validated['mode'] === 'safe') {
                 $result = $this->health->cleanupSafe();
                 $message = "Limpieza segura: {$result['orders']} pedidos vacios, {$result['items']} items y {$result['batches']} lotes eliminados.";
+            } elseif ($validated['mode'] === 'partial') {
+                $result = $this->health->cancelUnpaidItems(
+                    [(int) $validated['order_id']],
+                    (int) auth()->id()
+                );
+
+                $message = "Pedido actualizado: {$result['orders']} pedido(s), {$result['items']} item(s) impago(s) anulados.";
+
+                if (!empty($result['skipped'])) {
+                    $message .= ' Omitido: el pedido ya no cumple la condicion de pago parcial.';
+                }
             } else {
                 $result = $this->health->cleanupCompleted($validated['orders']);
                 $message = "Pedidos eliminados: {$result['deleted']}.";

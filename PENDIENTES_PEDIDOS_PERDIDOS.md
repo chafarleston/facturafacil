@@ -39,8 +39,8 @@
   - Quedan: **1296, 9526, 9880, 10148, 10305, 10463**.
   - Incluye el pedido **10148** (`P-20261102-0002`, Mesa 25) con 3 Pilsen grandes impagos.
   - Los 7 pedidos sin pago (3,4,6,7,8,9,10) y los 469 pedidos vacios ya fueron eliminados.
+  - La pagina **Salud de Pedidos** permite conservar el historial o anular solo los items impagos, manteniendo pagados/facturas.
   - No hay flujo de "reabrir y cobrar"; hoy `chargeOrder` rechaza `COMPLETED`.
-  - Decision pendiente: reabrir/cobrar, anular items o dejar como historico.
   - No ejecutar `limpiar_huerfanos.bat --apply` ni `limpiar_pedidos_vacios.bat --apply` de nuevo sin revisar.
 
 - [ ] **Cerrar el tema de permisos de rutas.**
@@ -51,12 +51,12 @@
 
 ### P1 - Datos historicos y numeracion
 
-- [ ] **Resolver los numeros de pedido duplicados.**
-  - La base tiene ~944 combinaciones empresa/numero repetidas; no hay indice unico.
-  - No agregar `unique` sin limpiar/deduplicar primero.
-  - Opciones: secuencia atomica por empresa/dia, usar el ID, o backfill controlado.
-  - Revisar `RestaurantOrder::generateOrderNumber()` y el formato `P-YYYYMMDD-####`.
-  - Kiosko usa `A-XXX` y su generador sigue sin bloqueo; tratarlo aparte.
+- [x] **Resolver los numeros de pedido duplicados.**
+  - Resuelto 2026-11-08: **921 grupos** y **8,835 pedidos renumerados** conservando el pedido activo/mas antiguo.
+  - `legacy_order_number` guarda el numero anterior; se agrego indice unico `(company_id, order_number)`.
+  - Generacion futura mediante `OrderNumberService` y `restaurant_order_sequences`.
+  - Backup: `storage/app/backup/pre-renumber-20261108-004929.sql`; auditoria: `order-number-map-20261108-004933.csv`.
+  - Proceso: `reparar_numeros_pedido.bat` / `php artisan orders:renumber-duplicates --dry-run|--apply`.
 
 - [ ] **Revisar los lotes de pedidos `COMPLETED`.**
   - El cobro puede ocurrir antes de que cocina termine; definir si el KDS debe seguir mostrando esos lotes.
@@ -72,7 +72,7 @@
 
 - [ ] **Kiosko/AutoPedido transaccional.**
   - `AutoPedidoController::confirmOrder()` crea pedido e items sin transaccion.
-  - `generateKioskoOrderNumber()` puede duplicar `A-XXX` con varias terminales.
+  - La numeracion `A-###` ya es atomica y global por empresa; falta hacer transaccional la creacion de pedido e items.
   - Validar caja, productos, cantidades y total; no dejar pedidos a medias.
   - Revisar stock y estados `PENDING_PAYMENT`/`SENT_TO_KITCHEN`.
 

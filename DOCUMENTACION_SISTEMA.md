@@ -2148,7 +2148,7 @@ Arquitectura:
 │    table_id=id_mesa_kiosko           │
 │    status=PENDING_PAYMENT            │
 │    order_type=kiosko                 │
-│    order_number=A-001 (por caja)     │
+│    order_number=A-### (global por empresa, secuencia atomica)│
 │  - Imprime ticket con N° y total     │
 └──────────┬───────────────────────────┘
            │
@@ -2203,11 +2203,11 @@ Rutas:
 - POST /restaurant/kiosk-send/{id}   → Enviar pedido a cocina (auth)
 - POST /restaurant/kiosk-charge/{id} → Cobrar pedido kiosko (auth)
 
-Numeración A-001:
+Numeración A-###:
 - Se genera con RestaurantOrder::generateKioskoOrderNumber($companyId)
-- La numeración está ligada a la caja abierta actual
+- La numeración está global por empresa (secuencia atomica)
 - Busca el último pedido kiosko creado después de la fecha_apertura de la caja
-- Al cerrar caja y abrir una nueva, la secuencia se reinicia a A-001
+- La secuencia no se reinicia al cerrar o abrir una caja
 - Si no hay caja abierta, lanza excepción (el controlador valida antes)
 
 Validación de caja abierta:
@@ -2246,7 +2246,7 @@ Modal de producto:
 
 Ticket de autopedido:
 - No usar emojis (🧾, ✅) en tickets ESC/POS. Las impresoras usan CP850
-  que distorsiona los emojis UTF-8. Usar texto plano como "A-001".
+  que distorsiona los emojis UTF-8. Usar texto plano como "A-###".
 
 Código del controlador (AutoPedidoController):
 ```php
@@ -2325,7 +2325,7 @@ Ticket de autopedido (PlainTextTicket::autoPedidoTicket):
          *** AUTO PEDIDO ***
            FacturaFácil
 
-             A-001
+             A-###
 
     2x Hamburguesa     S/ 24.00
     1x Papas Fritas    S/  8.00
@@ -4216,7 +4216,7 @@ Esta seccion resume los cambios que deben tenerse en cuenta al operar con varios
 
 - **Tema Chifa**: septima plantilla de la web (`modern`, `elegant`, `minimal`, `classic`, `dark`, `tropical`, `chifa`), con paleta rojo/dorado. La plantilla seleccionada se aplica tambien a autopedido, menu virtual, precuenta virtual y seccion de menu de la web.
 
-- **Salud de Pedidos**: `/order-health` (`OrderHealthController`, `RestaurantOrderHealthService`) para admin/cajero con `authorize_cancel_orders`. Muestra pedidos vacios, completados sin pago, pagos parciales, huerfanos y numeros duplicados; la limpieza crea backup, usa transaccion y protege facturas/items pagados/activos.
+- **Salud de Pedidos**: `/order-health` (`OrderHealthController`, `RestaurantOrderHealthService`) para admin/cajero con `authorize_cancel_orders`. Muestra pedidos vacios, completados sin pago, pagos parciales, huerfanos y numeros duplicados; la limpieza crea backup, usa transaccion y protege facturas/items pagados/activos. En pagos parciales permite conservar el historial o **anular solo los items impagos** (`cancelUnpaidItems`), conservando pagados/facturas y recalculando el total con los items restantes.
 - **Menu Virtual**: `/menu-virtual` (admin) y `/menuvirtual` (publico), 5 menus + 5 entradas configurables, QR y seccion en la web.
 - **Referencia de delivery**: `restaurant_orders.delivery_reference` en autopedido, cocina y pedidos kiosko.
 - **Lineas eliminadas**: solo cuentan `SENT`/`READY`/`DELIVERED`; los `PENDING` se eliminan fisicamente y no cuentan.
@@ -4227,9 +4227,18 @@ Esta seccion resume los cambios que deben tenerse en cuenta al operar con varios
 La hoja de ruta detallada, decisiones de negocio y pruebas de aceptación está en `PENDIENTES_PEDIDOS_PERDIDOS.md`.
 
 - Permisos de rutas del restaurante/caja (auditoria de roles).
-- Numeros de pedido historicos duplicados; no hay indice unico.
-- Numeracion/concurrencia especifica de kiosko/autopedido.
 - SUNAT e impresion siguen dentro de la transaccion de cobro (pueden alargar el bloqueo).
+
+### 32.6 Numeracion de pedidos (aplicado 2026-11-08)
+
+- `OrderNumberService` genera numeros con `restaurant_order_sequences` y bloqueo atomico.
+- Indice unico `(company_id, order_number)`.
+- Se renumeraron **8,835 pedidos** de **921 grupos** duplicados conservando el pedido activo/mas antiguo de cada grupo.
+- El numero anterior queda en `restaurant_orders.legacy_order_number`.
+- No se eliminaron pedidos, facturas, items pagados, mesas ni stock.
+- Backup: `storage/app/backup/pre-renumber-20261108-004929.sql`; mapeo CSV: `order-number-map-20261108-004933.csv`.
+- Esta seccion reemplaza la antigua numeracion kiosko `A-001` por caja; ahora `A-###` es global por empresa y usa secuencia atomica.
+- Comando: `php artisan orders:renumber-duplicates --db=facturafacil2 --dry-run|--apply`. La pagina `/order-health` solo diagnostica; no renumera.
 
 ---
 

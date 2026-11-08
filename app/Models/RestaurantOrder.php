@@ -33,6 +33,7 @@ class RestaurantOrder extends Model
         'table_id',
         'user_id',
         'order_number',
+        'legacy_order_number',
         'status',
         'order_type',
         'delivery_type',
@@ -173,26 +174,15 @@ class RestaurantOrder extends Model
 
     public static function generateOrderNumber(?int $companyId = null): string
     {
-        $companyId = $companyId ?? (auth()->check() ? auth()->user()->company_id : 1);
-        $date = now()->format('Ymd');
-        $lastOrder = self::where('company_id', $companyId)
-            ->where('order_number', 'like', 'P-%')
-            ->whereDate('created_at', today())
-            ->orderBy('id', 'desc')
-            ->first();
-        
-        $sequence = 1;
-        if ($lastOrder && preg_match('/-(\d+)$/', $lastOrder->order_number, $matches)) {
-            $sequence = intval($matches[1]) + 1;
-        }
-        
-        return 'P-' . $date . '-' . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+        $companyId = (int) ($companyId ?? (auth()->check() ? auth()->user()->company_id : 1));
+
+        return app(\App\Services\OrderNumberService::class)->nextWaiter($companyId);
     }
 
     public static function generateKioskoOrderNumber(?int $companyId = null): string
     {
-        $companyId = $companyId ?? (auth()->check() ? auth()->user()->company_id : 1);
-        
+        $companyId = (int) ($companyId ?? (auth()->check() ? auth()->user()->company_id : 1));
+
         $cashRegister = \App\Models\CashRegister::where('company_id', $companyId)
             ->where('estado', 'ABIERTA')
             ->first();
@@ -201,18 +191,7 @@ class RestaurantOrder extends Model
             throw new \RuntimeException('No hay caja abierta');
         }
 
-        $lastOrder = self::where('company_id', $companyId)
-            ->where('order_type', 'kiosko')
-            ->where('created_at', '>=', $cashRegister->fecha_apertura)
-            ->orderBy('id', 'desc')
-            ->first();
-        
-        $sequence = 1;
-        if ($lastOrder && preg_match('/^A-(\d+)$/', $lastOrder->order_number, $matches)) {
-            $sequence = intval($matches[1]) + 1;
-        }
-        
-        return 'A-' . str_pad($sequence, 3, '0', STR_PAD_LEFT);
+        return app(\App\Services\OrderNumberService::class)->nextKiosk($companyId);
     }
 
     public function statusLabel(): string

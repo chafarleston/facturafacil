@@ -495,6 +495,28 @@ Evita `php artisan db:seed` sin revisar. Puede resetear permisos o recrear cuent
 
 ---
 
+## 17. Numeracion de pedidos y base de datos
+
+- El `.env` local puede apuntar a `facturafacil`, mientras el cliente usa `facturafacil2`. Para comandos de reparacion indicar `--db=facturafacil2`.
+- Migraciones relacionadas:
+  - `2026_11_08_000001_add_order_number_legacy_and_sequences`
+  - `2026_11_08_000002_add_unique_order_number_to_restaurant_orders`
+- La segunda migracion **omite el indice unico** si aun existen duplicados; el comando de renumeracion lo agrega despues de limpiar.
+- Proceso recomendado:
+  1. `php artisan migrate --force`.
+  2. `php artisan orders:renumber-duplicates --db=facturafacil2 --dry-run`.
+  3. `php artisan down --retry=60`.
+  4. `php artisan orders:renumber-duplicates --db=facturafacil2 --apply`.
+  5. `php artisan up`.
+- Verificar:
+  - 0 grupos de `order_number` duplicados.
+  - Indice `restaurant_orders_company_number_unique`.
+  - Facturas, items pagados, pedidos activos y stock intactos.
+  - `legacy_order_number` conserva el numero anterior.
+- La pagina `/order-health` usa la base configurada en `.env`; si debe mostrar el cliente, cambiar `DB_DATABASE=facturafacil2` y limpiar la cache de configuracion.
+
+---
+
 ## 16. Concurrencia de restaurante (nov-2026)
 
 Si la actualizacion incluye cambios de restaurante:

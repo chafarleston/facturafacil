@@ -41,8 +41,11 @@
 - `actualizar_cliente.bat` — actualización segura del cliente (delega en `actualizar_cliente.ps1`): exige repo limpio/rama `main`, backup de BD + `.env` + certificados, `git pull --ff-only`, mantenimiento con `up` garantizado y log en `backups/`. Opciones: `-DryRun`, `-Database facturafacil2`, `-RunSeeder` (el seeder se omite por defecto para no resetear permisos).
 - `actualizar-gitnexus.bat` — refresca el índice GitNexus local (idempotente: `node .gitnexus/run.cjs analyze` o analiza desde cero si falta; CLI global v1.6.9, sin MCP)
 - `eliminar_ventas_productos.bat` — menú para eliminar ventas y/o productos (scripts `eliminar-ventas-productos/clean_ventas.php` y `clean_productos.php` vía tinker con `base_path`). `clean_ventas` además **pone el stock de todos los productos (normales y compuestos) en 0**. Crea backup MySQL previo en `eliminar-ventas-productos/backup/` y pide confirmación `SI`. DESTRUCTIVO.
-- **Salud de Pedidos** (`/order-health`, `order-health.index`): panel admin/cajero con permiso `authorize_cancel_orders` para diagnosticar pedidos vacios, completados sin pago, pagos parciales, items/lotes huerfanos y numeros duplicados. La limpieza crea backup, usa transaccion y protege facturas/items pagados/activos.
+- `reparar_numeros_pedido.bat` — renombra `order_number` duplicados: conserva el pedido activo/mas antiguo de cada grupo, renumera el resto, guarda el anterior en `legacy_order_number` y crea backup/CSV de auditoria. Usa `php artisan orders:renumber-duplicates --dry-run|--apply`; no borra pedidos.
+- **Salud de Pedidos** (`/order-health`, `order-health.index`): panel admin/cajero con permiso `authorize_cancel_orders` para diagnosticar pedidos vacios, completados sin pago, pagos parciales, items/lotes huerfanos y numeros duplicados. La limpieza crea backup, usa transaccion y protege facturas/items pagados/activos. En pagos parciales permite **anular solo los items impagos** (`cancelUnpaidItems`): conserva pagados/facturas y recalcula el total con los items restantes.
+- **Numeracion de pedidos (nov-2026)**: `OrderNumberService` usa `restaurant_order_sequences` con lock atomico para `P-YYYYMMDD-####` y `A-###`; indice unico `(company_id, order_number)`. Los duplicados historicos se renumeraron conservando el original en `legacy_order_number`.
 - `limpiar_pedidos_vacios.bat` — elimina pedidos `CANCELLED` sin items y los 7 `COMPLETED` sin pago (IDs 3,4,6,7,8,9,10); no borra pedidos con facturas/items pagados, activos, mesas ni stock. Hace simulacion, backup y pide confirmacion `SI`. DESTRUCTIVO.
+- **Base de datos local**: `.env` de esta copia apunta a `facturafacil`; para operar la base del cliente usar `--db=facturafacil2` en los comandos o cambiar `DB_DATABASE` y limpiar la cache de configuracion.
 - `limpiar_huerfanos.bat` — menú para limpiar **huérfanos** (script `scripts/limpiar_huerfanos.php`): cancela ítems de pedidos `CANCELLED` y lotes activos de `CANCELLED`/`COMPLETED`; los ítems impagos de pedidos `COMPLETED` solo se listan para reabrir/cobrar y **no se cancelan**; elimina ítems/lotes sin pedido. Hace simulación previa, permite `--db=` (ej. `facturafacil2`), crea backup MySQL en `backups/` y pide confirmación `SI`. No elimina pedidos. DESTRUCTIVO.
 - Tests: `php artisan test` (uses SQLite :memory:, no DB needed)
 
@@ -50,7 +53,7 @@
 - **Routes**: `web.php` ~222 lines. Public routes (no auth) at top, then `auth` group, then `admin` sub-group. Restaurant routes are in the `auth` group. Las rutas de caja están en `auth` (con `authorize` por permiso), no en el grupo admin.
 - **Kiosko**: Mesa virtual en `restaurant_tables` con `is_for_kiosko=true`. No aparece en floor plan ni gestión. Usa `scopeExcludeKiosko()`.
   - Flujo de 2 pasos: "Enviar a Cocina" → `SENT_TO_KITCHEN`, luego "Cobrar" → `COMPLETED`
-  - Numeración `A-001` ligada a caja abierta actual (resetea al cerrar/abrir caja)
+  - Numeración `A-###` global por empresa (secuencia atomica)
   - `confirmOrder()` valida que haya caja abierta antes de crear pedido
   - Botón "Eliminar" disponible; si ya fue enviado a cocina pide la contraseña del usuario autenticado con permiso `authorize_cancel_orders` (admin/cajero)
 - **SUNAT**: Boletas (03), NC/ND de boletas, and boleta voids go via **Resumen Diario** (SummaryService). Facturas (01) and their NC/ND go via **BillSender** (GreenterService). NV never sent to SUNAT.
@@ -128,7 +131,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **facturafacil** (4000 symbols, 7976 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **facturafacil** (4018 symbols, 8015 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

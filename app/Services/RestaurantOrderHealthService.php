@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Company;
 use App\Models\RestaurantKitchenBatch;
 use App\Models\RestaurantOrder;
 use App\Models\RestaurantOrderItem;
@@ -204,11 +205,83 @@ class RestaurantOrderHealthService
         ];
     }
 
+    public function cancelUnpaidItems(array $ids, int $userId): array
+    {
+        $ordersUpdated = 0;
+        $itemsCancelled = 0;
+        $skipped = [];
+
+        DB::transaction(function () use ($ids, $userId, &$ordersUpdated, &$itemsCancelled, &$skipped) {
+            $orders = RestaurantOrder::whereIn('id', $ids)
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($orders as $order) {
+                $hasPaidItems = $order->items()
+                    ->whereNotNull('paid_invoice_id')
+                    ->exists();
+
+                $unpaidItems = $order->items()
+                    ->whereNull('paid_invoice_id')
+                    ->where('kitchen_status', '!=', 'CANCELLED')
+                    ->lockForUpdate()
+                    ->get();
+
+                if ($order->status !== 'COMPLETED' || !$hasPaidItems || $unpaidItems->isEmpty()) {
+                    $skipped[] = $order->id;
+                    continue;
+                }
+
+                foreach ($unpaidItems as $item) {
+                    $batchId = $item->kitchen_batch_id;
+                    $item->cancelled_from = $item->kitchen_status;
+                    $item->cancelled_at = now();
+                    $item->cancelled_by = $userId;
+                    $item->kitchen_status = 'CANCELLED';
+                    $item->save();
+                    $itemsCancelled++;
+
+                    if ($batchId) {
+                        $batch = RestaurantKitchenBatch::find($batchId);
+
+                        if ($batch) {
+                            app(KitchenBatchService::class)->cancelBatchIfEmpty($batch);
+                        }
+                    }
+                }
+
+                $remainingItems = $order->items()
+                    ->where('kitchen_status', '!=', 'CANCELLED')
+                    ->get();
+
+                $total = round((float) $remainingItems->sum('total'), 2);
+                $company = Company::find($order->company_id);
+                $igvRate = $company ? $company->getIgvRate() : 0.18;
+                $subtotal = $total / (1 + $igvRate);
+                $igv = $total - $subtotal;
+
+                $order->update([
+                    'subtotal' => round($subtotal, 2),
+                    'igv' => round($igv, 2),
+                    'total' => $total,
+                ]);
+
+                $ordersUpdated++;
+            }
+        });
+
+        return [
+            'orders' => $ordersUpdated,
+            'items' => $itemsCancelled,
+            'skipped' => $skipped,
+        ];
+    }
+
     private function findMysqldump(): string
     {
         foreach ([
-            'C:\\laragon\\bin\\mysql\\mariadb-10.6.27-winx64\\bin\\mysqldump.exe',
             'C:\\laragon\\bin\\mysql\\mysql-8.0.30-winx64\\bin\\mysqldump.exe',
+            'C:\\laragon\\bin\\mysql\\mariadb-10.6.27-winx64\\bin\\mysqldump.exe',
         ] as $path) {
             if (is_file($path)) {
                 return $path;
