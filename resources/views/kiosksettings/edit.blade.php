@@ -26,14 +26,64 @@
                         <small class="text-muted">Nombre interno con el que se registran los pedidos del autoservicio.</small>
                     </div>
 
-                    <div class="form-group">
-                        <label for="delivery_type">Tipo de pedido del kiosko</label>
-                        <select name="delivery_type" id="delivery_type" class="form-control">
-                            <option value="local" {{ old('delivery_type', $deliveryType) === 'local' ? 'selected' : '' }}>Local (consumo en el local)</option>
-                            <option value="web" {{ old('delivery_type', $deliveryType) === 'web' ? 'selected' : '' }}>Delivery (Web)</option>
-                        </select>
-                        <small class="text-muted">Si es <b>Delivery</b>, el autopedido pedirá nombres, dirección y número de contacto antes de confirmar.</small>
+                    <hr>
+
+                    <h5 class="mb-3"><i class="fas fa-motorcycle"></i> Delivery</h5>
+
+                    <input type="hidden" name="delivery_enabled" value="0">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" name="delivery_enabled" id="delivery_enabled" value="1"
+                            {{ old('delivery_enabled', $deliveryEnabled) ? 'checked' : '' }}>
+                        <label class="form-check-label" for="delivery_enabled">Habilitar delivery en el Autopedido</label>
                     </div>
+                    <small class="form-text text-muted mb-3">
+                        Si está desactivado, el Autopedido solo permite recoger en el local. Si está activo, el cliente
+                        puede elegir recojo o delivery y pagar el costo de la zona seleccionada.
+                    </small>
+
+                    @error('zones')
+                        <div class="alert alert-danger py-2 mt-3">{{ $message }}</div>
+                    @enderror
+
+                    <div class="table-responsive mt-3">
+                        <table class="table table-sm table-bordered align-middle">
+                            <thead>
+                                <tr>
+                                    <th style="width: 90px;">Zona</th>
+                                    <th>Nombre</th>
+                                    <th style="width: 150px;">Costo (S/)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($deliveryZones as $index => $zone)
+                                    <tr>
+                                        <td class="text-center font-weight-bold">{{ $index + 1 }}</td>
+                                        <td>
+                                            <input type="text" name="zones[{{ $index }}][name]"
+                                                class="form-control form-control-sm @error('zones.'.$index.'.name') is-invalid @enderror"
+                                                maxlength="100" value="{{ old('zones.'.$index.'.name', $zone['name'] ?? '') }}"
+                                                placeholder="Ej. Centro">
+                                            @error('zones.'.$index.'.name')
+                                                <span class="invalid-feedback">{{ $message }}</span>
+                                            @enderror
+                                        </td>
+                                        <td>
+                                            <input type="number" name="zones[{{ $index }}][price]"
+                                                class="form-control form-control-sm @error('zones.'.$index.'.price') is-invalid @enderror"
+                                                min="0" max="9999.99" step="0.01"
+                                                value="{{ old('zones.'.$index.'.price', number_format((float) ($zone['price'] ?? 0), 2, '.', '')) }}">
+                                            @error('zones.'.$index.'.price')
+                                                <span class="invalid-feedback">{{ $message }}</span>
+                                            @enderror
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <small class="text-muted">
+                        Las zonas sin nombre no aparecen en el Autopedido. Los precios incluyen IGV.
+                    </small>
 
                     <hr>
 

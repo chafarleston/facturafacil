@@ -52,6 +52,8 @@
 ## Architecture notes
 - **Routes**: `web.php` ~222 lines. Public routes (no auth) at top, then `auth` group, then `admin` sub-group. Restaurant routes are in the `auth` group. Las rutas de caja están en `auth` (con `authorize` por permiso), no en el grupo admin.
 - **Kiosko**: Mesa virtual en `restaurant_tables` con `is_for_kiosko=true`. No aparece en floor plan ni gestión. Usa `scopeExcludeKiosko()`.
+
+- **Autopedido delivery (nov-2026)**: el carrito permite **Recoger en el local** (envío 0) o **Delivery** si está habilitado en Configuración Kiosko. Se guardan 9 zonas editables (nombre + costo con IGV) en `settings` (`kiosk_delivery_enabled`, `kiosk_delivery_zones`); zonas sin nombre no se muestran. El pedido guarda `delivery_zone` y `delivery_fee` (migración `2026_11_08_000003`) y crea un ítem `Delivery - Zona` con `product_id=null`, `kds_destination='delivery'` y `kitchen_status=DELIVERED` para sumar en totales, caja y comprobante sin pasar por KDS/cocina. `restaurant_order_items.product_id` ahora es nullable (migración `2026_11_08_000004`). El total y el precio de la zona siempre se recalculan en el servidor; el frontend no puede enviar el costo. `updateOrderTotals`/`createInvoiceFromItems` no se modificaron: el ítem de delivery entra por la lógica existente de ítems.
   - Flujo de 2 pasos: "Enviar a Cocina" → `SENT_TO_KITCHEN`, luego "Cobrar" → `COMPLETED`
   - Numeración `A-###` global por empresa (secuencia atomica)
   - `confirmOrder()` valida que haya caja abierta antes de crear pedido
@@ -131,7 +133,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **facturafacil** (4018 symbols, 8015 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **facturafacil** (4051 symbols, 8075 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

@@ -145,6 +145,9 @@ class PlainTextTicket
         $t = new self($format, $width);
         $t->buildKitchenHeader($order, $dest);
         if (($order->delivery_type ?? 'local') === 'web') {
+            if ($order->delivery_zone) {
+                $t->textWrapped('Zona: ' . $order->delivery_zone);
+            }
             $t->textWrapped('Cliente: ' . ($order->customer_name ?? ''));
             $t->textWrapped('Direccion: ' . ($order->delivery_address ?? ''));
             if ($order->delivery_reference) {
@@ -350,6 +353,9 @@ class PlainTextTicket
         if (($order->delivery_type ?? 'local') === 'web') {
             $t->blank();
             $t->center('*** DELIVERY ***', '*');
+            if ($order->delivery_zone) {
+                $t->textWrapped('Zona: ' . $order->delivery_zone);
+            }
             $t->textWrapped('Cliente: ' . ($order->customer_name ?? ''));
             $t->textWrapped('Direccion: ' . ($order->delivery_address ?? ''));
             if ($order->delivery_reference) {
@@ -358,11 +364,31 @@ class PlainTextTicket
             $t->textWrapped('Contacto: ' . ($order->contact_number ?? ''));
         }
 
+        $items = collect($order->items);
+        $auxiliaryNames = \App\Models\AuxiliaryItem::namesByIds(
+            $items->flatMap(fn ($item) => is_array($item->auxiliary_items) ? $item->auxiliary_items : [])->all()
+        );
+
         $t->separator();
-        foreach ($order->items as $item) {
+        foreach ($items as $item) {
+            if ($item->kds_destination === 'delivery') {
+                continue;
+            }
             $t->itemLine(number_format($item->quantity, 0), $item->product_name, 'S/ ' . number_format($item->total, 2));
+
+            $names = collect($item->auxiliary_items ?? [])
+                ->map(fn ($id) => $auxiliaryNames[$id] ?? null)
+                ->filter()
+                ->values();
+
+            if ($names->isNotEmpty()) {
+                $t->text('    + ' . $names->implode(', '));
+            }
         }
         $t->separator();
+        if ($order->delivery_fee > 0) {
+            $t->twoColumns('Envio:', 'S/ ' . number_format($order->delivery_fee, 2));
+        }
         $t->twoColumns('TOTAL:', 'S/ ' . number_format($order->total, 2));
         $t->blank();
         $t->center('Pase a Caja para pagar');

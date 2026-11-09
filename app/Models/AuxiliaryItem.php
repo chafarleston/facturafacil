@@ -22,4 +22,20 @@ class AuxiliaryItem extends Model
     {
         return $query->where('status', 'ACTIVO');
     }
+
+    public static function namesByIds(array $ids)
+    {
+        $ids = collect($ids)
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($ids)) {
+            return collect();
+        }
+
+        return static::whereIn('id', $ids)->pluck('name', 'id');
+    }
 }

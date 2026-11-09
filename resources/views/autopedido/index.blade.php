@@ -485,6 +485,22 @@
         .cart-total span { color: var(--muted); font-size: 13px; }
         .cart-total strong { font-size: 22px; }
         .cart-hint { color: var(--muted); font-size: 11px; margin-bottom: 10px; }
+        .delivery-choice { display: grid; gap: 8px; margin-bottom: 12px; }
+        .delivery-choice-option { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); cursor: pointer; }
+        .delivery-choice-option:has(input:checked) { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--surface)); }
+        .delivery-choice-option input { accent-color: var(--primary); flex: 0 0 auto; }
+        .delivery-choice-icon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; background: var(--surface); color: var(--primary); flex: 0 0 auto; }
+        .delivery-choice-option strong { display: block; font-size: 13px; }
+        .delivery-choice-option small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+        .delivery-zone-row { margin-bottom: 12px; }
+        .delivery-zone-row label { display: block; color: var(--muted); font-size: 12px; font-weight: 600; margin-bottom: 5px; }
+        .delivery-zone-select { width: 100%; padding: 11px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); color: var(--text); font-size: 14px; outline: none; }
+        .delivery-zone-select:focus { border-color: var(--primary); }
+        .cart-breakdown { color: var(--muted); font-size: 12px; margin: 8px 0; }
+        .cart-breakdown-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 0; }
+        .cart-breakdown-row strong { color: var(--text); font-weight: 600; }
+        .delivery-summary { margin: 12px 0; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); font-size: 13px; }
+        .delivery-summary strong { color: var(--primary); }
 
         .btn-confirm, .btn-primary, .btn-ghost {
             display: inline-flex;
@@ -658,11 +674,11 @@
         <section class="hero">
             <div class="hero-copy">
                 <span class="hero-kicker">
-                    <i class="fas {{ $deliveryType === 'web' ? 'fa-motorcycle' : 'fa-utensils' }}"></i>
-                    {{ $deliveryType === 'web' ? 'Delivery' : 'Pide desde tu mesa' }}
+                    <i class="fas {{ $deliveryEnabled ? 'fa-motorcycle' : 'fa-utensils' }}"></i>
+                    {{ $deliveryEnabled ? 'Recoge o recibe tu pedido' : 'Pide desde tu mesa' }}
                 </span>
                 <h1>¿Qué vas a pedir hoy?</h1>
-                <p>Explora el menú, personaliza tu pedido y confirma. {{ $deliveryType === 'web' ? 'El pago se realiza vía Plin o Yape.' : 'El pago se realiza en caja.' }}</p>
+                <p>Explora el menú, personaliza tu pedido y confirma. {{ $deliveryEnabled ? 'Elige recoger en el local o delivery.' : 'El pago se realiza en caja.' }}</p>
             </div>
             <div class="hero-mark" aria-hidden="true"><i class="fas fa-bowl-food"></i></div>
         </section>
@@ -758,11 +774,59 @@
             <div id="cartItems" class="cart-items"></div>
         </div>
         <div class="cart-panel-footer">
+            <div class="delivery-choice">
+                <label class="delivery-choice-option">
+                    <input type="radio" name="fulfillment" value="local" checked onchange="setFulfillment('local')">
+                    <span class="delivery-choice-icon"><i class="fas fa-store"></i></span>
+                    <span>
+                        <strong>Recoger en el local</strong>
+                        <small>Sin costo de envío</small>
+                    </span>
+                </label>
+                @if($deliveryEnabled && count($deliveryZones) > 0)
+                    <label class="delivery-choice-option">
+                        <input type="radio" name="fulfillment" value="delivery" onchange="setFulfillment('delivery')">
+                        <span class="delivery-choice-icon"><i class="fas fa-motorcycle"></i></span>
+                        <span>
+                            <strong>Delivery</strong>
+                            <small>Selecciona tu zona y paga el envío</small>
+                        </span>
+                    </label>
+                @endif
+            </div>
+
+            @if($deliveryEnabled && count($deliveryZones) > 0)
+                <div class="delivery-zone-row" id="deliveryZoneRow" style="display:none;">
+                    <label for="cartDeliveryZone">Zona de delivery</label>
+                    <select id="cartDeliveryZone" class="delivery-zone-select" onchange="onDeliveryZoneChange()">
+                        <option value="">Selecciona una zona</option>
+                        @foreach($deliveryZones as $zone)
+                            <option value="{{ $zone['id'] }}"
+                                data-name="{{ $zone['name'] }}"
+                                data-price="{{ number_format((float) $zone['price'], 2, '.', '') }}">
+                                {{ $zone['name'] }} — S/ {{ number_format((float) $zone['price'], 2) }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
+
+            <div class="cart-breakdown">
+                <div class="cart-breakdown-row">
+                    <span>Productos</span>
+                    <strong id="cartSubtotal">S/ 0.00</strong>
+                </div>
+                <div class="cart-breakdown-row" id="cartDeliveryFeeRow" style="display:none;">
+                    <span>Envío</span>
+                    <strong id="cartDeliveryFee">S/ 0.00</strong>
+                </div>
+            </div>
+
             <div class="cart-total">
                 <span>Total</span>
                 <strong id="cartPanelTotal">S/ 0.00</strong>
             </div>
-            <p class="cart-hint"><i class="fas fa-info-circle"></i> {{ $deliveryType === 'web' ? 'El pago se realiza vía Plin o Yape.' : 'El pago se realiza en caja.' }}</p>
+            <p class="cart-hint" id="cartPaymentHint"><i class="fas fa-info-circle"></i> El pago se realiza en caja.</p>
             <button type="button" class="btn-confirm" id="btnConfirm" disabled onclick="confirmOrder()">
                 <i class="fas fa-check"></i> Confirmar pedido
             </button>
@@ -805,6 +869,7 @@
                 <h3><i class="fas fa-motorcycle"></i> Datos de delivery</h3>
                 <p>Completa tus datos para el envío.</p>
             </div>
+            <div class="delivery-summary" id="deliveryModalSummary"></div>
             <label class="delivery-label" for="deliveryName">Nombres y apellidos *</label>
             <input type="text" id="deliveryName" class="delivery-input" placeholder="Nombres y apellidos" onfocus="focusDeliveryInput(this)">
             <label class="delivery-label" for="deliveryAddress">Dirección de delivery *</label>
@@ -894,7 +959,9 @@
         const companyId = {{ $companyId }};
         const autopedidoAuxiliaryItems = @json($auxiliaryItems);
         const auxMap = new Map((autopedidoAuxiliaryItems || []).map(item => [Number(item.id), item.name]));
-        const kioskDeliveryType = @json($deliveryType);
+        const deliveryEnabled = @json($deliveryEnabled);
+        const deliveryZones = @json($deliveryZones);
+        let fulfillment = 'local';
 
         function escapeHtml(value) {
             return String(value ?? '').replace(/[&<>"']/g, function (character) {
@@ -1013,17 +1080,77 @@
             updateCart();
         }
 
+        function selectedDeliveryZone() {
+            const select = document.getElementById('cartDeliveryZone');
+            if (!select || !select.value) return null;
+
+            const option = select.options[select.selectedIndex];
+            return {
+                id: Number(select.value),
+                name: option?.dataset.name || '',
+                price: parseFloat(option?.dataset.price || '0') || 0
+            };
+        }
+
+        function currentDeliveryFee() {
+            if (fulfillment !== 'delivery') return 0;
+            return selectedDeliveryZone()?.price || 0;
+        }
+
+        function setFulfillment(mode) {
+            if (mode === 'delivery' && (!deliveryEnabled || deliveryZones.length === 0)) {
+                return;
+            }
+
+            fulfillment = mode;
+
+            const zoneRow = document.getElementById('deliveryZoneRow');
+            if (zoneRow) {
+                zoneRow.style.display = mode === 'delivery' ? 'block' : 'none';
+            }
+
+            const hint = document.getElementById('cartPaymentHint');
+            if (hint) {
+                hint.innerHTML = mode === 'delivery'
+                    ? '<i class="fas fa-info-circle"></i> El pago se realiza vía Plin o Yape.'
+                    : '<i class="fas fa-info-circle"></i> El pago se realiza en caja.';
+            }
+
+            updateCart();
+        }
+
+        function onDeliveryZoneChange() {
+            updateCart();
+        }
+
         function updateCart() {
             const count = cart.reduce((sum, item) => sum + item.quantity, 0);
-            const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+            const itemsTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+            const fee = currentDeliveryFee();
+            const total = itemsTotal + fee;
             const totalText = 'S/ ' + total.toFixed(2);
+            const zone = selectedDeliveryZone();
 
             document.getElementById('cartCount').textContent = count;
             document.getElementById('cartHeaderCount').textContent = count;
             document.getElementById('cartTotal').textContent = totalText;
             document.getElementById('cartPanelTotal').textContent = totalText;
+            document.getElementById('cartSubtotal').textContent = 'S/ ' + itemsTotal.toFixed(2);
             document.getElementById('cartPanelCount').textContent = count + (count === 1 ? ' producto' : ' productos');
-            document.getElementById('btnConfirm').disabled = count === 0;
+
+            const feeRow = document.getElementById('cartDeliveryFeeRow');
+            if (feeRow) {
+                feeRow.style.display = fulfillment === 'delivery' ? 'flex' : 'none';
+            }
+            document.getElementById('cartDeliveryFee').textContent = 'S/ ' + fee.toFixed(2);
+
+            const zoneRow = document.getElementById('deliveryZoneRow');
+            if (zoneRow) {
+                zoneRow.style.display = fulfillment === 'delivery' ? 'block' : 'none';
+            }
+
+            document.getElementById('btnConfirm').disabled = count === 0
+                || (fulfillment === 'delivery' && !zone);
 
             const container = document.getElementById('cartItems');
             if (cart.length === 0) {
@@ -1202,14 +1329,29 @@
         function confirmOrder() {
             if (cart.length === 0) return;
 
-            if (kioskDeliveryType === 'web') {
+            if (fulfillment === 'delivery') {
+                const zone = selectedDeliveryZone();
+
+                if (!deliveryEnabled || !zone) {
+                    alert('Selecciona una zona de delivery.');
+                    return;
+                }
+
+                const summary = document.getElementById('deliveryModalSummary');
+                if (summary) {
+                    summary.innerHTML = `
+                        <div><strong>Zona:</strong> ${escapeHtml(zone.name)}</div>
+                        <div><strong>Envío:</strong> S/ ${zone.price.toFixed(2)}</div>
+                    `;
+                }
+
                 document.getElementById('deliveryError').style.display = 'none';
                 document.getElementById('deliveryModal').classList.add('show');
                 document.body.classList.add('modal-open');
                 return;
             }
 
-            sendOrder({});
+            sendOrder({ delivery_type: 'local' });
         }
 
         function closeDeliveryModal(event) {
@@ -1226,6 +1368,13 @@
             const reference = document.getElementById('deliveryReference').value.trim();
             const phone = document.getElementById('deliveryPhone').value.trim();
             const error = document.getElementById('deliveryError');
+            const zone = selectedDeliveryZone();
+
+            if (!zone) {
+                error.textContent = 'Selecciona una zona de delivery.';
+                error.style.display = 'block';
+                return;
+            }
 
             if (!name || !address || !phone) {
                 error.textContent = 'Complete todos los campos para el delivery.';
@@ -1235,6 +1384,8 @@
 
             error.style.display = 'none';
             sendOrder({
+                delivery_type: 'web',
+                delivery_zone: zone.id,
                 customer_name: name,
                 delivery_address: address,
                 delivery_reference: reference || null,
@@ -1244,8 +1395,8 @@
 
         function resetConfirmButton() {
             const button = document.getElementById('btnConfirm');
-            button.disabled = false;
             button.innerHTML = '<i class="fas fa-check"></i> Confirmar pedido';
+            updateCart();
         }
 
         function sendOrder(deliveryData) {

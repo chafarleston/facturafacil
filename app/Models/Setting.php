@@ -87,6 +87,79 @@ class Setting extends Model
         static::set('kiosk_' . $key, $value);
     }
 
+    private const KIOSK_DELIVERY_ZONES_DEFAULT = [
+        ['name' => 'Centro', 'price' => 5.00],
+        ['name' => 'Jardín y Sta Rosa', 'price' => 7.00],
+        ['name' => '', 'price' => 0.00],
+        ['name' => '', 'price' => 0.00],
+        ['name' => '', 'price' => 0.00],
+        ['name' => '', 'price' => 0.00],
+        ['name' => '', 'price' => 0.00],
+        ['name' => '', 'price' => 0.00],
+        ['name' => '', 'price' => 0.00],
+    ];
+
+    public static function kioskDeliveryEnabled(): bool
+    {
+        $enabled = static::kiosk('delivery_enabled');
+
+        if ($enabled !== null) {
+            return (string) $enabled === '1';
+        }
+
+        // Compatibilidad: antes el modo delivery se guardaba en delivery_type.
+        return static::kiosk('delivery_type', 'local') === 'web';
+    }
+
+    public static function setKioskDeliveryEnabled(bool $enabled): void
+    {
+        static::setKiosk('delivery_enabled', $enabled ? '1' : '0');
+    }
+
+    public static function kioskDeliveryZones(): array
+    {
+        $raw = static::kiosk('delivery_zones');
+
+        if ($raw === null || $raw === '') {
+            return static::normalizeKioskDeliveryZones(self::KIOSK_DELIVERY_ZONES_DEFAULT);
+        }
+
+        $zones = json_decode((string) $raw, true);
+
+        if (!is_array($zones)) {
+            return static::normalizeKioskDeliveryZones(self::KIOSK_DELIVERY_ZONES_DEFAULT);
+        }
+
+        return static::normalizeKioskDeliveryZones($zones);
+    }
+
+    public static function setKioskDeliveryZones(array $zones): void
+    {
+        static::setKiosk('delivery_zones', json_encode(
+            static::normalizeKioskDeliveryZones($zones),
+            JSON_UNESCAPED_UNICODE
+        ));
+    }
+
+    public static function normalizeKioskDeliveryZones(array $zones): array
+    {
+        $normalized = [];
+
+        for ($i = 0; $i < 9; $i++) {
+            $zone = is_array($zones[$i] ?? null) ? $zones[$i] : [];
+            $name = trim((string) ($zone['name'] ?? ''));
+            $price = round(max(0, (float) ($zone['price'] ?? 0)), 2);
+
+            $normalized[] = [
+                'id' => $i + 1,
+                'name' => $name,
+                'price' => $price,
+            ];
+        }
+
+        return $normalized;
+    }
+
     public static function isVirtualPrebillEnabled(): bool
     {
         return static::get('precuenta_virtual_enabled', '0') === '1';

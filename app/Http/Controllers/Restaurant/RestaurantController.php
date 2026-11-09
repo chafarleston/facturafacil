@@ -954,7 +954,10 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             ], 400);
         }
         
-        $hasKitchenItems = $order->items->whereIn('kitchen_status', ['SENT', 'READY', 'DELIVERED'])->isNotEmpty();
+        $kitchenItems = $order->items
+            ->filter(fn ($item) => $item->kds_destination !== 'delivery')
+            ->whereIn('kitchen_status', ['SENT', 'READY', 'DELIVERED']);
+        $hasKitchenItems = $kitchenItems->isNotEmpty();
 
         $company = Company::find($order->company_id);
         $isPrintMode = $company && ($company->order_mode ?? 'kds') === 'print';
@@ -980,7 +983,6 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
         if ($isPrintMode && $hasKitchenItems) {
             try {
                 $printService = app(PrintService::class);
-                $kitchenItems = $order->items->whereIn('kitchen_status', ['SENT', 'READY', 'DELIVERED']);
                 $printService->printCancelNotificationGrouped($order, $kitchenItems);
             } catch (\Exception $e) {
                 \Log::error('Cancel print error: ' . $e->getMessage());
@@ -2023,7 +2025,15 @@ private function updateOrderTotals(RestaurantOrder $order)
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return view('restaurant.kiosk-orders', compact('orders', 'companyId'));
+        $auxiliaryIds = $orders->flatMap(function ($order) {
+            return $order->items->flatMap(function ($item) {
+                return is_array($item->auxiliary_items) ? $item->auxiliary_items : [];
+            });
+        })->filter()->unique()->values();
+
+        $auxiliaryNames = \App\Models\AuxiliaryItem::namesByIds($auxiliaryIds->all());
+
+        return view('restaurant.kiosk-orders', compact('orders', 'companyId', 'auxiliaryNames'));
     }
 
     public function kioskSendToKitchen($orderId)

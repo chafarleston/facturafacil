@@ -21,7 +21,8 @@ class KioskSettingController extends Controller
 
         return view('kiosksettings.edit', [
             'kioskTable' => $kioskTable,
-            'deliveryType' => Setting::kiosk('delivery_type', 'local'),
+            'deliveryEnabled' => Setting::kioskDeliveryEnabled(),
+            'deliveryZones' => Setting::kioskDeliveryZones(),
             'showProductImages' => Setting::showProductImages('kiosko'),
             'showCategoryImages' => Setting::showCategoryImages('kiosko'),
             'categoriesOnly' => Setting::categoriesOnly('kiosko'),
@@ -37,11 +38,23 @@ class KioskSettingController extends Controller
 
         $validated = $request->validate([
             'kiosk_table_name' => 'required|string|max:100',
-            'delivery_type' => 'required|in:local,web',
+            'delivery_enabled' => 'nullable|boolean',
+            'zones' => 'required|array|size:9',
+            'zones.*.name' => 'nullable|string|max:100',
+            'zones.*.price' => 'nullable|numeric|min:0|max:9999.99',
             'success_ticket_text' => 'required|string|max:200',
             'success_pay_text' => 'required|string|max:200',
             'success_prepare_text' => 'required|string|max:200',
         ]);
+
+        $deliveryZones = Setting::normalizeKioskDeliveryZones($validated['zones']);
+        $deliveryEnabled = $request->boolean('delivery_enabled');
+
+        if ($deliveryEnabled && !collect($deliveryZones)->contains(fn ($zone) => $zone['name'] !== '')) {
+            return back()->withInput()->withErrors([
+                'zones' => 'Configure al menos una zona de delivery antes de habilitarlo.',
+            ]);
+        }
 
         $company = Company::getMainCompany();
         $kioskTable = RestaurantTable::where('company_id', $company->id)
@@ -70,7 +83,8 @@ class KioskSettingController extends Controller
         Setting::setShowProductImages('kiosko', $request->boolean('img_products_kiosko'));
         Setting::setShowCategoryImages('kiosko', $request->boolean('img_categories_kiosko'));
         Setting::setCategoriesOnly('kiosko', $request->boolean('catonly_kiosko'));
-        Setting::setKiosk('delivery_type', $validated['delivery_type']);
+        Setting::setKioskDeliveryEnabled($deliveryEnabled);
+        Setting::setKioskDeliveryZones($deliveryZones);
         Setting::setKiosk('success_ticket_text', $validated['success_ticket_text']);
         Setting::setKiosk('success_pay_text', $validated['success_pay_text']);
         Setting::setKiosk('success_prepare_text', $validated['success_prepare_text']);

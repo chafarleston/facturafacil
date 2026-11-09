@@ -268,22 +268,48 @@
 
         <div class="items">
             @foreach($order->items as $item)
+                @if($item->kds_destination === 'delivery')
+                    @continue
+                @endif
                 <div class="item-row">
                     <span>{{ $item->quantity }}x {{ $item->product_name }}</span>
                     <span>S/ {{ number_format($item->total, 2) }}</span>
                 </div>
+                @php
+                    $auxNames = collect($item->auxiliary_items ?? [])
+                        ->map(fn ($id) => $auxiliaryNames[$id] ?? null)
+                        ->filter();
+                @endphp
+                @if($auxNames->isNotEmpty())
+                    <div class="item-row" style="color: var(--muted); font-size: 12px; margin-top: -4px;">
+                        <span>+ {{ $auxNames->implode(', ') }}</span>
+                        <span></span>
+                    </div>
+                @endif
             @endforeach
+            @if($order->delivery_fee > 0)
+                <div class="item-row">
+                    <span>Envío ({{ $order->delivery_zone }})</span>
+                    <span>S/ {{ number_format($order->delivery_fee, 2) }}</span>
+                </div>
+            @endif
         </div>
 
         @if($order->delivery_type === 'web')
             <div class="delivery">
                 <div class="delivery-title"><i class="fas fa-motorcycle"></i> Delivery</div>
+                <div><strong>Zona:</strong> {{ $order->delivery_zone }}</div>
                 <div><strong>Cliente:</strong> {{ $order->customer_name }}</div>
                 <div><strong>Dirección:</strong> {{ $order->delivery_address }}</div>
                 @if($order->delivery_reference)
                     <div><strong>Referencia:</strong> {{ $order->delivery_reference }}</div>
                 @endif
                 <div><strong>Contacto:</strong> {{ $order->contact_number }}</div>
+            </div>
+        @else
+            <div class="delivery">
+                <div class="delivery-title"><i class="fas fa-store"></i> Recoger en el local</div>
+                <div>Sin costo de envío.</div>
             </div>
         @endif
 

@@ -26,8 +26,22 @@
                     <td><strong>{{ $order->order_number }}</strong></td>
                     <td>
                         @foreach($order->items as $item)
-                        <div>{{ $item->quantity }}x {{ $item->product_name }} - S/ {{ number_format($item->total, 2) }}</div>
+                            @if($item->kds_destination === 'delivery')
+                                @continue
+                            @endif
+                            <div>{{ $item->quantity }}x {{ $item->product_name }} - S/ {{ number_format($item->total, 2) }}</div>
+                            @php
+                                $auxNames = collect($item->auxiliary_items ?? [])
+                                    ->map(fn ($id) => $auxiliaryNames[$id] ?? null)
+                                    ->filter();
+                            @endphp
+                            @if($auxNames->isNotEmpty())
+                                <div class="text-muted" style="font-size:12px; margin-left:12px;">+ {{ $auxNames->implode(', ') }}</div>
+                            @endif
                         @endforeach
+                        @if($order->delivery_fee > 0)
+                            <div class="text-info">Delivery {{ $order->delivery_zone }} - S/ {{ number_format($order->delivery_fee, 2) }}</div>
+                        @endif
                     </td>
                     <td><strong class="text-success">S/ {{ number_format($order->total, 2) }}</strong></td>
                     <td>
@@ -48,6 +62,7 @@
                         @if($order->delivery_type === 'web')
                             <span class="badge badge-info">Delivery</span>
                             <div style="font-size:12px; line-height:1.4; margin-top:4px;">
+                                <div><strong>{{ $order->delivery_zone }}</strong></div>
                                 <div><strong>{{ $order->customer_name }}</strong></div>
                                 <div>{{ $order->delivery_address }}</div>
                                 @if($order->delivery_reference)

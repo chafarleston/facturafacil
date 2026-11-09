@@ -4240,6 +4240,15 @@ La hoja de ruta detallada, decisiones de negocio y pruebas de aceptación está 
 - Esta seccion reemplaza la antigua numeracion kiosko `A-001` por caja; ahora `A-###` es global por empresa y usa secuencia atomica.
 - Comando: `php artisan orders:renumber-duplicates --db=facturafacil2 --dry-run|--apply`. La pagina `/order-health` solo diagnostica; no renumera.
 
+### 32.7 Delivery en Autopedido (aplicado 2026-11-08)
+
+- El carrito permite **Recoger en el local** (envío S/ 0.00) o **Delivery** cuando el toggle de Configuración Kiosko está activo.
+- Configuración Kiosko (`/kiosk-settings`) administra **9 zonas editables** con nombre y costo; las zonas sin nombre no se muestran. Valores iniciales: Zona 1 Centro S/ 5.00 y Zona 2 Jardín y Sta Rosa S/ 7.00; las demás quedan vacías.
+- `settings`: `kiosk_delivery_enabled` (si no existe, se toma el antiguo `kiosk_delivery_type=web`) y `kiosk_delivery_zones` (JSON).
+- `restaurant_orders`: `delivery_zone`, `delivery_fee`; `restaurant_order_items.product_id` es nullable para el ítem de delivery.
+- El ítem `Delivery - Zona` usa `kds_destination='delivery'` y `kitchen_status=DELIVERED`; no se imprime en cocina/KDS, pero suma en pedido, caja, NV/boleta/factura y reportes.
+- El backend valida la zona y toma el precio guardado; ignora cualquier costo enviado por el navegador.
+
 ---
 
 ## Anexo: Códigos de Error SUNAT

@@ -12,6 +12,7 @@ use App\Services\PrintService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class AutoPedidoController extends Controller
 {
@@ -84,31 +85,69 @@ class AutoPedidoController extends Controller
         $showProductImages = \App\Models\Setting::showProductImages('kiosko');
         $showCategoryImages = \App\Models\Setting::showCategoryImages('kiosko');
         $categoriesOnly = \App\Models\Setting::categoriesOnly('kiosko');
-        $deliveryType = \App\Models\Setting::kiosk('delivery_type', 'local');
+        $deliveryEnabled = \App\Models\Setting::kioskDeliveryEnabled();
+        $deliveryZones = array_values(array_filter(
+            \App\Models\Setting::kioskDeliveryZones(),
+            fn ($zone) => trim((string) ($zone['name'] ?? '')) !== ''
+        ));
 
         $web = $this->branding($company);
 
-        return view('autopedido.index', compact('products', 'categories', 'companyId', 'showProductImages', 'showCategoryImages', 'categoriesOnly', 'deliveryType', 'auxiliaryItems', 'company', 'web'));
+        return view('autopedido.index', compact('products', 'categories', 'companyId', 'showProductImages', 'showCategoryImages', 'categoriesOnly', 'deliveryEnabled', 'deliveryZones', 'auxiliaryItems', 'company', 'web'));
     }
 
     public function confirmOrder(Request $request)
     {
-        $deliveryType = \App\Models\Setting::kiosk('delivery_type', 'local');
-        $isWeb = $deliveryType === 'web';
-
         $validated = $request->validate([
             'items' => 'required|json',
-            'customer_name' => $isWeb ? 'required|string|max:150' : 'nullable|string|max:150',
-            'delivery_address' => $isWeb ? 'required|string|max:250' : 'nullable|string|max:250',
+            'delivery_type' => 'required|in:local,web',
+            'delivery_zone' => 'nullable|integer|min:1|max:9',
+            'customer_name' => 'nullable|string|max:150',
+            'delivery_address' => 'nullable|string|max:250',
             'delivery_reference' => 'nullable|string|max:250',
-            'contact_number' => $isWeb ? 'required|string|max:50' : 'nullable|string|max:50',
+            'contact_number' => 'nullable|string|max:50',
         ]);
 
+        $isWeb = $validated['delivery_type'] === 'web';
+
+        if ($isWeb) {
+            $request->validate([
+                'delivery_zone' => 'required|integer|min:1|max:9',
+                'customer_name' => 'required|string|max:150',
+                'delivery_address' => 'required|string|max:250',
+                'contact_number' => 'required|string|max:50',
+            ]);
+
+            if (!\App\Models\Setting::kioskDeliveryEnabled()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El delivery no está habilitado.',
+                ], 422);
+            }
+        }
+
         $companyId = Company::getMainCompany()->id;
-        $items = json_decode($request->items, true);
+        $items = json_decode($validated['items'], true);
 
         if (empty($items)) {
             return response()->json(['success' => false, 'message' => 'Carrito vacío']);
+        }
+
+        $deliveryZone = null;
+        $deliveryFee = 0.0;
+
+        if ($isWeb) {
+            $zones = \App\Models\Setting::kioskDeliveryZones();
+            $deliveryZone = $zones[(int) $validated['delivery_zone'] - 1] ?? null;
+
+            if (!$deliveryZone || trim((string) ($deliveryZone['name'] ?? '')) === '') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La zona de delivery seleccionada no es válida.',
+                ], 422);
+            }
+
+            $deliveryFee = round((float) ($deliveryZone['price'] ?? 0), 2);
         }
 
         $cashRegister = \App\Models\CashRegister::where('company_id', $companyId)
@@ -127,44 +166,75 @@ class AutoPedidoController extends Controller
             return response()->json(['success' => false, 'message' => 'Mesa Kiosko no configurada']);
         }
 
-        $order = RestaurantOrder::create([
-            'company_id' => $companyId,
-            'table_id' => $kioskoTable->id,
-            'user_id' => null,
-            'order_number' => RestaurantOrder::generateKioskoOrderNumber($companyId),
-            'status' => 'PENDING_PAYMENT',
-            'order_type' => 'kiosko',
-            'delivery_type' => $deliveryType,
-            'customer_name' => $isWeb ? ($validated['customer_name'] ?? null) : null,
-            'delivery_address' => $isWeb ? ($validated['delivery_address'] ?? null) : null,
-            'delivery_reference' => $isWeb ? (($validated['delivery_reference'] ?? null) ?: null) : null,
-            'contact_number' => $isWeb ? ($validated['contact_number'] ?? null) : null,
-        ]);
-
-        $total = 0;
-        foreach ($items as $item) {
-            $product = Product::find($item['product_id']);
-            if (!$product) continue;
-
-            $unitPrice = $product->precio;
-            $qty = max(1, (int)($item['quantity'] ?? 1));
-
-            RestaurantOrderItem::create([
-                'restaurant_order_id' => $order->id,
-                'product_id' => $product->id,
-                'product_name' => $product->descripcion,
-                'quantity' => $qty,
-                'unit_price' => $unitPrice,
-                'total' => $unitPrice * $qty,
-                'kitchen_status' => 'PENDING',
-                'notes' => $item['notes'] ?? null,
-                'auxiliary_items' => $item['auxiliary_items'] ?? null,
-                'kds_destination' => $product->kds_destination ?? 'cocina',
+        [$order, $total] = DB::transaction(function () use (
+            $companyId,
+            $kioskoTable,
+            $items,
+            $isWeb,
+            $validated,
+            $deliveryZone,
+            $deliveryFee
+        ) {
+            $order = RestaurantOrder::create([
+                'company_id' => $companyId,
+                'table_id' => $kioskoTable->id,
+                'user_id' => null,
+                'order_number' => RestaurantOrder::generateKioskoOrderNumber($companyId),
+                'status' => 'PENDING_PAYMENT',
+                'order_type' => 'kiosko',
+                'delivery_type' => $isWeb ? 'web' : 'local',
+                'delivery_zone' => $isWeb ? $deliveryZone['name'] : null,
+                'delivery_fee' => $isWeb ? $deliveryFee : 0,
+                'customer_name' => $isWeb ? ($validated['customer_name'] ?? null) : null,
+                'delivery_address' => $isWeb ? ($validated['delivery_address'] ?? null) : null,
+                'delivery_reference' => $isWeb ? (($validated['delivery_reference'] ?? null) ?: null) : null,
+                'contact_number' => $isWeb ? ($validated['contact_number'] ?? null) : null,
             ]);
-            $total += $unitPrice * $qty;
-        }
 
-        $order->update(['total' => $total]);
+            $total = 0;
+            foreach ($items as $item) {
+                $product = Product::find($item['product_id'] ?? null);
+                if (!$product) continue;
+
+                $unitPrice = $product->precio;
+                $qty = max(1, (int) ($item['quantity'] ?? 1));
+
+                RestaurantOrderItem::create([
+                    'restaurant_order_id' => $order->id,
+                    'product_id' => $product->id,
+                    'product_name' => $product->descripcion,
+                    'quantity' => $qty,
+                    'unit_price' => $unitPrice,
+                    'total' => $unitPrice * $qty,
+                    'kitchen_status' => 'PENDING',
+                    'notes' => $item['notes'] ?? null,
+                    'auxiliary_items' => $item['auxiliary_items'] ?? null,
+                    'kds_destination' => $product->kds_destination ?? 'cocina',
+                ]);
+                $total += $unitPrice * $qty;
+            }
+
+            if ($deliveryFee > 0) {
+                // El delivery no pasa por cocina/KDS, pero sí cuenta en totales, caja y comprobante.
+                RestaurantOrderItem::create([
+                    'restaurant_order_id' => $order->id,
+                    'product_id' => null,
+                    'product_name' => 'Delivery - ' . $deliveryZone['name'],
+                    'quantity' => 1,
+                    'unit_price' => $deliveryFee,
+                    'total' => $deliveryFee,
+                    'kitchen_status' => RestaurantOrderItem::DELIVERED,
+                    'notes' => 'Cargo de envío',
+                    'kds_destination' => 'delivery',
+                ]);
+                $total += $deliveryFee;
+            }
+
+            $total = round($total, 2);
+            $order->update(['total' => $total]);
+
+            return [$order, $total];
+        });
 
         // Print ticket
         try {
@@ -179,6 +249,7 @@ class AutoPedidoController extends Controller
             'order_id' => $order->id,
             'order_number' => $order->order_number,
             'total' => $total,
+            'delivery_fee' => $deliveryFee,
         ]);
     }
 
@@ -188,12 +259,18 @@ class AutoPedidoController extends Controller
         $web = $this->branding($company);
         $order = RestaurantOrder::with(['items'])->findOrFail($orderId);
 
+        $auxiliaryIds = $order->items->flatMap(function ($item) {
+            return is_array($item->auxiliary_items) ? $item->auxiliary_items : [];
+        })->filter()->unique()->values();
+
+        $auxiliaryNames = \App\Models\AuxiliaryItem::namesByIds($auxiliaryIds->all());
+
         $successTexts = [
             'ticket' => \App\Models\Setting::kiosk('success_ticket_text', 'Su ticket se está imprimiendo'),
             'pay' => \App\Models\Setting::kiosk('success_pay_text', 'Pase a caja para pagar'),
             'prepare' => \App\Models\Setting::kiosk('success_prepare_text', 'Su pedido comenzará a prepararse después del pago'),
         ];
 
-        return view('autopedido.success', compact('order', 'successTexts', 'company', 'web'));
+        return view('autopedido.success', compact('order', 'successTexts', 'company', 'web', 'auxiliaryNames'));
     }
 }
