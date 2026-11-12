@@ -169,7 +169,6 @@ class GreenterService
                 $noteInvoice->tipo_documento = '07';
                 $noteInvoice->serie = $serie->serie;
                 $noteInvoice->numero = $nextNumber;
-                $noteInvoice->full_number = $serie->serie . '-' . $correlativo;
                 $noteInvoice->fecha_emision = date('Y-m-d');
                 $noteInvoice->fecha_vencimiento = date('Y-m-d');
                 $noteInvoice->moneda = 'PEN';
@@ -364,7 +363,6 @@ class GreenterService
                 $noteInvoice->tipo_documento = '08';
                 $noteInvoice->serie = $serie->serie;
                 $noteInvoice->numero = $nextNumber;
-                $noteInvoice->full_number = $serie->serie . '-' . $correlativo;
                 $noteInvoice->fecha_emision = date('Y-m-d');
                 $noteInvoice->fecha_vencimiento = date('Y-m-d');
                 $noteInvoice->moneda = 'PEN';
@@ -447,7 +445,6 @@ class GreenterService
         $noteInvoice->tipo_documento = $tipoDoc;
         $noteInvoice->serie = $serie->serie;
         $noteInvoice->numero = $nextNumber;
-        $noteInvoice->full_number = $fullNumber;
         $noteInvoice->fecha_emision = date('Y-m-d');
         $noteInvoice->fecha_vencimiento = date('Y-m-d');
         $noteInvoice->moneda = 'PEN';
@@ -1194,13 +1191,30 @@ class GreenterService
             ];
         }
         
-        $greenterCompany = $this->buildCompany($company);
+        // Construir antes de reservar el estado: un error de datos no debe dejar la factura en ENVIADO
+        try {
+            $greenterInvoice = $this->buildInvoice($invoice, $company);
+        } catch (\Exception $e) {
+            \Log::error('Greenter build error: ' . $e->getMessage(), [
+                'invoice' => $invoice->full_number,
+            ]);
+
+            $invoice->update([
+                'sunat_estado' => 'PENDIENTE',
+                'sunat_code' => 'BUILD_ERROR',
+                'sunat_description' => 'Error al construir el comprobante: ' . $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'code' => 'BUILD_ERROR',
+                'description' => $e->getMessage(),
+            ];
+        }
 
         // Reserva: marca en ENVIADO antes del SOAP para evitar envíos concurrentes
         $invoice->update(['sunat_estado' => 'ENVIADO']);
 
-        $greenterInvoice = $this->buildInvoice($invoice, $company);
-        
         try {
             // Acotar timeout del socket: una SUNAT caída no debe congelar la venta
             ini_set('default_socket_timeout', 12);

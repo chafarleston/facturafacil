@@ -16,6 +16,7 @@ class Company extends Model
         'certificado_password', 'certificado_vence',
         'tipo_contribuyente', 'estado',
         'soap_type_id', 'soap_username', 'soap_password', 'certificate',
+        'gre_client_id', 'gre_client_secret',
         'order_mode', 'tax_type', 'igv_percent', 'reduced_igv_percent',
     ];
 

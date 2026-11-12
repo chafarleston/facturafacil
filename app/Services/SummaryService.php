@@ -398,19 +398,34 @@ $company = Company::getMainCompany();
             } else {
                 $error = $result->getError();
                 if ($error) {
+                    $errorMessage = $error->getMessage() ?? 'Error SUNAT';
+
+                    // Error de red/transporte: no significa rechazo del resumen.
+                    if (preg_match('/fetching http headers|could not connect|timed out|timeout|connection reset|connection refused|service unavailable|502|503|504/i', $errorMessage)) {
+                        Log::warning('SUNAT status transport error; se conserva ENVIADO para reintentar', [
+                            'ticket' => $ticket,
+                            'error' => $errorMessage,
+                        ]);
+
+                        return [
+                            'success' => false,
+                            'description' => 'No se pudo consultar el ticket por un error temporal: ' . $errorMessage,
+                        ];
+                    }
+
                     SummaryDocument::where('ticket', $ticket)
                         ->update([
                             'sunat_estado' => 'RECHAZADO',
-                            'sunat_response' => json_encode(['error' => $error->getMessage()]),
+                            'sunat_response' => json_encode(['error' => $errorMessage]),
                         ]);
-                                        // Resumen rechazado: devolver los documentos del ticket a PENDIENTE para poder reintentarlos
+                    // Resumen rechazado: devolver los documentos del ticket a PENDIENTE para poder reintentarlos
                     InvoiceModel::where('sunat_code', $ticket)
                         ->where('sunat_estado', 'ENVIADO')
                         ->update([
                             'sunat_estado' => 'PENDIENTE',
                             'sunat_description' => 'Resumen rechazado por SUNAT; pendiente de reintento',
                         ]);
-                    return ['success' => false, 'description' => $error->getMessage()];
+                    return ['success' => false, 'description' => $errorMessage];
                 }
                 return ['success' => false, 'description' => 'Pendiente de procesar'];
             }

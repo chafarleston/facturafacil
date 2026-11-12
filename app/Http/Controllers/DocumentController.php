@@ -34,24 +34,23 @@ class DocumentController extends Controller
         return view('documents.index', compact('docs', 'title', 'tipo'));
     }
 
-    public function create($tipo)
+    public function create(Request $request, $tipo)
     {
         $this->authorize('permission', 'send_sunat');
         $companyId = Company::getMainCompany()->id;
         $company = Company::find($companyId);
+        $tipos = ['R' => '20', 'T' => '09', 'P' => '40'];
         $title = match($tipo) {
-            'R' => 'Nueva Retención',
-            'T' => 'Nueva Guía de Remisión',
-            'P' => 'Nueva Percepción',
+            'R' => 'Nueva Retenci��n',
+            'T' => 'Nueva Gu��a de Remisi��n',
+            'P' => 'Nueva Percepci��n',
         };
 
-        // Find the active series for this doc type
         $series = Serie::where('company_id', $companyId)
             ->where('estado', 'ACTIVO')
-            ->where('serie', 'like', $tipo . '%')
+            ->when($tipo === 'T', fn ($query) => $query->where('tipo_documento', $tipos[$tipo]))
             ->get();
 
-        // Pass invoices for T (despatch can be generated from invoice)
         $invoices = [];
         if ($tipo === 'T') {
             $invoices = \App\Models\Invoice::where('company_id', $companyId)
@@ -61,7 +60,9 @@ class DocumentController extends Controller
                 ->get();
         }
 
-        return view('documents.create', compact('title', 'tipo', 'company', 'series', 'invoices'));
+        $invoiceId = $tipo === 'T' ? $request->integer('invoice') : null;
+
+        return view('documents.create', compact('title', 'tipo', 'company', 'series', 'invoices', 'invoiceId'));
     }
 
     public function store(Request $request, $tipo)
@@ -76,12 +77,48 @@ class DocumentController extends Controller
             'entity_tipo_doc' => 'required|in:6',
             'entity_num_doc' => 'required|size:11',
             'entity_razon_social' => 'required',
+            'entity_direccion' => 'nullable|string|max:255',
             'total' => 'required|numeric|min:0',
             'items' => $tipo === 'T' ? 'required|json' : 'nullable',
+            'observacion' => 'nullable|string|max:255',
+            'regimen' => 'nullable|in:01,02',
+            'tasa' => 'nullable|numeric|min:0',
+            'imp_retenido' => 'nullable|numeric|min:0',
+            'imp_pagado' => 'nullable|numeric|min:0',
+            'dir_partida' => $tipo === 'T' ? 'required|string|max:255' : 'nullable|string|max:255',
+            'dir_llegada' => $tipo === 'T' ? 'required|string|max:255' : 'nullable|string|max:255',
+            'cod_traslado' => 'nullable|string|size:2',
+            'des_traslado' => 'nullable|string|max:200',
+            'mod_traslado' => 'nullable|in:01,02',
+            'fecha_traslado' => 'nullable|date',
+            'peso_total' => $tipo === 'T' ? 'required|numeric|min:0.001' : 'nullable|numeric|min:0',
+            'und_peso_total' => 'nullable|string|max:5',
+            'num_bultos' => 'nullable|integer|min:0',
+            'ubigeo_partida' => 'nullable|string|size:6',
+            'ubigeo_llegada' => 'nullable|string|size:6',
+            'transportista_tipo_doc' => 'nullable|string|max:2',
+            'transportista_num_doc' => 'nullable|string|max:15',
+            'transportista_razon_social' => 'nullable|string|max:255',
+            'transportista_nro_mtc' => 'nullable|string|max:50',
+            'vehiculo_placa' => 'nullable|string|max:20',
+            'vehiculo_nro_circulacion' => 'nullable|string|max:50',
+            'vehiculo_cod_emisor' => 'nullable|string|max:50',
+            'vehiculo_nro_autorizacion' => 'nullable|string|max:50',
+            'chofer_tipo_doc' => 'nullable|string|max:2',
+            'chofer_num_doc' => 'nullable|string|max:15',
+            'chofer_nombres' => 'nullable|string|max:150',
+            'chofer_apellidos' => 'nullable|string|max:150',
+            'chofer_licencia' => 'nullable|string|max:50',
         ]);
 
         $serie = Serie::findOrFail($validated['serie_id']);
         $nextNumber = $serie->getNextNumber();
+
+        if ($tipo === 'T' && $serie->tipo_documento !== '09') {
+            return back()->withInput()->withErrors([
+                'serie_id' => 'La serie seleccionada no es de Guía de Remisión.',
+            ]);
+        }
 
         $doc = SpecialDocument::create([
             'company_id' => $companyId,
@@ -98,6 +135,28 @@ class DocumentController extends Controller
             'observacion' => $request->observacion,
             'dir_partida' => $request->dir_partida,
             'dir_llegada' => $request->dir_llegada,
+            'cod_traslado' => $request->cod_traslado ?: '01',
+            'des_traslado' => $request->des_traslado,
+            'mod_traslado' => $request->mod_traslado ?: '01',
+            'fecha_traslado' => $request->fecha_traslado ?: $validated['fecha_emision'],
+            'peso_total' => $request->peso_total ?? 0,
+            'und_peso_total' => $request->und_peso_total ?: 'KGM',
+            'num_bultos' => $request->num_bultos,
+            'ubigeo_partida' => $request->ubigeo_partida,
+            'ubigeo_llegada' => $request->ubigeo_llegada,
+            'transportista_tipo_doc' => $request->transportista_tipo_doc,
+            'transportista_num_doc' => $request->transportista_num_doc,
+            'transportista_razon_social' => $request->transportista_razon_social,
+            'transportista_nro_mtc' => $request->transportista_nro_mtc,
+            'vehiculo_placa' => $request->vehiculo_placa,
+            'vehiculo_nro_circulacion' => $request->vehiculo_nro_circulacion,
+            'vehiculo_cod_emisor' => $request->vehiculo_cod_emisor,
+            'vehiculo_nro_autorizacion' => $request->vehiculo_nro_autorizacion,
+            'chofer_tipo_doc' => $request->chofer_tipo_doc,
+            'chofer_num_doc' => $request->chofer_num_doc,
+            'chofer_nombres' => $request->chofer_nombres,
+            'chofer_apellidos' => $request->chofer_apellidos,
+            'chofer_licencia' => $request->chofer_licencia,
         ]);
 
         $serie->incrementNumber();
@@ -161,57 +220,20 @@ class DocumentController extends Controller
     {
         $this->authorize('permission', 'send_sunat');
         $companyId = Company::getMainCompany()->id;
-        $company = Company::find($companyId);
-        $customer = $invoice->customer;
 
-        // Find or create T001 series
         $serie = Serie::where('company_id', $companyId)
+            ->where('tipo_documento', '09')
             ->where('serie', 'like', 'T%')
             ->where('estado', 'ACTIVO')
             ->first();
 
         if (!$serie) {
             return redirect()->route('invoices.show', $invoice)
-                ->with('error', 'No hay serie activa para Guías de Remisión. Cree una serie T001 primero.');
+                ->with('error', 'No hay serie activa tipo 09 para Guías de Remisión. Cree una serie T001 primero.');
         }
 
-        $nextNumber = $serie->getNextNumber();
-        $fullNumber = $serie->serie . '-' . str_pad($nextNumber, 8, '0', STR_PAD_LEFT);
-
-        $doc = SpecialDocument::create([
-            'company_id' => $companyId,
-            'tipo_documento' => '09',
-            'serie' => $serie->serie,
-            'numero' => $nextNumber,
-            'full_number' => $fullNumber,
-            'fecha_emision' => date('Y-m-d'),
-            'total' => $invoice->total,
-            'dir_partida' => $company->direccion ?? 'Lima',
-            'dir_llegada' => $customer->direccion ?? 'Lima',
-        ]);
-
-        $serie->incrementNumber();
-
-        // Create entity
-        $doc->entity()->create([
-            'tipo_doc' => $customer->documento_tipo == '6' ? '6' : '1',
-            'num_doc' => $customer->documento_numero,
-            'razon_social' => $customer->nombre,
-            'direccion' => $customer->direccion,
-        ]);
-
-        // Copy invoice items
-        foreach ($invoice->items as $item) {
-            $doc->items()->create([
-                'codigo' => $item->codigo ?? '',
-                'descripcion' => $item->descripcion,
-                'cantidad' => $item->cantidad,
-                'unidad' => 'NIU',
-            ]);
-        }
-
-        return redirect()->route('documents.show', ['T', $doc->id])
-            ->with('success', "Guía de Remisión {$fullNumber} generada desde {$invoice->full_number}");
+        return redirect()->route('documents.create', ['tipo' => 'T', 'invoice' => $invoice->id])
+            ->with('success', "Datos de {$invoice->full_number} precargados. Complete los datos de traslado y transporte.");
     }
 
     public function getInvoiceData($id)

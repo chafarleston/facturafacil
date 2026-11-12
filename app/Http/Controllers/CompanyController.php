@@ -79,6 +79,8 @@ public function store(Request $request)
             'soap_type_id' => 'nullable|in:01,02',
             'soap_username' => 'nullable|string|max:255',
             'soap_password' => 'nullable|string|max:255',
+            'gre_client_id' => 'nullable|string|max:255',
+            'gre_client_secret' => 'nullable|string|max:255',
         ]);
 
         $data = $validated;

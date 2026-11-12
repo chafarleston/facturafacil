@@ -182,11 +182,28 @@
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label>SOAP Contraseña</label>
-                                <input type="password" name="soap_password" class="form-control" value="{{ $company->soap_password }}" placeholder="Contraseña del usuario secundario">
+                                <label>SOAP Contrase��a</label>
+                                <input type="password" name="soap_password" class="form-control" value="{{ $company->soap_password }}" placeholder="Contrase��a del usuario secundario">
                             </div>
                         </div>
                     </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>GRE Client ID</label>
+                                <input type="text" name="gre_client_id" class="form-control" value="{{ $company->gre_client_id }}" placeholder="Client ID generado en Menú SOL">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>GRE Client Secret</label>
+                                <input type="password" name="gre_client_secret" class="form-control" value="{{ $company->gre_client_secret }}" placeholder="Client Secret generado en Menú SOL">
+                            </div>
+                        </div>
+                    </div>
+                    <small class="text-muted d-block mb-3">
+                        Para Guías de Remisión: usuario SOL = RUC + usuario secundario, contraseña SOL, Client ID y Client Secret.
+                    </small>
                     <hr>
                     <div class="form-group">
                         <label>Certificado Digital SUNAT (.p12 / .pfx)</label>

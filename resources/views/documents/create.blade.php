@@ -70,9 +70,147 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Dirección</label>
+                        <label>Direcci��n</label>
                         <input type="text" name="entity_direccion" class="form-control">
                     </div>
+
+                    @if($tipo === 'T')
+                    <hr>
+                    <h5>Datos del Traslado</h5>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Motivo de Traslado</label>
+                                <select name="cod_traslado" class="form-control">
+                                    <option value="01" {{ old('cod_traslado', '01') === '01' ? 'selected' : '' }}>01 - Venta</option>
+                                    <option value="02" {{ old('cod_traslado') === '02' ? 'selected' : '' }}>02 - Compra</option>
+                                    <option value="04" {{ old('cod_traslado') === '04' ? 'selected' : '' }}>04 - Traslado entre establecimientos</option>
+                                    <option value="09" {{ old('cod_traslado') === '09' ? 'selected' : '' }}>09 - Otros</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Modalidad</label>
+                                <select name="mod_traslado" class="form-control">
+                                    <option value="01" {{ old('mod_traslado', '01') === '01' ? 'selected' : '' }}>01 - Transporte público</option>
+                                    <option value="02" {{ old('mod_traslado') === '02' ? 'selected' : '' }}>02 - Transporte privado</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Fecha de Traslado</label>
+                                <input type="date" name="fecha_traslado" class="form-control" value="{{ old('fecha_traslado', date('Y-m-d')) }}">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Descripci��n del motivo</label>
+                                <input type="text" name="des_traslado" class="form-control" maxlength="200" value="{{ old('des_traslado') }}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Peso total</label>
+                                <input type="number" name="peso_total" class="form-control" step="0.001" min="0.001" value="{{ old('peso_total', '1.000') }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Unidad de peso</label>
+                                <select name="und_peso_total" class="form-control">
+                                    <option value="KGM" {{ old('und_peso_total', 'KGM') === 'KGM' ? 'selected' : '' }}>KGM - Kilogramo</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Nǧmero de bultos</label>
+                                <input type="number" name="num_bultos" class="form-control" min="0" value="{{ old('num_bultos') }}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Ubigeo partida</label>
+                                <input type="text" name="ubigeo_partida" class="form-control" maxlength="6" value="{{ old('ubigeo_partida', $company->ubigeo ?? '') }}">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Ubigeo llegada</label>
+                                <input type="text" name="ubigeo_llegada" class="form-control" maxlength="6" value="{{ old('ubigeo_llegada') }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h5>Transporte</h5>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Transportista RUC</label>
+                                <input type="text" name="transportista_num_doc" class="form-control" maxlength="15" value="{{ old('transportista_num_doc') }}">
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="form-group">
+                                <label>Raz��n social transportista</label>
+                                <input type="text" name="transportista_razon_social" class="form-control" value="{{ old('transportista_razon_social') }}">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Nro. MTC</label>
+                                <input type="text" name="transportista_nro_mtc" class="form-control" value="{{ old('transportista_nro_mtc') }}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Placa veh��culo</label>
+                                <input type="text" name="vehiculo_placa" class="form-control" value="{{ old('vehiculo_placa') }}">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Nro. circulaci��n</label>
+                                <input type="text" name="vehiculo_nro_circulacion" class="form-control" value="{{ old('vehiculo_nro_circulacion') }}">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>DNI conductor</label>
+                                <input type="text" name="chofer_num_doc" class="form-control" value="{{ old('chofer_num_doc') }}">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Licencia conductor</label>
+                                <input type="text" name="chofer_licencia" class="form-control" value="{{ old('chofer_licencia') }}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Nombres conductor</label>
+                                <input type="text" name="chofer_nombres" class="form-control" value="{{ old('chofer_nombres') }}">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Apellidos conductor</label>
+                                <input type="text" name="chofer_apellidos" class="form-control" value="{{ old('chofer_apellidos') }}">
+                            </div>
+                        </div>
+                    </div>
+                    @endif
 
                     <hr>
                     <h5>Detalle</h5>
@@ -193,6 +331,17 @@ function loadInvoiceData(invoiceId) {
             document.getElementById('itemsContainer').innerHTML = '<p class="text-danger mb-0">Error al cargar datos del comprobante</p>';
         });
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+    const invoiceId = @json($invoiceId ?? null);
+    if (!invoiceId) return;
+
+    const selector = document.getElementById('invoiceSelector');
+    if (selector) {
+        selector.value = String(invoiceId);
+    }
+    loadInvoiceData(invoiceId);
+});
 </script>
 @endpush
 @endif
