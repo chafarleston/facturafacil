@@ -26,8 +26,23 @@
                     <div class="form-check mb-2">
                         <input class="form-check-input" type="checkbox" name="catonly_restaurant" id="catonly_restaurant" value="1"
                             {{ $categoriesOnly ? 'checked' : '' }}>
-                        <label class="form-check-label" for="catonly_restaurant">Mostrar solo categorías al inicio</label>
+                        <label class="form-check-label" for="catonly_restaurant">Mostrar solo categor��as al inicio</label>
                     </div>
+
+                    <hr>
+                    <h5 class="mb-3"><i class="fas fa-print"></i> Comandas de cocina</h5>
+                    <div class="form-group">
+                        <label for="kitchen_font_size">Tama��o de letra de las comandas</label>
+                        <select name="kitchen_font_size" id="kitchen_font_size" class="form-control">
+                            <option value="normal" {{ $kitchenFontSize === 'normal' ? 'selected' : '' }}>Normal</option>
+                            <option value="medium" {{ $kitchenFontSize === 'medium' ? 'selected' : '' }}>Mediana (interlineado +25%)</option>
+                            <option value="large" {{ $kitchenFontSize === 'large' ? 'selected' : '' }}>Grande (doble altura)</option>
+                        </select>
+                        <small class="text-muted">
+                            Se aplica a las comandas impresas para Cocina, Cocina 2 y Bar en modo Impresi��n 80mm o 58mm.
+                        </small>
+                    </div>
+                </div>
                 </div>
                 <div class="card-footer">
                     <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Guardar</button>

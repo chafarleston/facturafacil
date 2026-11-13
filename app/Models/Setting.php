@@ -265,4 +265,19 @@ class Setting extends Model
     {
         static::set('catonly_' . $module, $enabled ? '1' : '0');
     }
+
+    public static function restaurantKitchenFontSize(): string
+    {
+        $size = (string) static::get('restaurant_kitchen_font_size', 'normal');
+
+        return in_array($size, ['normal', 'medium', 'large'], true) ? $size : 'normal';
+    }
+
+    public static function setRestaurantKitchenFontSize(string $size): void
+    {
+        static::set(
+            'restaurant_kitchen_font_size',
+            in_array($size, ['normal', 'medium', 'large'], true) ? $size : 'normal'
+        );
+    }
 }

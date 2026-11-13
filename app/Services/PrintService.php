@@ -57,13 +57,15 @@ class PrintService
             $dest = $item->kds_destination ?? 'cocina';
             if (isset($groups[$dest])) $groups[$dest][] = $item;
         }
+        $fontSize = \App\Models\Setting::restaurantKitchenFontSize();
+
         foreach ($groups as $dest => $items) {
             if (empty($items)) continue;
             $printer = $this->getPrinter($dest === 'cocina' ? 'cocina-1' : ($dest === 'cocina2' ? 'cocina-2' : 'bar-1'));
             if (!$printer) continue;
             $order->setRelation('items', collect($items));
             $width = PlainTextTicket::widthForPaper($printer->paper_size);
-            $data = PlainTextTicket::kitchenTicket($order, 'escpos', $dest, $width);
+            $data = PlainTextTicket::kitchenTicket($order, 'escpos', $dest, $width, $fontSize);
             $this->queuePrint($printer, $data, 'kitchen', $refType, $order->id);
         }
         $this->processQueue();

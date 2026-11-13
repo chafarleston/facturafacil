@@ -93,11 +93,22 @@ class PlainTextTicket
         return $this->text;
     }
     
-    public function getEscPos(): string
+    public function getEscPos(string $fontSize = 'normal'): string
     {
         $lines = explode("\n", $this->text);
         $out = "\x1B\x40"; // INIT
-        $out .= "\x1B\x21\x00"; // Fuente A + modo normal (evita fuente condensada/pequeña)
+        // ESC !: normal o doble altura para comandas
+        $out .= $fontSize === 'large' ? "\x1B\x21\x10" : "\x1B\x21\x00";
+
+        // Mediana: +25% de interlineado (aproximación ESC/POS)
+        if ($fontSize === 'medium') {
+            $out .= "\x1B\x33\x26"; // ESC 3 38: separación vertical ampliada
+        } elseif ($fontSize === 'large') {
+            $out .= "\x1B\x33\x3C"; // ESC 3 60: espacio para doble altura
+        } else {
+            $out .= "\x1B\x32"; // interlineado por defecto
+        }
+
         $out .= "\x1B\x74\x02"; // CP850
         foreach ($lines as $line) {
             $trimmed = rtrim($line, " \t\r\n");
@@ -140,7 +151,7 @@ class PlainTextTicket
     {
     }
     
-    public static function kitchenTicket($order, string $format = 'text', string $dest = 'cocina', int $width = 48): string
+    public static function kitchenTicket($order, string $format = 'text', string $dest = 'cocina', int $width = 48, string $fontSize = 'normal'): string
     {
         $t = new self($format, $width);
         $t->buildKitchenHeader($order, $dest);
@@ -169,7 +180,7 @@ class PlainTextTicket
         }
         $t->separator();
         $t->text('Hora: ' . now()->format('H:i:s'));
-        return $format === 'escpos' ? $t->getEscPos() : $t->getText();
+        return $format === 'escpos' ? $t->getEscPos($fontSize) : $t->getText();
     }
     
     public static function prebillTicket($order, string $format = 'text', int $width = 48): string

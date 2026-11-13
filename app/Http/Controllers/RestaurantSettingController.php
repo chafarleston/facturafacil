@@ -17,6 +17,7 @@ class RestaurantSettingController extends Controller
             'showProductImages' => Setting::showProductImages('restaurant'),
             'showCategoryImages' => Setting::showCategoryImages('restaurant'),
             'categoriesOnly' => Setting::categoriesOnly('restaurant'),
+            'kitchenFontSize' => Setting::restaurantKitchenFontSize(),
             'orderMode' => Company::orderMode(),
         ]);
     }
@@ -28,6 +29,11 @@ class RestaurantSettingController extends Controller
         Setting::setShowProductImages('restaurant', $request->boolean('img_products_restaurant'));
         Setting::setShowCategoryImages('restaurant', $request->boolean('img_categories_restaurant'));
         Setting::setCategoriesOnly('restaurant', $request->boolean('catonly_restaurant'));
+
+        $kitchenFontSize = in_array($request->input('kitchen_font_size'), ['normal', 'medium', 'large'], true)
+            ? $request->input('kitchen_font_size')
+            : 'normal';
+        Setting::setRestaurantKitchenFontSize($kitchenFontSize);
 
         // Limpia la caché del catálogo del restaurante
         $companyId = Company::getMainCompany()->id;
