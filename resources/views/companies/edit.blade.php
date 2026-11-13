@@ -196,7 +196,7 @@
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label>GRE Client Secret</label>
+                                <label>GRE Client Secret (Clave)</label>
                                 <input type="password" name="gre_client_secret" class="form-control" value="{{ $company->gre_client_secret }}" placeholder="Client Secret generado en Menú SOL">
                             </div>
                         </div>

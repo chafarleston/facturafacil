@@ -2,6 +2,8 @@
 
 Servidor REST de impresión para impresoras térmicas ESC/POS. Recibe trabajos desde el navegador o el servidor Laravel y los envía a impresoras locales (USB/paralelo) o de red (socket TCP).
 
+> **Linux:** consulta la guía detallada en [INSTALACION_LINUX.md](INSTALACION_LINUX.md) para instalar con CUPS, `lp` y systemd.
+
 ---
 
 ## Arquitectura
