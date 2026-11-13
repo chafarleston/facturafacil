@@ -6,9 +6,11 @@ use App\Models\Purchase;
 use App\Models\Supplier;
 use App\Models\Product;
 use App\Models\PurchaseItem;
+use App\Services\InventoryService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class PurchaseController extends Controller
 {
@@ -44,40 +46,50 @@ class PurchaseController extends Controller
         ]);
 
         $companyId = $request->get('company_id', \App\Models\Company::getMainCompany()->id);
-        
-        $purchase = Purchase::create([
-            'company_id' => $companyId,
-            'supplier_id' => $request->supplier_id,
-            'numero_documento' => $request->numero_documento,
-            'tipo_documento' => $request->tipo_documento,
-            'fecha' => $request->fecha,
-            'total' => 0,
-        ]);
-
-        $total = 0;
-        foreach ($request->items as $item) {
-            $subtotal = $item['cantidad'] * $item['precio'];
-            $total += $subtotal;
-            
-            PurchaseItem::create([
-                'purchase_id' => $purchase->id,
-                'product_id' => $item['product_id'],
-                'cantidad' => $item['cantidad'],
-                'precio_unitario' => $item['precio'],
-                'subtotal' => $subtotal,
+        $purchase = DB::transaction(function () use ($request, $companyId) {
+            $purchase = Purchase::create([
+                'company_id' => $companyId,
+                'supplier_id' => $request->supplier_id,
+                'numero_documento' => $request->numero_documento,
+                'tipo_documento' => $request->tipo_documento,
+                'fecha' => $request->fecha,
+                'total' => 0,
             ]);
 
-            $product = Product::find($item['product_id']);
-            $product->precio_compra = $item['precio'];
-            if (array_key_exists('precio_venta', $item) && $item['precio_venta'] !== null && $item['precio_venta'] !== '') {
-                $product->precio = $item['precio_venta'];
-            }
-            $product->stock += $item['cantidad'];
-            $product->save();
-        }
+            $inventory = app(InventoryService::class);
+            $total = 0;
 
-        $purchase->total = $total;
-        $purchase->save();
+            foreach ($request->items as $item) {
+                $subtotal = $item['cantidad'] * $item['precio'];
+                $total += $subtotal;
+
+                PurchaseItem::create([
+                    'purchase_id' => $purchase->id,
+                    'product_id' => $item['product_id'],
+                    'cantidad' => $item['cantidad'],
+                    'precio_unitario' => $item['precio'],
+                    'subtotal' => $subtotal,
+                ]);
+
+                $product = Product::findOrFail($item['product_id']);
+                $product->precio_compra = $item['precio'];
+                if (array_key_exists('precio_venta', $item) && $item['precio_venta'] !== null && $item['precio_venta'] !== '') {
+                    $product->precio = $item['precio_venta'];
+                }
+                $product->save();
+
+                $inventory->purchase(
+                    $product,
+                    (float) $item['cantidad'],
+                    $purchase,
+                    'Compra ' . $purchase->numero_documento
+                );
+            }
+
+            $purchase->update(['total' => $total]);
+
+            return $purchase;
+        });
 
         return redirect()->route('purchases.index', ['company_id' => $companyId])
             ->with('success', 'Compra registrada correctamente');
@@ -90,14 +102,26 @@ class PurchaseController extends Controller
 
     public function destroy(Purchase $purchase)
     {
-        foreach ($purchase->items as $item) {
-            $product = $item->product;
-            $product->stock = max(0, $product->stock - $item->cantidad);
-            $product->save();
+        if ($purchase->estado === 'ANULADO') {
+            return back()->with('success', 'La compra ya estaba anulada');
         }
-        
-        $purchase->estado = 'ANULADO';
-        $purchase->save();
+
+        DB::transaction(function () use ($purchase) {
+            $inventory = app(InventoryService::class);
+
+            foreach ($purchase->items as $item) {
+                if ($item->product) {
+                    $inventory->purchaseCancel(
+                        $item->product,
+                        (float) $item->cantidad,
+                        $purchase,
+                        'Anulación compra ' . $purchase->numero_documento
+                    );
+                }
+            }
+
+            $purchase->update(['estado' => 'ANULADO']);
+        });
 
         return back()->with('success', 'Compra anulada');
     }

@@ -27,6 +27,7 @@ use App\Events\KitchenOrderUpdated;
 use App\Services\PrintServerService;
 use App\Services\PrintService;
 use App\Services\KitchenBatchService;
+use App\Services\InventoryService;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class RestaurantController extends Controller
@@ -1782,7 +1783,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
         ]);
 
         $productIds = $items->pluck('product_id')->filter()->toArray();
-        $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
+        $products = Product::with('components.component')->whereIn('id', $productIds)->get()->keyBy('id');
 
         if ($soloConsumo) {
             InvoiceItem::create([
@@ -1824,19 +1825,29 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             }
         }
 
-        // Stock: deduct once per item
+        // El stock se descuenta al cobrar, dentro de la transacción de la orden.
+        $inventory = app(InventoryService::class);
         foreach ($items as $item) {
             $product = $products->get($item->product_id);
             if ($product) {
                 if ($product->is_composite) {
                     foreach ($product->components as $component) {
-                        $componentProduct = $component->component;
-                        if ($componentProduct) {
-                            $componentProduct->decrement('stock', $component->quantity * $item->quantity);
+                        if ($component->component) {
+                            $inventory->sale(
+                                $component->component,
+                                (float) $component->quantity * (float) $item->quantity,
+                                $invoice,
+                                'Venta ' . $invoice->full_number . ' - ' . $product->descripcion
+                            );
                         }
                     }
                 } else {
-                    $product->decrement('stock', $item->quantity);
+                    $inventory->sale(
+                        $product,
+                        (float) $item->quantity,
+                        $invoice,
+                        'Venta ' . $invoice->full_number
+                    );
                 }
             }
         }

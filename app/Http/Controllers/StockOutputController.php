@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Company;
 use App\Models\Product;
 use App\Models\StockOutput;
+use App\Services\InventoryService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -70,20 +71,24 @@ class StockOutputController extends Controller
                 'notas' => $validated['notas'],
             ]);
 
+            $inventory = app(InventoryService::class);
+
             foreach ($validated['items'] as $item) {
                 $product = Product::findOrFail($item['product_id']);
-                $stockAntes = (float) $product->stock;
                 $cantidad = (float) $item['cantidad'];
-                $stockDespues = max(0, $stockAntes - $cantidad);
+                $movement = $inventory->stockOutput(
+                    $product,
+                    $cantidad,
+                    $output,
+                    'Consumo interno: ' . $validated['motivo']
+                );
 
                 $output->items()->create([
                     'product_id' => $product->id,
                     'cantidad' => $cantidad,
-                    'stock_antes' => $stockAntes,
-                    'stock_despues' => $stockDespues,
+                    'stock_antes' => $movement->stock_before,
+                    'stock_despues' => $movement->stock_after,
                 ]);
-
-                $product->update(['stock' => $stockDespues]);
             }
         });
 
@@ -144,13 +149,16 @@ class StockOutputController extends Controller
 
         DB::transaction(function () use ($stockOutput) {
             $stockOutput->load('items.product');
+            $inventory = app(InventoryService::class);
 
             foreach ($stockOutput->items as $item) {
                 if ($item->product) {
-                    $product = $item->product;
-                    $stockActual = (float) $product->stock;
-                    $cantidad = (float) $item->cantidad;
-                    $product->update(['stock' => $stockActual + $cantidad]);
+                    $inventory->stockOutputCancel(
+                        $item->product,
+                        (float) $item->cantidad,
+                        $stockOutput,
+                        'Anulación consumo interno'
+                    );
                 }
             }
 

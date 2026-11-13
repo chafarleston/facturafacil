@@ -197,6 +197,10 @@
         <form action="{{ route('invoices.destroy', $invoice) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de dar de baja este documento en SUNAT?');">
             @csrf
             @method('DELETE')
+            <div class="form-check d-inline-block mr-3 align-middle">
+                <input class="form-check-input" type="checkbox" name="restore_stock" id="restore_stock" value="1">
+                <label class="form-check-label" for="restore_stock">Reponer stock</label>
+            </div>
             <button type="submit" class="btn btn-danger"><i class="fas fa-power-off"></i> Dar de Baja</button>
         </form>
         @endcan

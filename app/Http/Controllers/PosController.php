@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Customer;
 use App\Models\Serie;
 use App\Services\GreenterService;
+use App\Services\InventoryService;
 use App\Services\PrintService;
 use App\Services\SummaryService;
 use Illuminate\Http\Request;
@@ -155,7 +156,7 @@ class PosController extends Controller
         ]);
         
         $itemIds = collect($items)->pluck('id')->toArray();
-        $products = \App\Models\Product::whereIn('id', $itemIds)->get()->keyBy('id');
+        $products = \App\Models\Product::with('components.component')->whereIn('id', $itemIds)->get()->keyBy('id');
         
         foreach ($items as $item) {
             $producto = $products->get($item['id']);
@@ -173,20 +174,39 @@ class PosController extends Controller
                 'precio_venta' => $priceWithIgv,
                 'igv' => $igvItem,
             ]);
-            
-            if ($producto) {
+        }
+
+        // Descuento de stock al concretar la venta (permite stock negativo).
+        DB::transaction(function () use ($items, $products, $invoice) {
+            $inventory = app(InventoryService::class);
+
+            foreach ($items as $item) {
+                $producto = $products->get($item['id']);
+                if (!$producto) {
+                    continue;
+                }
+
                 if ($producto->is_composite) {
                     foreach ($producto->components as $component) {
-                        $componentProduct = $component->component;
-                        if ($componentProduct) {
-                            $componentProduct->decrement('stock', $component->quantity * $item['quantity']);
+                        if ($component->component) {
+                            $inventory->sale(
+                                $component->component,
+                                (float) $component->quantity * (float) $item['quantity'],
+                                $invoice,
+                                'Venta ' . $invoice->full_number . ' - ' . $producto->descripcion
+                            );
                         }
                     }
                 } else {
-                    $producto->decrement('stock', $item['quantity']);
+                    $inventory->sale(
+                        $producto,
+                        (float) $item['quantity'],
+                        $invoice,
+                        'Venta ' . $invoice->full_number
+                    );
                 }
             }
-        }
+        });
         
         $serie->numero_actual = $nextNumber;
         $serie->save();

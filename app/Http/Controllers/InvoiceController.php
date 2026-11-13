@@ -9,9 +9,11 @@ use App\Models\InvoiceItem;
 use App\Models\Product;
 use App\Models\Serie;
 use App\Services\GreenterService;
+use App\Services\InventoryService;
 use App\Services\SummaryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use NumberFormatter;
 
@@ -161,19 +163,6 @@ class InvoiceController extends Controller
         foreach ($itemsArray as $item) {
             $product = Product::findOrFail($item['product_id']);
             
-            if ($product->is_composite) {
-                foreach ($product->components as $component) {
-                    $componentProduct = $component->component;
-                    if ($componentProduct) {
-                        $componentProduct->stock = $componentProduct->stock - ($component->quantity * $item['cantidad']);
-                        $componentProduct->save();
-                    }
-                }
-            } else {
-                $product->stock = $product->stock - $item['cantidad'];
-                $product->save();
-            }
-            
             // El precio que ingresa el usuario puede venir como Con IGV o Sin IGV. Preferimos Con IGV si proviene.
             $precioConIgv = $item['precio_con_igv'] ?? $item['precio'] ?? 0;
             $precioVenta = round($item['cantidad'] * $precioConIgv, 2);
@@ -230,6 +219,38 @@ class InvoiceController extends Controller
         foreach ($itemsData as $item) {
             $invoice->items()->create($item);
         }
+
+        // El stock se descuenta al concretar la venta, no al seleccionar productos.
+        DB::transaction(function () use ($itemsArray, $invoice) {
+            $inventory = app(InventoryService::class);
+
+            foreach ($itemsArray as $item) {
+                $product = Product::with('components.component')->find($item['product_id']);
+                if (!$product) {
+                    continue;
+                }
+
+                if ($product->is_composite) {
+                    foreach ($product->components as $component) {
+                        if ($component->component) {
+                            $inventory->sale(
+                                $component->component,
+                                (float) $component->quantity * (float) $item['cantidad'],
+                                $invoice,
+                                'Venta ' . $invoice->full_number . ' - ' . $product->descripcion
+                            );
+                        }
+                    }
+                } else {
+                    $inventory->sale(
+                        $product,
+                        (float) $item['cantidad'],
+                        $invoice,
+                        'Venta ' . $invoice->full_number
+                    );
+                }
+            }
+        });
 
         $serie->incrementNumber();
 
@@ -417,14 +438,20 @@ class InvoiceController extends Controller
 
     
     
-    public function destroy(Invoice $invoice)
+    public function destroy(Request $request, Invoice $invoice)
     {
         $this->authorize('permission', 'send_sunat');
+        $restoreStock = $request->boolean('restore_stock');
+
         try {
             // Boletas se anulan mediante Resumen Diario
             if ($invoice->tipo_documento === '03') {
                 $summaryService = new SummaryService();
                 $result = $summaryService->voidBoleta($invoice);
+
+                if ($result['success'] && $restoreStock) {
+                    app(InventoryService::class)->restoreSale($invoice, null, 'Reposición por baja de boleta');
+                }
 
                 if ($result['success']) {
                     return back()->with('success', 'Boleta anulada vía resumen diario. Ticket: ' . ($result['ticket'] ?? ''));
@@ -437,6 +464,10 @@ class InvoiceController extends Controller
             $greenterService = new GreenterService();
             $result = $greenterService->voidInvoice($invoice);
             
+            if ($result['success'] && $restoreStock) {
+                app(InventoryService::class)->restoreSale($invoice, null, 'Reposición por baja de factura');
+            }
+
             if ($result['success']) {
                 return back()->with('success', 'Documento dado de baja en SUNAT. Código: ' . ($result['code'] ?? ''));
             } else {
@@ -491,6 +522,10 @@ class InvoiceController extends Controller
             $greenterService = new GreenterService();
             $result = $greenterService->sendCreditNote($invoice, $request->motivo, $request->descripcion);
             
+            if ($result['success'] && $request->boolean('restore_stock')) {
+                app(InventoryService::class)->restoreSale($invoice, null, 'Reposición por nota de crédito');
+            }
+
             if ($result['success']) {
                 return redirect()->route('invoices.index')
                     ->with('success', 'Nota de crédito generada. Ref: ' . ($result['note_number'] ?? ''));

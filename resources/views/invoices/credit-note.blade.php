@@ -66,8 +66,15 @@
                     <div class="form-group">
                         <label>Monto a acreditar</label>
                         <p class="h4 text-success">S/ {{ number_format($invoice->total, 2) }}</p>
-                        <p class="text-muted">Se generará nota de crédito por el total del documento</p>
+                        <p class="text-muted">Se generarǭ nota de crǸdito por el total del documento</p>
                     </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="restore_stock" id="restore_stock" value="1">
+                        <label class="form-check-label" for="restore_stock">
+                            Reponer stock (solo si el producto vuelve físicamente)
+                        </label>
+                    </div>
+                </div>
                 </div>
                 <div class="card-footer">
                     <button type="submit" class="btn btn-primary">Generar Nota de Crédito</button>

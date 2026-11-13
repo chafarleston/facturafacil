@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\InventoryService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -23,6 +24,47 @@ class Product extends Model
     ];
 
     protected $appends = ['imagen_url'];
+
+    protected static function booted(): void
+    {
+        static::created(function (Product $product) {
+            $stock = (float) $product->stock;
+            if (abs($stock) < 0.0001) {
+                return;
+            }
+
+            static::recordStockAdjustment($product, 0, $stock, 'Stock inicial');
+        });
+
+        static::updated(function (Product $product) {
+            if (InventoryService::isSuppressingStockMovement() || !$product->wasChanged('stock')) {
+                return;
+            }
+
+            $before = (float) ($product->getOriginal('stock') ?? 0);
+            $after = (float) $product->stock;
+
+            if (abs($after - $before) < 0.0001) {
+                return;
+            }
+
+            static::recordStockAdjustment($product, $before, $after, 'Ajuste manual de stock');
+        });
+    }
+
+    private static function recordStockAdjustment(Product $product, float $before, float $after, string $notes): void
+    {
+        InventoryMovement::create([
+            'company_id' => $product->company_id,
+            'product_id' => $product->id,
+            'user_id' => auth()->id(),
+            'type' => 'adjustment',
+            'quantity' => round($after - $before, 4),
+            'stock_before' => $before,
+            'stock_after' => $after,
+            'notes' => $notes,
+        ]);
+    }
 
     public function getImagenUrlAttribute(): ?string
     {
