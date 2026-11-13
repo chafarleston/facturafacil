@@ -153,6 +153,35 @@
                     </div>
                 </div>
             </div>
+
+            <hr>
+            <h5 class="mb-3"><i class="fas fa-box"></i> Costo de descartable</h5>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" name="disposable_enabled" id="disposable_enabled" value="1"
+                            {{ old('disposable_enabled') ? 'checked' : '' }}>
+                        <label class="form-check-label" for="disposable_enabled">Adicionar costo de descartable</label>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="form-group">
+                        <label for="disposable_product_id">Producto descartable</label>
+                        <select name="disposable_product_id" id="disposable_product_id" class="form-control">
+                            <option value="">Seleccione un producto</option>
+                            @foreach($disposableProducts as $disposable)
+                                <option value="{{ $disposable->id }}" {{ old('disposable_product_id') == $disposable->id ? 'selected' : '' }}>
+                                    {{ $disposable->descripcion }} - S/ {{ number_format($disposable->precio, 2) }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <small class="text-muted">El costo se toma del precio actual del producto seleccionado. Solo aplica en Autopedido.</small>
+                        @error('disposable_product_id')
+                            <div class="text-danger mt-1"><small>{{ $message }}</small></div>
+                        @enderror
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="card-footer">
             <a href="{{ route('products.index', ['company_id' => $companyId]) }}" class="btn btn-secondary">Cancelar</a>

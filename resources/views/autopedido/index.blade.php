@@ -463,6 +463,7 @@
 
         .cart-item { display: flex; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); }
         .cart-item:last-child { border-bottom: 0; }
+        .cart-item-disposable { margin: -4px 0 8px 28px; padding: 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
         .cart-item-image { width: 54px; height: 54px; flex: 0 0 auto; border-radius: 12px; object-fit: cover; background: var(--surface-2); }
         .cart-item-image.placeholder { display: flex; align-items: center; justify-content: center; color: var(--muted); }
         .cart-item-info { flex: 1; min-width: 0; }
@@ -713,6 +714,7 @@
         <section class="products" id="productsContainer" @if($categoriesOnly) style="display:none" @endif>
             @forelse($products as $p)
                 @php($hasImage = $showProductImages && $p->imagen_url)
+                @php($disposable = ($p->disposable_enabled && $p->disposableProduct && $p->disposableProduct->estado === 'ACTIVO') ? $p->disposableProduct : null)
                 <button
                     type="button"
                     class="product-card {{ $hasImage ? '' : 'no-image' }}"
@@ -720,6 +722,9 @@
                     data-name="{{ $p->descripcion }}"
                     data-price="{{ $p->precio }}"
                     data-category="{{ $p->category_id ?? 0 }}"
+                    data-disposable-id="{{ $disposable?->id }}"
+                    data-disposable-name="{{ $disposable?->descripcion }}"
+                    data-disposable-price="{{ $disposable?->precio }}"
                     @if($hasImage) data-image="{{ $p->imagen_url }}" @endif
                     onclick="openProductModal(this)"
                 >
@@ -955,6 +960,7 @@
         let modalQty = 1;
         let modalPrice = 0;
         let modalImage = '';
+        let modalDisposable = null;
         let activeInput = null;
         const companyId = {{ $companyId }};
         const autopedidoAuxiliaryItems = @json($auxiliaryItems);
@@ -987,6 +993,13 @@
             modalPrice = parseFloat(card.dataset.price || '0') || 0;
             modalImage = card.dataset.image || '';
             modalQty = 1;
+            modalDisposable = card.dataset.disposableId
+                ? {
+                    id: Number(card.dataset.disposableId),
+                    name: card.dataset.disposableName || '',
+                    price: parseFloat(card.dataset.disposablePrice || '0') || 0
+                }
+                : null;
 
             document.getElementById('modalProductName').textContent = card.dataset.name || '';
             document.getElementById('modalProductPrice').textContent = 'S/ ' + modalPrice.toFixed(2);
@@ -1072,7 +1085,8 @@
                     image: modalImage,
                     quantity: modalQty,
                     notes: notes,
-                    auxiliary_items: auxItems
+                    auxiliary_items: auxItems,
+                    disposable: modalDisposable
                 });
             }
 
@@ -1125,7 +1139,10 @@
 
         function updateCart() {
             const count = cart.reduce((sum, item) => sum + item.quantity, 0);
-            const itemsTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+            const itemsTotal = cart.reduce((sum, item) => {
+                const disposableTotal = item.disposable ? item.disposable.price * item.quantity : 0;
+                return sum + item.price * item.quantity + disposableTotal;
+            }, 0);
             const fee = currentDeliveryFee();
             const total = itemsTotal + fee;
             const totalText = 'S/ ' + total.toFixed(2);
@@ -1178,6 +1195,21 @@
                     ? `<img src="${escapeHtml(item.image)}" class="cart-item-image" alt="${escapeHtml(item.name)}">`
                     : `<div class="cart-item-image placeholder"><i class="fas fa-utensils"></i></div>`;
 
+                const disposable = item.disposable
+                    ? `
+                        <div class="cart-item cart-item-disposable">
+                            <div class="cart-item-image placeholder"><i class="fas fa-box"></i></div>
+                            <div class="cart-item-info">
+                                <div class="cart-item-name">Descartable - ${escapeHtml(item.disposable.name)}</div>
+                                <div class="cart-item-aux">Cargo adicional</div>
+                            </div>
+                            <div class="cart-item-end">
+                                <strong>S/ ${(item.disposable.price * item.quantity).toFixed(2)}</strong>
+                            </div>
+                        </div>
+                    `
+                    : '';
+
                 return `
                     <div class="cart-item">
                         ${image}
@@ -1196,6 +1228,7 @@
                             <button type="button" class="btn-remove" onclick="removeItem(${index})" aria-label="Eliminar producto"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
+                    ${disposable}
                 `;
             }).join('');
         }

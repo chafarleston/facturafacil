@@ -64,7 +64,8 @@ class AutoPedidoController extends Controller
         $companyId = $company->id;
 
         $products = Cache::remember('kiosko_products_' . $companyId, 60, function () use ($companyId) {
-            return Product::where('company_id', $companyId)
+            return Product::with('disposableProduct')
+                ->where('company_id', $companyId)
                 ->where('estado', 'ACTIVO')
                 ->orderBy('descripcion')
                 ->get();
@@ -199,19 +200,46 @@ class AutoPedidoController extends Controller
                 $unitPrice = $product->precio;
                 $qty = max(1, (int) ($item['quantity'] ?? 1));
 
-                RestaurantOrderItem::create([
+                $mainItem = RestaurantOrderItem::create([
                     'restaurant_order_id' => $order->id,
                     'product_id' => $product->id,
                     'product_name' => $product->descripcion,
                     'quantity' => $qty,
                     'unit_price' => $unitPrice,
                     'total' => $unitPrice * $qty,
-                    'kitchen_status' => 'PENDING',
+                    'kitchen_status' => RestaurantOrderItem::PENDING,
                     'notes' => $item['notes'] ?? null,
                     'auxiliary_items' => $item['auxiliary_items'] ?? null,
                     'kds_destination' => $product->kds_destination ?? 'cocina',
                 ]);
                 $total += $unitPrice * $qty;
+
+                if ($product->disposable_enabled && $product->disposable_product_id) {
+                    $disposable = Product::where('company_id', $companyId)
+                        ->where('id', $product->disposable_product_id)
+                        ->where('estado', 'ACTIVO')
+                        ->first();
+
+                    if ($disposable && $disposable->id !== $product->id) {
+                        $disposablePrice = (float) $disposable->precio;
+                        $disposableTotal = round($disposablePrice * $qty, 2);
+
+                        RestaurantOrderItem::create([
+                            'restaurant_order_id' => $order->id,
+                            'product_id' => $disposable->id,
+                            'product_name' => $disposable->descripcion,
+                            'parent_item_id' => $mainItem->id,
+                            'is_disposable' => true,
+                            'quantity' => $qty,
+                            'unit_price' => $disposablePrice,
+                            'total' => $disposableTotal,
+                            'kitchen_status' => RestaurantOrderItem::PENDING,
+                            'kds_destination' => $mainItem->kds_destination,
+                        ]);
+
+                        $total += $disposableTotal;
+                    }
+                }
             }
 
             if ($deliveryFee > 0) {

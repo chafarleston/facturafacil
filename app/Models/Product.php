@@ -14,10 +14,12 @@ class Product extends Model
         'umedida_codigo', 'precio', 'precio_minimo', 'tipo_afectacion',
         'igv_percent', 'estado', 'category_id', 'stock', 'kds_destination',
         'is_composite', 'precio_compra', 'imagen',
+        'disposable_enabled', 'disposable_product_id',
     ];
 
     protected $casts = [
         'stock' => 'decimal:4',
+        'disposable_enabled' => 'boolean',
     ];
 
     protected $appends = ['imagen_url'];
@@ -35,6 +37,11 @@ class Product extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function disposableProduct()
+    {
+        return $this->belongsTo(Product::class, 'disposable_product_id');
     }
 
     public function invoiceItems()

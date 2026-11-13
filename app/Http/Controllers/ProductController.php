@@ -9,6 +9,7 @@ use App\Services\ImageOptimizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
@@ -45,8 +46,9 @@ class ProductController extends Controller
         $codigo = 'PROD' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
         
         $categories = Category::where('company_id', $companyId)->whereIn('estado', ['ACTIVO', 'ACT'])->get();
-        
-        return view('products.create', compact('companyId', 'codigo', 'categories'));
+        $disposableProducts = $this->disposableProductsFor($companyId);
+
+        return view('products.create', compact('companyId', 'codigo', 'categories', 'disposableProducts'));
     }
 
     public function store(Request $request, ImageOptimizer $imageOptimizer)
@@ -66,8 +68,12 @@ class ProductController extends Controller
             'category_id' => 'nullable|exists:categories,id',
             'stock' => 'nullable|numeric',
             'kds_destination' => 'nullable|in:cocina,cocina2,bar',
+            'disposable_enabled' => 'nullable|boolean',
+            'disposable_product_id' => 'nullable|exists:products,id',
             'imagen' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
+
+        $validated = $this->normalizeDisposable($validated, $request->integer('company_id'));
 
         if (is_null($validated['precio'] ?? null)) {
             if ($request->input('precio_con_igv') !== null) {
@@ -116,7 +122,9 @@ class ProductController extends Controller
     public function edit(Product $product)
     {
         $categories = Category::where('company_id', $product->company_id)->whereIn('estado', ['ACTIVO', 'ACT'])->get();
-        return view('products.edit', compact('product', 'categories'));
+        $disposableProducts = $this->disposableProductsFor($product->company_id, $product->id);
+
+        return view('products.edit', compact('product', 'categories', 'disposableProducts'));
     }
 
     public function update(Request $request, Product $product, ImageOptimizer $imageOptimizer)
@@ -134,8 +142,12 @@ class ProductController extends Controller
             'igv_percent' => 'nullable|numeric|min:0|max:100',
             'category_id' => 'nullable|exists:categories,id',
             'kds_destination' => 'nullable|in:cocina,cocina2,bar',
+            'disposable_enabled' => 'nullable|boolean',
+            'disposable_product_id' => 'nullable|exists:products,id',
             'imagen' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
+
+        $validated = $this->normalizeDisposable($validated, $product->company_id, $product->id);
 
         if (is_null($validated['precio'] ?? null)) {
             if ($request->input('precio_con_igv') !== null) {
@@ -175,6 +187,44 @@ class ProductController extends Controller
         return back()->with('success', 'Producto desactivado');
     }
 
+    private function disposableProductsFor(int $companyId, ?int $excludeId = null)
+    {
+        return Product::where('company_id', $companyId)
+            ->where('estado', 'ACTIVO')
+            ->when($excludeId, fn ($query) => $query->where('id', '!=', $excludeId))
+            ->orderBy('descripcion')
+            ->get(['id', 'descripcion', 'precio']);
+    }
+
+    private function normalizeDisposable(array $validated, int $companyId, ?int $ignoreId = null): array
+    {
+        $enabled = !empty($validated['disposable_enabled']);
+
+        if (!$enabled) {
+            $validated['disposable_enabled'] = false;
+            $validated['disposable_product_id'] = null;
+
+            return $validated;
+        }
+
+        $linked = Product::where('company_id', $companyId)
+            ->where('estado', 'ACTIVO')
+            ->where('id', $validated['disposable_product_id'] ?? 0)
+            ->when($ignoreId, fn ($query) => $query->where('id', '!=', $ignoreId))
+            ->first();
+
+        if (!$linked) {
+            throw ValidationException::withMessages([
+                'disposable_product_id' => 'Seleccione un producto descartable activo de la misma empresa.',
+            ]);
+        }
+
+        $validated['disposable_enabled'] = true;
+        $validated['disposable_product_id'] = $linked->id;
+
+        return $validated;
+    }
+
     private function clearProductCaches($companyId): void
     {
         Cache::forget('restaurant_products_' . $companyId);
@@ -205,6 +255,8 @@ class ProductController extends Controller
             'stock' => 0,
             'kds_destination' => $product->kds_destination,
             'imagen' => $product->imagen,
+            'disposable_enabled' => $product->disposable_enabled,
+            'disposable_product_id' => $product->disposable_product_id,
         ]);
 
         return redirect()->route('products.edit', $duplicate)

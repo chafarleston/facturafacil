@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class RestaurantOrderItem extends Model
 {
@@ -21,6 +22,8 @@ class RestaurantOrderItem extends Model
         'kitchen_batch_id',
         'product_id',
         'product_name',
+        'parent_item_id',
+        'is_disposable',
         'quantity',
         'unit_price',
         'total',
@@ -40,6 +43,7 @@ class RestaurantOrderItem extends Model
         'unit_price' => 'decimal:2',
         'total' => 'decimal:2',
         'auxiliary_items' => 'array',
+        'is_disposable' => 'boolean',
         'sent_to_kitchen_at' => 'datetime',
         'cancelled_at' => 'datetime',
     ];
@@ -57,6 +61,16 @@ class RestaurantOrderItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function parentItem(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_item_id');
+    }
+
+    public function disposableItems(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_item_id');
     }
 
     public function cancelledBy(): BelongsTo

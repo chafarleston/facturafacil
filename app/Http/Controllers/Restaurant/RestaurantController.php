@@ -1084,6 +1084,8 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
                                     'restaurant_order_id',
                                     'kitchen_batch_id',
                                     'product_name',
+                                    'parent_item_id',
+                                    'is_disposable',
                                     'quantity',
                                     'unit_price',
                                     'kitchen_status',
@@ -1157,6 +1159,8 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
                             return [
                                 'id' => $item->id,
                                 'product_name' => $item->product_name,
+                                'parent_item_id' => $item->parent_item_id,
+                                'is_disposable' => (bool) $item->is_disposable,
                                 'quantity' => $item->quantity,
                                 'kitchen_status' => $item->kitchen_status,
                                 'notes' => $item->notes,
