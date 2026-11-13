@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Ubigeo;
+use App\Services\SunatCustomerStatusService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class CustomerController extends Controller
 {
@@ -25,7 +27,7 @@ class CustomerController extends Controller
         return view('customers.create', compact('companyId'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, SunatCustomerStatusService $statusService)
     {
         $validated = $request->validate([
             'company_id' => 'required|exists:companies,id',
@@ -38,7 +40,17 @@ class CustomerController extends Controller
             'ubigeo' => 'nullable|size:6',
         ]);
 
+        $error = $statusService->customerValidationError(
+            $validated['documento_tipo'],
+            $validated['documento_numero']
+        );
+
+        if ($error) {
+            throw ValidationException::withMessages(['documento_numero' => $error]);
+        }
+
         $customer = Customer::create($validated);
+        $statusService->syncCustomer($customer);
 
         if ($request->expectsJson() || $request->wantsJson()) {
             return response()->json([
@@ -58,12 +70,21 @@ class CustomerController extends Controller
 
     public function edit(Customer $customer)
     {
+        if (!$customer->canBeEdited()) {
+            return redirect()->route('customers.show', $customer)
+                ->with('error', 'El cliente está bloqueado y no puede editarse mientras su RUC no esté ACTIVO en SUNAT.');
+        }
+
         $companyId = $customer->company_id;
         return view('customers.edit', compact('customer', 'companyId'));
     }
 
-    public function update(Request $request, Customer $customer)
+    public function update(Request $request, Customer $customer, SunatCustomerStatusService $statusService)
     {
+        if (!$customer->canBeEdited()) {
+            return back()->with('error', 'El cliente está bloqueado y no puede editarse mientras su RUC no esté ACTIVO en SUNAT.');
+        }
+
         $validated = $request->validate([
             'documento_tipo' => 'required|in:1,6',
             'documento_numero' => 'required|max:20',
@@ -74,7 +95,17 @@ class CustomerController extends Controller
             'ubigeo' => 'nullable|size:6',
         ]);
 
+        $error = $statusService->customerValidationError(
+            $validated['documento_tipo'],
+            $validated['documento_numero']
+        );
+
+        if ($error) {
+            throw ValidationException::withMessages(['documento_numero' => $error]);
+        }
+
         $customer->update($validated);
+        $statusService->syncCustomer($customer);
 
         return redirect()->route('customers.show', $customer)->with('success', 'Cliente actualizado');
     }

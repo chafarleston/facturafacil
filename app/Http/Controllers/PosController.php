@@ -10,6 +10,7 @@ use App\Models\Serie;
 use App\Services\GreenterService;
 use App\Services\InventoryService;
 use App\Services\PrintService;
+use App\Services\SunatCustomerStatusService;
 use App\Services\SummaryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -58,7 +59,7 @@ class PosController extends Controller
         return view('pos.index', compact('categories', 'products', 'customers', 'series', 'cajaAbierta', 'mainCompany', 'showProductImages', 'showCategoryImages', 'defaultDocumentType', 'defaultPaymentMethod'));
     }
     
-    public function store(Request $request)
+    public function store(Request $request, SunatCustomerStatusService $statusService)
     {
         $mainCompany = \App\Models\Company::getMainCompany();
         $companyId = $mainCompany->id;
@@ -86,9 +87,18 @@ class PosController extends Controller
         $customer = null;
         if ($customerId) {
             $customer = Customer::find($customerId);
+
+            if (!$customer) {
+                return redirect()->back()->with('error', 'Cliente no encontrado')->withInput();
+            }
         }
-        
+
         $documentType = $request->document_type ?? 'NV';
+
+        $error = $statusService->billingValidationError($documentType, $customer);
+        if ($error) {
+            return redirect()->back()->with('error', $error)->withInput();
+        }
 
         $serie = Serie::where('company_id', $companyId)
             ->where('tipo_documento', $documentType)

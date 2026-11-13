@@ -1666,16 +1666,28 @@ Vista dedicada: GET /sunat-padron
 Menú: Empresa → Padrón SUNAT
 
 Muestra información:
-- Archivo, tamaño, registros, última actualización
+- Base SQLite, tamaño, registros, última actualización
 - Estado: disponible / no disponible
 - Botón: Descargar / Actualizar
 
 Descarga: POST /sunat-padron/download
 - Ejecuta: php artisan sunat:download-padron
 - URL: http://www2.sunat.gob.pe/padron_reducido_ruc.zip
-- Extrae y limpia automáticamente
+- Extrae el TXT, lo importa a SQLite y elimina el ZIP
+- Base resultante: storage/app/padron/sunat_padron.sqlite
+- El TXT no se elimina por defecto; usar --remove-txt si se desea
 
-Comando manual: php artisan sunat:download-padron
+Comandos manuales:
+- php artisan sunat:download-padron
+- php artisan sunat:import-padron --file=storage/app/padron_reducido_ruc.txt
+- php artisan customers:sync-sunat-status
+
+Sincronización de clientes:
+- Se ejecuta automáticamente al importar/actualizar el padrón.
+- Solo los RUC con estado ACTIVO quedan habilitados.
+- Los RUC con otros estados o no encontrados quedan bloqueados para editarse y para emitir facturas/boletas.
+- Botón manual: POST /sunat-padron/sync-customers
+- Campos en customers: sunat_estado, sunat_condicion, sunat_bloqueado, sunat_checked_at
 
 ### 20.4 Facturación Electrónica con Greenter
 
@@ -2794,7 +2806,9 @@ Exportación:
 | Comando | Propósito |
 |---------|-----------|
 | `php artisan print:process-queue` | Procesa cola de impresión |
-| `php artisan sunat:download-padron` | Descarga el padrón reducido de SUNAT |
+| `php artisan sunat:download-padron` | Descarga, extrae e importa el padrón reducido de SUNAT a SQLite |
+| `php artisan sunat:import-padron` | Importa un TXT del padrón SUNAT a SQLite y sincroniza clientes (opciones `--file`, `--remove-txt`) |
+| `php artisan customers:sync-sunat-status` | Sincroniza el estado SUNAT de clientes con el padrón |
 | `php artisan sunat:check-summaries` | Consulta estado de resúmenes diarios pendientes |
 | `php artisan sunat:send-daily-summary` | Agrupa y envía boletas del día en un Resumen Diario |
 | `php artisan sunat:retry-pending` | Reenvía todas las facturas/boletas pendientes |

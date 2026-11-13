@@ -49,17 +49,43 @@
             </div>
             <div class="col-md-6">
                 <div class="info-box">
-                    <span class="info-box-icon bg-{{ $customer->estado == 'ACT' ? 'success' : 'danger' }}"><i class="fas fa-power-off"></i></span>
+                    <span class="info-box-icon bg-{{ $customer->estado == 'ACTIVO' ? 'success' : 'danger' }}"><i class="fas fa-power-off"></i></span>
                     <div class="info-box-content">
-                        <span class="info-box-text">Estado</span>
+                        <span class="info-box-text">Estado interno</span>
                         <span class="info-box-number">{{ $customer->estado }}</span>
                     </div>
                 </div>
             </div>
         </div>
+        @if($customer->documento_tipo === '6')
+        <div class="row mt-3">
+            <div class="col-md-12">
+                @if($customer->isSunatBlocked())
+                <div class="alert alert-danger">
+                    <i class="fas fa-ban"></i>
+                    <strong>Cliente bloqueado para facturación.</strong>
+                    Estado SUNAT: {{ $customer->sunat_estado ?: 'SIN VERIFICAR' }}
+                    @if($customer->sunat_condicion)
+                        · Condición: {{ $customer->sunat_condicion }}
+                    @endif
+                    <br>
+                    No puede editarse ni usarse para emitir facturas o boletas mientras el RUC no esté ACTIVO.
+                </div>
+                @else
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    RUC ACTIVO en SUNAT · Condición: {{ $customer->sunat_condicion ?: 'NO DISPONIBLE' }}
+                </div>
+                @endif
+                <p class="text-muted mb-0">Última verificación: {{ $customer->sunat_checked_at ? $customer->sunat_checked_at->format('d/m/Y H:i:s') : 'Sin verificar' }}</p>
+            </div>
+        </div>
+        @endif
     </div>
     <div class="card-footer">
+        @if($customer->canBeEdited())
         <a href="{{ route('customers.edit', $customer) }}" class="btn btn-warning"><i class="fas fa-edit"></i> Editar</a>
+        @endif
         <a href="{{ route('customers.index') }}" class="btn btn-secondary">Volver</a>
     </div>
 </div>

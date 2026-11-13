@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Customer;
 use App\Models\Ubigeo;
 use App\CoreFacturalo\Services\Dni\Dni;
+use App\Services\SunatCustomerStatusService;
+use App\Services\SunatPadronService;
 
 class DecolectaController extends Controller
 {
@@ -24,7 +26,15 @@ class DecolectaController extends Controller
             if (!$ubigeoCodigo && !empty($customer->direccion)) {
                 $ubigeoCodigo = $this->extractUbigeoFromAddress($customer->direccion);
             }
-            
+
+            $sunatData = strlen($documento) === 11
+                ? app(SunatPadronService::class)->findByRuc($documento)
+                : null;
+            $sunatEstado = $sunatData['estado'] ?? $customer->sunat_estado;
+            $sunatCondicion = $sunatData['condicion'] ?? $customer->sunat_condicion;
+            $sunatBloqueado = $customer->isSunatBlocked()
+                || ($sunatData && !SunatCustomerStatusService::isActiveState($sunatData['estado'] ?? null));
+
             return response()->json([
                 'found' => true,
                 'exists' => true,
@@ -42,6 +52,9 @@ class DecolectaController extends Controller
                     'nombre' => $customer->nombre,
                     'direccion' => $customer->direccion,
                     'ubigeo' => $ubigeoCodigo,
+                    'estado' => $sunatEstado,
+                    'condicion' => $sunatCondicion,
+                    'sunat_bloqueado' => $sunatBloqueado,
                 ]
             ]);
         }
@@ -60,6 +73,7 @@ class DecolectaController extends Controller
                         'direccion' => $direccionCompleta,
                         'estado' => $sunatData['estado'] ?? '',
                         'condicion' => $sunatData['condicion'] ?? '',
+                        'sunat_bloqueado' => !SunatCustomerStatusService::isActiveState($sunatData['estado'] ?? null),
                         'documento_tipo' => '6',
                         'documento_numero' => $documento,
                         'ubigeo' => $ubigeoCodigo,
@@ -203,50 +217,19 @@ class DecolectaController extends Controller
     
     private function searchInSunatPadron($ruc)
     {
-        $filePath = storage_path('app/padron_reducido_ruc.txt');
-        
-        if (file_exists($filePath)) {
-            $handle = fopen($filePath, 'r');
-            
-            while (($line = fgets($handle)) !== false) {
-                $firstPipe = strpos($line, '|');
-                if ($firstPipe === false) continue;
-                
-                $rucInFile = substr($line, 0, $firstPipe);
-                
-                if ($rucInFile === $ruc) {
-                    fclose($handle);
-                    
-                    $cleanLine = preg_replace('/[\x00-\x1F\x7F]/', '', $line);
-                    $parts = explode('|', trim($cleanLine));
-                    
-                    $direccionParts = [];
-                    for ($i = 5; $i < count($parts); $i++) {
-                        $part = isset($parts[$i]) ? trim($parts[$i]) : '';
-                        if (!empty($part) && $part !== '-' && $part !== '|' && $part !== '') {
-                            $direccionParts[] = $part;
-                        }
-                    }
-                    
-                    $direccion = implode(' ', $direccionParts);
-                    $razonSocial = isset($parts[1]) ? trim($parts[1]) : '';
-                    $razonSocial = mb_convert_encoding($razonSocial, 'UTF-8', 'ISO-8859-1');
-                    $direccion = mb_convert_encoding($direccion, 'UTF-8', 'ISO-8859-1');
-                    
-                    return [
-                        'ruc' => $rucInFile,
-                        'razon_social' => $razonSocial,
-                        'estado' => isset($parts[2]) ? trim($parts[2]) : '',
-                        'condicion' => isset($parts[3]) ? trim($parts[3]) : '',
-                        'ubigeo' => isset($parts[4]) ? trim($parts[4]) : '',
-                        'direccion' => $direccion,
-                    ];
-                }
-            }
-            
-            fclose($handle);
+        $result = app(SunatPadronService::class)->findByRuc($ruc);
+
+        if ($result) {
+            return [
+                'ruc' => $result['ruc'],
+                'razon_social' => $result['razon_social'],
+                'estado' => $result['estado'],
+                'condicion' => $result['condicion'],
+                'ubigeo' => $result['ubigeo'],
+                'direccion' => $result['direccion_completa'],
+            ];
         }
-        
+
         return $this->searchSunatApi($ruc);
     }
     

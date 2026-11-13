@@ -471,6 +471,14 @@ function checkFacturaRequired() {
     return null;
 }
 
+function invoiceSunatStatusSuffix(apiData) {
+    if (!apiData) return '';
+    const parts = [];
+    if (apiData.estado) parts.push('Estado: ' + apiData.estado);
+    if (apiData.condicion) parts.push('Condición: ' + apiData.condicion);
+    return parts.length ? ' · ' + parts.join(' · ') : '';
+}
+
 function buscarCliente() {
     const errorMsg = checkFacturaRequired();
     if (errorMsg) {
@@ -496,8 +504,10 @@ function buscarCliente() {
                 document.getElementById('customer_data_documento_numero').value = data.customer.documento_numero;
                 document.getElementById('customer_data_nombre').value = data.customer.nombre;
                 document.getElementById('customer_data_direccion').value = cleanAddress(data.customer.direccion) || '';
-                statusEl.textContent = '✓ Cliente encontrado';
-                statusEl.className = 'text-sm text-success';
+                statusEl.textContent = '✓ Cliente encontrado' + invoiceSunatStatusSuffix(data.api_data);
+                statusEl.className = data.api_data && data.api_data.sunat_bloqueado
+                    ? 'text-sm text-danger'
+                    : 'text-sm text-success';
                 if (data.customer.ubigeo) {
                     loadInvUbigeoFromCode(data.customer.ubigeo);
                 }
@@ -509,9 +519,11 @@ function buscarCliente() {
                 document.getElementById('customer_data_documento_numero').value = data.api_data.documento_numero || docNumero;
                 document.getElementById('customer_data_nombre').value = data.api_data.nombre || '';
                 document.getElementById('customer_data_direccion').value = cleanAddress(data.api_data.direccion) || '';
-                statusEl.textContent = 'Datos cargados. Presione "Establecer Cliente"';
-                statusEl.className = 'text-sm text-warning';
-                document.getElementById('setCustomerBtn').style.display = 'inline-block';
+                statusEl.textContent = (data.api_data.sunat_bloqueado ? 'RUC BLOQUEADO' : 'Datos cargados. Presione "Establecer Cliente"') + invoiceSunatStatusSuffix(data.api_data);
+                statusEl.className = data.api_data.sunat_bloqueado
+                    ? 'text-sm text-danger'
+                    : 'text-sm text-warning';
+                document.getElementById('setCustomerBtn').style.display = data.api_data.sunat_bloqueado ? 'none' : 'inline-block';
                 if (data.api_data.ubigeo) {
                     loadInvUbigeoFromCode(data.api_data.ubigeo);
                 }

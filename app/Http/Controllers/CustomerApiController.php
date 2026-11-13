@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\Company;
+use App\Services\SunatCustomerStatusService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class CustomerApiController extends Controller
 {
@@ -28,6 +30,9 @@ class CustomerApiController extends Controller
                     'direccion' => $customer->direccion,
                     'email' => $customer->email,
                     'telefono' => $customer->telefono,
+                    'sunat_estado' => $customer->sunat_estado,
+                    'sunat_condicion' => $customer->sunat_condicion,
+                    'sunat_bloqueado' => $customer->isSunatBlocked(),
                 ]
             ]);
         }
@@ -35,7 +40,7 @@ class CustomerApiController extends Controller
         return response()->json(['found' => false]);
     }
 
-    public function quickStore(Request $request)
+    public function quickStore(Request $request, SunatCustomerStatusService $statusService)
     {
         $validated = $request->validate([
             'company_id' => 'required|exists:companies,id',
@@ -47,7 +52,17 @@ class CustomerApiController extends Controller
             'email' => 'nullable|email',
         ]);
 
+        $error = $statusService->customerValidationError(
+            $validated['documento_tipo'],
+            $validated['documento_numero']
+        );
+
+        if ($error) {
+            throw ValidationException::withMessages(['documento_numero' => $error]);
+        }
+
         $customer = Customer::create($validated);
+        $statusService->syncCustomer($customer);
         
         return response()->json([
             'success' => true,

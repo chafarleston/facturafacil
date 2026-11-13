@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\Serie;
 use App\Services\GreenterService;
 use App\Services\InventoryService;
+use App\Services\SunatCustomerStatusService;
 use App\Services\SummaryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -70,7 +71,7 @@ class InvoiceController extends Controller
         return view('invoices.create', compact('company', 'customers', 'products', 'series'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, SunatCustomerStatusService $statusService)
     {
         $this->authorize('permission', 'create_invoices');
         $itemsInput = $request->input('items');
@@ -123,6 +124,11 @@ class InvoiceController extends Controller
                 }
             }
             
+            $error = $statusService->customerValidationError($docTipo, $docNumero);
+            if ($error) {
+                return back()->withErrors(['customer' => $error]);
+            }
+
             $customer = Customer::create([
                 'company_id' => $validated['company_id'],
                 'documento_tipo' => $docTipo,
@@ -132,11 +138,18 @@ class InvoiceController extends Controller
                 'ubigeo' => $customerData['ubigeo'] ?? null,
                 'estado' => 'ACTIVO',
             ]);
-            
+
+            $statusService->syncCustomer($customer);
+
             $customerId = $customer->id;
         } else {
             $customer = Customer::find($customerId);
-            if ($tipoDoc === '01' && $customer) {
+
+            if (!$customer) {
+                return back()->withErrors(['customer' => 'Cliente no encontrado']);
+            }
+
+            if ($tipoDoc === '01') {
                 $docNumero = $customer->documento_numero;
                 $docTipo = $customer->documento_tipo;
                 if (strlen($docNumero) !== 11) {
@@ -145,6 +158,11 @@ class InvoiceController extends Controller
                 if ($docTipo !== '6') {
                     return back()->withErrors(['customer' => 'Las facturas requieren tipo de documento RUC (6)']);
                 }
+            }
+
+            $error = $statusService->billingValidationError((string) $tipoDoc, $customer);
+            if ($error) {
+                return back()->withErrors(['customer' => $error]);
             }
         }
 

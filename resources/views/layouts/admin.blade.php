@@ -428,6 +428,14 @@ $__kdsActive = \App\Models\Company::orderMode() === 'kds';
       return direccion;
   }
   
+  function sunatStatusSuffix(apiData) {
+      if (!apiData) return '';
+      var parts = [];
+      if (apiData.estado) parts.push('Estado: ' + apiData.estado);
+      if (apiData.condicion) parts.push('Condición: ' + apiData.condicion);
+      return parts.length ? ' · ' + parts.join(' · ') : '';
+  }
+
   function buscarClienteGlobal() {
       var docNumero = document.getElementById('doc_numero').value.trim();
       var companyId = document.querySelector('input[name="company_id"]') ? document.querySelector('input[name="company_id"]').value : 1;
@@ -460,8 +468,10 @@ $__kdsActive = \App\Models\Company::orderMode() === 'kds';
                   if (document.getElementById('doc_tipo')) {
                       document.getElementById('doc_tipo').value = data.customer.documento_tipo;
                   }
-                  statusEl.textContent = '✓ Cliente encontrado';
-                  statusEl.className = 'text-sm text-success';
+                  statusEl.textContent = '✓ Cliente encontrado' + sunatStatusSuffix(data.api_data);
+                  statusEl.className = data.api_data && data.api_data.sunat_bloqueado
+                      ? 'text-sm text-danger'
+                      : 'text-sm text-success';
                   if (data.customer && data.customer.ubigeo) {
                       loadUbigeoFromCode(data.customer.ubigeo);
                   }
@@ -472,8 +482,10 @@ $__kdsActive = \App\Models\Company::orderMode() === 'kds';
                   if (document.getElementById('customer_direccion')) {
                       document.getElementById('customer_direccion').value = cleanAddress(data.api_data.direccion) || '';
                   }
-                  statusEl.textContent = 'Datos cargados desde SUNAT';
-                  statusEl.className = 'text-sm text-warning';
+                  statusEl.textContent = (data.api_data.sunat_bloqueado ? 'RUC BLOQUEADO' : 'Datos cargados desde SUNAT') + sunatStatusSuffix(data.api_data);
+                  statusEl.className = data.api_data.sunat_bloqueado
+                      ? 'text-sm text-danger'
+                      : 'text-sm text-warning';
                   if (data.api_data && data.api_data.ubigeo) {
                       loadUbigeoFromCode(data.api_data.ubigeo);
                   }

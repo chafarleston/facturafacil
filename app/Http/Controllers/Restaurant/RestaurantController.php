@@ -28,6 +28,7 @@ use App\Services\PrintServerService;
 use App\Services\PrintService;
 use App\Services\KitchenBatchService;
 use App\Services\InventoryService;
+use App\Services\SunatCustomerStatusService;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class RestaurantController extends Controller
@@ -1399,6 +1400,28 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
                 $this->assertPaymentsCoverTotal($payments, (float) $items->sum('total'));
                 $this->assertVirtualPaymentsWithinTotal($payments, (float) $items->sum('total'));
 
+                $customerId = $request->customer_id;
+                $documentType = $request->document_type ?? 'NV';
+                $reference = $request->reference ?? '';
+                $soloConsumo = $request->boolean('solo_consumo');
+
+                $customer = $customerId ? Customer::find($customerId) : null;
+                if ($customerId && !$customer) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Cliente no encontrado'
+                    ], 400);
+                }
+
+                $billingError = app(SunatCustomerStatusService::class)
+                    ->billingValidationError($documentType, $customer);
+                if ($billingError) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $billingError
+                    ], 422);
+                }
+
                 // Opci��n B: enviar automǭticamente a cocina/bar los items pendientes antes de facturar
                 $pendingToSend = $items->where('kitchen_status', 'PENDING');
                 if ($pendingToSend->isNotEmpty()) {
@@ -1419,11 +1442,6 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
                     Cache::put('kitchen_updated_' . $order->company_id, now()->timestamp, 10);
                     Cache::put('restaurant_updated_' . $order->company_id, now()->timestamp, 10);
                 }
-
-                $customerId = $request->customer_id;
-                $documentType = $request->document_type ?? 'NV';
-                $reference = $request->reference ?? '';
-                $soloConsumo = $request->boolean('solo_consumo');
 
                 $result = $this->createInvoiceFromItems(
                     $order, $items, $customerId, $documentType, $payments,
@@ -1520,6 +1538,40 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
                     'success' => false,
                     'message' => 'El pedido no tiene productos por dividir'
                 ], 400);
+            }
+
+            $splits = $request->splits ?? [];
+            if (empty($splits)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Debe especificar al menos una división'
+                ], 400);
+            }
+
+            $statusService = app(SunatCustomerStatusService::class);
+
+            foreach ($splits as $split) {
+                $customerId = $split['customer_id'] ?? null;
+                $customer = $customerId ? Customer::find($customerId) : null;
+
+                if ($customerId && !$customer) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Cliente no encontrado'
+                    ], 400);
+                }
+
+                $billingError = $statusService->billingValidationError(
+                    $split['document_type'] ?? 'NV',
+                    $customer
+                );
+
+                if ($billingError) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $billingError
+                    ], 422);
+                }
             }
 
             // Opción B: enviar automáticamente a cocina/bar los items pendientes antes de dividir/cobrar
@@ -1702,6 +1754,14 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
 
     private function createInvoiceFromItems($order, $items, $customerId, $documentType, $payments, $soloConsumo, $reference, $cajaAbierta, $mainCompany, $companyId)
     {
+        $customer = $customerId ? Customer::find($customerId) : null;
+        $billingError = app(SunatCustomerStatusService::class)
+            ->billingValidationError($documentType, $customer);
+
+        if ($billingError) {
+            throw new \RuntimeException($billingError);
+        }
+
         $serie = Serie::where('company_id', $companyId)
             ->where('tipo_documento', $documentType)
             ->where('estado', 'ACTIVO')

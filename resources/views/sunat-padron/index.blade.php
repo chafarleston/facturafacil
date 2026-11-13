@@ -10,7 +10,7 @@
                 <h3 class="card-title"><i class="fas fa-database"></i> Padrón Reducido de RUC</h3>
             </div>
             <div class="card-body">
-                <p>El padrón reducido de RUC es un archivo de SUNAT que contiene información de todos los contribuyentes. Permite consultar datos de RUC sin hacer llamadas a la API de SUNAT.</p>
+                <p>El padrón reducido de RUC es un archivo de SUNAT que contiene información de todos los contribuyentes. Se importa a una base SQLite local para consultar datos de RUC sin hacer llamadas a la API de SUNAT.</p>
 
                 @if(session('success'))
                 <div class="alert alert-success">
@@ -26,13 +26,13 @@
 
                 @if($padronInfo['exists'])
                 <div class="alert alert-success">
-                    <i class="fas fa-check-circle"></i> <strong>Padrón descargado</strong>
+                    <i class="fas fa-check-circle"></i> <strong>Padrón importado en SQLite</strong>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-bordered">
                         <tbody>
                             <tr>
-                                <th style="width: 200px;">Archivo</th>
+                                <th style="width: 200px;">Base de datos</th>
                                 <td>{{ $padronInfo['file'] }}</td>
                             </tr>
                             <tr>
@@ -50,10 +50,15 @@
                         </tbody>
                     </table>
                 </div>
+                @elseif($padronInfo['driver_missing'] ?? false)
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i> <strong>SQLite no disponible</strong>
+                    <p class="mb-0 mt-2">{{ $padronInfo['message'] }} Reinicie Laragon/Apache después de habilitar la extensión.</p>
+                </div>
                 @else
                 <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle"></i> <strong>Padrón no descargado</strong>
-                    <p class="mb-0 mt-2">Para buscar RUCs directamente desde SUNAT, debe descargar el padrón.</p>
+                    <i class="fas fa-exclamation-triangle"></i> <strong>Padrón no importado</strong>
+                    <p class="mb-0 mt-2">Para buscar RUCs directamente desde SUNAT, debe descargar e importar el padrón.</p>
                 </div>
                 @endif
 
@@ -61,6 +66,19 @@
                     @csrf
                     <button type="submit" class="btn btn-primary" onclick="return confirm('¿Descargar el padrón de SUNAT? Esto puede tardar varios minutos.')">
                         <i class="fas fa-download"></i> {{ $padronInfo['exists'] ? 'Actualizar Padrón' : 'Descargar Padrón' }}
+                    </button>
+                </form>
+
+                <hr>
+
+                <h6><i class="fas fa-user-shield"></i> Estado SUNAT de clientes</h6>
+                <p class="mb-1">Clientes bloqueados: <strong class="text-danger">{{ $syncInfo['blocked'] }}</strong></p>
+                <p class="text-muted mb-2">Última sincronización: {{ $syncInfo['last_sync'] ?: 'Sin sincronizar' }}</p>
+                <p class="text-muted">La sincronización se ejecuta automáticamente al actualizar el padrón. Si un RUC deja de estar ACTIVO, el cliente quedará bloqueado para editarse y para emitir facturas o boletas.</p>
+                <form method="POST" action="{{ route('sunat-padron.sync') }}">
+                    @csrf
+                    <button type="submit" class="btn btn-outline-danger" onclick="return confirm('¿Sincronizar ahora el estado SUNAT de todos los clientes?')">
+                        <i class="fas fa-sync-alt"></i> Sincronizar estados de clientes
                     </button>
                 </form>
             </div>
@@ -87,7 +105,8 @@
 
                 <h6>Comando manual</h6>
                 <div class="bg-light p-3 rounded">
-                    <code>php artisan sunat:download-padron</code>
+                    <code>php artisan sunat:download-padron</code><br>
+                    <code>php artisan sunat:import-padron --file=storage/app/padron_reducido_ruc.txt</code>
                 </div>
             </div>
         </div>
@@ -106,6 +125,7 @@
                 </div>
                 <p><strong>Registros:</strong> {{ $padronInfo['records'] }}</p>
                 <p><strong>Actualizado:</strong> {{ $padronInfo['last_modified'] }}</p>
+                <p><strong>Clientes bloqueados:</strong> {{ $syncInfo['blocked'] }}</p>
                 @else
                 <div class="text-center mb-3">
                     <i class="fas fa-exclamation-circle text-warning" style="font-size: 3rem;"></i>
