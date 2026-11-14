@@ -164,7 +164,12 @@ class KitchenBatchService
                 ])
                 ->exists();
 
-            if ($batches->isNotEmpty() && !$hasRemainingItems) {
+            // No marcar como entregado si todo quedó cancelado y no hay ítems entregados.
+            $hasDeliveredItems = RestaurantOrderItem::where('restaurant_order_id', $order->id)
+                ->where('kitchen_status', RestaurantOrderItem::DELIVERED)
+                ->exists();
+
+            if ($batches->isNotEmpty() && !$hasRemainingItems && $hasDeliveredItems) {
                 $order->status = RestaurantOrder::STATUS_DELIVERED;
                 $order->finished_at = $order->finished_at ?? $batches->max('finished_at') ?? now();
                 $order->save();

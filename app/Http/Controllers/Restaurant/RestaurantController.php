@@ -1047,7 +1047,14 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
             ->with('items')
             ->select('id', 'table_id', 'order_number', 'status', 'notes', 'subtotal', 'igv', 'total', 'updated_at')
-            ->get();
+            ->get()
+            ->map(fn ($order) => [
+                'id' => $order->id,
+                'table_id' => $order->table_id,
+                'order_number' => $order->order_number,
+                'status' => $order->status,
+                'version' => $order->version,
+            ]);
 
         $locks = RestaurantTable::where('company_id', $companyId)
             ->whereNotNull('locked_by')

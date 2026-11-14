@@ -871,7 +871,20 @@ function postBatchAction(batchId, action) {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
-    }).then(res => res.json());
+    }).then(function(res) {
+        if (res.status === 401) {
+            window.location.href = '/login';
+            throw new Error('Sesión expirada');
+        }
+
+        return res.json().catch(function() { return {}; }).then(function(data) {
+            if (!res.ok) {
+                throw new Error((data && data.message) || ('HTTP ' + res.status));
+            }
+
+            return data;
+        });
+    });
 }
 
 function prepareBatch(batchId) {
@@ -885,7 +898,7 @@ function prepareBatch(batchId) {
         })
         .catch(err => {
             console.error('KDS Error:', err);
-            alert('Error de conexión al preparar el lote');
+            alert(err.message || 'Error de conexión al preparar el lote');
         });
 }
 
@@ -900,7 +913,7 @@ function deliverBatch(batchId) {
         })
         .catch(err => {
             console.error('KDS Error:', err);
-            alert('Error de conexión al terminar el lote');
+            alert(err.message || 'Error de conexión al terminar el lote');
         });
 }
 

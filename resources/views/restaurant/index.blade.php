@@ -1202,6 +1202,11 @@ function loadOrder(orderId) {
             window.currentOrderData = order;
             document.getElementById('modalOrderNumber').textContent = 'Pedido: ' + order.order_number;
             renderOrder(order);
+
+            if (['COMPLETED', 'CANCELLED'].includes(order.status)) {
+                showToast('El pedido ya fue cerrado por otro usuario');
+                closeModal();
+            }
         } else {
             showError(data.message || 'Error al cargar pedido');
         }
@@ -2079,11 +2084,14 @@ function refreshOpenOrderIfChanged(orders) {
     if (blocked) return;
 
     const serverOrder = (orders || []).find(function(order) {
-        return order.id === currentOrderId;
+        return String(order.id) === String(currentOrderId);
     });
 
     if (!serverOrder) {
-        if (!['COMPLETED', 'CANCELLED'].includes(window.currentOrderData.status)) {
+        if (['COMPLETED', 'CANCELLED'].includes(window.currentOrderData.status)) {
+            showToast('El pedido ya fue cerrado por otro usuario');
+            closeModal();
+        } else {
             loadOrder(currentOrderId);
         }
         return;
