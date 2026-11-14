@@ -2,7 +2,7 @@
     Actualizacion segura para el cliente FacturaFacil.
     Uso: powershell -ExecutionPolicy Bypass -File .\actualizar_cliente.ps1
     Simulacion: powershell -ExecutionPolicy Bypass -File .\actualizar_cliente.ps1 -DryRun
-    Otra base:  powershell -ExecutionPolicy Bypass -File .\actualizar_cliente.ps1 -Database facturafacil2
+    Base: se detecta desde .env (facturafacil).
 #>
 
 [CmdletBinding()]
@@ -184,19 +184,6 @@ try {
 
     if ($db -ne $detectedDb) {
         Write-Warn "La base indicada no coincide con .env. Se usara la indicada."
-    }
-
-    if (-not $Database -and -not $Yes -and -not $DryRun) {
-        Write-Host 'Si el cliente usa otra base (por ejemplo facturafacil2), escribala ahora.' -ForegroundColor Yellow
-        $dbInput = Read-Host "Base de datos [$db]"
-
-        if ($dbInput.Trim()) {
-            $db = $dbInput.Trim()
-
-            if ($db -notmatch '^[A-Za-z0-9_-]+$') {
-                throw "Nombre de base de datos invalido: $db"
-            }
-        }
     }
 
     $branch = (& $Git rev-parse --abbrev-ref HEAD 2>$null | Out-String).Trim()

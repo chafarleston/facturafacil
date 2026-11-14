@@ -386,13 +386,13 @@ Para actualizar el sistema no se debe hacer `git pull` manual en la maquina del 
 2. Ejecutar primero una simulacion:
 
 ```bat
-actualizar_cliente.bat -DryRun -Database facturafacil2
+actualizar_cliente.bat -DryRun
 ```
 
 3. Si no hay errores, ejecutar:
 
 ```bat
-actualizar_cliente.bat -Database facturafacil2
+actualizar_cliente.bat
 ```
 
 El script:
@@ -405,7 +405,7 @@ El script:
 - No ejecuta `ActualizarSeeder` por defecto, para no resetear permisos. Solo con `-RunSeeder`.
 - Deja un log `backups\update_YYYYMMDD_HHMMSS.log`.
 
-Si el cliente usa una base distinta a la del `.env` (por ejemplo `facturafacil2`), indicarla con `-Database facturafacil2`. No interrumpir el proceso durante el backup o las migraciones.
+La base se detecta automáticamente desde `.env` (`facturafacil`). No interrumpir el proceso durante el backup o las migraciones.
 
 ---
 

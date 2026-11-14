@@ -219,8 +219,8 @@ El error de `APP_KEY` no explica el borrado. Las mesas **55 y 56** se crearon y 
 Para aplicar cambios de codigo no usar `git pull` manual. Usar:
 
 ```bat
-actualizar_cliente.bat -DryRun -Database facturafacil2
-actualizar_cliente.bat -Database facturafacil2
+actualizar_cliente.bat -DryRun
+actualizar_cliente.bat
 ```
 
 `actualizar_cliente.bat` delega en `actualizar_cliente.ps1` y:

@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-11-07  
 **Contexto:** 1 cajero y varios mozos (escenario real: ~5 mozos).  
-**Base analizada:** `facturafacil2`.  
+**Base analizada:** `facturafacil`.
 **Estado:** los riesgos criticos de perdida de items ya se corrigieron; quedan tareas de endurecimiento, datos historicos y pruebas.
 
 > No tocar codigo ni ejecutar cambios en el cliente sin backup, rama limpia y prueba en copia/staging.
@@ -20,7 +20,7 @@
 - `order_version` (hash de pedido + items): las acciones desde una vista vieja responden `409 requires_reload`.
 - Frontend: refresca el pedido abierto en el polling, renueva el bloqueo cada 60 s y libera la mesa al cobrar/cerrar/anular.
 - IGV de linea corregido en el detalle de factura.
-- Limpieza aplicada en `facturafacil2`: 19 items y 1,581 lotes marcados `CANCELLED`; backup en `backups/pre-clean-orphans-20261107-171548.sql`; 0 huerfanos activos.
+- Limpieza histórica aplicada en la base anterior del cliente (ya no usada): 19 items y 1,581 lotes marcados `CANCELLED`; backup en `backups/pre-clean-orphans-20261107-171548.sql`; 0 huerfanos activos.
 - Limpieza de pedidos vacios aplicada el 2026-11-08: **469 pedidos `CANCELLED` sin items** y **7 pedidos `COMPLETED` sin items pagados** (IDs 3,4,6,7,8,9,10). Backup: `backups/pre-delete-orders-20261108-000801.sql`. Facturas e items pagados intactos.
 
 ---
@@ -104,8 +104,9 @@
 
 - [ ] **Desplegar al cliente con el actualizador seguro.**
   - Commit/push de los cambios y del nuevo `actualizar_cliente.ps1`.
-  - Ejecutar primero `actualizar_cliente.bat -DryRun -Database facturafacil2`.
-  - Luego `actualizar_cliente.bat -Database facturafacil2`.
+  - Ejecutar primero `actualizar_cliente.bat -DryRun`.
+  - Luego `actualizar_cliente.bat`.
+  - La base se detecta automáticamente desde `.env` (`facturafacil`).
   - Verificar Print Server, scheduler, login admin/cajero/mozo y dos mesas concurrentes.
 
 ---

@@ -4208,7 +4208,7 @@ Esta seccion resume los cambios que deben tenerse en cuenta al operar con varios
 ### 32.2 Actualizador seguro del cliente
 
 - `actualizar_cliente.bat` delega en `actualizar_cliente.ps1`.
-- Opciones: `-DryRun`, `-Database facturafacil2`, `-RunSeeder`, `-Yes`.
+- Opciones: `-DryRun`, `-RunSeeder`, `-Yes`. La base se detecta desde `.env` (`facturafacil`).
 - Verifica PHP, Git, Composer, npm y `mysqldump`; exige rama `main` y repositorio limpio.
 - Respalda base de datos, `.env` y certificados antes de activar mantenimiento.
 - Usa `git pull --ff-only`, `composer install --no-dev`, `npm ci` (sin fallback a `npm install`) y `migrate --force`.
@@ -4219,7 +4219,7 @@ Esta seccion resume los cambios que deben tenerse en cuenta al operar con varios
 
 `limpiar_huerfanos.bat` / `scripts/limpiar_huerfanos.php`:
 
-- Hace simulacion (`--dry-run`), permite `--db=facturafacil2` y crea backup antes de aplicar.
+- Hace simulacion (`--dry-run`), usa la base del `.env` (`facturafacil`) y crea backup antes de aplicar.
 - Cancela items de pedidos `CANCELLED` y lotes activos de `CANCELLED`/`COMPLETED`.
 - Los items impagos de pedidos `COMPLETED` se listan para reabrir/cobrar y **no se cancelan**.
 - No elimina pedidos.
@@ -4252,7 +4252,7 @@ La hoja de ruta detallada, decisiones de negocio y pruebas de aceptación está 
 - No se eliminaron pedidos, facturas, items pagados, mesas ni stock.
 - Backup: `storage/app/backup/pre-renumber-20261108-004929.sql`; mapeo CSV: `order-number-map-20261108-004933.csv`.
 - Esta seccion reemplaza la antigua numeracion kiosko `A-001` por caja; ahora `A-###` es global por empresa y usa secuencia atomica.
-- Comando: `php artisan orders:renumber-duplicates --db=facturafacil2 --dry-run|--apply`. La pagina `/order-health` solo diagnostica; no renumera.
+- Comando: `php artisan orders:renumber-duplicates --dry-run|--apply`. La pagina `/order-health` solo diagnostica; no renumera.
 
 ### 32.7 Delivery en Autopedido (aplicado 2026-11-08)
 

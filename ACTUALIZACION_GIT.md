@@ -12,7 +12,7 @@ Usar `actualizar_cliente.bat` (delega en `actualizar_cliente.ps1`). Antes de toc
 
 - Verifica PHP, Git, Composer, npm y `mysqldump` de Laragon.
 - Exige repositorio limpio y rama `main`.
-- Detecta la base desde `.env` y permite indicar otra con `-Database` (por ejemplo `facturafacil2`).
+- Detecta la base desde `.env` (`facturafacil`); no requiere indicar `-Database`.
 - Crea backup de la base, `.env` y certificados antes de activar mantenimiento.
 - Usa `git pull --ff-only`; no hace merge ni `reset --hard`.
 - No ejecuta `ActualizarSeeder` por defecto, para no resetear permisos.
@@ -23,7 +23,7 @@ Usar `actualizar_cliente.bat` (delega en `actualizar_cliente.ps1`). Antes de toc
 Simulación sin cambios:
 
 ```powershell
-actualizar_cliente.bat -DryRun -Database facturafacil2
+actualizar_cliente.bat -DryRun
 ```
 
 Si se necesitan permisos nuevos, ejecutar el seeder manualmente o con `-RunSeeder`, revisando antes el impacto.
@@ -497,23 +497,23 @@ Evita `php artisan db:seed` sin revisar. Puede resetear permisos o recrear cuent
 
 ## 17. Numeracion de pedidos y base de datos
 
-- El `.env` local puede apuntar a `facturafacil`, mientras el cliente usa `facturafacil2`. Para comandos de reparacion indicar `--db=facturafacil2`.
+- El `.env` apunta a `facturafacil`; es la única base usada. Los comandos de reparación no requieren `--db`.
 - Migraciones relacionadas:
   - `2026_11_08_000001_add_order_number_legacy_and_sequences`
   - `2026_11_08_000002_add_unique_order_number_to_restaurant_orders`
 - La segunda migracion **omite el indice unico** si aun existen duplicados; el comando de renumeracion lo agrega despues de limpiar.
 - Proceso recomendado:
   1. `php artisan migrate --force`.
-  2. `php artisan orders:renumber-duplicates --db=facturafacil2 --dry-run`.
+  2. `php artisan orders:renumber-duplicates --dry-run`.
   3. `php artisan down --retry=60`.
-  4. `php artisan orders:renumber-duplicates --db=facturafacil2 --apply`.
+  4. `php artisan orders:renumber-duplicates --apply`.
   5. `php artisan up`.
 - Verificar:
   - 0 grupos de `order_number` duplicados.
   - Indice `restaurant_orders_company_number_unique`.
   - Facturas, items pagados, pedidos activos y stock intactos.
   - `legacy_order_number` conserva el numero anterior.
-- La pagina `/order-health` usa la base configurada en `.env`; si debe mostrar el cliente, cambiar `DB_DATABASE=facturafacil2` y limpiar la cache de configuracion.
+- La pagina `/order-health` usa la base configurada en `.env` (`facturafacil`).
 
 ---
 

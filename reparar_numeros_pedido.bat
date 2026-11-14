@@ -12,7 +12,7 @@ echo No elimina pedidos, facturas, items pagados, mesas ni stock.
 echo Crea un backup antes de aplicar.
 echo.
 
-set "DB=facturafacil2"
+set "DB=facturafacil"
 set /p "DBINPUT=Base de datos [%DB%]: "
 if not "%DBINPUT%"=="" set "DB=%DBINPUT%"
 

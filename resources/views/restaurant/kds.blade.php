@@ -627,7 +627,7 @@ setInterval(updateClock, 1000);
 updateClock();
 
 function handlePollResponse(res) {
-    if (res.status === 401) {
+    if (res.status === 401 || (res.redirected && res.url.indexOf('/login') !== -1)) {
         window.location.href = '/login';
         return Promise.reject('unauthenticated');
     }
@@ -872,7 +872,7 @@ function postBatchAction(batchId, action) {
             'Accept': 'application/json'
         }
     }).then(function(res) {
-        if (res.status === 401) {
+        if (res.status === 401 || (res.redirected && res.url.indexOf('/login') !== -1)) {
             window.location.href = '/login';
             throw new Error('Sesión expirada');
         }

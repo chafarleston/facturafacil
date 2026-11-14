@@ -926,6 +926,14 @@ let currentTableId = null;
 let orderLoadToken = 0;
 let currentTableName = null;
 
+function fetchWithTimeout(url, options, timeoutMs) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(function() { controller.abort(); }, timeoutMs || 10000);
+
+    return fetch(url, Object.assign({}, options || {}, { signal: controller.signal }))
+        .finally(function() { clearTimeout(timeoutId); });
+}
+
 // Teclado virtual para el buscador de productos
 let restKbActiveInput = null;
 
@@ -1049,15 +1057,15 @@ function selectTable(tableId) {
     const selectionToken = ++orderLoadToken;
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
 
-    fetch('/restaurant/tables/' + tableId + '/lock', {
+    fetchWithTimeout('/restaurant/tables/' + tableId + '/lock', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': csrfToken,
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
-    })
-    .then(res => res.json())
+    }, 10000)
+    .then(handlePollResponse)
     .then(data => {
         if (selectionToken !== orderLoadToken) return;
 
@@ -1154,15 +1162,15 @@ function openTable(tableId) {
     const loadToken = ++orderLoadToken;
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     
-    fetch('/restaurant/tables/' + tableId + '/open', {
+    fetchWithTimeout('/restaurant/tables/' + tableId + '/open', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': csrfToken,
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
-    })
-    .then(res => res.json())
+    }, 10000)
+    .then(handlePollResponse)
     .then(data => {
         if (loadToken !== orderLoadToken) return;
 
@@ -1187,12 +1195,31 @@ function loadOrder(orderId) {
 
     const loadToken = ++orderLoadToken;
 
-    fetch('/restaurant/orders/' + orderId, {
+    fetchWithTimeout('/restaurant/orders/' + orderId, {
         headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+    }, 10000)
+    .then(res => {
+        if (res.status === 401 || (res.redirected && res.url.indexOf('/login') !== -1)) {
+            window.location.href = '/login';
+            return null;
+        }
+
+        if (res.status === 404) {
+            if (loadToken === orderLoadToken) {
+                showToast('El pedido ya no existe o fue fusionado');
+                closeModal();
+            }
+            return null;
+        }
+
+        if (!res.ok) {
+            throw new Error('HTTP ' + res.status);
+        }
+
+        return res.json();
     })
-    .then(res => res.json())
     .then(data => {
-        if (loadToken !== orderLoadToken) return;
+        if (!data || loadToken !== orderLoadToken) return;
 
         if (data.success) {
             currentOrderId = orderId;
@@ -1786,9 +1813,25 @@ function selectMoveTable(targetTableId) {
     });
 }
 
+function findTableActiveOrder(tableId) {
+    let found = null;
+
+    (allFloors || []).forEach(function(floor) {
+        (floor.tables || []).forEach(function(table) {
+            if (String(table.id) === String(tableId) && table.orders && table.orders.length > 0) {
+                found = table.orders[0];
+            }
+        });
+    });
+
+    return found;
+}
+
 function selectMergeTable(targetTableId) {
     closeMoveTableModal();
-    showConfirm('Â¿Fusionar el pedido de esta mesa con el pedido de la mesa seleccionada? Todos los productos quedarÃ¡n juntos.', function() {
+    const destinationOrder = findTableActiveOrder(targetTableId);
+
+    showConfirm('��Fusionar el pedido de esta mesa con el pedido de la mesa seleccionada? Todos los productos quedarǭn juntos.', function() {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
         fetch('/restaurant/orders/' + currentOrderId + '/merge', {
             method: 'POST',
@@ -1799,7 +1842,9 @@ function selectMergeTable(targetTableId) {
             },
             body: JSON.stringify({
                 table_id: targetTableId,
-                order_version: currentOrderVersion()
+                order_version: currentOrderVersion(),
+                destination_order_id: destinationOrder ? destinationOrder.id : null,
+                destination_order_updated_at: destinationOrder ? destinationOrder.updated_at : null
             })
         })
         .then(res => res.json())
@@ -1988,7 +2033,7 @@ function confirmAdminPassword() {
 }
 
 function handlePollResponse(res) {
-    if (res.status === 401) {
+    if (res.status === 401 || (res.redirected && res.url.indexOf('/login') !== -1)) {
         window.location.href = '/login';
         return Promise.reject('unauthenticated');
     }
@@ -2125,7 +2170,10 @@ function hideConnectionWarning() {
 
 function updateTableOrders(orders) {
     const tablesWithOrders = {};
+    const ordersByTable = {};
+
     orders.forEach(order => {
+        ordersByTable[String(order.table_id)] = order;
         tablesWithOrders[order.table_id] = order;
         const card = document.querySelector(`.table-card[data-table-id="${order.table_id}"]`);
         if (!card) return;
@@ -2141,6 +2189,24 @@ function updateTableOrders(orders) {
         }
         orderDiv.textContent = order.order_number;
     });
+
+    // Mantiene sincronizada la copia usada por el selector de mover/fusionar mesas.
+    (allFloors || []).forEach(function(floor) {
+        (floor.tables || []).forEach(function(table) {
+            const order = ordersByTable[String(table.id)];
+
+            if (order) {
+                table.status = 'OCCUPIED';
+                table.orders = [order];
+            } else {
+                if (table.status === 'OCCUPIED') {
+                    table.status = 'AVAILABLE';
+                }
+                table.orders = [];
+            }
+        });
+    });
+
     document.querySelectorAll('.table-card').forEach(card => {
         const tid = parseInt(card.dataset.tableId);
         if (!tid) return;
@@ -2177,8 +2243,9 @@ function pollRestaurantData() {
 
     const controller = new AbortController();
     const timeoutId = setTimeout(function() { controller.abort(); }, 10000);
+    const orderParam = currentOrderId ? '&order_id=' + encodeURIComponent(currentOrderId) : '';
 
-    fetch('/restaurant/poll?_=' + Date.now(), {
+    fetch('/restaurant/poll?_=' + Date.now() + orderParam, {
         headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
         signal: controller.signal
     })

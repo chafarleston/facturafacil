@@ -181,7 +181,16 @@ class RestaurantController extends Controller
     {
         try {
             $order = RestaurantOrder::with(['items', 'table.floor', 'user'])
-                ->findOrFail($orderId);
+                ->where('company_id', Company::mainCompanyId())
+                ->find($orderId);
+
+            if (!$order) {
+                return response()->json([
+                    'success' => false,
+                    'not_found' => true,
+                    'message' => 'El pedido no existe o fue fusionado.',
+                ], 404);
+            }
 
             $activeItems = $order->items->where('kitchen_status', '!=', 'CANCELLED');
             $paidTotal = round($activeItems->whereNotNull('paid_invoice_id')->sum('total'), 2);
@@ -876,6 +885,26 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
                     return response()->json(['success' => false, 'message' => 'La mesa destino no tiene un pedido activo para fusionar']);
                 }
 
+                $expectedDestinationId = $request->input('destination_order_id');
+                $expectedDestinationUpdatedAt = $request->input('destination_order_updated_at');
+
+                if ($expectedDestinationId && (int) $destinoOrder->id !== (int) $expectedDestinationId) {
+                    return response()->json([
+                        'success' => false,
+                        'requires_reload' => true,
+                        'message' => 'El pedido de la mesa destino cambió. Recargue antes de fusionar.',
+                    ], 409);
+                }
+
+                if ($expectedDestinationUpdatedAt
+                    && (string) $destinoOrder->updated_at?->toJSON() !== (string) $expectedDestinationUpdatedAt) {
+                    return response()->json([
+                        'success' => false,
+                        'requires_reload' => true,
+                        'message' => 'El pedido de la mesa destino fue modificado por otro usuario. Recargue antes de fusionar.',
+                    ], 409);
+                }
+
                 if ($order->order_type === 'kiosko' || $destinoOrder->order_type === 'kiosko') {
                     return response()->json(['success' => false, 'message' => 'No se pueden fusionar pedidos de kiosko']);
                 }
@@ -1043,18 +1072,37 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
     {
         $companyId = $request->company_id ?? Company::first()->id;
 
+        $currentOrderId = $request->input('order_id');
         $orders = RestaurantOrder::where('company_id', $companyId)
             ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
-            ->with('items')
             ->select('id', 'table_id', 'order_number', 'status', 'notes', 'subtotal', 'igv', 'total', 'updated_at')
-            ->get()
-            ->map(fn ($order) => [
+            ->get();
+
+        // Solo el pedido abierto necesita sus ítems para calcular el version hash.
+        if ($currentOrderId) {
+            $currentOrder = $orders->first(
+                fn ($order) => (string) $order->id === (string) $currentOrderId
+            );
+
+            if ($currentOrder) {
+                $currentOrder->load('items');
+            }
+        }
+
+        $orders = $orders->map(function ($order) use ($currentOrderId) {
+            $isCurrent = $currentOrderId
+                && (string) $order->id === (string) $currentOrderId
+                && $order->relationLoaded('items');
+
+            return [
                 'id' => $order->id,
                 'table_id' => $order->table_id,
                 'order_number' => $order->order_number,
                 'status' => $order->status,
-                'version' => $order->version,
-            ]);
+                'updated_at' => $order->updated_at?->toJSON(),
+                'version' => $isCurrent ? $order->version : null,
+            ];
+        });
 
         $locks = RestaurantTable::where('company_id', $companyId)
             ->whereNotNull('locked_by')

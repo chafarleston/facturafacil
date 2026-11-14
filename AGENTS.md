@@ -38,15 +38,15 @@
 - `php artisan cache:clear && php artisan view:clear && php artisan route:clear` — full cache flush (do this after any route/view change)
 - `php -l path/to/file.php` — PHP syntax check (no linter configured)
 - `php artisan tinker --execute="..."` — inline tinker (avoid heredoc in PowerShell)
-- `actualizar_cliente.bat` — actualización segura del cliente (delega en `actualizar_cliente.ps1`): exige repo limpio/rama `main`, backup de BD + `.env` + certificados, `git pull --ff-only`, mantenimiento con `up` garantizado y log en `backups/`. Opciones: `-DryRun`, `-Database facturafacil2`, `-RunSeeder` (el seeder se omite por defecto para no resetear permisos).
+- `actualizar_cliente.bat` — actualización segura del cliente (delega en `actualizar_cliente.ps1`): exige repo limpio/rama `main`, backup de BD + `.env` + certificados, `git pull --ff-only`, mantenimiento con `up` garantizado y log en `backups/`. Opciones: `-DryRun`, `-RunSeeder` (el seeder se omite por defecto para no resetear permisos). La base se detecta desde `.env`.
 - `actualizar-gitnexus.bat` — refresca el índice GitNexus local (idempotente: `node .gitnexus/run.cjs analyze` o analiza desde cero si falta; CLI global v1.6.9, sin MCP)
 - `eliminar_ventas_productos.bat` — menú para eliminar ventas y/o productos (scripts `eliminar-ventas-productos/clean_ventas.php` y `clean_productos.php` vía tinker con `base_path`). `clean_ventas` además **pone el stock de todos los productos (normales y compuestos) en 0**. Crea backup MySQL previo en `eliminar-ventas-productos/backup/` y pide confirmación `SI`. DESTRUCTIVO.
 - `reparar_numeros_pedido.bat` — renombra `order_number` duplicados: conserva el pedido activo/mas antiguo de cada grupo, renumera el resto, guarda el anterior en `legacy_order_number` y crea backup/CSV de auditoria. Usa `php artisan orders:renumber-duplicates --dry-run|--apply`; no borra pedidos.
 - **Salud de Pedidos** (`/order-health`, `order-health.index`): panel admin/cajero con permiso `authorize_cancel_orders` para diagnosticar pedidos vacios, completados sin pago, pagos parciales, items/lotes huerfanos y numeros duplicados. La limpieza crea backup, usa transaccion y protege facturas/items pagados/activos. En pagos parciales permite **anular solo los items impagos** (`cancelUnpaidItems`): conserva pagados/facturas y recalcula el total con los items restantes.
 - **Numeracion de pedidos (nov-2026)**: `OrderNumberService` usa `restaurant_order_sequences` con lock atomico para `P-YYYYMMDD-####` y `A-###`; indice unico `(company_id, order_number)`. Los duplicados historicos se renumeraron conservando el original en `legacy_order_number`.
 - `limpiar_pedidos_vacios.bat` — elimina pedidos `CANCELLED` sin items y los 7 `COMPLETED` sin pago (IDs 3,4,6,7,8,9,10); no borra pedidos con facturas/items pagados, activos, mesas ni stock. Hace simulacion, backup y pide confirmacion `SI`. DESTRUCTIVO.
-- **Base de datos local**: `.env` de esta copia apunta a `facturafacil`; para operar la base del cliente usar `--db=facturafacil2` en los comandos o cambiar `DB_DATABASE` y limpiar la cache de configuracion.
-- `limpiar_huerfanos.bat` — menú para limpiar **huérfanos** (script `scripts/limpiar_huerfanos.php`): cancela ítems de pedidos `CANCELLED` y lotes activos de `CANCELLED`/`COMPLETED`; los ítems impagos de pedidos `COMPLETED` solo se listan para reabrir/cobrar y **no se cancelan**; elimina ítems/lotes sin pedido. Hace simulación previa, permite `--db=` (ej. `facturafacil2`), crea backup MySQL en `backups/` y pide confirmación `SI`. No elimina pedidos. DESTRUCTIVO.
+- **Base de datos local**: `.env` apunta a `facturafacil`; es la única base usada. No hay una base cliente separada.
+- `limpiar_huerfanos.bat` — menú para limpiar **huérfanos** (script `scripts/limpiar_huerfanos.php`): cancela ítems de pedidos `CANCELLED` y lotes activos de `CANCELLED`/`COMPLETED`; los ítems impagos de pedidos `COMPLETED` solo se listan para reabrir/cobrar y **no se cancelan**; elimina ítems/lotes sin pedido. Hace simulación previa, permite `--db=` (por defecto `facturafacil`), crea backup MySQL en `backups/` y pide confirmación `SI`. No elimina pedidos. DESTRUCTIVO.
 - `php artisan sunat:import-padron [--file=ruta.txt] [--remove-txt]` — importa el padrón SUNAT a `storage/app/padron/sunat_padron.sqlite`, sincroniza el estado SUNAT de los clientes y conserva el TXT por defecto.
 - `php artisan customers:sync-sunat-status` — sincroniza manualmente `customers.sunat_estado/sunat_condicion/sunat_bloqueado` contra el padrón SQLite.
 - Tests: `php artisan test` (uses SQLite :memory:, no DB needed)
@@ -138,7 +138,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **facturafacil** (4051 symbols, 8075 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **facturafacil** (4210 symbols, 8428 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

@@ -373,8 +373,8 @@ php artisan pro51:retry-pending          # Reintentar comprobantes pendientes
 schtasks /run /tn "FacturaFacilScheduler"
 
 # Numeracion de pedidos
-php artisan orders:renumber-duplicates --db=facturafacil2 --dry-run
-php artisan orders:renumber-duplicates --db=facturafacil2 --apply
+php artisan orders:renumber-duplicates --dry-run
+php artisan orders:renumber-duplicates --apply
 
 # Ver rutas
 php artisan route:list
@@ -422,10 +422,10 @@ Panel **Restaurante → Salud de Pedidos** (`/order-health`) para admin y cajero
 
 ## Base de datos y comandos
 
-- El `.env` local de esta copia apunta a `facturafacil`.
-- La base trabajada para el cliente es `facturafacil2`.
-- Para comandos de reparacion usar `--db=facturafacil2` o el `.bat` correspondiente.
-- La pagina `/order-health` usa la base configurada en `.env`; si debe mostrar el cliente, cambiar `DB_DATABASE=facturafacil2` y limpiar la cache de configuracion.
+- El `.env` apunta a `facturafacil`; es la única base usada.
+- No hay una base cliente separada.
+- Los comandos de reparación usan la base del `.env` o el `.bat` correspondiente.
+- La pagina `/order-health` usa la base configurada en `.env`.
 
 ## Numeracion de pedidos
 
@@ -448,8 +448,8 @@ Panel **Restaurante → Salud de Pedidos** (`/order-health`) para admin y cajero
   - Crea backup de base, `.env` y certificados.
   - Usa `git pull --ff-only`, activa mantenimiento y garantiza `php artisan up`.
   - **No ejecuta `ActualizarSeeder` por defecto** para no resetear permisos.
-  - Simulación: `actualizar_cliente.bat -DryRun -Database facturafacil2`.
-  - Si el cliente usa `facturafacil2`, indicarlo con `-Database facturafacil2`.
+  - Simulación: `actualizar_cliente.bat -DryRun`.
+  - La base se detecta automáticamente desde `.env` (`facturafacil`).
 - **Limpieza de huérfanos**: `limpiar_huerfanos.bat` hace simulación, backup y no elimina pedidos; los ítems impagos de pedidos `COMPLETED` se listan para revisión y no se cancelan automáticamente.
 - **Pedidos vacíos eliminados**: `limpiar_pedidos_vacios.bat` borra pedidos `CANCELLED` sin ítems y los `COMPLETED` sin pago (IDs 3,4,6,7,8,9,10), con simulación y backup. No toca facturas ni pedidos con ítems pagados.
 - **Líneas eliminadas en caja**: solo cuentan ítems `SENT`, `READY` o `DELIVERED`; los `PENDING` eliminados físicamente no se reportan como anulación.
