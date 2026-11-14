@@ -19,6 +19,12 @@ class SunatPadronController extends Controller
         return view('sunat-padron.index', compact('padronInfo', 'syncInfo'));
     }
 
+    public function downloadInfo(): RedirectResponse
+    {
+        return redirect()->route('sunat-padron.index')
+            ->with('error', 'Para actualizar el padrón use el botón "Actualizar Padrón". La URL /sunat-padron/download no se debe abrir directamente; la descarga e importación solo se inician desde el formulario.');
+    }
+
     public function syncCustomers(SunatCustomerStatusService $service): RedirectResponse
     {
         try {

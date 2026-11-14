@@ -923,6 +923,7 @@
 <script>
 let currentOrderId = null;
 let currentTableId = null;
+let orderLoadToken = 0;
 let currentTableName = null;
 
 // Teclado virtual para el buscador de productos
@@ -1045,6 +1046,7 @@ function selectTable(tableId) {
         return;
     }
 
+    const selectionToken = ++orderLoadToken;
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
 
     fetch('/restaurant/tables/' + tableId + '/lock', {
@@ -1057,6 +1059,8 @@ function selectTable(tableId) {
     })
     .then(res => res.json())
     .then(data => {
+        if (selectionToken !== orderLoadToken) return;
+
         if (!data.success) {
             showError(data.message || 'No se pudo acceder a la mesa');
             return;
@@ -1089,6 +1093,7 @@ function selectTable(tableId) {
         }
     })
     .catch(err => {
+        if (selectionToken !== orderLoadToken) return;
         console.error('Error:', err);
         showError('Error al acceder a la mesa');
     });
@@ -1096,6 +1101,7 @@ function selectTable(tableId) {
     
 function closeModal() {
     stopTableLockHeartbeat();
+    orderLoadToken++;
 
     if (currentTableId) {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -1144,7 +1150,8 @@ function resetTableStyle(tableId) {
 
 function openTable(tableId) {
     document.getElementById('modalOrderNumber').textContent = 'Abriendo mesa...';
-    
+
+    const loadToken = ++orderLoadToken;
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     
     fetch('/restaurant/tables/' + tableId + '/open', {
@@ -1157,6 +1164,8 @@ function openTable(tableId) {
     })
     .then(res => res.json())
     .then(data => {
+        if (loadToken !== orderLoadToken) return;
+
         if (data.success) {
             currentOrderId = data.order_id;
             document.querySelector(`.table-card[data-table-id="${tableId}"]`).dataset.orderId = data.order_id;
@@ -1167,6 +1176,7 @@ function openTable(tableId) {
         }
     })
     .catch(err => {
+        if (loadToken !== orderLoadToken) return;
         console.error('Error:', err);
         showError('Error al abrir mesa: ' + err.message);
     });
@@ -1174,12 +1184,16 @@ function openTable(tableId) {
 
 function loadOrder(orderId) {
     document.getElementById('modalOrderNumber').textContent = 'Cargando pedido...';
-    
+
+    const loadToken = ++orderLoadToken;
+
     fetch('/restaurant/orders/' + orderId, {
         headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
     })
     .then(res => res.json())
     .then(data => {
+        if (loadToken !== orderLoadToken) return;
+
         if (data.success) {
             currentOrderId = orderId;
             const order = data.order;
@@ -1193,6 +1207,7 @@ function loadOrder(orderId) {
         }
     })
     .catch(err => {
+        if (loadToken !== orderLoadToken) return;
         console.error('Error:', err);
         showError('Error al cargar pedido: ' + err.message);
     });
@@ -1407,7 +1422,8 @@ function confirmAddItem() {
             product_id: pendingProductId,
             quantity: quantity,
             notes: itemNotes || null,
-            auxiliary_items: auxItems.length > 0 ? auxItems : null
+            auxiliary_items: auxItems.length > 0 ? auxItems : null,
+            order_version: currentOrderVersion()
         })
     })
     .then(async res => {
@@ -1971,6 +1987,11 @@ function handlePollResponse(res) {
         window.location.href = '/login';
         return Promise.reject('unauthenticated');
     }
+
+    if (!res.ok) {
+        return Promise.reject('HTTP ' + res.status);
+    }
+
     return res.json();
 }
 
@@ -1992,12 +2013,17 @@ function staleOrderResponse(data) {
 }
 
 let tableLockTimer = null;
+let tableLockAbort = null;
 
 function startTableLockHeartbeat() {
     stopTableLockHeartbeat();
 
     tableLockTimer = setInterval(function() {
-        if (!orderModalOpen || !currentTableId || document.hidden) return;
+        if (!orderModalOpen || !currentTableId || document.hidden || tableLockAbort) return;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(function() { controller.abort(); }, 10000);
+        tableLockAbort = controller;
 
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
         fetch('/restaurant/tables/' + currentTableId + '/lock', {
@@ -2006,7 +2032,8 @@ function startTableLockHeartbeat() {
                 'X-CSRF-TOKEN': csrfToken,
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
-            }
+            },
+            signal: controller.signal
         })
         .then(handlePollResponse)
         .then(function(data) {
@@ -2014,7 +2041,13 @@ function startTableLockHeartbeat() {
                 showError(data.message || 'La mesa fue tomada por otro usuario');
             }
         })
-        .catch(function() {});
+        .catch(function() {})
+        .finally(function() {
+            clearTimeout(timeoutId);
+            if (tableLockAbort === controller) {
+                tableLockAbort = null;
+            }
+        });
     }, 60000);
 }
 
@@ -2022,6 +2055,11 @@ function stopTableLockHeartbeat() {
     if (tableLockTimer !== null) {
         clearInterval(tableLockTimer);
         tableLockTimer = null;
+    }
+
+    if (tableLockAbort) {
+        tableLockAbort.abort();
+        tableLockAbort = null;
     }
 }
 
@@ -2098,11 +2136,14 @@ function updateTableOrders(orders) {
     document.querySelectorAll('.table-card').forEach(card => {
         const tid = parseInt(card.dataset.tableId);
         if (!tid) return;
-        if (!tablesWithOrders[tid] && card.classList.contains('occupied')) {
-            setTableCardState(card, 'available', false);
+        if (!tablesWithOrders[tid]) {
             card.dataset.orderId = '';
             const orderDiv = card.querySelector('.table-order');
             if (orderDiv) orderDiv.remove();
+
+            if (card.classList.contains('occupied')) {
+                setTableCardState(card, 'available', false);
+            }
         }
     });
 }
@@ -2126,12 +2167,21 @@ function pollRestaurantData() {
     if (restaurantPolling || document.hidden) return;
     restaurantPolling = true;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(function() { controller.abort(); }, 10000);
+
     fetch('/restaurant/poll?_=' + Date.now(), {
-        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        signal: controller.signal
     })
     .then(handlePollResponse)
     .then(data => {
-        if (!data.success) return;
+        if (!data.success) {
+            restaurantPollFailures++;
+            if (restaurantPollFailures >= 3) showConnectionWarning();
+            return;
+        }
+
         updateTableOrders(data.orders || []);
         updateTableLocks(data.locks || []);
         refreshOpenOrderIfChanged(data.orders || []);
@@ -2143,6 +2193,7 @@ function pollRestaurantData() {
         if (restaurantPollFailures >= 3) showConnectionWarning();
     })
     .finally(() => {
+        clearTimeout(timeoutId);
         restaurantPolling = false;
     });
 }
@@ -2177,8 +2228,12 @@ function pollPrintServer() {
     if (printPolling || document.hidden) return;
     printPolling = true;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(function() { controller.abort(); }, 10000);
+
     fetch('/restaurant/print-status?_=' + Date.now(), {
-        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        signal: controller.signal
     })
     .then(handlePollResponse)
     .then(data => {
@@ -2200,6 +2255,7 @@ function pollPrintServer() {
         }
     })
     .finally(() => {
+        clearTimeout(timeoutId);
         printPolling = false;
     });
 }

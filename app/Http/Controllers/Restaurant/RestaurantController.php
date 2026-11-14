@@ -218,12 +218,17 @@ class RestaurantController extends Controller
 
             $product = Product::findOrFail($validated['product_id']);
 
-            return DB::transaction(function () use ($orderId, $product, $validated) {
+            return DB::transaction(function () use ($request, $orderId, $product, $validated) {
             $order = RestaurantOrder::lockForUpdate()->findOrFail($orderId);
 
             $lockError = $this->tableLockError($order);
             if ($lockError) {
                 return $lockError;
+            }
+
+            $versionError = $this->orderVersionError($request, $order);
+            if ($versionError) {
+                return $versionError;
             }
 
             if (in_array($order->status, ['CANCELLED', 'COMPLETED'], true)) {
@@ -850,6 +855,18 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
                 }
 
                 $newTable = RestaurantTable::lockForUpdate()->findOrFail($newTableId);
+                $userId = (int) auth()->id();
+
+                if ($newTable->locked_by
+                    && !$newTable->isLockedBy($userId)
+                    && !$newTable->isLockExpired()) {
+                    return response()->json([
+                        'success' => false,
+                        'requires_reload' => true,
+                        'message' => 'La mesa destino está en uso por otro usuario.'
+                    ], 409);
+                }
+
                 $destinoOrder = RestaurantOrder::where('table_id', $newTable->id)
                     ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
                     ->lockForUpdate()
@@ -1037,10 +1054,12 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
             ->with('lockedByUser:id,name')
             ->get()
             ->map(function ($table) {
+                // No se escribe en el GET: los bloqueos vencidos se ignoran y se
+                // reemplazan de forma transaccional al abrir o bloquear la mesa.
                 if ($table->isLockExpired()) {
-                    $table->unlock();
                     return null;
                 }
+
                 return [
                     'table_id' => $table->id,
                     'locked_by' => $table->locked_by,

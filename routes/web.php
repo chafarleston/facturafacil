@@ -123,6 +123,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('permissions', \App\Http\Controllers\PermissionController::class);
         Route::resource('auxiliary-items', \App\Http\Controllers\AuxiliaryItemController::class);
         Route::get('/sunat-padron', [SunatPadronController::class, 'index'])->name('sunat-padron.index');
+        Route::get('/sunat-padron/download', [SunatPadronController::class, 'downloadInfo'])->name('sunat-padron.download.info');
         Route::post('/sunat-padron/download', [SunatPadronController::class, 'download'])->name('sunat-padron.download');
         Route::post('/sunat-padron/sync-customers', [SunatPadronController::class, 'syncCustomers'])->name('sunat-padron.sync');
         Route::post('/companies/download-padron', [SunatPadronController::class, 'downloadPadron'])->name('sunat.padron.download');

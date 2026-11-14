@@ -631,11 +631,17 @@ function handlePollResponse(res) {
         window.location.href = '/login';
         return Promise.reject('unauthenticated');
     }
+
+    if (!res.ok) {
+        return Promise.reject('HTTP ' + res.status);
+    }
+
     return res.json();
 }
 
 let kdsPolling = false;
 let kdsPollFailures = 0;
+let kdsAbort = null;
 
 function showKdsConnectionWarning() {
     const el = document.getElementById('kdsConnectionWarning');
@@ -651,8 +657,13 @@ function loadKitchenOrders() {
     if (kdsPolling || document.hidden) return;
     kdsPolling = true;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(function() { controller.abort(); }, 10000);
+    kdsAbort = controller;
+
     fetch('/restaurant/kitchen-orders?_=' + Date.now() + '&kds=' + kdsFilter, {
-        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        signal: controller.signal
     })
     .then(handlePollResponse)
     .then(data => {
@@ -660,27 +671,32 @@ function loadKitchenOrders() {
             stopKdsPolling();
             return;
         }
-        if (data.success) {
-            const orders = data.orders || [];
-            const hasNewBatches = orders.some(order =>
-                (order.batches || []).some(batch => !prevBatchIds.has(batch.id))
-            );
 
-            allOrders = orders;
-            prevBatchIds = new Set(
-                orders.flatMap(order => (order.batches || []).map(batch => batch.id))
-            );
-
-            renderKitchenOrders();
-            kdsPollFailures = 0;
-            hideKdsConnectionWarning();
-
-            if (!kdsInitialLoad && hasNewBatches) {
-                playAlertSound();
-            }
-
-            kdsInitialLoad = false;
+        if (!data.success) {
+            kdsPollFailures++;
+            if (kdsPollFailures >= 3) showKdsConnectionWarning();
+            return;
         }
+
+        const orders = data.orders || [];
+        const hasNewBatches = orders.some(order =>
+            (order.batches || []).some(batch => !prevBatchIds.has(batch.id))
+        );
+
+        allOrders = orders;
+        prevBatchIds = new Set(
+            orders.flatMap(order => (order.batches || []).map(batch => batch.id))
+        );
+
+        renderKitchenOrders();
+        kdsPollFailures = 0;
+        hideKdsConnectionWarning();
+
+        if (!kdsInitialLoad && hasNewBatches) {
+            playAlertSound();
+        }
+
+        kdsInitialLoad = false;
     })
     .catch(err => {
         console.error('KDS Error:', err);
@@ -688,6 +704,10 @@ function loadKitchenOrders() {
         if (kdsPollFailures >= 3) showKdsConnectionWarning();
     })
     .finally(() => {
+        clearTimeout(timeoutId);
+        if (kdsAbort === controller) {
+            kdsAbort = null;
+        }
         kdsPolling = false;
     });
 }
@@ -900,6 +920,12 @@ function stopKdsPolling() {
         clearInterval(window.__kdsInterval);
         window.__kdsInterval = null;
     }
+
+    if (kdsAbort) {
+        kdsAbort.abort();
+        kdsAbort = null;
+    }
+
     showKdsInactive();
 }
 
