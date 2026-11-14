@@ -112,9 +112,11 @@ class WebsiteController extends Controller
             $image = $web["slide_{$i}_image"] ?? '';
             $title = $web["slide_{$i}_title"] ?? '';
             $text = $web["slide_{$i}_text"] ?? '';
+            $imageExists = $image && Storage::disk('public')->exists($image);
+
             if ($image || $title || $text) {
                 $slides[] = [
-                    'image' => $image ? asset('storage/' . $image) : null,
+                    'image' => $imageExists ? asset('storage/' . $image) : null,
                     'title' => $title,
                     'text' => $text,
                 ];
