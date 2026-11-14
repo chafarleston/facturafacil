@@ -16,6 +16,11 @@ class DownloadSunatPadron extends Command
 
     public function handle(SunatPadronImporter $importer, SunatCustomerStatusService $statusService): int
     {
+        if (!class_exists(ZipArchive::class)) {
+            $this->error('La extensión ZIP de PHP no está habilitada. Habilite extension=zip y reinicie Laragon/Apache.');
+            return self::FAILURE;
+        }
+
         $this->info('Descargando padrón reducido de SUNAT...');
 
         $zipUrl = 'http://www2.sunat.gob.pe/padron_reducido_ruc.zip';

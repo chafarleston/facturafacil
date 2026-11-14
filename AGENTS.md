@@ -104,6 +104,7 @@
 ## Repo quirks
 - Print server requires Node.js (see `print-server-node/`). The `scheduler.vbs` starts both Laravel scheduler and print server on Windows.
 - **SQLite en web**: Apache/Laragon usa PHP 8.4.27 y necesita `extension=pdo_sqlite` habilitado en `C:\laragon\bin\php\php-8.4.27-Win32-vs17-x64\php.ini`; el CLI puede usar otro PHP (8.4.5) con el driver activo. Si `/sunat-padron` falla con `could not find driver`, habilitar la extensión y reiniciar Laragon/Apache.
+- **ZIP en web**: el mismo PHP 8.4.27 requiere `extension=zip` para `sunat:download-padron` (`ZipArchive`). Si falla con `Class "ZipArchive" not found`, habilitar la extensión y reiniciar Laragon/Apache; el comando ahora valida la extensión antes de descargar.
 - All JS fetch calls must include `Accept: application/json` and `X-Requested-With: XMLHttpRequest` (silent redirect-to-login otherwise).
 - Certificate upload must NOT use `mimes:p12,pfx` validation (rejects valid files). Use OpenSSL 1.1.1 CLI to verify.
 - Table locks expire after 5 minutes. `unlockAllTables` endpoint available for admins.
