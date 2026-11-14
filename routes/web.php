@@ -245,6 +245,7 @@ Route::get('/customers/search', [CustomerApiController::class, 'search'])->name(
     Route::post('/restaurant/tables/{tableId}/unlock', [RestaurantController::class, 'unlockTable'])->name('restaurant.tables.unlock');
     Route::post('/restaurant/tables/unlock-all', [RestaurantController::class, 'unlockAllTables'])->name('restaurant.tables.unlockAll');
     Route::get('/restaurant/poll', [RestaurantController::class, 'getPollData'])->name('restaurant.poll');
+    Route::get('/restaurant/tables/{tableId}/order', [RestaurantController::class, 'getTableOrder'])->name('restaurant.tables.order');
     Route::get('/restaurant/orders/{orderId}', [RestaurantController::class, 'getOrder'])->name('restaurant.orders.show');
     Route::post('/restaurant/orders/{orderId}/items', [RestaurantController::class, 'addItem'])->name('restaurant.orders.items');
     Route::put('/restaurant/orders/items/{itemId}', [RestaurantController::class, 'updateItem'])->name('restaurant.orders.items.update');

@@ -30,6 +30,19 @@
                     </div>
 
                     <hr>
+                    <h5 class="mb-3"><i class="fas fa-clock"></i> Cierre por inactividad</h5>
+                    <div class="form-group">
+                        <label for="idle_timeout_seconds">Cerrar mesa abierta por inactividad (segundos)</label>
+                        <input type="number" name="idle_timeout_seconds" id="idle_timeout_seconds"
+                               class="form-control" min="1" max="300"
+                               value="{{ old('idle_timeout_seconds', $idleTimeout ?? 15) }}">
+                        <small class="text-muted">
+                            Si no hay actividad en la mesa abierta durante este tiempo, se cierra el modal y se libera la mesa.
+                            Valor por defecto: 15 segundos. Rango permitido: 1 a 300 segundos.
+                        </small>
+                    </div>
+
+                    <hr>
                     <h5 class="mb-3"><i class="fas fa-print"></i> Comandas de cocina</h5>
                     <div class="form-group">
                         <label for="kitchen_font_size">Tama��o de letra de las comandas</label>

@@ -977,6 +977,8 @@ function restKbPressBackspace() {
     if (restKbActiveInput.id === 'productSearch') searchProducts(restKbActiveInput.value);
 }
 let orderModalOpen = false;
+const restaurantIdleTimeout = {{ (int) ($idleTimeout ?? 15) }};
+let tableIdleTimer = null;
 const currentUserId = {{ auth()->id() }};
 const companyId = {{ $companyId }};
 let restaurantAuxiliaryItems = @json($auxiliaryItems);
@@ -1013,6 +1015,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!document.hidden) {
             pollRestaurantData();
             if (psBadge) pollPrintServer();
+            if (orderModalOpen) resetTableIdleTimer();
         }
     });
     
@@ -1026,7 +1029,53 @@ document.addEventListener('DOMContentLoaded', function() {
     (restaurantAuxiliaryItems || []).forEach(function(item) {
         window._auxNames[item.id] = item.name;
     });
+
+    ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'input', 'change', 'click'].forEach(function(evt) {
+        document.addEventListener(evt, resetTableIdleTimer, { passive: true });
+    });
 });
+
+function stopTableIdleTimer() {
+    if (tableIdleTimer !== null) {
+        clearTimeout(tableIdleTimer);
+        tableIdleTimer = null;
+    }
+}
+
+function hasOpenTableOverlay() {
+    return [
+        'qtyOverlay', 'itemNotesOverlay', 'chargeOverlay', 'splitOverlay',
+        'adminPasswordOverlay', 'moveTableOverlay', 'prebillOverlay',
+        'customerModalOverlay', 'confirmOverlay'
+    ].some(function(id) {
+        const el = document.getElementById(id);
+        return el && el.style.display === 'flex';
+    });
+}
+
+function startTableIdleTimer() {
+    stopTableIdleTimer();
+
+    if (!orderModalOpen || document.hidden) return;
+
+    tableIdleTimer = setTimeout(function() {
+        if (!orderModalOpen) return;
+
+        // No cerrar una mesa mientras el usuario está en un diálogo de cobro,
+        // cliente o confirmación; se reintenta después.
+        if (document.hidden || hasOpenTableOverlay()) {
+            startTableIdleTimer();
+            return;
+        }
+
+        showToast('Mesa cerrada por inactividad');
+        closeModal();
+    }, Math.max(1, restaurantIdleTimeout) * 1000);
+}
+
+function resetTableIdleTimer() {
+    if (orderModalOpen) startTableIdleTimer();
+}
 
 function selectFloor(floorId) {
     currentFloorId = floorId;
@@ -1078,6 +1127,7 @@ function selectTable(tableId) {
         currentTableId = tableId;
         currentTableName = table.querySelector('.table-name').textContent;
         startTableLockHeartbeat();
+        resetTableIdleTimer();
         const orderId = table.dataset.orderId;
 
         document.getElementById('modalTableName').textContent = currentTableName;
@@ -1109,6 +1159,7 @@ function selectTable(tableId) {
     
 function closeModal() {
     stopTableLockHeartbeat();
+    stopTableIdleTimer();
     orderLoadToken++;
 
     if (currentTableId) {
@@ -1764,7 +1815,7 @@ function buildTablePicker(isMerge) {
             var icon = isOccupied ? 'fa-chair text-warning' : 'fa-chair text-success';
             var label = isOccupied ? 'Ocupada' : 'Disponible';
 
-            html += '<div class="move-table-item ' + cssClass + '" onclick="' + (isMerge ? 'selectMergeTable(' + t.id + ')' : 'selectMoveTable(' + t.id + ')') + '" data-table-id="' + t.id + '">';
+            html += '<div class="move-table-item ' + cssClass + '" onclick="' + (isMerge ? 'selectMergeTableFresh(' + t.id + ')' : 'selectMoveTable(' + t.id + ')') + '" data-table-id="' + t.id + '">';
             html += '<div class="table-icon"><i class="fas ' + icon + '"></i></div>';
             html += '<div style="flex:1;"><strong>' + t.name + '</strong><br><small style="color:#888;">' + label + '</small></div>';
             html += '</div>';
@@ -1860,6 +1911,57 @@ function selectMergeTable(targetTableId) {
         .catch(function() {
             showError('Error de conexiÃ³n');
         });
+    });
+}
+
+function selectMergeTableFresh(targetTableId) {
+    closeMoveTableModal();
+
+    fetchWithTimeout('/restaurant/tables/' + targetTableId + '/order', {
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+    }, 10000)
+    .then(handlePollResponse)
+    .then(function(data) {
+        if (!data.success || !data.order) {
+            showError(data.message || 'La mesa destino no tiene un pedido activo.');
+            return;
+        }
+
+        const destinationOrder = data.order;
+
+        showConfirm('Fusionar el pedido de esta mesa con el pedido de la mesa seleccionada? Todos los productos quedaran juntos.', function() {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+            fetch('/restaurant/orders/' + currentOrderId + '/merge', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    table_id: targetTableId,
+                    order_version: currentOrderVersion(),
+                    destination_order_id: destinationOrder.id,
+                    destination_order_updated_at: destinationOrder.updated_at
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (staleOrderResponse(data)) return;
+                if (data.success) {
+                    showAlert(data.message || 'Pedidos fusionados');
+                    location.reload();
+                } else {
+                    showError(data.message || 'Error al fusionar');
+                }
+            })
+            .catch(function() {
+                showError('Error de conexion');
+            });
+        });
+    })
+    .catch(function() {
+        showError('No se pudo consultar el pedido de la mesa destino.');
     });
 }
 

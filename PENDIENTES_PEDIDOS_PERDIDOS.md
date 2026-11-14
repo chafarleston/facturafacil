@@ -63,10 +63,10 @@
   - La limpieza cancelo 1,581 lotes; confirmar que ninguno era trabajo real pendiente.
   - `getKitchenOrders` no filtra por estado del pedido: documentar o ajustar la regla de negocio.
 
-- [ ] **Fusion con destino desactualizado.**
-  - `mergeOrder` valida la version del pedido origen, pero no la del destino.
-  - Agregar `destination_version`/recarga o validar el destino antes de mover items.
-  - Probar fusionar mientras otro mozo agrega al destino.
+- [x] **Fusion con destino desactualizado.**
+  - `mergeOrder` valida `destination_order_id` y `destination_order_updated_at` antes de mover items.
+  - Si el destino cambió, responde `409 requires_reload`.
+  - Pendiente: prueba manual con dos mozos agregando al mismo destino.
 
 ### P2 - Kiosko, SUNAT e impresion
 
@@ -89,18 +89,17 @@
 ### P3 - Robustez y despliegue
 
 - [ ] **Pruebas automatizadas de concurrencia.**
-  - Hoy solo hay 2 tests (`ExampleTest`), sin MySQL real ni concurrencia.
-  - Agregar pruebas de integracion: doble cobro, doble apertura, doble envio, item agregado durante cobro.
-  - Probar en MySQL/staging, no solo SQLite.
+  - Ya existen pruebas base en MySQL (`phpunit.mysql.xml`) para lotes y versionado.
+  - Faltan pruebas reales de concurrencia: doble cobro, doble apertura, doble envio simultaneo e item agregado durante cobro.
+  - Probar en MySQL/staging con dos usuarios, no solo SQLite.
 
 - [ ] **Lock de mesa en pestanas ocultas.**
   - El heartbeat corre cada 60 s; una pestana suspendida puede perder el lock a los 5 min.
   - La version evita perdida de datos, pero la UX muestra "mesa en uso".
   - Evaluar TTL mayor, liberacion al cerrar pestana o re-lock al volver.
 
-- [ ] **Revisar `addItem` sin version.**
-  - Es aditivo, pero si se quiere consistencia total puede enviar `order_version`.
-  - No es prioritario mientras el pedido este bloqueado y no este cerrado.
+- [x] **Revisar `addItem` sin version.**
+  - El frontend envía `order_version` y el backend responde `409` si la vista esta desactualizada.
 
 - [ ] **Desplegar al cliente con el actualizador seguro.**
   - Commit/push de los cambios y del nuevo `actualizar_cliente.ps1`.

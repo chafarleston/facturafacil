@@ -49,7 +49,8 @@
 - `limpiar_huerfanos.bat` — menú para limpiar **huérfanos** (script `scripts/limpiar_huerfanos.php`): cancela ítems de pedidos `CANCELLED` y lotes activos de `CANCELLED`/`COMPLETED`; los ítems impagos de pedidos `COMPLETED` solo se listan para reabrir/cobrar y **no se cancelan**; elimina ítems/lotes sin pedido. Hace simulación previa, permite `--db=` (por defecto `facturafacil`), crea backup MySQL en `backups/` y pide confirmación `SI`. No elimina pedidos. DESTRUCTIVO.
 - `php artisan sunat:import-padron [--file=ruta.txt] [--remove-txt]` — importa el padrón SUNAT a `storage/app/padron/sunat_padron.sqlite`, sincroniza el estado SUNAT de los clientes y conserva el TXT por defecto.
 - `php artisan customers:sync-sunat-status` — sincroniza manualmente `customers.sunat_estado/sunat_condicion/sunat_bloqueado` contra el padrón SQLite.
-- Tests: `php artisan test` (uses SQLite :memory:, no DB needed)
+- Tests SQLite: `php artisan test` (no DB externa).
+- Tests MySQL de pedidos: `php vendor/bin/phpunit -c phpunit.mysql.xml` (requiere `facturafacil_test` migrada).
 
 ## Architecture notes
 - **Routes**: `web.php` ~222 lines. Public routes (no auth) at top, then `auth` group, then `admin` sub-group. Restaurant routes are in the `auth` group. Las rutas de caja están en `auth` (con `authorize` por permiso), no en el grupo admin.
@@ -90,6 +91,7 @@
 - **Temas web compartidos**: la plantilla seleccionada en la web (`modern`, `elegant`, `minimal`, `classic`, `dark`, `tropical`, `chifa`) se aplica también a autopedido, menú virtual, precuenta virtual y la sección de menú virtual de la web. `chifa` usa paleta rojo/dorado y variables compartidas en `partials/web-theme-vars.blade.php`.
 - **Página web pública**: Empresa → Configuración de Página Web (`/website-settings`). `website_enabled` decide si `/` muestra la web o el login. 7 plantillas (`modern`, `elegant`, `minimal`, `classic`, `dark`, `tropical`, `chifa`), logo propio (`web_logo`), colores/fuente, hero/nosotros, slider de publicidad (3 slides con imagen/texto), catálogo, galería y CTA "Pedir en línea" hacia `/autopedido`. Imágenes optimizadas a WebP en `website/`; los 3 slides se recortan a **1600×600 px** (cover) y se guardan en WebP q82; las plantillas comparten `website/partials/slider` y `website/partials/virtual-order-cta`.
 - **Lotes KDS (oct-2026)**: cada envío a cocina crea un lote por estación (`restaurant_kitchen_batches`: `kds_destination`, `batch_number`, `status PENDING/PREPARING/DELIVERED/CANCELLED`, `sent_at`, `preparing_started_at`, `finished_at`; `restaurant_order_items.kitchen_batch_id`). Un envío con ítems de cocina y bar genera lotes independientes para medir cada KDS. El KDS muestra un card independiente por lote (no un ticket con secciones), ordenados con los pendientes más recientes primero; el lote nuevo arriba (`NUEVO LOTE` + `RECIÉN ENVIADO`), acciones por lote (`PREPARAR LOTE`, `TERMINAR LOTE`, `IMPRIMIR`), contadores de lotes y sonido por lote nuevo (no solo por pedido nuevo). Endpoints: `POST /restaurant/kitchen-batches/{id}/preparing|deliver`, `GET .../print`; `getKitchenOrders` devuelve `batches`; `kitchen-history` mide lotes entregados por estación (espera, preparación, total y resumen diario). El estado del pedido se sincroniza desde los lotes (`KitchenBatchService::syncOrderStatus`); entregar un lote no libera la mesa hasta cobrar. Fusión/anulación mueven o cancelan lotes; el cobro no oculta lotes activos. Backfill histórico aproximado en la migración `2026_10_28_000001_create_restaurant_kitchen_batches_table`; saneamiento de ítems históricos en lotes entregados en `2026_10_28_000002_fix_delivered_kitchen_batch_items`. Se eliminaron los endpoints order-level `kitchen/{id}/preparing|deliver` y `kitchenStream`.
+- **Cierre de mesa por inactividad**: `settings.restaurant_idle_timeout` (segundos, default 15, rango 1-300). Se configura en Restaurante → Configuración Restaurante. Si el modal de mesa no recibe actividad, se cierra y se libera la mesa; se pausa mientras hay diálogos de cobro/cliente/confirmación abiertos.
 - **KDS flujo**: Pendiente (`SENT_TO_KITCHEN`) → Preparando (`PREPARING`) → Entregado (`DELIVERED`). "Preparar todo" guarda `preparing_started_at`; "Terminado" guarda `finished_at`, saca el pedido del KDS y deja el estado **ENTREGADO** en Restaurante (la mesa sigue `OCCUPIED` hasta cobrar/cerrar). Historial/métricas en Restaurante → **Historial / Métricas KDS** (`/restaurant/kitchen-history`, filtro por fechas, promedios envío→preparado y preparado→terminado + ratios). Kiosko usa el mismo flujo; Pedidos Kiosko incluye `PREPARING`/`DELIVERED` (impagos) para cobrar. Se eliminaron los endpoints `ready`/`complete` y los métodos item-level sin uso.
 - **Modo KDS vs Impresión** (`companies.order_mode`): los items del menú "KDS Cocina/Cocina 2/Bar" se ocultan si el modo es `print`; `loadKitchenOrders` solo corre en modo `kds` y detecta cambios en vivo vía `getKitchenOrders.order_mode` (detiene el polling y muestra aviso "KDS INACTIVO"); las acciones KDS (`markKitchenReady`/`deliverKitchenOrder`/`completeOrder`) responden 400 en modo `print`. El aviso **"KDS INACTIVO"** incluye un botón **Reintentar** (`location.reload()`) para retomar el polling tras reactivar el modo (en inactivo **no hay ninguna petición** en segundo plano). `Company::orderMode()`/`mainCompanyId()` usan caché (`rememberForever`) invalidada por `Company::clearCache()` en `toggleMode` y en cambios de empresa (store/update/destroy/setMain).
 - **8 printer slots**: cocina-1, cocina-2, bar-1, precuenta, precuenta2, precuenta3, caja, autopedido.
@@ -131,6 +133,8 @@
 
 ## Testing
 - `php artisan test` — Unit + Feature (SQLite in-memory)
+- `php vendor/bin/phpunit -c phpunit.mysql.xml` — pruebas de pedidos/lotes con MySQL en `facturafacil_test`.
+  - Preparación: `mysql -uroot -e "CREATE DATABASE IF NOT EXISTS facturafacil_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"` y migrar esa base antes de ejecutar la suite.
 - No end-to-end or integration tests against real SUNAT
 - Print queue not testable without a running print server
 - No usar `RefreshDatabase` en SQLite: varias migraciones usan `ALTER TABLE ... MODIFY COLUMN ... ENUM` (solo MySQL). El `Tests\Feature\ExampleTest` desactiva `SystemLock` (consulta la tabla `settings`, inexistente en `:memory:`) y valida el redirect `/` → `/login`.
@@ -138,7 +142,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **facturafacil** (4210 symbols, 8428 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **facturafacil** (4236 symbols, 8516 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

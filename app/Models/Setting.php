@@ -280,4 +280,20 @@ class Setting extends Model
             in_array($size, ['normal', 'medium', 'large'], true) ? $size : 'normal'
         );
     }
+
+    public static function restaurantIdleTimeout(): int
+    {
+        $seconds = (int) static::get('restaurant_idle_timeout', 15);
+
+        if ($seconds <= 0) {
+            $seconds = 15;
+        }
+
+        return max(1, min(300, $seconds));
+    }
+
+    public static function setRestaurantIdleTimeout(int $seconds): void
+    {
+        static::set('restaurant_idle_timeout', (string) max(1, min(300, $seconds)));
+    }
 }

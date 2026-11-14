@@ -90,8 +90,9 @@ class RestaurantController extends Controller
         $showProductImages = \App\Models\Setting::showProductImages('restaurant');
         $showCategoryImages = \App\Models\Setting::showCategoryImages('restaurant');
         $categoriesOnly = \App\Models\Setting::categoriesOnly('restaurant');
+        $idleTimeout = \App\Models\Setting::restaurantIdleTimeout();
 
-        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId', 'orderMode', 'printServerRunning', 'igvPercent', 'cajaAbierta', 'showProductImages', 'showCategoryImages', 'categoriesOnly', 'auxiliaryItems'));
+        return view('restaurant.index', compact('floors', 'products', 'categories', 'customers', 'series', 'companyId', 'orderMode', 'printServerRunning', 'igvPercent', 'cajaAbierta', 'showProductImages', 'showCategoryImages', 'categoriesOnly', 'idleTimeout', 'auxiliaryItems'));
     }
 
     public function modeIndex()
@@ -208,6 +209,31 @@ class RestaurantController extends Controller
                 'message' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function getTableOrder($tableId)
+    {
+        $order = RestaurantOrder::where('company_id', Company::mainCompanyId())
+            ->where('table_id', $tableId)
+            ->whereNotIn('status', ['COMPLETED', 'CANCELLED'])
+            ->latest('id')
+            ->first();
+
+        if (!$order) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La mesa no tiene un pedido activo.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'order' => [
+                'id' => $order->id,
+                'order_number' => $order->order_number,
+                'updated_at' => $order->updated_at?->toJSON(),
+            ],
+        ]);
     }
 
     public function addItem(Request $request, $orderId)
@@ -1070,7 +1096,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
 
     public function getPollData(Request $request)
     {
-        $companyId = $request->company_id ?? Company::first()->id;
+        $companyId = Company::mainCompanyId();
 
         $currentOrderId = $request->input('order_id');
         $orders = RestaurantOrder::where('company_id', $companyId)
@@ -1142,6 +1168,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
         $kds = $request->kds ?? 'cocina';
 
         $orders = RestaurantOrder::where('company_id', $companyId)
+            ->whereNotIn('status', [RestaurantOrder::STATUS_COMPLETED, RestaurantOrder::STATUS_CANCELLED])
             ->whereHas('kitchenBatches', function ($q) use ($kds) {
                 $q->where('kds_destination', $kds)
                     ->whereIn('status', [RestaurantKitchenBatch::STATUS_PENDING, RestaurantKitchenBatch::STATUS_PREPARING])
