@@ -16,26 +16,53 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $companyId = $request->company_id ?? Company::first()->id;
+        $filter = $request->get('filter', 'all');
+        $categoryId = $request->get('category_id');
+        $categories = Category::where('company_id', $companyId)
+            ->whereIn('estado', ['ACTIVO', 'ACT'])
+            ->orderBy('nombre')
+            ->get();
+
+        $products = $this->filteredProductQuery($request)
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('products.index', compact('products', 'companyId', 'filter', 'categoryId', 'categories'));
+    }
+
+    private function filteredProductQuery(Request $request)
+    {
+        $companyId = $request->company_id ?? Company::first()->id;
         $search = $request->get('search');
         $searchType = $request->get('search_type', 'descripcion');
         $filter = $request->get('filter', 'all');
-        
-        $products = Product::where('company_id', $companyId)
-            ->where('estado', 'ACTIVO')
-            ->when($filter === 'simple', fn($q) => $q->where('is_composite', false))
-            ->when($filter === 'composite', fn($q) => $q->where('is_composite', true))
-            ->when($search, function($q) use ($search, $searchType) {
+        $categoryId = $request->get('category_id');
+        $allowedSearchTypes = ['descripcion', 'codigo', 'codigo_barras'];
+
+        if (!in_array($searchType, $allowedSearchTypes, true) && $searchType !== 'categoria') {
+            $searchType = 'descripcion';
+        }
+
+        return Product::query()
+            ->with('category')
+            ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
+            ->select('products.*')
+            ->where('products.company_id', $companyId)
+            ->where('products.estado', 'ACTIVO')
+            ->when($filter === 'simple', fn($q) => $q->where('products.is_composite', false))
+            ->when($filter === 'composite', fn($q) => $q->where('products.is_composite', true))
+            ->when($categoryId, fn($q) => $q->where('products.category_id', $categoryId))
+            ->when($search, function ($q) use ($search, $searchType) {
                 if ($searchType === 'categoria') {
-                    $q->whereHas('category', function($cq) use ($search) {
+                    $q->whereHas('category', function ($cq) use ($search) {
                         $cq->where('nombre', 'like', "%{$search}%");
                     });
                 } else {
-                    $q->where($searchType, 'like', "%{$search}%");
+                    $q->where('products.' . $searchType, 'like', "%{$search}%");
                 }
             })
-            ->paginate(15);
-
-        return view('products.index', compact('products', 'companyId', 'filter'));
+            ->orderBy('categories.nombre')
+            ->orderBy('products.descripcion');
     }
 
     public function create(Request $request)
@@ -774,12 +801,19 @@ class ProductController extends Controller
 
     public function export(Request $request)
     {
+        $format = strtolower((string) $request->get('format', 'xlsx'));
         $companyId = $request->company_id ?? Company::first()->id;
-        $products = Product::with('category')
-            ->where('company_id', $companyId)
-            ->where('estado', '!=', 'INACTIVO')
-            ->orderBy('descripcion')
+        $products = $this->filteredProductQuery($request)
+            ->where('products.estado', '!=', 'INACTIVO')
             ->get();
+
+        if ($format === 'xml') {
+            return $this->exportProductsXml($products, $companyId);
+        }
+
+        if ($format === 'pdf') {
+            return $this->exportProductsPdf($products, $companyId);
+        }
 
         $data = [['Código', 'Cód. Barras', 'Descripción', 'Categoría', 'Precio', 'Stock', 'Tipo', 'U.Medida', 'IGV %', 'Destino KDS', 'Estado']];
 
@@ -800,6 +834,62 @@ class ProductController extends Controller
         }
 
         return $this->exportSpreadsheet($data, 'productos_' . now()->format('Ymd_His') . '.xlsx');
+    }
+
+    private function exportProductsXml($products, int $companyId)
+    {
+        $company = Company::find($companyId);
+        $xml = new \SimpleXMLElement('<productos/>');
+        $empresa = $xml->addChild('empresa');
+        $empresa->addChild('razon_social', $company->razon_social ?? '');
+        $empresa->addChild('ruc', $company->ruc ?? '');
+        $xml->addChild('fecha_generacion', now()->format('Y-m-d H:i:s'));
+
+        foreach ($products as $p) {
+            $item = $xml->addChild('producto');
+            $item->addChild('codigo', $p->codigo ?? '');
+            $item->addChild('codigo_barras', $p->codigo_barras ?? '');
+            $item->addChild('descripcion', $p->descripcion ?? '');
+            $item->addChild('categoria', $p->category->nombre ?? 'Sin categoría');
+            $item->addChild('precio', number_format((float) $p->precio, 2, '.', ''));
+            $item->addChild('precio_compra', number_format((float) $p->precio_compra, 2, '.', ''));
+            $item->addChild('stock', number_format((float) $p->stock, 4, '.', ''));
+            $item->addChild('tipo_afectacion', $p->tipo_afectacion ?? 'GRA');
+            $item->addChild('unidad_medida', $p->umedida_codigo ?? 'NIU');
+            $item->addChild('igv_percent', number_format((float) $p->igv_percent, 2, '.', ''));
+            $item->addChild('destino_kds', $p->kds_destination ?? '');
+            $item->addChild('estado', $p->estado ?? '');
+        }
+
+        $filename = 'productos_' . now()->format('Ymd_His') . '.xml';
+
+        return response($xml->asXML(), 200)
+            ->header('Content-Type', 'application/xml; charset=UTF-8')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+    }
+
+    private function exportProductsPdf($products, int $companyId)
+    {
+        $company = Company::find($companyId);
+        $groups = $products->groupBy(fn ($p) => $p->category->nombre ?? 'Sin categoría');
+
+        $pdf = new \Mpdf\Mpdf([
+            'mode' => 'utf-8',
+            'format' => 'A4-L',
+            'margin_top' => 12,
+            'margin_bottom' => 12,
+            'margin_left' => 10,
+            'margin_right' => 10,
+        ]);
+
+        $html = view('products.export_pdf', compact('products', 'groups', 'company'))->render();
+        $pdf->WriteHTML($html);
+
+        $filename = 'productos_' . now()->format('Ymd_His') . '.pdf';
+
+        return response($pdf->Output($filename, 'S'), 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
     }
 
     private function exportSpreadsheet(array $data, string $filename)

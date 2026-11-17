@@ -188,6 +188,24 @@ class KitchenBatchStatusTest extends TestCase
         $this->assertSame(20, Setting::restaurantIdleTimeout());
     }
 
+    public function test_un_usuario_sin_permiso_no_puede_acceder_al_restaurante(): void
+    {
+        $plainUser = User::factory()->create(['role' => 'user']);
+
+        $this->actingAs($plainUser)
+            ->get('/restaurant')
+            ->assertForbidden();
+    }
+
+    public function test_un_usuario_no_admin_no_puede_gestionar_pisos_ni_mesas(): void
+    {
+        $plainUser = User::factory()->create(['role' => 'user']);
+
+        $this->actingAs($plainUser)
+            ->get('/restaurant/floors')
+            ->assertForbidden();
+    }
+
     private function createOrder(string $status): RestaurantOrder
     {
         return RestaurantOrder::create([

@@ -133,16 +133,24 @@ class KitchenBatchService
 
     public function cancelBatchIfEmpty(RestaurantKitchenBatch $batch): void
     {
-        $hasActiveItems = RestaurantOrderItem::where('kitchen_batch_id', $batch->id)
-            ->where('kitchen_status', '!=', RestaurantOrderItem::CANCELLED)
-            ->exists();
+        DB::transaction(function () use ($batch) {
+            $locked = RestaurantKitchenBatch::lockForUpdate()->find($batch->id);
 
-        if (!$hasActiveItems) {
-            $batch->update([
-                'status' => RestaurantKitchenBatch::STATUS_CANCELLED,
-                'finished_at' => $batch->finished_at ?? now(),
-            ]);
-        }
+            if (!$locked || $locked->status === RestaurantKitchenBatch::STATUS_CANCELLED) {
+                return;
+            }
+
+            $hasActiveItems = RestaurantOrderItem::where('kitchen_batch_id', $locked->id)
+                ->where('kitchen_status', '!=', RestaurantOrderItem::CANCELLED)
+                ->exists();
+
+            if (!$hasActiveItems) {
+                $locked->update([
+                    'status' => RestaurantKitchenBatch::STATUS_CANCELLED,
+                    'finished_at' => $locked->finished_at ?? now(),
+                ]);
+            }
+        });
     }
 
     public function syncOrderStatus(RestaurantOrder $order): void

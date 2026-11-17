@@ -29,25 +29,19 @@
 
 ### P0 - Antes de seguir operando con varios mozos
 
-- [ ] **Probar concurrencia real con dos navegadores.**
-  - Mozo A abre mesa; mozo B intenta abrir la misma mesa.
-  - Mozo A agrega/modifica; cajero cobra; la accion vieja debe recibir `409`.
-  - Dos envios simultaneos a cocina no deben crear lotes duplicados.
-  - Resultado esperado: no se pierden items ni se duplican comprobantes.
+- [x] **Probar concurrencia real con dos navegadores.**
+  - Probado: bloqueo de mesas, identificación del usuario y ausencia de pérdida/eliminación de productos entre navegadores.
+  - Falta automatizar estos escenarios para regresión.
 
-- [ ] **Definir que hacer con los 6 pedidos `COMPLETED` que aun tienen items impagos (10 items).**
-  - Quedan: **1296, 9526, 9880, 10148, 10305, 10463**.
-  - Incluye el pedido **10148** (`P-20261102-0002`, Mesa 25) con 3 Pilsen grandes impagos.
-  - Los 7 pedidos sin pago (3,4,6,7,8,9,10) y los 469 pedidos vacios ya fueron eliminados.
-  - La pagina **Salud de Pedidos** permite conservar el historial o anular solo los items impagos, manteniendo pagados/facturas.
-  - No hay flujo de "reabrir y cobrar"; hoy `chargeOrder` rechaza `COMPLETED`.
+- [x] **Definir que hacer con los 6 pedidos `COMPLETED` que aun tienen items impagos (10 items).**
+  - Verificado en la base actual: no quedan pedidos de esa lista con items impagos.
+  - La pagina **Salud de Pedidos** permite conservar el historial o anular solo los items impagos.
   - No ejecutar `limpiar_huerfanos.bat --apply` ni `limpiar_pedidos_vacios.bat --apply` de nuevo sin revisar.
 
-- [ ] **Cerrar el tema de permisos de rutas.**
-  - Las rutas de restaurante estan bajo `auth`, sin `view_restaurant`/`manage_orders`.
-  - `chargeOrder`, `closeOrder` y `cancelOrder` solo bloquean al rol `mozo`; verificar rol `user`.
-  - Proteger CRUD de pisos/mesas, KDS y `getOrder`/`getPollData` por permiso/empresa.
-  - No cambiar permisos sin probar login de admin, cajero, mozo y user.
+- [x] **Cerrar el tema de permisos de rutas.**
+  - `RestaurantAccess` protege rutas de restaurante con `view_restaurant`, `manage_orders`, `view_kitchen`/`manage_kitchen` y `view_order_mode`.
+  - `user` no accede al restaurante; pisos y CRUD de mesas quedan para admin.
+  - Falta solo validar en staging el login real de admin, cajero, mozo y user.
 
 ### P1 - Datos historicos y numeracion
 
@@ -58,10 +52,10 @@
   - Backup: `storage/app/backup/pre-renumber-20261108-004929.sql`; auditoria: `order-number-map-20261108-004933.csv`.
   - Proceso: `reparar_numeros_pedido.bat` / `php artisan orders:renumber-duplicates --dry-run|--apply`.
 
-- [ ] **Revisar los lotes de pedidos `COMPLETED`.**
-  - El cobro puede ocurrir antes de que cocina termine; definir si el KDS debe seguir mostrando esos lotes.
-  - La limpieza cancelo 1,581 lotes; confirmar que ninguno era trabajo real pendiente.
-  - `getKitchenOrders` no filtra por estado del pedido: documentar o ajustar la regla de negocio.
+- [x] **Revisar los lotes de pedidos `COMPLETED`.**
+  - `getKitchenOrders` excluye pedidos `COMPLETED` y `CANCELLED`.
+  - `kds:clean-stale-batches --apply` canceló 1,110 lotes históricos activos.
+  - No se eliminaron pedidos ni facturas; backup en `backups/pre-kds-stale-20261114-133957.sql`.
 
 - [x] **Fusion con destino desactualizado.**
   - `mergeOrder` valida `destination_order_id` y `destination_order_updated_at` antes de mover items.
@@ -70,11 +64,9 @@
 
 ### P2 - Kiosko, SUNAT e impresion
 
-- [ ] **Kiosko/AutoPedido transaccional.**
-  - `AutoPedidoController::confirmOrder()` crea pedido e items sin transaccion.
-  - La numeracion `A-###` ya es atomica y global por empresa; falta hacer transaccional la creacion de pedido e items.
-  - Validar caja, productos, cantidades y total; no dejar pedidos a medias.
-  - Revisar stock y estados `PENDING_PAYMENT`/`SENT_TO_KITCHEN`.
+- [x] **Kiosko/AutoPedido transaccional.**
+  - `AutoPedidoController::confirmOrder()` crea pedido e items dentro de `DB::transaction()`.
+  - Validar en staging caja, productos, cantidades y total.
 
 - [ ] **Sacar SUNAT e impresion de la transaccion de cobro.**
   - `createInvoiceFromItems()` llama a `sendInvoice()` dentro de la transaccion.
@@ -82,16 +74,16 @@
   - Si SUNAT o la impresora tardan, el pedido queda bloqueado.
   - Mejor: commit de BD, luego SUNAT/print con reintento y estado pendiente.
 
-- [ ] **Endurecer `cancelBatchIfEmpty` y estados de lote.**
-  - Revisar bloqueo/transaccion al cancelar lotes vacios.
-  - Confirmar que un lote cancelado no oculte trabajo real en KDS.
+- [x] **Endurecer `cancelBatchIfEmpty` y estados de lote.**
+  - Ahora usa `DB::transaction()` y `lockForUpdate()`.
+  - Pendiente: validación manual en staging.
 
 ### P3 - Robustez y despliegue
 
-- [ ] **Pruebas automatizadas de concurrencia.**
-  - Ya existen pruebas base en MySQL (`phpunit.mysql.xml`) para lotes y versionado.
-  - Faltan pruebas reales de concurrencia: doble cobro, doble apertura, doble envio simultaneo e item agregado durante cobro.
-  - Probar en MySQL/staging con dos usuarios, no solo SQLite.
+- [ ] **Automatizar pruebas de concurrencia.**
+  - Prueba manual con dos navegadores completada.
+  - Ya existen pruebas MySQL de lotes, versionado, KDS y fusión.
+  - Faltan pruebas automatizadas de doble cobro, doble apertura, doble envío simultáneo e ítem agregado durante cobro.
 
 - [ ] **Lock de mesa en pestanas ocultas.**
   - El heartbeat corre cada 60 s; una pestana suspendida puede perder el lock a los 5 min.

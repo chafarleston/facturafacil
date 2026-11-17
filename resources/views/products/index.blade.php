@@ -16,6 +16,12 @@
               <option value="simple" {{ ($filter ?? '') == 'simple' ? 'selected' : '' }}>Solo Simples</option>
               <option value="composite" {{ ($filter ?? '') == 'composite' ? 'selected' : '' }}>Solo Compuestos</option>
             </select>
+            <select name="category_id" class="form-control form-control-sm mr-1" style="width:auto;" onchange="this.form.submit()">
+              <option value="">Todas las categorías</option>
+              @foreach($categories as $category)
+                <option value="{{ $category->id }}" {{ (string) ($categoryId ?? '') === (string) $category->id ? 'selected' : '' }}>{{ $category->nombre }}</option>
+              @endforeach
+            </select>
             <select name="search_type" class="form-control form-control-sm mr-1" style="width:auto;" onchange="updateSearchPlaceholder(this)">
               <option value="descripcion" {{ request('search_type', 'descripcion') == 'descripcion' ? 'selected' : '' }}>Descripción</option>
               <option value="codigo" {{ request('search_type') == 'codigo' ? 'selected' : '' }}>Código</option>
@@ -44,9 +50,21 @@
           <a href="{{ route('products.import.form', ['company_id' => $companyId ?? null]) }}" class="btn btn-success btn-sm ml-1">
             <i class="fas fa-file-import"></i> Importar
           </a>
-          <a href="{{ route('products.export', ['company_id' => $companyId ?? null]) }}" class="btn btn-info btn-sm ml-1">
-            <i class="fas fa-file-export"></i> Exportar
-          </a>
+          <form method="GET" action="{{ route('products.export') }}" class="form-inline d-inline">
+            <input type="hidden" name="company_id" value="{{ $companyId ?? null }}">
+            <input type="hidden" name="filter" value="{{ $filter ?? 'all' }}">
+            <input type="hidden" name="search" value="{{ request('search') }}">
+            <input type="hidden" name="search_type" value="{{ request('search_type', 'descripcion') }}">
+            <input type="hidden" name="category_id" value="{{ $categoryId ?? '' }}">
+            <select name="format" class="form-control form-control-sm mr-1" style="width:auto;">
+              <option value="xml">XML</option>
+              <option value="pdf">PDF</option>
+              <option value="xlsx">Excel</option>
+            </select>
+            <button type="submit" class="btn btn-info btn-sm">
+              <i class="fas fa-file-export"></i> Exportar
+            </button>
+          </form>
           @endcan
         </div>
       </div>
@@ -66,7 +84,15 @@
             </tr>
           </thead>
           <tbody>
+            @php $currentCategory = null; @endphp
             @forelse($products as $product)
+            @php $categoryName = $product->category->nombre ?? 'Sin categoría'; @endphp
+            @if($categoryName !== $currentCategory)
+            <tr class="table-secondary">
+              <td colspan="9"><strong><i class="fas fa-folder-open"></i> {{ $categoryName }}</strong></td>
+            </tr>
+            @php $currentCategory = $categoryName; @endphp
+            @endif
             <tr>
               <td>{{ $product->codigo }}</td>
               <td>{{ $product->codigo_barras ?? '-' }}</td>

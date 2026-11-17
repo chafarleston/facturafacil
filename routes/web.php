@@ -62,7 +62,7 @@ Route::post('/test-post', function() {
     return response()->json(['success' => true, 'message' => 'POST works!']);
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\RestaurantAccess::class])->group(function () {
     // Test route for restaurant
     Route::post('/test-restaurant-open/{id}', function($id) {
         return response()->json([
