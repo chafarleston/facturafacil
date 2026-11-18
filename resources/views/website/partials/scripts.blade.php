@@ -1,3 +1,4 @@
+document.addEventListener('DOMContentLoaded', function () {
 // Filtro por categoría + búsqueda
 (function () {
     var activeCategory = 'all';
@@ -83,3 +84,4 @@ if (window.bootstrap) {
         });
     });
 }
+});

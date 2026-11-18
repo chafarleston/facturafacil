@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Company;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Services\ColorContrastService;
 use App\Services\ImageOptimizer;
 use App\Services\VirtualMenuDataService;
 use Illuminate\Http\Request;
@@ -37,6 +38,8 @@ class WebsiteController extends Controller
             'font' => Setting::web('font', 'Poppins'),
             'primary_color' => $primaryColor,
             'secondary_color' => $secondaryColor,
+            'cta_text' => ColorContrastService::readableText($primaryColor),
+            'meta_description' => Setting::web('meta_description', ''),
             'logo' => Setting::web('logo', ''),
             'logo_height' => (int) Setting::web('logo_height', 56),
             'show_autopedido' => Setting::web('show_autopedido', '1') === '1',
@@ -149,6 +152,7 @@ class WebsiteController extends Controller
     public function update(Request $request)
     {
         $validated = $request->validate([
+            'meta_description' => 'nullable|string|max:300',
             'hero_title' => 'nullable|string|max:150',
             'hero_subtitle' => 'nullable|string|max:200',
             'hero_description' => 'nullable|string|max:2000',
@@ -190,7 +194,7 @@ class WebsiteController extends Controller
         ]);
 
         $textKeys = [
-            'hero_title', 'hero_subtitle', 'hero_description', 'about_title', 'about_text',
+            'meta_description', 'hero_title', 'hero_subtitle', 'hero_description', 'about_title', 'about_text',
             'features_title', 'feature_1_title', 'feature_1_text', 'feature_2_title', 'feature_2_text',
             'feature_3_title', 'feature_3_text',
             'catalog_title', 'gallery_title', 'phone', 'email', 'address', 'whatsapp', 'facebook', 'instagram',

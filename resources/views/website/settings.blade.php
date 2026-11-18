@@ -134,6 +134,11 @@
                         <textarea name="hero_description" class="form-control" rows="3" maxlength="2000">{{ old('hero_description', $web['hero_description']) }}</textarea>
                     </div>
                     <div class="form-group">
+                        <label>Meta descripción (SEO)</label>
+                        <textarea name="meta_description" class="form-control" rows="2" maxlength="300">{{ old('meta_description', $web['meta_description']) }}</textarea>
+                        <small class="form-text text-muted">Máximo recomendado: 160 caracteres. Si se deja vacío se usará la descripción del hero o la sección Nosotros.</small>
+                    </div>
+                    <div class="form-group">
                         <label>Imagen de fondo</label>
                         <input type="file" name="hero_image" class="form-control-file" accept="image/*">
                         @if($web['hero_image'])

@@ -3,23 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $web['hero_title'] ?: ($company->nombre_comercial ?: $company->razon_social) }}</title>
-    <meta name="description" content="{{ \Illuminate\Support\Str::limit(strip_tags($web['hero_description']), 160) }}">
-
     @php
         $font = $web['font'] ?: 'Poppins';
-        $fontUrl = 'https://fonts.googleapis.com/css2?family=' . urlencode($font) . ':wght@400;500;600;700&display=swap';
         $waNumber = preg_replace('/\D+/', '', $web['whatsapp'] ?? '');
         $brandName = $company->nombre_comercial ?: $company->razon_social;
     @endphp
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="{{ $fontUrl }}" rel="stylesheet">
+    @include('website.partials.head-assets')
 
     <style>
-        :root { --primary: {{ $web['primary_color'] ?: '#111111' }}; --secondary: {{ $web['secondary_color'] ?: '#555555' }}; --ink: #111; --muted: #777; }
-        * { font-family: '{{ $font }}', sans-serif; }
+        :root { --primary: {{ $web['primary_color'] ?: '#111111' }}; --secondary: {{ $web['secondary_color'] ?: '#555555' }}; --ink: #111; --muted: #666; }
+        * { font-family: '{{ $font }}', 'Poppins Fallback', sans-serif; }
         html { scroll-behavior: smooth; }
         body { background: #fff; color: #222; overflow-x: hidden; }
         section { scroll-margin-top: 90px; }
@@ -50,7 +44,7 @@
 
         .feature { padding: 8px 0; }
         .feature i { color: var(--primary); font-size: 1.2rem; }
-        .feature h5 { font-weight: 600; font-size: 1rem; color: var(--ink); margin: 10px 0 6px; }
+        .feature h3 { font-weight: 600; font-size: 1rem; color: var(--ink); margin: 10px 0 6px; }
 
         .about-img { width: 100%; height: 520px; object-fit: cover; filter: grayscale(10%); }
 
@@ -145,7 +139,7 @@
             </div>
             <div class="col-lg-6 reveal">
                 @if($web['hero_image'])
-                    <img src="{{ asset('storage/' . $web['hero_image']) }}" class="hero-img" alt="{{ $web['hero_title'] }}">
+                    <img src="{{ asset('storage/' . $web['hero_image']) }}" class="hero-img" alt="{{ $web['hero_title'] }}" width="800" height="600" fetchpriority="high" decoding="async">
                 @else
                     <div class="hero-panel"><i class="fas fa-utensils"></i></div>
                 @endif
@@ -168,7 +162,7 @@
             <div class="col-md-4 reveal">
                 <div class="feature">
                     <i class="fas {{ $icon }}"></i>
-                    <h5>{{ $web['feature_'.$i.'_title'] }}</h5>
+                    <h3>{{ $web['feature_'.$i.'_title'] }}</h3>
                     <p class="muted mb-0 small">{{ $web['feature_'.$i.'_text'] }}</p>
                 </div>
             </div>
@@ -190,7 +184,7 @@
             </div>
             @if($web['about_image'])
             <div class="col-lg-6 reveal">
-                <img src="{{ asset('storage/' . $web['about_image']) }}" class="about-img" alt="{{ $web['about_title'] }}">
+                <img src="{{ asset('storage/' . $web['about_image']) }}" class="about-img" alt="{{ $web['about_title'] }}" width="800" height="600" loading="lazy" decoding="async">
             </div>
             @endif
         </div>
@@ -223,13 +217,13 @@
             <div class="col-6 col-md-4 col-lg-3 product-item reveal" data-category="{{ $product->category_id ?? 0 }}" data-name="{{ mb_strtolower($product->descripcion) }}">
                 <div class="product-card d-flex flex-column">
                     @if($product->imagen_url)
-                        <img src="{{ $product->imagen_url }}" class="product-img" alt="{{ $product->descripcion }}" loading="lazy">
+                        <img src="{{ $product->imagen_url }}" class="product-img" alt="{{ $product->descripcion }}" width="800" height="600" loading="lazy" decoding="async">
                     @else
                         <div class="product-img-placeholder"><i class="fas fa-utensils"></i></div>
                     @endif
                     <div class="p-3 d-flex flex-column flex-grow-1">
                         @if($product->category_id && isset($categoryNames[$product->category_id]))<div class="product-cat mb-1">{{ $categoryNames[$product->category_id] }}</div>@endif
-                        <h6 class="mb-1 fw-normal">{{ $product->descripcion }}</h6>
+                        <h3 class="h6 mb-1 fw-normal">{{ $product->descripcion }}</h3>
                         @if($web['show_prices'])<div class="product-price mt-1">S/ {{ number_format($product->precio, 2) }}</div>@endif
                         @if($waNumber)<a href="https://wa.me/{{ $waNumber }}?text={{ urlencode('Hola, quiero pedir: ' . $product->descripcion) }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-minimal mt-3"><i class="fab fa-whatsapp me-1"></i> Pedir</a>@endif
                     </div>
@@ -248,7 +242,7 @@
         <div class="row mb-4 reveal"><div class="col-lg-6"><div class="eyebrow mb-2">Nuestro trabajo</div><h2 class="section-title">{{ $web['gallery_title'] }}</h2></div></div>
         <div class="row g-3">
             @foreach($gallery as $gp)
-            <div class="col-6 col-md-3 reveal"><div class="gallery-item" data-img="{{ $gp->imagen_url }}"><img src="{{ $gp->imagen_url }}" alt="{{ $gp->descripcion }}" loading="lazy"></div></div>
+            <div class="col-6 col-md-3 reveal"><div class="gallery-item" data-img="{{ $gp->imagen_url }}"><img src="{{ $gp->imagen_url }}" alt="{{ $gp->descripcion }}" width="800" height="600" loading="lazy" decoding="async"></div></div>
             @endforeach
         </div>
     </div>
@@ -305,7 +299,7 @@
         <div class="modal-content bg-transparent border-0">
             <div class="modal-body p-0 position-relative">
                 <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                <img id="galleryModalImg" src="" alt="Galería" class="w-100">
+                <img id="galleryModalImg" alt="Galería" class="w-100" decoding="async">
             </div>
         </div>
     </div>
@@ -317,7 +311,6 @@
 
 @include('website.partials.virtual-order-cta')
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 @include('website.partials.scripts')
 </script>

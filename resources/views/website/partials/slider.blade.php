@@ -14,7 +14,7 @@
             padding: 14px 16px !important;
             background: #1a1a2e !important;
         }
-        .web-slide-caption h3 { font-size: 1.1rem; }
+        .web-slide-caption h2 { font-size: 1.1rem; }
         .web-slide-caption p { font-size: .85rem; margin-bottom: .5rem !important; }
         .web-slide-caption .btn { font-size: .8rem; padding: .35rem .7rem; }
     }
@@ -38,13 +38,14 @@
                 <div class="carousel-item {{ $i === 0 ? 'active' : '' }}">
                     @if($slide['image'])
                         <img src="{{ $slide['image'] }}" class="d-block w-100 web-slide-img"
+                             width="1600" height="600" loading="{{ $i === 0 ? 'eager' : 'lazy' }}" fetchpriority="{{ $i === 0 ? 'high' : 'auto' }}" decoding="async"
                              style="height:440px; object-fit:cover;" alt="{{ $slide['title'] }}">
                     @else
                         <div class="web-slide-placeholder" style="height:440px; background:linear-gradient(135deg, var(--primary, #e94560), var(--secondary, #3a1c4a));"></div>
                     @endif
                     <div class="carousel-caption text-start web-slide-caption"
                          style="left:0; right:0; bottom:0; padding:30px; background:linear-gradient(0deg, rgba(0,0,0,.72), transparent);">
-                        @if($slide['title'])<h3 class="fw-bold mb-2">{{ $slide['title'] }}</h3>@endif
+                        @if($slide['title'])<h2 class="fw-bold mb-2">{{ $slide['title'] }}</h2>@endif
                         @if($slide['text'])<p class="mb-2">{{ $slide['text'] }}</p>@endif
                         @if($web['show_autopedido'] ?? true)
                             <a href="/autopedido" class="btn btn-light btn-sm fw-semibold">
