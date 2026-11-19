@@ -8,10 +8,14 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2.0/dist/css/adminlte.min.css">
+  <style>
+    .btn-login { background-color: #0056b3; border-color: #0056b3; }
+    .btn-login:hover, .btn-login:focus { background-color: #004085; border-color: #004085; }
+  </style>
 </head>
 <body class="hold-transition login-page">
 
-<div class="login-box">
+<main class="login-box" aria-label="Inicio de sesión">
   <div class="card card-primary card-outline">
     <div class="card-header text-center">
       <a href="/" class="h1"><i class="fas fa-file-invoice"></i> <b>FacturaFacil by RealComputer SAC</b></a>
@@ -24,7 +28,7 @@
         
         <div class="input-group mb-3">
           <input type="email" name="email" class="form-control @error('email') is-invalid @enderror" 
-                 placeholder="Email" value="{{ old('email') }}" required autofocus>
+                 placeholder="Correo electrónico" aria-label="Correo electrónico" autocomplete="username" value="{{ old('email') }}" required autofocus>
           <div class="input-group-append">
             <div class="input-group-text">
               <span class="fas fa-envelope"></span>
@@ -37,7 +41,7 @@
         
         <div class="input-group mb-3">
           <input type="password" name="password" class="form-control @error('password') is-invalid @enderror" 
-                 placeholder="Contraseña" required>
+                 placeholder="Contraseña" aria-label="Contraseña" autocomplete="current-password" required>
           <div class="input-group-append">
             <div class="input-group-text">
               <span class="fas fa-lock"></span>
@@ -56,7 +60,7 @@
             </div>
           </div>
           <div class="col-4">
-            <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+            <button type="submit" class="btn btn-primary btn-block btn-login">Entrar</button>
           </div>
         </div>
       </form>
@@ -68,7 +72,7 @@
       @endif
     </div>
   </div>
-</div>
+</main>
 
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>

@@ -18,6 +18,7 @@ use App\Http\Controllers\CustomerApiController;
 use App\Http\Controllers\DecolectaController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\PreventaController;
 use App\Http\Controllers\SunatPadronController;
 use App\Http\Controllers\ThemeController;
 use App\Http\Controllers\WebsiteController;
@@ -95,6 +96,7 @@ Route::middleware(['auth', \App\Http\Middleware\RestaurantAccess::class])->group
         Route::get('/website-settings', [WebsiteController::class, 'edit'])->name('website.edit');
         Route::post('/website-settings', [WebsiteController::class, 'update'])->name('website.update');
         Route::resource('customers', CustomerController::class)->parameters(['customers' => 'customer']);
+        Route::resource('preventas', PreventaController::class);
         Route::get('/products/export', [ProductController::class, 'export'])->name('products.export');
         Route::get('/products/import', [ProductController::class, 'importForm'])->name('products.import.form');
         Route::post('/products/import', [ProductController::class, 'importStore'])->name('products.import.store');

@@ -141,6 +141,26 @@ $__kdsActive = \App\Models\Company::orderMode() === 'kds';
               </a>
             </li>
             @endcan
+
+            @if(auth()->user()->isAdmin() || auth()->user()->isSuperAdmin())
+            <li class="nav-item">
+              <a href="#" class="nav-link {{ request()->routeIs('preventas.*') ? 'active' : '' }}">
+                <i class="nav-icon fas fa-handshake"></i>
+                <p>Preventas<i class="fas fa-angle-left right"></i></p>
+              </a>
+              <ul class="nav nav-treeview">
+                @foreach(\App\Models\Preventa::TIPOS as $preventaTipo => $preventaLabel)
+                <li class="nav-item">
+                  <a href="{{ route('preventas.index', ['tipo' => $preventaTipo]) }}"
+                     class="nav-link {{ request()->routeIs('preventas.*') && request('tipo', 'cotizacion') === $preventaTipo ? 'active' : '' }}">
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>{{ $preventaLabel }}</p>
+                  </a>
+                </li>
+                @endforeach
+              </ul>
+            </li>
+            @endif
             
             @can('permission', 'view_products')
             <li class="nav-item">
