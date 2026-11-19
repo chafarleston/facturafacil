@@ -70,7 +70,7 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Direcci��n</label>
+                        <label>Dirección</label>
                         <input type="text" name="entity_direccion" class="form-control">
                     </div>
 
@@ -106,7 +106,7 @@
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
-                                <label>Descripci��n del motivo</label>
+                                <label>Descripción del motivo</label>
                                 <input type="text" name="des_traslado" class="form-control" maxlength="200" value="{{ old('des_traslado') }}">
                             </div>
                         </div>
@@ -128,7 +128,7 @@
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
-                                <label>Nǧmero de bultos</label>
+                                <label>Número de bultos</label>
                                 <input type="number" name="num_bultos" class="form-control" min="0" value="{{ old('num_bultos') }}">
                             </div>
                         </div>
@@ -159,7 +159,7 @@
                         </div>
                         <div class="col-md-5">
                             <div class="form-group">
-                                <label>Raz��n social transportista</label>
+                                <label>Razón social transportista</label>
                                 <input type="text" name="transportista_razon_social" class="form-control" value="{{ old('transportista_razon_social') }}">
                             </div>
                         </div>
@@ -173,13 +173,13 @@
                     <div class="row">
                         <div class="col-md-3">
                             <div class="form-group">
-                                <label>Placa veh��culo</label>
+                                <label>Placa vehículo</label>
                                 <input type="text" name="vehiculo_placa" class="form-control" value="{{ old('vehiculo_placa') }}">
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
-                                <label>Nro. circulaci��n</label>
+                                <label>Nro. circulación</label>
                                 <input type="text" name="vehiculo_nro_circulacion" class="form-control" value="{{ old('vehiculo_nro_circulacion') }}">
                             </div>
                         </div>

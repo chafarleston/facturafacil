@@ -429,7 +429,7 @@
                 </div>
                 <div style="flex: 1;">
                     <label>Referencia</label>
-                    <input type="text" id="reference" class="form-control form-control-sm" placeholder="N° operacion">
+                    <input type="text" id="reference" class="form-control form-control-sm" placeholder="N° operación">
                 </div>
             </div>
             

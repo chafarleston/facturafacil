@@ -41,9 +41,9 @@ class DocumentController extends Controller
         $company = Company::find($companyId);
         $tipos = ['R' => '20', 'T' => '09', 'P' => '40'];
         $title = match($tipo) {
-            'R' => 'Nueva Retenci��n',
-            'T' => 'Nueva Gu��a de Remisi��n',
-            'P' => 'Nueva Percepci��n',
+            'R' => 'Nueva Retención',
+            'T' => 'Nueva Guía de Remisión',
+            'P' => 'Nueva Percepción',
         };
 
         $series = Serie::where('company_id', $companyId)

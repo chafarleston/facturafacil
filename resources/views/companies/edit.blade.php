@@ -182,8 +182,8 @@
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label>SOAP Contrase��a</label>
-                                <input type="password" name="soap_password" class="form-control" value="{{ $company->soap_password }}" placeholder="Contrase��a del usuario secundario">
+                                <label>SOAP Contraseña</label>
+                                <input type="password" name="soap_password" class="form-control" value="{{ $company->soap_password }}" placeholder="Contraseña del usuario secundario">
                             </div>
                         </div>
                     </div>

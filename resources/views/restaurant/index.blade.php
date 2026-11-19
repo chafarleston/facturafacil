@@ -206,7 +206,7 @@
         border-color: #007bff;
     }
 
-    /* Modo "solo categorÃ­as": tarjetas grandes */
+    /* Modo "solo categorías": tarjetas grandes */
     .products-categories.categories-only {
         display: grid;
         grid-auto-flow: row;
@@ -468,7 +468,7 @@
     .aux-chip:hover { border-color: #aaa; background: #f5f5f5; }
     .aux-chip.selected { background: #e94560; color: #fff; border-color: #e94560; }
 
-    /* Teclado virtual para la bÃºsqueda de productos */
+    /* Teclado virtual para la búsqueda de productos */
     .rest-kb-overlay { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 10060; background: #d1d5db; padding: 8px; box-shadow: 0 -2px 12px rgba(0,0,0,.2); }
     .rest-kb-overlay.show { display: block; }
     .rest-kb-row { display: flex; justify-content: center; gap: 4px; margin-bottom: 4px; }
@@ -498,7 +498,7 @@
                 </span>
                 @endif
                 <span class="badge badge-danger" id="connectionWarning" style="display:none; font-size:9px; margin-left:5px;">
-                    <i class="fas fa-wifi"></i> Sin conexiÃ³n
+                    <i class="fas fa-wifi"></i> Sin conexión
                 </span>
                 @if(in_array(auth()->user()->role, ['admin', 'superadmin', 'cajero']))
                 <button onclick="unlockAllTables()" class="btn btn-sm btn-outline-warning ml-2" style="font-size:9px; padding:2px 8px;" title="Desbloquear todas las mesas">
@@ -508,7 +508,7 @@
             </div>
             <span class="badge badge-{{ $orderMode === 'print' ? 'info' : 'secondary' }}" style="font-size:11px;">
                 <i class="fas {{ $orderMode === 'print' ? 'fa-print' : 'fa-tv' }}"></i>
-                {{ $orderMode === 'print' ? 'ImpresiÃ³n 80mm' : 'KDS' }}
+                {{ $orderMode === 'print' ? 'Impresión 80mm' : 'KDS' }}
             </span>
         </div>
         
@@ -544,12 +544,12 @@
     </div>
 </div>
 
-{{-- Modal ConfirmaciÃ³n --}}
+{{-- Modal Confirmación --}}
 <div class="qty-overlay" id="confirmOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10010; align-items:center; justify-content:center;">
     <div class="qty-popup" style="background:white; padding:25px; border-radius:10px; min-width:350px; max-width:90%; text-align:center;">
         <div style="font-size:40px; margin-bottom:10px;" id="confirmIcon"><i class="fas fa-question-circle" style="color:#ffc107;"></i></div>
         <h5 style="margin:0 0 10px 0;" id="confirmTitle">Confirmar</h5>
-        <p style="color:#666; margin-bottom:20px;" id="confirmMessage">Â¿EstÃ¡ seguro?</p>
+        <p style="color:#666; margin-bottom:20px;" id="confirmMessage">¿Está seguro?</p>
         <div style="display:flex; gap:10px; justify-content:center;">
             <button type="button" class="btn btn-secondary" id="confirmCancelBtn" onclick="closeConfirm()">Cancelar</button>
             <button type="button" class="btn btn-primary" id="confirmOkBtn" onclick="confirmOk()">Aceptar</button>
@@ -578,7 +578,7 @@
 
 {{-- Modal Toast --}}
 <div id="toastAlert" style="display:none; position:fixed; top:20px; right:20px; z-index:99999; background:#28a745; color:white; padding:15px 25px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.2); font-weight:bold; font-size:14px;">
-    <i class="fas fa-check-circle mr-2"></i> <span id="toastMessage">OperaciÃ³n exitosa</span>
+    <i class="fas fa-check-circle mr-2"></i> <span id="toastMessage">Operación exitosa</span>
 </div>
 
 {{-- Modal Cantidad --}}
@@ -612,13 +612,13 @@
     </div>
 </div>
 
-{{-- Modal ContraseÃ±a Admin --}}
+{{-- Modal Contraseña Admin --}}
 <div class="qty-overlay" id="adminPasswordOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
     <div class="qty-popup" style="background:white; padding:20px; border-radius:10px; min-width:320px; max-width:90%;">
-        <h5 style="margin:0 0 5px 0;">AutorizaciÃ³n requerida</h5>
-        <p style="font-size:13px; color:#666; margin-bottom:15px;">Ingrese su contraseÃ±a para eliminar este producto</p>
+        <h5 style="margin:0 0 5px 0;">Autorización requerida</h5>
+        <p style="font-size:13px; color:#666; margin-bottom:15px;">Ingrese su contraseña para eliminar este producto</p>
         <input type="hidden" id="adminPasswordItemId">
-        <input type="password" id="adminPasswordInput" class="form-control" placeholder="ContraseÃ±a" style="margin-bottom:10px;" autocomplete="off">
+        <input type="password" id="adminPasswordInput" class="form-control" placeholder="Contraseña" style="margin-bottom:10px;" autocomplete="off">
         <div style="display:flex; gap:10px; justify-content:flex-end;">
             <button type="button" class="btn btn-secondary" onclick="closeAdminPasswordModal()">Cancelar</button>
             <button type="button" class="btn btn-danger" onclick="confirmAdminPassword()">Eliminar</button>
@@ -673,7 +673,7 @@
                 @endforeach
             </div>
             <button type="button" id="backToCategories" class="back-cats" style="display:none;" onclick="backToCategories()">
-                <i class="fas fa-arrow-left"></i> CategorÃ­as
+                <i class="fas fa-arrow-left"></i> Categorías
             </button>
             <div class="products-grid" id="productsList" @if($categoriesOnly) style="display:none" @endif>
                 @foreach($products as $product)
@@ -809,13 +809,13 @@
         </div>
         <div style="margin-bottom:8px;">
             <label style="font-size:12px; font-weight:600; color:#444;">Referencia</label>
-            <input type="text" id="chargeReference" class="form-control form-control-sm" placeholder="NÂ° operaciÃ³n (opcional)">
+            <input type="text" id="chargeReference" class="form-control form-control-sm" placeholder="N° operación (opcional)">
         </div>
         <div style="margin-bottom:10px;">
-            <label style="font-size:12px; font-weight:600; color:#444;">MÃ©todos de Pago</label>
+            <label style="font-size:12px; font-weight:600; color:#444;">Métodos de Pago</label>
             <div id="paymentsContainer"></div>
             <button type="button" class="btn btn-link btn-sm" onclick="addPaymentRow()" style="padding:4px 0;">
-                <i class="fas fa-plus"></i> Agregar otro mÃ©todo
+                <i class="fas fa-plus"></i> Agregar otro método
             </button>
             <div style="display:flex; justify-content:flex-end; gap:15px; font-weight:bold; margin-top:6px; font-size:13px;">
                 <span>Pendiente: S/ <span id="pendingAmount" style="color:#dc3545;">0.00</span></span>
@@ -851,7 +851,7 @@
         <div id="splitSplitsContainer"></div>
 
         <button type="button" class="btn btn-primary btn-sm mb-2" onclick="addSplit()" style="margin-top:8px;">
-            <i class="fas fa-plus"></i> Agregar DivisiÃ³n
+            <i class="fas fa-plus"></i> Agregar División
         </button>
 
         <div id="splitError" style="display:none; color:#dc3545; font-size:12px; margin:10px 0;"></div>
@@ -859,13 +859,13 @@
         <div style="display:flex; gap:8px; margin-top:15px;">
             <button class="btn btn-secondary btn-sm" onclick="closeSplitModal()" style="flex:1;">Cancelar</button>
             <button class="btn btn-primary btn-sm" id="btnConfirmSplit" onclick="confirmSplit()" style="flex:1;">
-                <i class="fas fa-scissors"></i> Confirmar DivisiÃ³n
+                <i class="fas fa-scissors"></i> Confirmar División
             </button>
         </div>
     </div>
 </div>
 
-{{-- Teclado virtual para la bÃºsqueda de productos --}}
+{{-- Teclado virtual para la búsqueda de productos --}}
 <div class="rest-kb-overlay" id="restaurantKeyboard">
     <div class="rest-kb-row">
         <div class="rest-kb-key" onclick="restKbPressKey('1')">1</div>
@@ -878,7 +878,7 @@
         <div class="rest-kb-key" onclick="restKbPressKey('8')">8</div>
         <div class="rest-kb-key" onclick="restKbPressKey('9')">9</div>
         <div class="rest-kb-key" onclick="restKbPressKey('0')">0</div>
-        <div class="rest-kb-key rest-kb-wide rest-kb-action" onclick="restKbPressBackspace()">âŒ«</div>
+        <div class="rest-kb-key rest-kb-wide rest-kb-action" onclick="restKbPressBackspace()">⌫</div>
     </div>
     <div class="rest-kb-row">
         <div class="rest-kb-key" onclick="restKbPressKey('Q')">Q</div>
@@ -902,7 +902,7 @@
         <div class="rest-kb-key" onclick="restKbPressKey('J')">J</div>
         <div class="rest-kb-key" onclick="restKbPressKey('K')">K</div>
         <div class="rest-kb-key" onclick="restKbPressKey('L')">L</div>
-        <div class="rest-kb-key" onclick="restKbPressKey('Ã‘')">Ã‘</div>
+        <div class="rest-kb-key" onclick="restKbPressKey('Ñ')">Ñ</div>
     </div>
     <div class="rest-kb-row">
         <div class="rest-kb-key" onclick="restKbPressKey('Z')">Z</div>
@@ -1407,8 +1407,8 @@ function applyFilters() {
     const backBtn = document.getElementById('backToCategories');
 
     if (categoriesOnly) {
-        // Modo "solo categorÃ­as": al elegir una categorÃ­a (o buscar) se ocultan las
-        // categorÃ­as y se muestran los productos en su lugar.
+        // Modo "solo categorías": al elegir una categoría (o buscar) se ocultan las
+        // categorías y se muestran los productos en su lugar.
         const showProducts = q !== '' || activeCategory !== null;
         if (cats) cats.style.display = showProducts ? 'none' : '';
         if (grid) grid.style.display = showProducts ? '' : 'none';
@@ -1478,7 +1478,7 @@ function closeQtyModal() {
 function confirmAddItem() {
     const quantity = parseFloat(document.getElementById('itemQtyInput').value);
     if (!Number.isInteger(quantity) || quantity < 1) {
-        showError('La cantidad debe ser un nÃºmero entero (1, 2, 3...)');
+        showError('La cantidad debe ser un número entero (1, 2, 3...)');
         return;
     }
     
@@ -1634,12 +1634,12 @@ function removeItem(itemId) {
             document.getElementById('adminPasswordInput').focus();
         } else {
             pendingDeleteItems[itemId] = true;
-            showAlert('Este producto ya estÃ¡ enviado a cocina. Presione eliminar nuevamente para confirmar con su contraseÃ±a.');
+            showAlert('Este producto ya está enviado a cocina. Presione eliminar nuevamente para confirmar con su contraseña.');
         }
         return;
     }
     
-    showConfirm('Â¿Eliminar producto?', function() {
+    showConfirm('¿Eliminar producto?', function() {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
         
         fetch('/restaurant/orders/items/' + itemId, {
@@ -1725,7 +1725,7 @@ function showToast(msg) {
 
 function sendToKitchen() {
     if (!currentOrderId) return;
-    showConfirm('Â¿Enviar pedido a cocina?', function() {
+    showConfirm('¿Enviar pedido a cocina?', function() {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
         fetch('/restaurant/orders/' + currentOrderId + '/send-to-kitchen', {
             method: 'POST',
@@ -1834,7 +1834,7 @@ function closeMoveTableModal() {
 
 function selectMoveTable(targetTableId) {
     closeMoveTableModal();
-    showConfirm('Â¿Mover pedido a la mesa seleccionada?', function() {
+    showConfirm('¿Mover pedido a la mesa seleccionada?', function() {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
         fetch('/restaurant/orders/' + currentOrderId + '/move-table', {
             method: 'POST',
@@ -1859,7 +1859,7 @@ function selectMoveTable(targetTableId) {
             }
         })
         .catch(function() {
-            showError('Error de conexiÃ³n');
+            showError('Error de conexión');
         });
     });
 }
@@ -1882,7 +1882,7 @@ function selectMergeTable(targetTableId) {
     closeMoveTableModal();
     const destinationOrder = findTableActiveOrder(targetTableId);
 
-    showConfirm('��Fusionar el pedido de esta mesa con el pedido de la mesa seleccionada? Todos los productos quedarǭn juntos.', function() {
+    showConfirm('¿Fusionar el pedido de esta mesa con el pedido de la mesa seleccionada? Todos los productos quedarán juntos.', function() {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
         fetch('/restaurant/orders/' + currentOrderId + '/merge', {
             method: 'POST',
@@ -1909,7 +1909,7 @@ function selectMergeTable(targetTableId) {
             }
         })
         .catch(function() {
-            showError('Error de conexiÃ³n');
+            showError('Error de conexión');
         });
     });
 }
@@ -1929,7 +1929,7 @@ function selectMergeTableFresh(targetTableId) {
 
         const destinationOrder = data.order;
 
-        showConfirm('Fusionar el pedido de esta mesa con el pedido de la mesa seleccionada? Todos los productos quedaran juntos.', function() {
+        showConfirm('¿Fusionar el pedido de esta mesa con el pedido de la mesa seleccionada? Todos los productos quedarán juntos.', function() {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
             fetch('/restaurant/orders/' + currentOrderId + '/merge', {
                 method: 'POST',
@@ -1956,7 +1956,7 @@ function selectMergeTableFresh(targetTableId) {
                 }
             })
             .catch(function() {
-                showError('Error de conexion');
+                showError('Error de conexión');
             });
         });
     })
@@ -1989,16 +1989,16 @@ function openCashDrawer() {
             body: body
         })
         .catch(function() {});
-        showToast('CajÃ³n abierto');
+        showToast('Cajón abierto');
     })
     .catch(function() {
-        showError('Error al obtener configuraciÃ³n');
+        showError('Error al obtener configuración');
     });
 }
 
 function closeTable() {
     if (!currentOrderId) return;
-    showConfirm('Â¿Cerrar pedido?', function() {
+    showConfirm('¿Cerrar pedido?', function() {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
         
         fetch('/restaurant/orders/' + currentOrderId + '/close', {
@@ -2042,12 +2042,12 @@ function cancelOrder() {
             document.getElementById('adminPasswordInput').focus();
         } else {
             pendingCancelAction = true;
-            showAlert('El pedido tiene productos en cocina. Presione Anular nuevamente para confirmar con su contraseÃ±a.');
+            showAlert('El pedido tiene productos en cocina. Presione Anular nuevamente para confirmar con su contraseña.');
         }
         return;
     }
     
-    showConfirm('Â¿Anular pedido?', cancelOrderRequest);
+    showConfirm('¿Anular pedido?', cancelOrderRequest);
 }
 
 function cancelOrderRequest(password) {
@@ -2096,7 +2096,7 @@ function closeAdminPasswordModal() {
 function confirmAdminPassword() {
     const itemId = document.getElementById('adminPasswordItemId').value;
     const password = document.getElementById('adminPasswordInput').value;
-    if (!password) { showError('Ingrese su contraseÃ±a'); return; }
+    if (!password) { showError('Ingrese su contraseña'); return; }
     
     closeAdminPasswordModal();
     
@@ -2155,7 +2155,7 @@ function currentOrderVersion() {
 
 function staleOrderResponse(data) {
     if (data && data.requires_reload) {
-        showError(data.message || 'Otro usuario actualizÃ³ este pedido. Recargue la mesa.');
+        showError(data.message || 'Otro usuario actualizó este pedido. Recargue la mesa.');
         if (currentOrderId) {
             loadOrder(currentOrderId);
         }
@@ -2376,7 +2376,7 @@ function pollRestaurantData() {
 }
 
 function unlockAllTables() {
-    if (!confirm('Â¿Desbloquear todas las mesas?')) return;
+    if (!confirm('¿Desbloquear todas las mesas?')) return;
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
     fetch('/restaurant/tables/unlock-all', {
         method: 'POST',
@@ -2476,7 +2476,7 @@ function addPaymentRow(amount) {
             <option value="TRANSFERENCIA">TRANSFERENCIA</option>
         </select>
         <input type="number" class="payment-amount form-control form-control-sm" style="flex:1;" step="0.01" min="0" placeholder="Monto" oninput="updatePaymentSummary()">
-        <button type="button" class="btn btn-danger btn-sm" onclick="removePaymentRow(this)" style="width:30px;height:30px;padding:0;">Ã—</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="removePaymentRow(this)" style="width:30px;height:30px;padding:0;">×</button>
     `;
     if (amount && amount > 0) {
         row.querySelector('.payment-amount').value = parseFloat(amount).toFixed(2);
@@ -2609,7 +2609,7 @@ function closeSplitModal() {
 }
 
 function getSplitItemAvailable(itemId, excludeSplitId) {
-    // Sumar lo ya asignado en las otras splits (excluyendo la que se estÃ¡ editando)
+    // Sumar lo ya asignado en las otras splits (excluyendo la que se está editando)
     let allocated = 0;
     splitSplits.forEach(function(s) {
         if (excludeSplitId !== undefined && s.splitId === excludeSplitId) return;
@@ -2660,8 +2660,8 @@ function addSplit() {
     splitSplits[splitSplits.length - 1].customer_id = defaultCustomerId || null;
     
     div.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
-        '<strong style="color:#6f42c1;">DivisiÃ³n ' + (splitSplits.length) + '</strong>' +
-        '<button class="btn btn-danger btn-xs" onclick="removeSplit(' + splitId + ')" style="padding:2px 6px; font-size:11px;">Ã—</button>' +
+        '<strong style="color:#6f42c1;">División ' + (splitSplits.length) + '</strong>' +
+        '<button class="btn btn-danger btn-xs" onclick="removeSplit(' + splitId + ')" style="padding:2px 6px; font-size:11px;">×</button>' +
         '</div>' +
         '<div class="split-items" style="margin-bottom:8px;">' + itemsHtml + '</div>' +
         '<div style="display:flex; gap:6px; margin-bottom:8px;">' +
@@ -2692,7 +2692,7 @@ function addSplit() {
                 '<input type="checkbox" class="custom-control-input split-solo-consumo" onchange="updateSplitAllocation(' + splitId + ', null, null)"><span class="custom-control-label">Solo Consumo</span>' +
             '</label></div>' +
         '</div>' +
-        '<div style="text-align:right; font-weight:bold; font-size:13px;">Total DivisiÃ³n: <span class="split-block-total" style="color:#6f42c1;">S/ 0.00</span></div>';
+        '<div style="text-align:right; font-weight:bold; font-size:13px;">Total División: <span class="split-block-total" style="color:#6f42c1;">S/ 0.00</span></div>';
     
     container.appendChild(div);
     
@@ -2745,7 +2745,7 @@ function updateSplitAllocation(index, itemId, value) {
         if (qty > 0) split.items.push({item_id: id, quantity: qty});
     });
     
-    // 2b) Actualizar el total por lÃ­nea de cada fila (qty Ã— precio unitario)
+    // 2b) Actualizar el total por línea de cada fila (qty × precio unitario)
     block.querySelectorAll('.split-item-row').forEach(function(row) {
         const id = parseInt(row.dataset.itemId);
         const qty = parseFloat(row.querySelector('.split-qty').value) || 0;
@@ -2784,7 +2784,7 @@ function searchSplitCustomers(splitId, term) {
     if (!block) return;
     const dropdown = block.querySelector('.split-customer-dropdown');
     if (term.length < 2) { dropdown.style.display = 'none'; return; }
-    // El usuario estÃ¡ escribiendo una bÃºsqueda nueva: invalidar cliente seleccionado
+    // El usuario está escribiendo una búsqueda nueva: invalidar cliente seleccionado
     const split = splitSplits.find(function(s) { return s.splitId === splitId; });
     if (split) split.customer_id = null;
     block.querySelector('.split-customer-id').value = '';
@@ -2857,10 +2857,10 @@ function confirmSplit() {
     const errorDiv = document.getElementById('splitError');
     errorDiv.style.display = 'none';
     
-    // Validar al menos una divisiÃ³n con items
+    // Validar al menos una división con items
     const validSplits = splitSplits.filter(function(s) { return s.items.length > 0; });
     if (validSplits.length === 0) {
-        errorDiv.textContent = 'Debe asignar productos a al menos una divisiÃ³n.';
+        errorDiv.textContent = 'Debe asignar productos a al menos una división.';
         errorDiv.style.display = 'block';
         return;
     }
@@ -2877,7 +2877,7 @@ function confirmSplit() {
     });
     
     if (qtyError) {
-        errorDiv.textContent = 'Las cantidades deben ser nÃºmeros enteros (0, 1, 2...).';
+        errorDiv.textContent = 'Las cantidades deben ser números enteros (0, 1, 2...).';
         errorDiv.style.display = 'block';
         return;
     }
@@ -2887,12 +2887,12 @@ function confirmSplit() {
         var qty = parseFloat(item.quantity) || 0;
         var allocated = itemCheck[item.id] || 0;
         if (allocated > qty + 0.001) {
-            errorDiv.textContent = "La divisiÃ³n de '" + item.product_name + "' excede lo disponible. Disponible: " + qty + ", solicitado: " + allocated;
+            errorDiv.textContent = "La división de '" + item.product_name + "' excede lo disponible. Disponible: " + qty + ", solicitado: " + allocated;
             errorDiv.style.display = 'block';
             return;
         }
     }
-    // Los items no asignados quedan pendientes para el botÃ³n "Cobrar"
+    // Los items no asignados quedan pendientes para el botón "Cobrar"
     
     let paymentError = null;
     validSplits.forEach(function(s, idx) {
@@ -2948,29 +2948,29 @@ function confirmSplit() {
     .then(res => res.json())
     .then(data => {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-scissors"></i> Confirmar DivisiÃ³n';
+        btn.innerHTML = '<i class="fas fa-scissors"></i> Confirmar División';
         if (staleOrderResponse(data)) {
             closeSplitModal();
             return;
         }
         if (data.success) {
             closeSplitModal();
-            toastAlert('DivisiÃ³n procesada correctamente');
+            toastAlert('División procesada correctamente');
             var invoices = data.invoices || [];
             
             var finishSplit = function() {
                 document.getElementById('confirmCancelBtn').onclick = closeConfirm;
                 if (data.order_completed) {
-                    // Pedido completo â†’ recargar
+                    // Pedido completo → recargar
                     setTimeout(function() { location.reload(); }, 600);
                 } else {
-                    // Quedan items pendientes â†’ recargar pedido
+                    // Quedan items pendientes → recargar pedido
                     loadOrder(currentOrderId);
                 }
             };
             
             if (invoices.length > 0) {
-                showConfirm('DivisiÃ³n procesada (' + invoices.length + ' comprobante(s)). Â¿Desea imprimirlos?', function() {
+                showConfirm('División procesada (' + invoices.length + ' comprobante(s)). ¿Desea imprimirlos?', function() {
                     invoices.forEach(function(inv, i) {
                         setTimeout(function() {
                             window.open('/pos/print/' + inv.id + '/80mm', '_blank', 'width=400,height=600');
@@ -2993,7 +2993,7 @@ function confirmSplit() {
     })
     .catch(err => {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-scissors"></i> Confirmar DivisiÃ³n';
+        btn.innerHTML = '<i class="fas fa-scissors"></i> Confirmar División';
         errorDiv.textContent = 'Error: ' + err.message;
         errorDiv.style.display = 'block';
     });
@@ -3136,7 +3136,7 @@ function processCharge() {
             var vuelto = data.vuelto || 0;
             var msg = 'Total: S/ ' + data.total.toFixed(2);
             if (vuelto > 0) msg += '\nVuelto: S/ ' + vuelto.toFixed(2);
-            showConfirm(msg + '\n\nÂ¿Desea imprimir el comprobante?', function() {
+            showConfirm(msg + '\n\n¿Desea imprimir el comprobante?', function() {
                 window.open('/pos/print/' + invoiceId + '/80mm', '_blank', 'width=400,height=600');
                 location.reload();
             });

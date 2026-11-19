@@ -238,7 +238,7 @@ class PosController extends Controller
         }
         $cajaAbierta->save();
 
-        // Abrir caj��n automǭticamente si hubo efectivo
+        // Abrir cajón automáticamente si hubo efectivo
         if ($hasCash && \App\Models\Setting::pos('open_drawer_cash', '1') === '1') {
             try {
                 $printer = \App\Models\Printer::where('assigned_to', 'caja')->where('active', true)->first();

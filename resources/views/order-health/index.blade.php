@@ -253,7 +253,7 @@
         @else
             <p class="text-muted">
                 Estos pedidos tienen items pagados o facturas. No se eliminan completos para no perder el historial.
-                <strong>Opcion 1:</strong> conservar como historial. <strong>Opcion 2:</strong> anular solo los items impagos.
+                <strong>Opción 1:</strong> conservar como historial. <strong>Opción 2:</strong> anular solo los items impagos.
             </p>
 
             @if($health['completed_partial']->isNotEmpty())
@@ -283,7 +283,7 @@
                                     <td>{{ $order->created_at?->format('d/m/Y H:i') }}</td>
                                     <td>
                                         <form method="POST" action="{{ route('order-health.cleanup') }}"
-                                              onsubmit="return confirmHealthCleanup(this, 'Se anularan {{ $order->unpaid_items_count }} item(s) impago(s) del pedido {{ $order->order_number }}.', 'ANULAR')">
+                                              onsubmit="return confirmHealthCleanup(this, 'Se anularán {{ $order->unpaid_items_count }} item(s) impago(s) del pedido {{ $order->order_number }}.', 'ANULAR')">
                                             @csrf
                                             <input type="hidden" name="mode" value="partial">
                                             <input type="hidden" name="order_id" value="{{ $order->id }}">
@@ -334,11 +334,11 @@
     </div>
     <div class="card-body">
         @if($health['duplicate_count'] === 0)
-            <p class="text-success mb-0"><i class="fas fa-check-circle"></i> No hay numeros de pedido duplicados.</p>
+            <p class="text-success mb-0"><i class="fas fa-check-circle"></i> No hay números de pedido duplicados.</p>
         @else
             <div class="alert alert-warning">
                 <i class="fas fa-exclamation-triangle"></i>
-                Hay {{ $health['duplicate_count'] }} grupos de numeros repetidos. No se eliminan automaticamente.
+                Hay {{ $health['duplicate_count'] }} grupos de números repetidos. No se eliminan automáticamente.
             </div>
             <div class="table-responsive">
                 <table class="table table-sm table-striped">

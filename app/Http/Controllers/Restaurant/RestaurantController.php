@@ -110,7 +110,7 @@ class RestaurantController extends Controller
         $newMode = $company->order_mode === 'print' ? 'kds' : 'print';
         $company->update(['order_mode' => $newMode]);
         \App\Models\Company::clearCache();
-        return back()->with('success', "Modo cambiado a " . ($newMode === 'print' ? 'Impresi��n 80mm' : 'KDS'));
+        return back()->with('success', "Modo cambiado a " . ($newMode === 'print' ? 'Impresión 80mm' : 'KDS'));
     }
 
     public function openTable(Request $request, $tableId)
@@ -1524,7 +1524,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
                     ], 422);
                 }
 
-                // Opci��n B: enviar automǭticamente a cocina/bar los items pendientes antes de facturar
+                // Opción B: enviar automáticamente a cocina/bar los items pendientes antes de facturar
                 $pendingToSend = $items->where('kitchen_status', 'PENDING');
                 if ($pendingToSend->isNotEmpty()) {
                     app(KitchenBatchService::class)
@@ -1720,7 +1720,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
                 if ($requested > (float) $item->quantity + 0.001) {
                     return response()->json([
                         'success' => false,
-                        'message' => "La divisi��n de '{$item->product_name}' excede lo disponible. Disponible: {$item->quantity}, solicitado: {$requested}"
+                        'message' => "La división de '{$item->product_name}' excede lo disponible. Disponible: {$item->quantity}, solicitado: {$requested}"
                     ], 400);
                 }
             }
