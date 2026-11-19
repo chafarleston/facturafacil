@@ -28,6 +28,7 @@ use App\Services\PrintServerService;
 use App\Services\PrintService;
 use App\Services\KitchenBatchService;
 use App\Services\InventoryService;
+use App\Services\PaymentValidationService;
 use App\Services\SunatCustomerStatusService;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -1840,17 +1841,7 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
 
     private function assertVirtualPaymentsWithinTotal($payments, float $total): void
     {
-        $virtualTotal = collect($payments)
-            ->filter(fn ($p) => in_array(
-                strtoupper(trim((string) ($p['method'] ?? ''))),
-                ['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA'],
-                true
-            ))
-            ->sum(fn ($p) => (float) ($p['amount'] ?? 0));
-
-        if ($virtualTotal > $total + 0.001) {
-            throw new \Exception('Los pagos virtuales (Yape, Plin, Tarjeta y Transferencia) deben ser exactos y no pueden superar el total de la venta.');
-        }
+        PaymentValidationService::assertVirtualPaymentsDoNotExceedPending($payments, $total);
     }
 
     private function createInvoiceFromItems($order, $items, $customerId, $documentType, $payments, $soloConsumo, $reference, $cajaAbierta, $mainCompany, $companyId)

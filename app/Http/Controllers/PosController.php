@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\Serie;
 use App\Services\GreenterService;
 use App\Services\InventoryService;
+use App\Services\PaymentValidationService;
 use App\Services\PrintService;
 use App\Services\SunatCustomerStatusService;
 use App\Services\SummaryService;
@@ -294,7 +295,6 @@ class PosController extends Controller
         $allowed = ['EFECTIVO', 'TARJETA', 'YAPE', 'PLIN', 'TRANSFERENCIA', 'MIXTO'];
         $normalized = [];
         $totalPagado = 0.0;
-        $virtualTotal = 0.0;
         $hasCash = false;
 
         foreach ($payments as $payment) {
@@ -311,9 +311,6 @@ class PosController extends Controller
             if ($method === 'EFECTIVO') {
                 $hasCash = true;
             }
-            if (in_array($method, ['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA'], true)) {
-                $virtualTotal += $amount;
-            }
 
             $totalPagado += $amount;
             $normalized[] = ['method' => $method, 'amount' => $amount];
@@ -322,9 +319,8 @@ class PosController extends Controller
         if ($totalPagado + 0.001 < $total) {
             throw new \Exception('El pago no cubre el total de la venta. Faltan S/ ' . number_format($total - $totalPagado, 2));
         }
-        if ($virtualTotal > $total + 0.001) {
-            throw new \Exception('Los pagos virtuales (Yape, Plin, Tarjeta y Transferencia) deben ser exactos y no pueden superar el total');
-        }
+
+        PaymentValidationService::assertVirtualPaymentsDoNotExceedPending($normalized, $total);
 
         $vuelto = round(max(0, $totalPagado - $total), 2);
 

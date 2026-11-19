@@ -8,6 +8,7 @@
 
 ## Code conventions
 - **Comentarios de código**: TODOS los comentarios (PHP, Blade, JS, CSS, comandos) deben escribirse en **español**, breves y descriptivos. Mantenerlo en los desarrollos y cambios futuros.
+- **Antes de corregir un error**: revisar qué hace el código y qué afecta (GitNexus `impact`/`context`); proponer la solución sin eliminar funciones ni flujos existentes, y conservar compatibilidad.
 
 ## Regla obligatoria: GitNexus antes de razonar o editar
 
@@ -144,7 +145,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **facturafacil** (4265 symbols, 8573 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **facturafacil** (4258 symbols, 8588 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

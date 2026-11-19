@@ -337,6 +337,22 @@ function processCharge() {
         if (a > 0) payments.push({ method: m, amount: a });
     });
 
+    const total = parseFloat(document.getElementById('chargeTotal').textContent.replace('S/ ', '')) || 0;
+    const virtualError = getVirtualPaymentError(payments, total);
+    const paid = payments.reduce(function(sum, payment) { return sum + payment.amount; }, 0);
+    if (virtualError) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-credit-card"></i> COBRAR';
+        alert(virtualError);
+        return;
+    }
+    if (paid + 0.001 < total) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-credit-card"></i> COBRAR';
+        alert('El pago no cubre el total. Faltan S/ ' + (total - paid).toFixed(2));
+        return;
+    }
+
     fetch('/restaurant/kiosk-charge/' + currentChargeOrderId, {
         method: 'POST',
         headers: {
@@ -394,22 +410,54 @@ function addPaymentRow(amount) {
     updatePaymentSummary();
 }
 
+const VIRTUAL_PAYMENT_METHODS = ['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA'];
+
+function getVirtualPaymentError(payments, total) {
+    let paid = 0;
+
+    for (let i = 0; i < payments.length; i++) {
+        const payment = payments[i];
+        const amount = parseFloat(payment.amount) || 0;
+        const method = String(payment.method || '').toUpperCase();
+        const pending = Math.max(0, total - paid);
+
+        if (VIRTUAL_PAYMENT_METHODS.includes(method) && amount > pending + 0.001) {
+            return 'El pago virtual (Yape, Plin, Tarjeta y Transferencia) no puede superar el saldo pendiente de S/ '
+                + pending.toFixed(2) + '. Solo el efectivo permite vuelto.';
+        }
+
+        paid += amount;
+    }
+
+    return null;
+}
+
 function updatePaymentSummary() {
     const total = parseFloat(document.getElementById('chargeTotal').textContent.replace('S/ ', '')) || 0;
-    const amounts = document.querySelectorAll('.payment-amount');
+    const rows = document.querySelectorAll('.payment-row');
+    const payments = [];
     let sum = 0;
-    amounts.forEach(function(inp) { sum += parseFloat(inp.value) || 0; });
+    rows.forEach(function(row) {
+        const amount = parseFloat(row.querySelector('.payment-amount').value) || 0;
+        const method = row.querySelector('.payment-method').value;
+        sum += amount;
+        payments.push({ method: method, amount: amount });
+    });
+
+    const virtualError = getVirtualPaymentError(payments, total);
     const pending = Math.max(0, total - sum);
-    const vuelto = Math.max(0, sum - total);
+    const vuelto = virtualError ? 0 : Math.max(0, sum - total);
     document.getElementById('pendingAmount').textContent = pending.toFixed(2);
     document.getElementById('chargeVuelto').textContent = vuelto.toFixed(2);
     const btn = document.getElementById('btnProcessCharge');
-    btn.disabled = !(pending === 0 && sum > 0);
-    btn.innerHTML = pending === 0 && sum > 0
-        ? '<i class="fas fa-credit-card"></i> COBRAR S/ ' + total.toFixed(2)
-        : sum === 0
+    btn.disabled = virtualError !== null || !(pending === 0 && sum > 0);
+    btn.innerHTML = virtualError
+        ? '<i class="fas fa-credit-card"></i> PAGO VIRTUAL EXCEDE EL SALDO PENDIENTE'
+        : pending === 0 && sum > 0
             ? '<i class="fas fa-credit-card"></i> COBRAR S/ ' + total.toFixed(2)
-            : 'Faltan S/ ' + pending.toFixed(2);
+            : sum === 0
+                ? '<i class="fas fa-credit-card"></i> COBRAR S/ ' + total.toFixed(2)
+                : 'Faltan S/ ' + pending.toFixed(2);
 }
 
 function closeChargeModal() {

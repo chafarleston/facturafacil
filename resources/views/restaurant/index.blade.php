@@ -2492,37 +2492,55 @@ function removePaymentRow(btn) {
 }
 
 let virtualPaymentWarningShown = false;
+const VIRTUAL_PAYMENT_METHODS = ['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA'];
+
+function getVirtualPaymentError(payments, total) {
+    let paid = 0;
+
+    for (let i = 0; i < payments.length; i++) {
+        const payment = payments[i];
+        const amount = parseFloat(payment.amount) || 0;
+        const method = String(payment.method || '').toUpperCase();
+        const pending = Math.max(0, total - paid);
+
+        if (VIRTUAL_PAYMENT_METHODS.includes(method) && amount > pending + 0.001) {
+            return 'El pago virtual (Yape, Plin, Tarjeta y Transferencia) no puede superar el saldo pendiente de S/ '
+                + pending.toFixed(2) + '. Solo el efectivo permite vuelto.';
+        }
+
+        paid += amount;
+    }
+
+    return null;
+}
 
 function updatePaymentSummary() {
     const total = parseFloat(document.getElementById('chargeTotal').textContent.replace('S/ ', '')) || 0;
-    const amounts = document.querySelectorAll('.payment-amount');
-    const methods = document.querySelectorAll('.payment-method');
+    const rows = document.querySelectorAll('.payment-row');
+    const payments = [];
     let sum = 0;
-    let virtualTotal = 0;
 
-    amounts.forEach(function(inp, idx) {
-        const amount = parseFloat(inp.value) || 0;
+    rows.forEach(function(row) {
+        const amount = parseFloat(row.querySelector('.payment-amount').value) || 0;
+        const method = row.querySelector('.payment-method').value.toUpperCase();
         sum += amount;
-        const method = methods[idx] ? methods[idx].value.toUpperCase() : '';
-        if (['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA'].includes(method)) {
-            virtualTotal += amount;
-        }
+        payments.push({ method: method, amount: amount });
     });
 
-    const virtualExcedido = virtualTotal > total + 0.001;
+    const virtualError = getVirtualPaymentError(payments, total);
     const pending = Math.max(0, total - sum);
-    const vuelto = virtualExcedido ? 0 : Math.max(0, sum - total);
+    const vuelto = virtualError ? 0 : Math.max(0, sum - total);
     document.getElementById('pendingAmount').textContent = pending.toFixed(2);
     document.getElementById('chargeVuelto').textContent = vuelto.toFixed(2);
 
     const btn = document.getElementById('btnProcessCharge');
-    if (virtualExcedido) {
+    if (virtualError) {
         if (!virtualPaymentWarningShown) {
             virtualPaymentWarningShown = true;
-            showError('Los pagos virtuales (Yape, Plin, Tarjeta y Transferencia) deben ser exactos y no pueden superar el total. Solo el efectivo permite vuelto.');
+            showError(virtualError);
         }
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-credit-card"></i> PAGOS VIRTUALES EXCEDEN EL TOTAL';
+        btn.innerHTML = '<i class="fas fa-credit-card"></i> PAGO VIRTUAL EXCEDE EL SALDO PENDIENTE';
     } else if (pending === 0 && sum > 0) {
         virtualPaymentWarningShown = false;
         btn.disabled = false;
@@ -2886,16 +2904,11 @@ function confirmSplit() {
         const paid = (s.payments || []).reduce(function(sum, p) {
             return sum + (parseFloat(p.amount) || 0);
         }, 0);
-        const virtualTotal = (s.payments || []).filter(function(p) {
-            return ['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA'].includes(String(p.method || '').toUpperCase());
-        }).reduce(function(sum, p) {
-            return sum + (parseFloat(p.amount) || 0);
-        }, 0);
-        if (virtualTotal > splitTotal + 0.001) {
-            paymentError = 'La DivisiÃ³n ' + (idx + 1) + ': los pagos virtuales deben ser exactos y no pueden superar su total.';
-        }
-        if (paid + 0.001 < splitTotal) {
-            paymentError = 'La DivisiÃ³n ' + (idx + 1) + ' no cubre su total. Faltan S/ ' + (splitTotal - paid).toFixed(2) + '.';
+        const virtualError = getVirtualPaymentError(s.payments || [], splitTotal);
+        if (virtualError) {
+            paymentError = 'La División ' + (idx + 1) + ': ' + virtualError;
+        } else if (paid + 0.001 < splitTotal) {
+            paymentError = 'La División ' + (idx + 1) + ' no cubre su total. Faltan S/ ' + (splitTotal - paid).toFixed(2) + '.';
         }
     });
     if (paymentError) {
@@ -3071,18 +3084,17 @@ function onCustomerCreated(customer) {
 function processCharge() {
     if (!currentOrderId) return;
     const total = parseFloat(document.getElementById('chargeTotal').textContent.replace('S/ ', '')) || 0;
+    const payments = [];
     let paid = 0;
-    let virtualTotal = 0;
     document.querySelectorAll('.payment-row').forEach(function(row) {
         const amount = parseFloat(row.querySelector('.payment-amount').value) || 0;
         const method = row.querySelector('.payment-method').value.toUpperCase();
         paid += amount;
-        if (['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA'].includes(method)) {
-            virtualTotal += amount;
-        }
+        payments.push({ method: method, amount: amount });
     });
-    if (virtualTotal > total + 0.001) {
-        showError('Los pagos virtuales (Yape, Plin, Tarjeta y Transferencia) deben ser exactos y no pueden superar el total. Solo el efectivo permite vuelto.');
+    const virtualError = getVirtualPaymentError(payments, total);
+    if (virtualError) {
+        showError(virtualError);
         return;
     }
     if (paid + 0.001 < total) {
@@ -3103,16 +3115,7 @@ function processCharge() {
         body: JSON.stringify({
             customer_id: document.getElementById('chargeCustomerId').value,
             document_type: document.getElementById('chargeDocumentType').value,
-            payments: (function() {
-                var rows = document.querySelectorAll('.payment-row');
-                var arr = [];
-                rows.forEach(function(r) {
-                    var m = r.querySelector('.payment-method').value;
-                    var a = parseFloat(r.querySelector('.payment-amount').value) || 0;
-                    if (a > 0) arr.push({ method: m, amount: a });
-                });
-                return arr;
-            })(),
+            payments: payments.filter(function(payment) { return payment.amount > 0; }),
             reference: document.getElementById('chargeReference').value,
             solo_consumo: document.getElementById('chargeSoloConsumo').checked,
             order_version: currentOrderVersion(),

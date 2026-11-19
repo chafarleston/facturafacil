@@ -945,6 +945,24 @@ function getTotal() {
     return total;
 }
 
+const VIRTUAL_PAYMENT_METHODS = ['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA'];
+
+function getVirtualPaymentError(payments, total) {
+    var paid = 0;
+    for (var i = 0; i < payments.length; i++) {
+        var payment = payments[i];
+        var amount = parseFloat(payment.amount) || 0;
+        var method = String(payment.method || '').toUpperCase();
+        var pending = Math.max(0, total - paid);
+        if (VIRTUAL_PAYMENT_METHODS.includes(method) && amount > pending + 0.001) {
+            return 'El pago virtual (Yape, Plin, Tarjeta y Transferencia) no puede superar el saldo pendiente de S/ '
+                + pending.toFixed(2) + '. Solo el efectivo permite vuelto.';
+        }
+        paid += amount;
+    }
+    return null;
+}
+
 function processSale() {
     var tab = getActiveTab();
     if (!tab || tab.items.length === 0) {
@@ -965,12 +983,9 @@ function processSale() {
         return;
     }
 
-    var virtualTotal = payments
-        .filter(function(payment) { return ['YAPE', 'PLIN', 'TARJETA', 'TRANSFERENCIA'].includes(payment.method); })
-        .reduce(function(sum, payment) { return sum + (parseFloat(payment.amount) || 0); }, 0);
-
-    if (virtualTotal > total + 0.001) {
-        showError('Los pagos virtuales (Yape, Plin, Tarjeta y Transferencia) deben ser exactos y no pueden superar el total. Solo el efectivo permite vuelto.');
+    var virtualError = getVirtualPaymentError(payments, total);
+    if (virtualError) {
+        showError(virtualError);
         return;
     }
 
