@@ -30,21 +30,27 @@
 
                     <h5 class="mb-3"><i class="fas fa-motorcycle"></i> Delivery</h5>
 
-                    <input type="hidden" name="delivery_enabled" value="0">
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" name="delivery_enabled" id="delivery_enabled" value="1"
-                            {{ old('delivery_enabled', $deliveryEnabled) ? 'checked' : '' }}>
-                        <label class="form-check-label" for="delivery_enabled">Habilitar delivery en el Autopedido</label>
+                    <div class="form-group">
+                        <label for="delivery_mode">Modalidad de pedidos</label>
+                        <select name="delivery_mode" id="delivery_mode" class="form-control">
+                            <option value="local" {{ old('delivery_mode', $deliveryMode) === 'local' ? 'selected' : '' }}>
+                                Local — solo recoger en el local
+                            </option>
+                            <option value="web" {{ old('delivery_mode', $deliveryMode) === 'web' ? 'selected' : '' }}>
+                                Web — recoger en el local o delivery
+                            </option>
+                        </select>
+                        <small class="form-text text-muted">
+                            En modo Local no se ofrece delivery. En modo Web el cliente puede elegir recojo o delivery
+                            y pagar el costo de la zona seleccionada.
+                        </small>
                     </div>
-                    <small class="form-text text-muted mb-3">
-                        Si está desactivado, el Autopedido solo permite recoger en el local. Si está activo, el cliente
-                        puede elegir recojo o delivery y pagar el costo de la zona seleccionada.
-                    </small>
 
                     @error('zones')
                         <div class="alert alert-danger py-2 mt-3">{{ $message }}</div>
                     @enderror
 
+                    <div id="deliveryZonesSection">
                     <div class="table-responsive mt-3">
                         <table class="table table-sm table-bordered align-middle">
                             <thead>
@@ -84,6 +90,7 @@
                     <small class="text-muted">
                         Las zonas sin nombre no aparecen en el Autopedido. Los precios incluyen IGV.
                     </small>
+                    </div>
 
                     <hr>
 
@@ -136,4 +143,19 @@
         </div>
     </div>
 </div>
+
+<script>
+function toggleDeliveryZones() {
+    const mode = document.getElementById('delivery_mode');
+    const section = document.getElementById('deliveryZonesSection');
+    if (!mode || !section) return;
+    section.style.display = mode.value === 'web' ? '' : 'none';
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const mode = document.getElementById('delivery_mode');
+    if (mode) mode.addEventListener('change', toggleDeliveryZones);
+    toggleDeliveryZones();
+});
+</script>
 @endsection

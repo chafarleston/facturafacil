@@ -97,6 +97,9 @@ Route::middleware(['auth', \App\Http\Middleware\RestaurantAccess::class])->group
         Route::post('/website-settings', [WebsiteController::class, 'update'])->name('website.update');
         Route::resource('customers', CustomerController::class)->parameters(['customers' => 'customer']);
         Route::resource('preventas', PreventaController::class);
+        Route::post('/preventas/{preventa}/convert', [PreventaController::class, 'convertToOrder'])->name('preventas.convert');
+        Route::post('/preventas/{preventa}/invoice', [PreventaController::class, 'generateInvoice'])->name('preventas.invoice');
+        Route::get('/preventas/{preventa}/print', [PreventaController::class, 'printPdf'])->name('preventas.print');
         Route::get('/products/export', [ProductController::class, 'export'])->name('products.export');
         Route::get('/products/import', [ProductController::class, 'importForm'])->name('products.import.form');
         Route::post('/products/import', [ProductController::class, 'importStore'])->name('products.import.store');

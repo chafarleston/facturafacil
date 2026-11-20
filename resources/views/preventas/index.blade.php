@@ -63,7 +63,7 @@
                         @forelse($preventas as $preventa)
                             @php
                                 $estadoClass = match($preventa->estado) {
-                                    'APROBADO', 'VIGENTE', 'ATENDIDO', 'ENTREGADO' => 'success',
+                                    'APROBADO', 'VIGENTE', 'ATENDIDO', 'ENTREGADO', 'CONVERTIDO' => 'success',
                                     'RECHAZADO', 'CANCELADO' => 'danger',
                                     'EN_PROCESO', 'ENVIADO' => 'info',
                                     default => 'secondary',

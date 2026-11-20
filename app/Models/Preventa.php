@@ -34,6 +34,7 @@ class Preventa extends Model
         'APROBADO' => 'Aprobado',
         'RECHAZADO' => 'Rechazado',
         'VIGENTE' => 'Vigente',
+        'CONVERTIDO' => 'Convertido en pedido',
         'PENDIENTE' => 'Pendiente',
         'EN_PROCESO' => 'En proceso',
         'ENTREGADO' => 'Entregado',
@@ -45,7 +46,13 @@ class Preventa extends Model
     protected $fillable = [
         'company_id',
         'user_id',
+        'customer_id',
+        'invoice_id',
+        'parent_id',
         'tipo',
+        'document_type',
+        'payment_condition',
+        'credit_days',
         'numero',
         'cliente_nombre',
         'cliente_documento',
@@ -54,6 +61,8 @@ class Preventa extends Model
         'titulo',
         'descripcion',
         'monto',
+        'subtotal',
+        'igv',
         'estado',
         'fecha',
         'fecha_vencimiento',
@@ -64,6 +73,9 @@ class Preventa extends Model
         'fecha' => 'date',
         'fecha_vencimiento' => 'date',
         'monto' => 'decimal:2',
+        'subtotal' => 'decimal:2',
+        'igv' => 'decimal:2',
+        'credit_days' => 'integer',
     ];
 
     public function company()
@@ -74,6 +86,49 @@ class Preventa extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function invoice()
+    {
+        return $this->belongsTo(Invoice::class);
+    }
+
+    public function parent()
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function children()
+    {
+        return $this->hasMany(self::class, 'parent_id');
+    }
+
+    public function items()
+    {
+        return $this->hasMany(PreventaItem::class);
+    }
+
+    public function documentTypeLabel(): string
+    {
+        return match ($this->document_type) {
+            '01' => 'Factura',
+            '03' => 'Boleta',
+            default => '-',
+        };
+    }
+
+    public function paymentConditionLabel(): string
+    {
+        return match ($this->payment_condition) {
+            'CONTADO' => 'Contado',
+            'CREDITO' => 'Crédito' . ($this->credit_days ? ' a ' . $this->credit_days . ' días' : ''),
+            default => '-',
+        };
     }
 
     public static function tipos(): array

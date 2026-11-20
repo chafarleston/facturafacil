@@ -19,9 +19,12 @@ class KioskSettingController extends Controller
             ->where('is_for_kiosko', true)
             ->first();
 
+        $deliveryEnabled = Setting::kioskDeliveryEnabled();
+
         return view('kiosksettings.edit', [
             'kioskTable' => $kioskTable,
-            'deliveryEnabled' => Setting::kioskDeliveryEnabled(),
+            'deliveryEnabled' => $deliveryEnabled,
+            'deliveryMode' => $deliveryEnabled ? 'web' : 'local',
             'deliveryZones' => Setting::kioskDeliveryZones(),
             'showProductImages' => Setting::showProductImages('kiosko'),
             'showCategoryImages' => Setting::showCategoryImages('kiosko'),
@@ -38,6 +41,7 @@ class KioskSettingController extends Controller
 
         $validated = $request->validate([
             'kiosk_table_name' => 'required|string|max:100',
+            'delivery_mode' => 'nullable|in:local,web',
             'delivery_enabled' => 'nullable|boolean',
             'zones' => 'required|array|size:9',
             'zones.*.name' => 'nullable|string|max:100',
@@ -48,7 +52,10 @@ class KioskSettingController extends Controller
         ]);
 
         $deliveryZones = Setting::normalizeKioskDeliveryZones($validated['zones']);
-        $deliveryEnabled = $request->boolean('delivery_enabled');
+        $deliveryMode = $request->has('delivery_mode')
+            ? ($validated['delivery_mode'] ?: 'local')
+            : ($request->boolean('delivery_enabled') ? 'web' : 'local');
+        $deliveryEnabled = $deliveryMode === 'web';
 
         if ($deliveryEnabled && !collect($deliveryZones)->contains(fn ($zone) => $zone['name'] !== '')) {
             return back()->withInput()->withErrors([
@@ -84,6 +91,7 @@ class KioskSettingController extends Controller
         Setting::setShowCategoryImages('kiosko', $request->boolean('img_categories_kiosko'));
         Setting::setCategoriesOnly('kiosko', $request->boolean('catonly_kiosko'));
         Setting::setKioskDeliveryEnabled($deliveryEnabled);
+        Setting::setKiosk('delivery_type', $deliveryMode);
         Setting::setKioskDeliveryZones($deliveryZones);
         Setting::setKiosk('success_ticket_text', $validated['success_ticket_text']);
         Setting::setKiosk('success_pay_text', $validated['success_pay_text']);
