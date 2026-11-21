@@ -814,6 +814,14 @@ $order = RestaurantOrder::with(['items', 'table.floor', 'user'])->findOrFail($or
 
                 $oldTable = $order->table;
 
+                Log::info('Pedido movido de mesa', [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'user_id' => auth()->id(),
+                    'old_table_id' => $oldTable?->id,
+                    'new_table_id' => $newTable->id,
+                ]);
+
                 $order->update(['table_id' => $newTableId]);
 
                 if ($oldTable) {

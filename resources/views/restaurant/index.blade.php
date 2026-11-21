@@ -1157,12 +1157,12 @@ function selectTable(tableId) {
     });
 }
     
-function closeModal() {
+function closeModal(skipUnlock) {
     stopTableLockHeartbeat();
     stopTableIdleTimer();
     orderLoadToken++;
 
-    if (currentTableId) {
+    if (!skipUnlock && currentTableId) {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
         fetch('/restaurant/tables/' + currentTableId + '/unlock', {
             method: 'POST',
@@ -1174,7 +1174,7 @@ function closeModal() {
         }).catch(() => {});
     }
 
-    if (currentTableId && currentOrderId) {
+    if (!skipUnlock && currentTableId && currentOrderId) {
         const card = document.querySelector(`.table-card[data-table-id="${currentTableId}"]`);
         if (card) card.dataset.orderId = currentOrderId;
     }
@@ -1186,6 +1186,17 @@ function closeModal() {
     document.getElementById('prebillOverlay').style.display = 'none';
     closeRestaurantKeyboard();
     resetTableStyle(currentTableId);
+}
+
+function handleOrderMoved(order) {
+    const newTableName = order.table && order.table.name ? order.table.name : 'otra mesa';
+    closeModal(true);
+    currentTableId = null;
+    currentTableName = null;
+    currentOrderId = null;
+    window.currentOrderData = null;
+    showToast('El pedido fue movido a ' + newTableName);
+    setTimeout(function() { pollRestaurantData(); }, 300);
 }
 
 function switchTab(tab) {
@@ -1275,6 +1286,12 @@ function loadOrder(orderId) {
         if (data.success) {
             currentOrderId = orderId;
             const order = data.order;
+
+            if (currentTableId && order.table_id && String(order.table_id) !== String(currentTableId)) {
+                handleOrderMoved(order);
+                return;
+            }
+
             order.remaining_total = data.remaining_total;
             order.paid_total = data.paid_total;
             window.currentOrderData = order;
@@ -2241,6 +2258,11 @@ function refreshOpenOrderIfChanged(orders) {
         } else {
             loadOrder(currentOrderId);
         }
+        return;
+    }
+
+    if (currentTableId && serverOrder.table_id && String(serverOrder.table_id) !== String(currentTableId)) {
+        loadOrder(currentOrderId);
         return;
     }
 
